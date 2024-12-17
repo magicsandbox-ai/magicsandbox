@@ -1,13 +1,13 @@
 /* global requestGetData, requestUrlParams */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
-import Sandbox from 'shared/Sandbox.js';
-import BottomNavBar from './BottomNavBar.js';
-import AssistantSettings from './AssistantSettings.js';
-import AssistantConfirm from './AssistantConfirm.js';
-import { Toasts } from 'shared/Toasts.js';
-import { Assistant } from './Assistant.js';
+import React, { useState, useRef, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import Sandbox from "components/Sandbox.js";
+import BottomNavBar from "./BottomNavBar.js";
+import AssistantSettings from "./AssistantSettings.js";
+import AssistantConfirm from "./AssistantConfirm.js";
+import { Toasts } from "components/Toasts.js";
+import { Assistant } from "./Assistant.js";
 
 /*
 App
@@ -28,7 +28,7 @@ Assistant
 */
 
 const defaultSettings = {
-  findApp: 'magicsandbox.findApp',
+  findApp: "magicsandbox.findApp",
   appWeights: {},
   bangs: {},
   trust: new Set(),
@@ -36,7 +36,7 @@ const defaultSettings = {
 };
 
 function App() {
-  const [modal, setModal] = useState('');
+  const [modal, setModal] = useState("");
   const [confirm, setConfirm] = useState(null);
   const [messages, setMessages] = useState([]);
 
@@ -50,8 +50,8 @@ function App() {
       /* settings */
       try {
         const savedSettings = await requestGetData(
-          'magicsandbox.Assistant',
-          'settings'
+          "magicsandbox.Assistant",
+          "settings",
         );
         if (savedSettings) {
           savedSettings.trust = new Set(savedSettings.trust);
@@ -60,8 +60,8 @@ function App() {
       } catch (error) {
         console.error(error);
         toastsRef.current.addToast(
-          'Failed to load Assistant settings. Using default settings',
-          'error'
+          "Failed to load Assistant settings. Using default settings",
+          "error",
         );
       } finally {
         settingsRef.current = {
@@ -87,10 +87,10 @@ function App() {
     if (!settingsRef.current) {
       init().catch((error) => {
         console.error(error);
-        if (error.name === 'ToastError') {
+        if (error.name === "ToastError") {
           toastsRef.current.addToast(error.message, error.type);
         } else {
-          toastsRef.current.addToast('Error: please try again', 'error');
+          toastsRef.current.addToast("Error: please try again", "error");
         }
       });
     }
@@ -165,7 +165,7 @@ function App() {
   let modalComponent;
   if (confirm) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
-  } else if (modal === 'settings') {
+  } else if (modal === "settings") {
     modalComponent = (
       <AssistantSettings
         assistantRef={assistantRef}
@@ -197,4 +197,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);

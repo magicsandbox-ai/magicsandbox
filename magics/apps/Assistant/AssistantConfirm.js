@@ -1,7 +1,7 @@
 /* global requestDownload */
 
-import React from 'react';
-import Confirm from 'shared/Confirm.js';
+import React from "react";
+import Confirm from "components/Confirm.js";
 
 /*
 collapse details
@@ -38,13 +38,13 @@ function AssistantConfirm({ confirm }) {
   );
   const buttons = [
     {
-      text: 'Approve',
-      className: 'bg-stone-300 hover:bg-stone-400 text-black',
+      text: "Approve",
+      className: "bg-stone-300 hover:bg-stone-400 text-black",
       onClick: () => callback(true),
     },
     {
-      text: 'Deny',
-      className: 'bg-red-500 hover:bg-red-700 text-white',
+      text: "Deny",
+      className: "bg-red-500 hover:bg-red-700 text-white",
       onClick: () => callback(false),
     },
   ];

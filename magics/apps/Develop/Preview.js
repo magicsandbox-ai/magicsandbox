@@ -3,9 +3,9 @@ import React, {
   useImperativeHandle,
   useRef,
   useEffect,
-} from 'react';
-import Sandbox from 'shared/Sandbox.js';
-import requestHandler from './requestHandler.js';
+} from "react";
+import Sandbox from "components/Sandbox.js";
+import requestHandler from "./requestHandler.js";
 
 const Preview = forwardRef(function Preview({ className }, ref) {
   const sandboxRef = useRef(null);

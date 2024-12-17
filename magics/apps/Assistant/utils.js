@@ -1,21 +1,21 @@
 /* global requestGetAllKeysData, requestGetAllData, requestPutData, requestDeleteData */
-import { ToastError } from 'shared/Toasts.js';
+import { ToastError } from "components/Toasts.js";
 
 function parseInput(input, bangs) {
   const match = input.match(/!\S+/);
   let bang = match ? match[0] : undefined;
   let app;
   if (bang) {
-    input = input.replace(new RegExp(`\\s*${bang}\\s*`, 'g'), '');
-    if (bang === '!magic') {
+    input = input.replace(new RegExp(`\\s*${bang}\\s*`, "g"), "");
+    if (bang === "!magic") {
       return { input, magic: true };
     }
-    bang = bang.replace('!', '');
-    app = bangs[bang] || (bang.includes('.') ? bang : undefined);
+    bang = bang.replace("!", "");
+    app = bangs[bang] || (bang.includes(".") ? bang : undefined);
     if (!app) {
       throw new ToastError(
         `Unknown bang: ${bang}. Configure bangs by clicking the exclamation mark icon below`,
-        'error'
+        "error",
       );
     }
     return { input, app };
@@ -35,16 +35,16 @@ function parseInput(input, bangs) {
 async function manageBackups(apps, toastsRef) {
   function errorHandler(error) {
     console.error(error);
-    toastsRef.current.addToast('Assistant failed to backup data', 'error');
+    toastsRef.current.addToast("Assistant failed to backup data", "error");
   }
   try {
-    const backups = await requestGetAllKeysData('magicsandbox.Assistant', {
+    const backups = await requestGetAllKeysData("magicsandbox.Assistant", {
       backup: true,
     });
     const appBackups = Object.fromEntries(apps.map((app) => [app, []]));
     const appsSet = new Set(apps);
     backups.forEach((key) => {
-      const [app, ts] = key.split('@');
+      const [app, ts] = key.split("@");
       if (appsSet.has(app)) {
         appBackups[app].push(ts);
       }
@@ -86,21 +86,21 @@ async function manageBackups(apps, toastsRef) {
         .then(async (data) => {
           if (data) {
             return requestPutData(
-              'magicsandbox.Assistant',
+              "magicsandbox.Assistant",
               `${app}@${Date.now()}`,
               data,
               {
-                evictionPolicy: 'fifo',
+                evictionPolicy: "fifo",
                 backup: true,
-              }
+              },
             );
           }
         })
         .catch(errorHandler);
     }
     for (const key of backupsToDelete) {
-      requestDeleteData('magicsandbox.Assistant', key, { backup: true }).catch(
-        errorHandler
+      requestDeleteData("magicsandbox.Assistant", key, { backup: true }).catch(
+        errorHandler,
       );
     }
   } catch (error) {

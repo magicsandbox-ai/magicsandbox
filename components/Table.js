@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+/*
+"lucide-react": "^0.408.0",
+*/
+import React, { useState, useEffect } from "react";
+import { Trash2 } from "lucide-react";
 
-const tdStyle = 'border border-stone-500 text-center';
+const tdStyle = "border border-stone-500 text-center";
 
 function HeaderRow({ columns }) {
   return (
     <tr>
       {columns.map((column, i) => (
-        <th key={i} className={tdStyle + ' bg-stone-100 px-2'}>
+        <th key={i} className={tdStyle + " bg-stone-100 px-2"}>
           {column}
         </th>
       ))}
@@ -50,8 +53,8 @@ function Cell({ id, column, value, data, setData }) {
   function handleChange(event) {
     setData(
       data.map((row) =>
-        row.id === id ? { ...row, [column]: event.target.value } : row
-      )
+        row.id === id ? { ...row, [column]: event.target.value } : row,
+      ),
     );
   }
 
@@ -72,7 +75,7 @@ let nextId = 0;
 
 function Table({ initData, onChange, allowAdd }) {
   const [data, setData] = useState(
-    initData.map((d) => ({ ...d, id: nextId++ }))
+    initData.map((d) => ({ ...d, id: nextId++ })),
   );
 
   useEffect(() => {
@@ -83,10 +86,10 @@ function Table({ initData, onChange, allowAdd }) {
     return <div>Error: Table is empty</div>;
   }
 
-  const columns = Object.keys(data[0]).filter((c) => c !== 'id');
+  const columns = Object.keys(data[0]).filter((c) => c !== "id");
 
   function addData() {
-    const newData = Object.fromEntries(columns.map((c) => [c, '']));
+    const newData = Object.fromEntries(columns.map((c) => [c, ""]));
     setData([...data, { ...newData, id: nextId++ }]);
   }
 

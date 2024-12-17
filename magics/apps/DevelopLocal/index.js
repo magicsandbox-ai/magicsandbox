@@ -1,10 +1,10 @@
 /* global requestFetch requestPublish */
 
-import React, { useState, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
-import Preview from '../Develop/Preview.js';
-import { Toasts } from 'shared/Toasts.js';
-import { Loader } from 'lucide-react';
+import React, { useState, useRef } from "react";
+import { createRoot } from "react-dom/client";
+import Preview from "../Develop/Preview.js";
+import { Toasts } from "components/Toasts.js";
+import { Loader } from "lucide-react";
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,12 +17,12 @@ function App() {
       setIsLoading(true);
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
-      const response = await requestFetch('http://localhost:3002');
+      const response = await requestFetch("http://localhost:3002");
       const appObj = response.body;
       previewRef.current.update(sandboxId, appObj);
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast('Failed to update preview', 'error');
+      toastsRef.current.addToast("Failed to update preview", "error");
     } finally {
       setIsLoading(false);
     }
@@ -33,14 +33,14 @@ function App() {
       setIsLoading(true);
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
-      const response = await requestFetch('http://localhost:3002');
+      const response = await requestFetch("http://localhost:3002");
       const appObj = response.body;
       previewRef.current.update(sandboxId, appObj);
       await requestPublish(appObj);
-      toastsRef.current.addToast('Successfully published!', 'success');
+      toastsRef.current.addToast("Successfully published!", "success");
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast('Failed to publish', 'error');
+      toastsRef.current.addToast("Failed to publish", "error");
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ function App() {
 
   //todo a lot of this is duplicated in Develop
   const buttonStyle =
-    'w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm';
+    "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
 
   return (
     <div className="flex h-screen flex-col text-stone-700">
@@ -72,4 +72,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);

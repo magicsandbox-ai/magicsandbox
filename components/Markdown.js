@@ -1,3 +1,11 @@
+/*
+"unified": "^11.0.5",
+"remark-parse": "^11.0.0",
+"remark-rehype": "^11.1.0",
+"rehype-sanitize": "^6.0.0",
+"rehype-react": "^8.0.0",
+*/
+
 import React, {
   useState,
   useEffect,
@@ -6,13 +14,13 @@ import React, {
   memo,
   useRef,
   useLayoutEffect,
-} from 'react';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkRehype from 'remark-rehype';
-import rehypeSanitize from 'rehype-sanitize';
-import rehypeReact from 'rehype-react';
-import * as prod from 'react/jsx-runtime';
+} from "react";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeSanitize from "rehype-sanitize";
+import rehypeReact from "rehype-react";
+import * as prod from "react/jsx-runtime";
 
 //careful with memo and remarkPlugins, rehypeSanitizeOptions, rehypePlugins, onComplete
 
@@ -45,7 +53,7 @@ const Markdown = memo(function Markdown({
         const file = await processor.process(children);
         setContent(file.result);
       } catch (error) {
-        console.error('Error processing markdown:', error);
+        console.error("Error processing markdown:", error);
       }
     }
     process();
