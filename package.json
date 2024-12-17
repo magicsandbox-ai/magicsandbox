@@ -1,0 +1,8 @@
+{
+  "name": "@magicsandbox.ai/root",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/js/*"
+  ]
+}

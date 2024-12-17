@@ -1,0 +1,5 @@
+{
+  name: 'scoreApp',
+  version: '0.0.1',
+  endpoint: 'process.env.PYENDPOINTS_URL/scoreApp',
+}

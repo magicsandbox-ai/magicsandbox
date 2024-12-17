@@ -1,0 +1,6 @@
+{
+  name: 'findApp',
+  version: '0.0.1',
+  endpoint: 'process.env.PYENDPOINTS_URL/findApp',
+  subscribeToUpdates: true,
+}

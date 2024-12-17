@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.cm-line {
+  @apply px-1.5 !important;
+}

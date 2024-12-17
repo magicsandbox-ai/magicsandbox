@@ -1,0 +1,22 @@
+{
+  name: 'Develop',
+  version: '0.1.0',
+  description: 'Develop a Magic Sandbox app or function in the browser',
+  esbuildOptions: {
+    alias: {
+      path: 'path-browserify', //for eslint
+      //setting fs and resolve to external didn't work, but they're never used
+      //only used if react version is set to 'detect' in eslint
+      fs: './dummy.js',
+      resolve: './dummy.js',
+    },
+    inject: ['./processShim.js'], //for eslint
+    loader: { '.js': 'jsx', '.wasm': 'binary' },
+    //metafile: true,
+    minify: true,
+    sourcesContent: false,
+  },
+  tailwindConfig: {
+    content: ['src/magics/apps/Develop/**/*.js', 'src/shared/**/*.js'],
+  },
+}

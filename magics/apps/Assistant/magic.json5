@@ -1,0 +1,9 @@
+{
+  name: 'Assistant',
+  version: '0.1.0',
+  type: 'assistant',
+  esbuildOptions: {
+    minify: true,
+    sourcemap: false,
+  },
+}

@@ -1,0 +1,248 @@
+import fetch from 'node-fetch';
+import Joi from 'joi';
+
+//flights for a weekend trip from atlanta to new york
+//context: input, memory, functions
+	//components?? 
+
+function darb_Flights(context) {
+	try {
+		const prompt = getPrompt(context.input);
+		let req_data = llm(prompt);
+		let {api, error} = validateReqData(req_data);
+		if (error) {
+			console.log(context.input, req_data, error);
+			req_data = llm(darb_utils_promptRetry(prompt, JSON.stringify(req_data), error);
+			{api, error} = validateReqData(req_data);
+			if (error) {
+				console.log(context.input, req_data, error);
+				const origin = llmOrigin(context.input);
+				req_data = {origin: origin};
+				{api, error} = validateReqData(req_data);
+				if (error) {
+					throw new Error(context.input, req_data, error);
+				}
+			}
+		}
+		const flights = callApi(req_data, api);
+		script = `function Title() {
+	return <h1>Flights from {origin} to {destination}</h1>
+}
+function Flights() {
+	return <ul>{{flights}.map(f => <li>{f}</li>)}</ul>
+}
+function App() {
+	return <div><Title/><Flights/></div>
+}`
+		return {
+			reset: true,
+			memory: context.memory += context.input,
+			script: script
+		}
+	
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+function getPrompt(input) {
+`Your task is to construct a JSON object to help a user who is searching for flights.
+
+Required JSON structure - the origin field is required, all others are optional:
+{
+	origin: **required**, city/airport IATA code from which the traveler will depart, e.g. BOS for Boston
+	destination: city/airport IATA code to which the traveler is going, e.g. PAR for Paris
+	departureDate: The date, or range of dates, on which the flight will depart from the origin. Dates are specified in the ISO 8601 YYYY-MM-DD format, e.g. 2017-12-25. Ranges are specified with a comma and are inclusive
+	duration: Exact duration or range of durations of the travel, in days. Ranges are specified with a comma and are inclusive, e.g. 2,8
+}
+
+
+1. Flight Destinations: used to answer questions like "What are the cheapest places to fly from Boston?" where only the origin is specified
+Flight Destinations JSON structure:
+{
+	origin: **required**, IATA code of the city from which the flight will depart, e.g. MAD
+	departureDate: The date, or range of dates, on which the flight will depart from the origin. Dates are specified in the ISO 8601 YYYY-MM-DD format, e.g. 2017-12-25. Ranges are specified with a comma and are inclusive. Departure date can not be more than 180 days in the future
+	duration: Exact duration or range of durations of the travel, in days. Ranges are specified with a comma and are inclusive, e.g. 2,8. Duration can not be lower than 1 days or higher than 15 days
+}
+2. Cheapest Flights: used to answer questions like "What are the cheapest dates to fly from Munich to Sao Paulo?" where only the origin and destination are specified.
+Cheapest Flights JSON structure:
+{
+	origin: **required**, IATA code of the city from which the flight will depart, e.g. MAD
+	destination: **required**, IATA code of the city to which the flight is going, e.g. MUC
+	departureDate: The date, or range of dates, on which the flight will depart from the origin. Dates are specified in the ISO 8601 YYYY-MM-DD format, e.g. 2017-12-25. Ranges are specified with a comma and are inclusive
+	duration: Exact duration or range of durations of the travel, in days. Ranges are specified with a comma and are inclusive, e.g. 2,8
+}
+3. Flight Search: used to answer questions like "What are the cheapest flights from Madrid to Paris on June 1st?" where the origin, destination, and date are specified.
+
+
+
+Today's date is Thursday, 2024-06-27.`
+}
+
+function llm(prompt) {
+	
+}
+
+function validateReqData(req_data) {
+	schemas = {
+		'shopping/flight-destinations': {
+			origin: x => x.length === 3, //todo could check valid iata code
+		}
+	};
+	schemas['shopping/flight-dates'] = {
+		...schemas['shopping/flight-destinations'],
+		...{
+			destination: x => x.length === 3, //todo could check valid iata code
+		}
+	};
+	schemas['shopping/flight-offers'] = {
+		...schemas['shopping/flight-dates'],
+		...{
+			departureDate: x => true
+		}
+	};
+	
+	if (!req_data.origin) {
+		throw new Error('origin' is required);
+	} else if (!req_data.destination) {
+		api = 'shopping/flight-destinations'
+	} else if (!req_data.departureDate || req_data.departureDate.contains(',') {
+		api = 'shopping/flight-dates' //comma means range of dates, not permitted for flight search
+	} else {
+		api = 'shopping/flight-offers'
+	}
+	
+	schema = schemas[api]
+	
+	Joi.object
+	schema.validate(req_data);
+	
+	Object.keys(req_data).forEach(k => {
+		if (!schema[k](req_data[k])) {
+			throw new Error('invalid data');
+		}
+	})		
+}
+
+function darb_utils_promptRetry(prompt, output, error) {
+	newPrompt = `An LLM was given the below prompt and generated the below output, but it has errors. Please read the prompt and errors closely and generate a new, corrected output.
+<prompt>
+${prompt}
+</prompt>
+<output>
+${output}
+</output>
+<error>
+${error}
+</error>
+<corrected-output>
+`;
+	return newPrompt;
+}
+
+function llmOrigin(input) {
+	prompt = `What is the appropriate IATA code for the origin city or airport for the following travel requests?
+	
+Request: Where should I fly from Chicago?
+Thinking: The request did not specify a specific airport, so IATA code CHI for the Chicago metropolitan area would be the best response.
+Origin IATA Code: CHI
+
+Request: help me find a cheap flight from Midway to LA
+Thinking: The request specified Midway, so IATA code MDW would be the best response.
+
+Request: {input}`
+	//output = openai(prompt) //use 3.5
+	//find last colon, split, take right, trim, first three letters
+	
+}
+
+async function darb_flights_amadeusApi(req_data, api) {
+	try {
+		url = `${api}?${new URLSearchParams(req_data).toString()}`
+		res = await fetch(url);
+		res_data = await res.json();
+		return res_data;
+	} catch (error) {
+		console.error(error);
+		console.error(req_data);
+	}
+}	
+
+//dependencies in develop?? careful with browser vs. node
+	//package.json
+	//default: index.js
+		//priority 5
+	//main: mostly used for CJS/require?
+		//priority 4
+	//module:
+		/* //priority 3 */
+	//browser:
+		//priority 2
+	//exports: either single entry string or object. object keys: "." > browser > import > > module > "default", search objects recursively until find a string
+		//priority 1
+	//use import map in browser. maybe won't work have to use regex
+	//jsdelivr - privacy policy? esm?
+	//or could use dynamic import map - but can only have one per page and can't add it. so would depend on how develop is set up (could reload iframe and regenerate map)
+	//use function dependencies to specify version. import on node works. import on browser importmap. if not function dependencies then assume latest. deploy zips up deps for user?
+		//careful with deploy zipping up deps on lambda - would need network access for npm then running untrusted code
+		//npm pack downloads tarball into cwd - lambda with network access
+		//npm install tarballs and zips - lambda 2 locked down
+		//publish lambda - lambda 3 with AWS access
+		//npm install supports more version syntax than jsdelivr. use semver coerce? or just don't support
+		//if dependencies not specified, capture them when deploying?
+	//careful with CDN security!! https://www.jsdelivr.com/documentation#id-privacy-policy
+		//only parent page loads deps and gives to iframe?
+			//how will import work? importmap won't work. regex to change to CDN won't work because of CSP. could regex to change to sibling file which would make request to frame server which could make request to CDN
+				//but caching won't work. parent page needs to load
+			//this is unique to develop because it's intended to run in node
+				//so caching not the biggest deal. could generate unique origins for each iframe
+				//bundler??
+		//could further lock down iframe CSP. if give access to CDN could try to leak info or DDOS the CDN. no way to prevent that?
+		//remove allow-same-origin? since caching would be parent and no longer a concern?
+		//probably yes, need to be careful with cross tab communication when iframes share an origin. would be surprising to user/enable stealing private info
+		//alternative is give each iframe a unique origin on the server somehow. but this would also negate benefits of caching
+//network requests in develop? no
+//can call functions in develop?
+	//how do functions call each other? figure that out first. solve with dependencies? careful with privacy of code
+	//warning user about cost may be confusing. at least in develop it's a technical user
+//how does develop run code? nested iframe not allowed. eval would have to change CSP (plus would this even work with imperative like document.body.appendChild)
+	//develop uses special name space so that there are no collisions?
+	//or code box is outside of iframe - would make develop a special function
+	//or can have multiple iframes not nested? if darb sets up then safe? would have to communicate through main page
+	//one iframe mimics lambda, another iframe like normal darb
+	//one more iframe for code editor? is this like magic box? user can pick? might be confusing
+	//darb_Develop - has magic code box and warning, tells user to use sandbox for privacy
+		//no, magic code box isn't fair, just trigger function calls to llm like anyone else would have to
+	//darb_DevelopSandbox - iframe for code editor
+	//how does function specify they want multiple iframes? list of ids. use BroadcastChannel to communicate?
+//deploy should be reserved to darb
+	//how to update? don't update just create new version?
+	//or at least darb owned popup to confirm like data and urls. make a generic confirmation component
+//but what about paying bidders - done separately from deploy?
+	//user.bid(otheruser_function, 10) - this is just calling user.bid and giving 10 dollars (would have to be approved)
+	//!darb.pay(user, 10) - payments reserved to darb. anything over 1 dollar triggers extra "are you sure" have to type in the number
+
+//when user selects a date from cheapest flights, can function trigger a call with approval?
+	//preregister function calls? same as URLs. how many to allow?
+	//only on user action somehow? and rate limit?
+	//https://stackoverflow.com/questions/56388258/what-constitues-user-gesture
+	//https://developer.mozilla.org/en-US/docs/Web/Security/User_activation
+	//don't think works from iframe. use own version since having to track clicks and typing anyway
+	//popup and explain risk. risk based on trust of function (or owner?), whether preregistered, how many preregistered, whether user has typed or clicked anything, and how many function calls/URLs
+		//unregistered url and function 4 bytes/32 bits per char
+		//preregistered ceil(log2(number preregistered urls + functions)) bits per call
+		//user interactions: 1 per key or click
+		//sum up bits and interactions across calls - reset when session/memory ends and iframe is reset and user makes request in the box
+			//request is clean: no memory, no possible identifiers included; page is clean, no variables or html to read
+		//medium risk: function bits >= 30 and user interactions >= 9 //SSN
+		//high risk: function bits >= 96 and user interactions >= 12 //username password
+		//trust use bayes theorem somehow? P(malicious | report data) = p(report data | malicious) * p(malicious) / (p(report data | malicious) * p(malicious) + p(report data | not malicious) * p(not malicious))
+			//https://1drv.ms/x/s!Aie5rsZa0oDA7iiLGZjy_JEo8vMy?e=tmv1KK
+		//trust lets you move down a threshold?
+		//verify users somehow? some kind of page rank algorithm? not all reports are created equal
+		//when reporting, which function gets reported? latest? all?
+		//don't do trust at first - complicated, possible to game
+		
+		
+
+

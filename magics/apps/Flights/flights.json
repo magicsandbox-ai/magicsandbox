@@ -1,0 +1,10 @@
+{
+  "author": "darb",
+  "name": "Flights",
+  "version": "0.1.0",
+  "entrypoint": "flights.js",
+  "description": "Flight search",
+  "dependencies": [],
+  "documentation": "",
+  "session": ""
+}
