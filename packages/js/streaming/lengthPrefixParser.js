@@ -1,3 +1,5 @@
+import { concatUint8Array } from "./utils.js";
+
 /**
  * Returns a TransformStream that transforms a length prefixed ReadableStream of Uint8Arrays
  *
@@ -96,18 +98,8 @@ function createLengthPrefixParser() {
   });
 }
 
-function concatUint8Array(arr1, arr2) {
-  if (arr2 === undefined) {
-    return arr1;
-  }
-  const output = new Uint8Array(arr1.length + arr2.length);
-  output.set(arr1);
-  output.set(arr2, arr1.length);
-  return output;
-}
-
 function readUInt32BE(arr) {
   return new DataView(arr.buffer).getUint32(0, false);
 }
 
-export { createLengthPrefixParser, concatUint8Array };
+export { createLengthPrefixParser };

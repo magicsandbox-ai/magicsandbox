@@ -1,5 +1,5 @@
-React Sandbox component.
+Magic Sandbox streaming utilities.
 
-`npm install @magicsandbox.ai/react-sandbox`
+`npm install @magicsandbox.ai/streaming`
 
-See [magicsandbox.Assistant](todo) for example usage.
+See the [docs](todo) for example usage.

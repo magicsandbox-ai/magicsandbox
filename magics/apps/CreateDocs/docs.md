@@ -95,8 +95,8 @@ Those are all the keys in a Magic App - pretty simple! At its core, a Magic App 
 Let's look at a simple example:
 
 ```javascript
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import React from "react";
+import { createRoot } from "react-dom/client";
 
 function context() {
   return `API:
@@ -104,14 +104,14 @@ function context() {
 }
 
 const api = {
-  text: 'Hello, world!',
+  text: "Hello, world!",
 };
 
 function App() {
   return <div>{api.text}</div>;
 }
 
-const root = createRoot(document.getElementById('root'));
+const root = createRoot(document.getElementById("root"));
 
 function render() {
   root.render(<App />);
@@ -140,7 +140,7 @@ if render errors, Assistant resets app.api and calls render
 ```javascript
 try {
   const prevApi = app.api;
-  app.api.text = 'Goodbye!';
+  app.api.text = "Goodbye!";
   app.render();
 } catch (error) {
   //notify user
@@ -182,13 +182,13 @@ Here's an example:
 fetch(
   `https://magicsandbox.ai/publish?kind=app&name=${appObj.name}&version=${appObj.version}`,
   {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(appObj),
-  }
+  },
 );
 ```
 
@@ -220,7 +220,7 @@ type UserInfo = {
 ```
 
 ```javascript
-const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+const hashedKey = crypto.createHash("sha256").update(apiKey).digest("hex");
 ```
 
 ```python
@@ -506,17 +506,17 @@ async function handleRequest(event) {
   const confirmed = await handleConfirm(request, data);
   let response;
   if (!confirmed) {
-    response = { error: 'User denied the request' };
+    response = { error: "User denied the request" };
   } else {
     delete data.options?.backup; //don't allow apps to access backup storage, see below for details
     // 3. forward the request
     response = await requestSandbox(request, data);
   }
   // 4. forward the response
-  event.source.postMessage({ id, response }, '*');
+  event.source.postMessage({ id, response }, "*");
 }
 
-window.addEventListener('message', handleRequest);
+window.addEventListener("message", handleRequest);
 ```
 
 todo update with proper error handling
@@ -561,14 +561,14 @@ Like any other Magic App, Assistants can use the data Sandbox functions to store
 ```javascript
 //take backup of all of author.App's data
 requestPutData(
-  'magicsandbox.Assistant', //app
-  'author.App', //key
-  await requestGetAllData('author.App'), //val
-  { evictionPolicy: 'fifo', backup: true } //options
+  "magicsandbox.Assistant", //app
+  "author.App", //key
+  await requestGetAllData("author.App"), //val
+  { evictionPolicy: "fifo", backup: true }, //options
 );
 
 //retrieve backup
-requestGetData('magicsandbox.Assistant', 'author.App', { backup: true });
+requestGetData("magicsandbox.Assistant", "author.App", { backup: true });
 ```
 
 Assistants should not allow Apps access to this backup storage. See the example code in [Handling Sandbox Requests](todo).
@@ -611,8 +611,8 @@ When streaming over a network, the client may not receive chunks that correspond
 
 ```javascript
 //on your server
-res.write(JSON.stringify({ msg: 'hello' }));
-res.end(JSON.stringify({ msg: ' world!' }));
+res.write(JSON.stringify({ msg: "hello" }));
+res.end(JSON.stringify({ msg: " world!" }));
 
 //in Sandbox
 for await (const chunk of result) {
@@ -634,12 +634,12 @@ If `decode` is set to 'json' and you don't send the `x-length-prefix` header, Ma
 Rather than implement this yourself, you can use the [JavaScript](todo) or [Python](todo) helpers and do something like:
 
 ```javascript
-import { lengthPrefixTransform } from 'magicsandbox';
-import { pipeline } from 'stream/promises';
+import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
+import { pipeline } from "stream/promises";
 // ...
 const source = somehowGetReadable(); //your readable stream
-res.setHeader('x-length-prefix', 'true'); //your response writable stream
-await pipeline(source, new lengthPrefixTransform(), res);
+res.setHeader("x-length-prefix", "true"); //your response writable stream
+await pipeline(source, createLengthPrefixTransform(), res);
 ```
 
 ```python
@@ -681,15 +681,15 @@ The command object cannot exceed 100KB. If you have a large result you want to s
 Rather than implement this yourself, you can use the [JavaScript](todo) or [Python](todo) helpers and do something like:
 
 ```javascript
-import { lengthPrefixTransform } from 'magicsandbox';
-import { pipeline } from 'stream/promises';
+import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
+import { pipeline } from "stream/promises";
 // ...
 const source = somehowGetReadable(); //your readable stream
-res.setHeader('x-length-prefix', 'true'); //your response writable stream
+res.setHeader("x-length-prefix", "true"); //your response writable stream
 await pipeline(
   source,
-  new lengthPrefixTransform({ finalObject: true }), //prefix final chunk with 0xFFFFFFFF
-  res
+  createLengthPrefixTransform({ finalObject: true }), //prefix final chunk with 0xFFFFFFFF
+  res,
 );
 ```
 
@@ -752,13 +752,13 @@ type MagicMetadata = {
   author: string;
   name: string;
   version: string;
-  kind: 'app' | 'function';
+  kind: "app" | "function";
   description: string;
   documentation: string;
   type: string;
   minCost: number;
   deprecated: boolean;
-  decode: 'json' | 'string' | 'bytes';
+  decode: "json" | "string" | "bytes";
   stream: boolean;
 };
 ```
