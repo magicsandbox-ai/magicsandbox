@@ -478,7 +478,7 @@ function App() {
             value={value}
             onChange={onChange}
             selectedFilename={selectedFilename}
-            cssClassMap={tailwindState.classMap}
+            cssClassMap={tailwindState.classMap || {}}
           />
         </Panel>
         <PanelResizeHandle className={panelResizeHandleStyle} />

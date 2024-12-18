@@ -1,0 +1,22 @@
+{
+  "name": "@magicsandbox.ai/dev",
+  "version": "0.1.0",
+  "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "magicsandbox": "./bin/magicsandbox.js"
+  },
+  "dependencies": {
+    "@magicsandbox.ai/esbuild-plugin-tailwind": "workspace:^",
+    "esbuild": "0.23.0",
+    "es-toolkit": "^1.29.0",
+    "json5": "^2.2.3",
+    "zod": "^3.23.8"
+  }
+}

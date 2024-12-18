@@ -1,23 +1,23 @@
-import { z } from 'zod';
-import { appNameSchema, versionSchema } from '../../shared/magicSchemas.js';
-import { isEqual } from 'es-toolkit';
+import { z } from "zod";
+import { appNameSchema, versionSchema } from "./schemas.js";
+import { isEqual } from "es-toolkit";
 
 const defaultEsbuildOptions = {
-  globalName: 'app',
+  globalName: "app",
   bundle: true,
   minify: true,
-  loader: { '.js': 'jsx' },
-  target: 'es2020',
+  loader: { ".js": "jsx" },
+  target: "es2020",
 };
 
 const preBuildSchema = z
   .object({
     name: appNameSchema,
     version: versionSchema,
-    scriptFile: z.string().default('index.js'),
-    htmlFile: z.string().default('index.html'),
-    styleFile: z.string().default('index.css'),
-    documentationFile: z.string().default('README.md'),
+    scriptFile: z.string().default("index.js"),
+    htmlFile: z.string().default("index.html"),
+    styleFile: z.string().default("index.css"),
+    documentationFile: z.string().default("README.md"),
   })
   .passthrough();
 
@@ -51,12 +51,12 @@ async function buildApp({
     await onComplete(result, appObj);
     appObj.script = result.outputFiles[0].text;
   }
-  await maybeReadFile(appObj, 'html', fileExists, readFile);
+  await maybeReadFile(appObj, "html", fileExists, readFile);
   const { processedCss } = await runProcessTailwind(
     appObj,
     fileExists,
     readFile,
-    processTailwind
+    processTailwind,
   );
   appObj.style = processedCss;
   appObj = postBuildSchema.parse(appObj);
@@ -86,7 +86,7 @@ async function maybeReadFile(appObj, key, fileExists, readFile) {
 Steps common to Apps and Functions
  */
 async function handleShared(appObj, fileExists, readFile) {
-  await maybeReadFile(appObj, 'documentation', fileExists, readFile);
+  await maybeReadFile(appObj, "documentation", fileExists, readFile);
 }
 
 async function rebuild(esbuild, context, options) {
@@ -106,17 +106,17 @@ async function runProcessTailwind(
   appObj,
   fileExists,
   readFile,
-  processTailwind
+  processTailwind,
 ) {
-  await maybeReadFile(appObj, 'style', fileExists, readFile);
+  await maybeReadFile(appObj, "style", fileExists, readFile);
   let style = appObj.style;
   if (style === undefined) {
-    style = '@tailwind base; @tailwind components; @tailwind utilities;';
+    style = "@tailwind base; @tailwind components; @tailwind utilities;";
   }
-  if (style.includes('@tailwind')) {
+  if (style.includes("@tailwind")) {
     return await processTailwind(appObj.tailwindConfig || {}, style);
   } else {
-    return { processedCss: style, classMap: {} }; //todo processedCss is a misnomer in this case
+    return { processedCss: style }; //processedCss is a misnomer in this case
   }
 }
 

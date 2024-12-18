@@ -8,11 +8,7 @@ async function processTailwind(config, css) {
     css || "@tailwind base;@tailwind components;@tailwind utilities;",
     { from: undefined },
   );
-  const classMap = {};
-  postcss.parse(result.css).walkRules(/^\./, (rule) => {
-    classMap[rule.selector.trim().slice(1)] = rule.toString();
-  });
-  return { processedCss: result.css, classMap };
+  return { processedCss: result.css };
 }
 
 function tailwindPlugin(config) {
@@ -44,6 +40,3 @@ function tailwindPlugin(config) {
 }
 
 export { tailwindPlugin, processTailwind };
-
-//reference: https://github.com/g45t345rt/esbuild-style-plugin/blob/master/src/index.ts
-//could use the plugin to track imports and set config.content?
