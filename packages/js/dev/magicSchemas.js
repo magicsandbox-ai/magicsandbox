@@ -1,5 +1,6 @@
-import { z } from 'zod';
-import { config } from './config.js';
+const minimumMinCost = 0.001;
+
+import { z } from "zod";
 
 //be very careful with IndexedDB keys if allowing these characters in names: ~|{
 const functionNameSchema = z
@@ -21,10 +22,7 @@ const sharedSchema = z
     version: versionSchema,
     description: z.string().optional(),
     documentation: z.string().optional(),
-    minCost: z
-      .number()
-      .gte(config.minimumMinCost)
-      .default(config.minimumMinCost),
+    minCost: z.number().gte(minimumMinCost).default(minimumMinCost),
     private: z.boolean().default(false),
     deprecated: z.boolean().default(false),
   })
@@ -32,21 +30,21 @@ const sharedSchema = z
 
 const functionSchema = sharedSchema.extend({
   name: functionNameSchema,
-  kind: z.literal('function'),
-  type: z.enum(['findApp']).optional(),
+  kind: z.literal("function"),
+  type: z.enum(["findApp"]).optional(),
   endpoint: z
     .string()
     .url()
     .refine(
       (val) =>
         !val ||
-        val.startsWith('https://') ||
-        val.startsWith('http://localhost:'),
+        val.startsWith("https://") ||
+        val.startsWith("http://localhost:"),
       {
         message: "Endpoint must start with 'https'",
-      }
+      },
     ),
-  decode: z.string().default('json'),
+  decode: z.string().default("json"),
   stream: z.boolean().default(false),
   subscribeToUpdates: z.boolean().default(false),
 });
@@ -54,17 +52,17 @@ const functionSchema = sharedSchema.extend({
 const appSchema = sharedSchema
   .extend({
     name: appNameSchema,
-    kind: z.literal('app'),
-    type: z.enum(['assistant']).optional(),
-    finalCost: z.number().gte(config.minimumMinCost).optional(),
+    kind: z.literal("app"),
+    type: z.enum(["assistant"]).optional(),
+    finalCost: z.number().gte(minimumMinCost).optional(),
   })
   .transform((appObj) => ({
     ...appObj,
     finalCost: appObj.finalCost || appObj.minCost,
   }))
   .refine((data) => data.finalCost <= data.minCost, {
-    message: 'finalCost must be less than or equal to minCost',
-    path: ['finalCost'], // This will make the error show up on the finalCost field
+    message: "finalCost must be less than or equal to minCost",
+    path: ["finalCost"], // This will make the error show up on the finalCost field
   });
 
 export {

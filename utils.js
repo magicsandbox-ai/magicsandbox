@@ -1,6 +1,4 @@
-/* global Intl */
-
-import { config } from './config.js';
+const minimumMinCost = 0.001;
 
 function createDeferredPromise(timeout, timeoutMessage) {
   let resolve, reject;
@@ -10,7 +8,7 @@ function createDeferredPromise(timeout, timeoutMessage) {
   });
   if (timeout) {
     const timeoutId = setTimeout(() => {
-      reject(new Error(timeoutMessage || 'Deferred promise timed out'));
+      reject(new Error(timeoutMessage || "Deferred promise timed out"));
     }, timeout);
     const wrappedResolve = (value) => {
       clearTimeout(timeoutId);
@@ -24,9 +22,9 @@ function createDeferredPromise(timeout, timeoutMessage) {
   return promise;
 }
 
-const dollarFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
+const dollarFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
@@ -40,17 +38,17 @@ function formatAsDollars(amount) {
  */
 function validateAndDefaultRequest(request, data, assistant) {
   const requiredKeys = {
-    app: ['app'],
-    function: ['fn', 'args'],
-    putData: ['app', 'key', 'val'],
-    deleteData: ['app', 'key'],
-    getData: ['app', 'key'],
-    getAllData: ['app'],
-    getAllKeysData: ['app'],
-    fetch: ['resource'],
-    openUrl: ['url'],
-    publish: ['magicObj'],
-    download: ['options'],
+    app: ["app"],
+    function: ["fn", "args"],
+    putData: ["app", "key", "val"],
+    deleteData: ["app", "key"],
+    getData: ["app", "key"],
+    getAllData: ["app"],
+    getAllKeysData: ["app"],
+    fetch: ["resource"],
+    openUrl: ["url"],
+    publish: ["magicObj"],
+    download: ["options"],
     urlParams: [],
   };
   if (assistant) {
@@ -58,35 +56,35 @@ function validateAndDefaultRequest(request, data, assistant) {
     delete data?.options?.backup; //assistants should not allow access to backup storage
   }
   if (!(request in requiredKeys)) {
-    return 'Invalid request';
+    return "Invalid request";
   }
   data = data || {};
   const missingKeys = requiredKeys[request].filter(
-    (key) => data[key] === undefined
+    (key) => data[key] === undefined,
   );
   if (missingKeys.length > 0) {
-    return `Missing required keys: ${missingKeys.join(', ')}`;
+    return `Missing required keys: ${missingKeys.join(", ")}`;
   }
-  if (request === 'app') {
+  if (request === "app") {
     data.options = {
-      maxCost: data.options?.maxCost || config.minimumMinCost,
+      maxCost: data.options?.maxCost || minimumMinCost,
     };
-  } else if (request === 'function') {
+  } else if (request === "function") {
     data.options = {
-      maxCost: data.options?.maxCost || config.minimumMinCost,
+      maxCost: data.options?.maxCost || minimumMinCost,
       stream: data.options?.stream || false,
       includeUserInfo: data.options?.includeUserInfo || false,
     };
-  } else if (request === 'fetch') {
+  } else if (request === "fetch") {
     data.options = {
       ...data.options,
-      responseType: data.options?.responseType || 'auto',
+      responseType: data.options?.responseType || "auto",
     };
-  } else if (request === 'download') {
+  } else if (request === "download") {
     if (
       !(data.options.filename && (data.options.url || data.options.content))
     ) {
-      return 'filename and either url or content are required';
+      return "filename and either url or content are required";
     }
   }
 }
