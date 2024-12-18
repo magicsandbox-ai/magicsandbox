@@ -1,1 +1,40 @@
 #!/usr/bin/env node
+
+import { dev, publish } from "../index.js";
+import { Command } from "commander";
+import path from "path";
+
+const program = new Command();
+
+program
+  .command("dev")
+  .description("Start dev server for a Magic App")
+  .argument("<path>", "Path to app directory (relative to --dir if specified)")
+  .option("-d, --dir <directory>", "Base directory", process.cwd())
+  .option("-p, --port <number>", "Port to run dev server on", "3000")
+  .option("--debug", "Debug build")
+  .action((appPath, options) => {
+    dev(
+      handlePath(appPath, options.dir),
+      parseInt(options.port),
+      options.debug,
+    );
+  });
+
+program
+  .command("publish")
+  .description("Publish a Magic App or Function")
+  .argument("<path>", "Path to app/function directory")
+  .option("-d, --dir <directory>", "Base directory", process.cwd())
+  .option("--debug", "Debug build")
+  .action((appPath, options) => {
+    publish(handlePath(appPath, options.dir), options.debug);
+  });
+
+program.parse();
+
+function handlePath(appPath, dir) {
+  const absoluteDir = path.resolve(dir);
+  const fullPath = path.join(absoluteDir, appPath);
+  return fullPath;
+}

@@ -13,7 +13,7 @@ import esbuildWasm from "node_modules/esbuild-wasm/esbuild_debug.wasm"; //fork w
 import { buildApp, getDefaults, runProcessTailwind } from "../buildApp.js";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
-import processTailwindBrowser from "tailwindBrowser/bundle.js";
+import processTailwindBrowser from "@magicsandbox.ai/tailwind-browser";
 import prettier from "prettier/standalone";
 import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";

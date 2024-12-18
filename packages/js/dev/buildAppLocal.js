@@ -31,7 +31,7 @@ async function buildAppLocal(folder, debug, context) {
       sourcemap: !(process.env.NODE_ENV === "production"),
       metafile: debug,
     },
-    onComplete: debug ? saveMetafile : undefined,
+    onComplete: debug ? (result) => saveMetafile(result, dir) : undefined,
     context,
     fileExists: _fileExists,
     readFile: _readFile,
@@ -39,19 +39,10 @@ async function buildAppLocal(folder, debug, context) {
   });
   if (debug) {
     await fsPromises.writeFile(
-      "__publishDebug__.json",
-      JSON.stringify(appObj),
+      path.join(dir, "app.json"),
+      JSON.stringify(appObj, undefined, 2),
       "utf8",
     );
-    // console.log(
-    //   JSON.stringify(
-    //     functionObj,
-    //     (_, val) => {
-    //       return typeof val === 'string' ? val.slice(0, 100) : val;
-    //     },
-    //     2
-    //   )
-    // );
   }
   return { appObj, context: newContext };
 }
@@ -78,20 +69,15 @@ async function readFile(dir, filename) {
   return await fsPromises.readFile(path.join(dir, filename), "utf-8");
 }
 
-async function saveMetafile(result) {
+async function saveMetafile(result, dir) {
   if (result.metafile) {
     await fsPromises.writeFile(
-      "metafile.json",
+      path.join(dir, "metafile.json"),
       JSON.stringify(result.metafile),
       "utf8",
     );
-    // await fsPromises.writeFile(
-    //   'metafile.js',
-    //   result.outputFiles[0].text,
-    //   'utf8'
-    // );
     await fsPromises.writeFile(
-      "metafile.txt",
+      path.join(dir, "metafile.txt"),
       await esbuild.analyzeMetafile(result.metafile, { verbose: true }),
       "utf8",
     );

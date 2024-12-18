@@ -2,7 +2,13 @@
   "name": "@magicsandbox.ai/root",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "dev": "magicsandbox dev -d magics/apps -p 3002",
+    "publish": "magicsandbox publish -d magics/apps",
+    "publish-function": "magicsandbox publish -d magics/functions"
+  },
   "devDependencies": {
+    "@magicsandbox.ai/dev": "file:packages/js/dev",
     "@eslint/js": "^9.17.0",
     "dotenv": "^16.4.7",
     "esbuild": "0.23.0",
