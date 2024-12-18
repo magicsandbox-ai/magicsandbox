@@ -13,7 +13,7 @@
     "magicsandbox": "./bin/magicsandbox.js"
   },
   "dependencies": {
-    "@magicsandbox.ai/esbuild-plugin-tailwind": "workspace:^",
+    "@magicsandbox.ai/esbuild-plugin-tailwind": "file:../esbuild-plugin-tailwind",
     "esbuild": "0.23.0",
     "es-toolkit": "^1.29.0",
     "json5": "^2.2.3",

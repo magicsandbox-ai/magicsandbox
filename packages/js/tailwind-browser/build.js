@@ -2,7 +2,7 @@ import * as esbuild from "esbuild";
 import fs from "fs";
 
 const preflightCss = fs.readFileSync(
-  "../node_modules/tailwindcss/src/css/preflight.css",
+  "./node_modules/tailwindcss/src/css/preflight.css",
   "utf8",
 );
 
@@ -40,7 +40,7 @@ await esbuild.build({
     "fast-glob": "./dummy.js",
   },
   plugins: [replacePlugin],
-  outfile: "bundle.js",
+  outfile: "dist/index.js",
   minify: true,
   format: "esm",
 });
