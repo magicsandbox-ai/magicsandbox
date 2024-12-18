@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
@@ -22,8 +21,6 @@ requirements:
 - sqlite, duckdb, pgvector, chroma, faiss?
 careful with case sensitivity
 '''
-
-load_dotenv()
 
 class FindAppArgs(BaseModel):
     input: str

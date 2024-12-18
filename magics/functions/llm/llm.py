@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 import os
 import json
 from math import floor
@@ -9,7 +8,6 @@ from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTok
 from fastapi.responses import StreamingResponse
 from src.shared import length_prefix_transform
 
-load_dotenv()
 os.environ['ANTHROPIC_API_KEY'] = os.getenv('ANTHROPIC_API_KEY')
 os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
 os.environ["GEMINI_API_KEY"] = os.getenv('GEMINI_API_KEY')
