@@ -23,7 +23,7 @@ const replacePlugin = {
   },
 };
 
-const result = await esbuild.build({
+await esbuild.build({
   entryPoints: ["index.js"],
   bundle: true,
   loader: { ".js": "jsx" },

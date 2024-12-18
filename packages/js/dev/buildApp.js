@@ -74,7 +74,7 @@ function getDefaults(appObj, esbuildOptions) {
 }
 
 /**
-If key does not exist and keyFile exists, set key to keyFile contents
+ * If key does not exist and keyFile exists, set key to keyFile contents
  */
 async function maybeReadFile(appObj, key, fileExists, readFile) {
   if (!appObj[key] && (await fileExists(appObj[`${key}File`]))) {
@@ -83,7 +83,7 @@ async function maybeReadFile(appObj, key, fileExists, readFile) {
 }
 
 /**
-Steps common to Apps and Functions
+ * Steps common to Apps and Functions
  */
 async function handleShared(appObj, fileExists, readFile) {
   await maybeReadFile(appObj, "documentation", fileExists, readFile);

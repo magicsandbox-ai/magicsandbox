@@ -4,7 +4,7 @@ import * as esbuild from "esbuild";
 import JSON5 from "json5";
 import { buildApp } from "./buildApp.js";
 import path from "path";
-import { processTailwind } from "../../shared/tailwindPlugin.js";
+import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
 import { pathToFileURL } from "url";
 
 async function buildAppLocal(folder, debug, context) {
