@@ -1,40 +1,24 @@
-let _TransformStream = TransformStream;
-let _TextDecoder = TextDecoder;
-(async () => {
-  if (typeof window === 'undefined') {
-    ({ _TransformStream } = await import('node:stream/web'));
-    ({ _TextDecoder } = await import('node:util'));
-  }
-})();
-//eslint-disable-next-line no-global-assign
-TransformStream = _TransformStream;
-//eslint-disable-next-line no-global-assign
-TextDecoder = _TextDecoder;
-
 /**
- * Returns a TransformStream that parses an object stream and calls
- * handler({ controller, state, readRemaining, chunk }) with the parsed chunks.
+ * Returns a TransformStream that transforms a length prefixed ReadableStream of Uint8Arrays
  *
- * The object stream format is:
+ * The length prefix format is:
  *
  * [length][object][length][object][0xFFFFFFFF][finalObject]
  *
- * handler is called:
+ * The transform stream emits objects { state, readRemaining, chunk }, where chunk is the Uint8Array that has been read
+ * and state and readRemaining describe the state of the stream:
  *
  * - When a length is read: state is 'length', readRemaining is the length of the next object
  * - When an object chunk is read: state is 'object', readRemaining is the object length remaining
  * - When an object is fully read: state is 'object', readRemaining is 0
  * - When a final object chunk is read: state is 'finalObject', readRemaining is 0xFFFFFFFF
- * - When the final object is fully read: state is 'finalObject', readRemaining is 0, chunk is not provided
+ * - When the final object is fully read: state is 'finalObject', readRemaining is 0
  */
 
-// Commented out for now: When the stream is complete: state is 'complete', readRemaining and chunk are not provided
-
-function createLengthPrefixParser(handler) {
+function createLengthPrefixParser() {
   return new TransformStream({
     start() {
-      this.__handler = handler;
-      this.__state = 'length';
+      this.__state = "length";
       this.__readRemaining = 4;
       this.__buffer = new Uint8Array(0);
     },
@@ -44,46 +28,43 @@ function createLengthPrefixParser(handler) {
         while (offset < chunk.length) {
           const readLength = Math.min(
             this.__readRemaining,
-            chunk.length - offset
+            chunk.length - offset,
           );
-          if (this.__state === 'length') {
+          if (this.__state === "length") {
             this.__buffer = concatUint8Array(
               this.__buffer,
-              chunk.subarray(offset, offset + readLength)
+              chunk.subarray(offset, offset + readLength),
             );
             offset += readLength;
             this.__readRemaining -= readLength;
             if (this.__buffer.length === 4) {
               this.__readRemaining = readUInt32BE(this.__buffer);
-              this.__handler({
-                controller,
+              controller.enqueue({
                 state: this.__state,
                 readRemaining: this.__readRemaining,
                 chunk: this.__buffer,
               });
               if (this.__readRemaining === 0xffffffff) {
-                this.__state = 'finalObject';
+                this.__state = "finalObject";
               } else {
-                this.__state = 'object';
+                this.__state = "object";
               }
               this.__buffer = new Uint8Array(0);
             }
-          } else if (this.__state === 'object') {
+          } else if (this.__state === "object") {
             this.__readRemaining -= readLength;
-            this.__handler({
-              controller,
+            controller.enqueue({
               state: this.__state,
               readRemaining: this.__readRemaining,
               chunk: chunk.subarray(offset, offset + readLength),
             });
             offset += readLength;
             if (this.__readRemaining === 0) {
-              this.__state = 'length';
+              this.__state = "length";
               this.__readRemaining = 4;
             }
-          } else if (this.__state === 'finalObject') {
-            this.__handler({
-              controller,
+          } else if (this.__state === "finalObject") {
+            controller.enqueue({
               state: this.__state,
               readRemaining: this.__readRemaining,
               chunk: chunk.subarray(offset),
@@ -97,21 +78,17 @@ function createLengthPrefixParser(handler) {
     },
     flush(controller) {
       try {
-        if (this.__state !== 'finalObject' && this.__readRemaining > 0) {
-          controller.error('Unexpected end of stream');
+        if (this.__state !== "finalObject" && this.__readRemaining > 0) {
+          controller.error("Unexpected end of stream");
           return;
         }
-        if (this.__state === 'finalObject') {
-          this.__handler({
-            controller,
+        if (this.__state === "finalObject") {
+          controller.enqueue({
             state: this.__state,
             readRemaining: 0,
+            chunk: new Uint8Array(0),
           });
         }
-        // this.__handler({
-        //   controller,
-        //   state: 'complete',
-        // });
       } catch (error) {
         controller.error(error.message);
       }
