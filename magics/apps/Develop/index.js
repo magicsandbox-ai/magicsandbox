@@ -1,23 +1,23 @@
 /* global requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
-import CodeEditor from './CodeEditor.js';
-import Preview from './Preview.js';
-import { historyField } from '@codemirror/commands';
-import { EditorView } from '@codemirror/view';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import FilePicker from './FilePicker.js';
-import * as esbuild from 'esbuild-wasm';
-import esbuildWasm from 'node_modules/esbuild-wasm/esbuild_debug.wasm'; //fork with renaming fix
-import { buildApp, getDefaults, runProcessTailwind } from '../buildApp.js';
-import { createBundleDepsPlugin, createImportPlugin } from './plugins.js';
-import JSON5 from 'json5';
-import processTailwindBrowser from 'tailwindBrowser/bundle.js';
-import prettier from 'prettier/standalone';
-import babelParser from 'prettier/plugins/babel';
-import estreeParser from 'prettier/plugins/estree';
-import { Loader } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import CodeEditor from "./CodeEditor.js";
+import Preview from "./Preview.js";
+import { historyField } from "@codemirror/commands";
+import { EditorView } from "@codemirror/view";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import FilePicker from "./FilePicker.js";
+import * as esbuild from "esbuild-wasm";
+import esbuildWasm from "node_modules/esbuild-wasm/esbuild_debug.wasm"; //fork with renaming fix
+import { buildApp, getDefaults, runProcessTailwind } from "../buildApp.js";
+import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
+import JSON5 from "json5";
+import processTailwindBrowser from "tailwindBrowser/bundle.js";
+import prettier from "prettier/standalone";
+import babelParser from "prettier/plugins/babel";
+import estreeParser from "prettier/plugins/estree";
+import { Loader } from "lucide-react";
 
 /*
 AI chat
@@ -64,8 +64,8 @@ const debounce = (callback, wait) => {
 };
 
 const exampleFiles = {
-  'magic.json': JSON.stringify({ name: 'example', version: '0.1.0' }),
-  'index.js': `import React from "react";
+  "magic.json": JSON.stringify({ name: "example", version: "0.1.0" }),
+  "index.js": `import React from "react";
 import { createRoot } from "react-dom/client";
 
 function App() {
@@ -82,11 +82,11 @@ createRoot(document.getElementById("root")).render(<App />);
 
 function App() {
   const [apps, setApps] = useState([]);
-  const [selectedApp, setSelectedApp] = useState('');
+  const [selectedApp, setSelectedApp] = useState("");
   const [files, setFiles] = useState({});
-  const [selectedFilename, setSelectedFilename] = useState('magic.json');
+  const [selectedFilename, setSelectedFilename] = useState("magic.json");
   const [tailwindState, setTailwindState] = useState({
-    processedCss: '',
+    processedCss: "",
     classMap: {},
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +110,7 @@ function App() {
 
   const debouncedCallProcessTailwind = useCallback(
     debounce(callProcessTailwind, 500),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -126,7 +126,7 @@ function App() {
       filesRef,
       appObjRef,
       esbuild,
-      bundledDepsRef
+      bundledDepsRef,
     );
     importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
@@ -141,21 +141,21 @@ function App() {
   };
 
   async function initData() {
-    const exampleObj = JSON5.parse(exampleFiles['magic.json']);
+    const exampleObj = JSON5.parse(exampleFiles["magic.json"]);
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
     let initApps, initSelectedApp, initFiles;
     try {
-      initApps = await requestGetAllKeysData('magicsandbox.Develop');
-      initApps = initApps.filter((key) => key !== 'selectedApp');
+      initApps = await requestGetAllKeysData("magicsandbox.Develop");
+      initApps = initApps.filter((key) => key !== "selectedApp");
       if (initApps.length === 0) {
         throw new Error(); //fall back to examples
       }
       initSelectedApp = await requestGetData(
-        'magicsandbox.Develop',
-        'selectedApp'
+        "magicsandbox.Develop",
+        "selectedApp",
       );
       initSelectedApp = initSelectedApp || initApps[0];
-      initFiles = await requestGetData('magicsandbox.Develop', initSelectedApp);
+      initFiles = await requestGetData("magicsandbox.Develop", initSelectedApp);
       if (!initFiles) {
         initApps.push(exampleApp);
         initSelectedApp = exampleApp;
@@ -177,7 +177,7 @@ function App() {
   async function callProcessTailwind() {
     let appObj;
     try {
-      appObj = JSON5.parse(filesRef.current['magic.json']);
+      appObj = JSON5.parse(filesRef.current["magic.json"]);
     } catch {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
@@ -189,43 +189,43 @@ function App() {
         appObj,
         (filename) => filename in filesRef.current,
         (filename) => filesRef.current[filename],
-        (config, css) => processTailwind(config, css, true)
-      )
+        (config, css) => processTailwind(config, css, true),
+      ),
     );
   }
 
   async function processTailwind(config, css, _skipBuild = false) {
     //config is magic.json tailwindConfig, but if tailwind.config.js exists, use that instead
-    if (filesRef.current['tailwind.config.js']) {
+    if (filesRef.current["tailwind.config.js"]) {
       try {
         //if skipBuild is true, skip the build, or if file hasn't changed, skip the build
         const skipBuild =
           _skipBuild ||
-          filesRef.current['tailwind.config.js'] === tailwindConfigRef.current;
+          filesRef.current["tailwind.config.js"] === tailwindConfigRef.current;
         if (!skipBuild) {
           const configResult = await esbuild.build({
-            entryPoints: ['tailwind.config.js'],
+            entryPoints: ["tailwind.config.js"],
             write: false,
             plugins: [importPluginRef.current],
             bundle: true,
-            globalName: '__tailwindConfig',
+            globalName: "__tailwindConfig",
           });
           eval?.(configResult.outputFiles[0].text); //indirect eval
-          tailwindConfigRef.current = filesRef.current['tailwind.config.js'];
+          tailwindConfigRef.current = filesRef.current["tailwind.config.js"];
         }
         config = window.__tailwindConfig?.default || {};
       } catch (error) {
         console.error(`Error building tailwind.config.js`, error); //todo toast
       }
     }
-    config.content = config.content || ['.+js$', '.+jsx$', '.+html$'];
+    config.content = config.content || [".+js$", ".+jsx$", ".+html$"];
     config.content = config.content.map((pattern) => new RegExp(pattern));
     config.content = Object.entries(filesRef.current)
       .filter(([filename]) =>
-        config.content.some((regex) => regex.test(filename))
+        config.content.some((regex) => regex.test(filename)),
       )
       .map(([filename, value]) => {
-        const filenameSplit = filename.split('.');
+        const filenameSplit = filename.split(".");
         return {
           raw: value,
           extension: filenameSplit[filenameSplit.length - 1],
@@ -241,13 +241,13 @@ function App() {
 
   function deleteFile(filename) {
     console.log(
-      `${filename} deleted, add a file with the exact same name to recover the deleted code.`
+      `${filename} deleted, add a file with the exact same name to recover the deleted code.`,
     );
     deletedFilesRef.current[filename] = files[filename];
     const nextFiles = { ...files };
     delete nextFiles[filename];
     setFiles(nextFiles);
-    handleSelectFilename('magic.json');
+    handleSelectFilename("magic.json");
   }
 
   function addFile(filename) {
@@ -255,7 +255,7 @@ function App() {
     if (deletedFilesRef.current[filename]) {
       nextFiles[filename] = deletedFilesRef.current[filename];
     } else {
-      nextFiles[filename] = '';
+      nextFiles[filename] = "";
     }
     setFiles(nextFiles);
     handleSelectFilename(filename);
@@ -274,7 +274,7 @@ function App() {
 
   function handleCreateEditor(view) {
     view.scrollDOM?.scrollTo(
-      editorStateRef.current[selectedApp + selectedFilename]?.scroll
+      editorStateRef.current[selectedApp + selectedFilename]?.scroll,
     );
     view.focus();
   }
@@ -285,25 +285,25 @@ function App() {
   }
 
   async function handleKeyDown(event) {
-    if (event.ctrlKey && event.key.toLowerCase() === 's') {
+    if (event.ctrlKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       await handleSave();
-    } else if (event.ctrlKey && event.key === 'Enter') {
-      document.getElementById('magic-input').focus();
+    } else if (event.ctrlKey && event.key === "Enter") {
+      document.getElementById("magic-input").focus();
     }
   }
 
   async function handleSave() {
-    const appObj = JSON5.parse(files['magic.json']);
+    const appObj = JSON5.parse(files["magic.json"]);
     if (!appObj.name || !appObj.version) {
-      throw new Error('magic.json must have name and version');
+      throw new Error("magic.json must have name and version");
     }
     const app = `${appObj.name}@${appObj.version}`;
     let newFiles = files;
     if (
-      selectedFilename.endsWith('.js') ||
-      selectedFilename.endsWith('.jsx') ||
-      selectedFilename.endsWith('.json')
+      selectedFilename.endsWith(".js") ||
+      selectedFilename.endsWith(".jsx") ||
+      selectedFilename.endsWith(".json")
       //todo add typescript?
     ) {
       try {
@@ -313,7 +313,7 @@ function App() {
             filepath: selectedFilename,
             plugins: [babelParser, estreeParser],
             cursorOffset: editorRef.current.view.state.selection.main.head,
-          }
+          },
         );
         const yMargin =
           editorRef.current.view?.coordsAtPos(cursorOffset)?.top || 5;
@@ -322,12 +322,12 @@ function App() {
           changes: {
             from: 0,
             to: files[selectedFilename].length,
-            insert: formatted || '',
+            insert: formatted || "",
           },
           selection: { anchor: cursorOffset, head: cursorOffset },
           effects: [
             EditorView.scrollIntoView(cursorOffset, {
-              y: 'start',
+              y: "start",
               yMargin,
             }),
           ],
@@ -338,12 +338,12 @@ function App() {
         console.error(`Prettier error: ${error}`);
       }
     }
-    requestPutData('magicsandbox.Develop', app, newFiles); //todo handle database full
+    requestPutData("magicsandbox.Develop", app, newFiles); //todo handle database full
     await build();
     if (!apps.includes(app)) {
       setApps([app, ...apps]);
       setSelectedApp(app);
-      requestPutData('magicsandbox.Develop', 'selectedApp', app);
+      requestPutData("magicsandbox.Develop", "selectedApp", app);
     }
   }
 
@@ -353,12 +353,12 @@ function App() {
       if (appsFilesMapRef.current[app]) {
         newFiles = appsFilesMapRef.current[app];
       } else {
-        newFiles = await requestGetData('magicsandbox.Develop', app);
+        newFiles = await requestGetData("magicsandbox.Develop", app);
       }
       setFiles(newFiles);
       setSelectedApp(app);
-      requestPutData('magicsandbox.Develop', 'selectedApp', app);
-      handleSelectFilename('magic.json', app);
+      requestPutData("magicsandbox.Develop", "selectedApp", app);
+      handleSelectFilename("magic.json", app);
       deletedFilesRef.current = {};
     } catch (error) {
       console.error(`handleSelectApp ${app} error`, error);
@@ -368,14 +368,14 @@ function App() {
   async function deleteApp(app) {
     const newApps = apps.filter((a) => a !== app);
     if (newApps.length === 0) {
-      await requestDeleteData('magicsandbox.Develop', app);
+      await requestDeleteData("magicsandbox.Develop", app);
       const { initSelectedApp } = initData(); //get default example
       handleSelectApp(initSelectedApp);
       setApps([initSelectedApp]);
     } else {
       setApps(newApps);
       handleSelectApp(newApps[0]);
-      requestDeleteData('magicsandbox.Develop', app);
+      requestDeleteData("magicsandbox.Develop", app);
     }
   }
 
@@ -396,7 +396,7 @@ function App() {
       setIsLoading(true);
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
-      let _appObj = JSON5.parse(files['magic.json']);
+      let _appObj = JSON5.parse(files["magic.json"]);
       delete _appObj?.esbuildOptions?.plugins; //not supported
       _appObj.optimizedTreeShaking = true; //todo remove
       appObjRef.current = _appObj; //update for plugins
@@ -426,8 +426,8 @@ function App() {
   }
 
   const buttonStyle =
-    'w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm';
-  const panelResizeHandleStyle = 'w-px bg-stone-500';
+    "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
+  const panelResizeHandleStyle = "w-px bg-stone-500";
 
   return (
     <div
@@ -455,7 +455,7 @@ function App() {
       <PanelGroup
         className="grow"
         direction="horizontal"
-        style={{ height: '100vh', width: '100vw' }}
+        style={{ height: "100vh", width: "100vw" }}
       >
         <Panel className="flex flex-col">
           <FilePicker
@@ -490,7 +490,7 @@ function App() {
   );
 }
 
-const root = createRoot(document.getElementById('root'));
+const root = createRoot(document.getElementById("root"));
 
 function context() {
   //todo what if files too large?
@@ -501,9 +501,9 @@ ${Object.entries(api.files)
   .map(
     ([filename, value]) => `<${filename}>
 ${value}
-</${filename}>`
+</${filename}>`,
   )
-  .join('\n')}
+  .join("\n")}
 </files>
 
 Do not run any scripts, just answer the user's question about the code.

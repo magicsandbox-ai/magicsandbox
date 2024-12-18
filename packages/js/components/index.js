@@ -3,15 +3,36 @@ import React, {
   useImperativeHandle,
   useRef,
   useEffect,
-} from 'react';
-import { createDeferredPromise } from './utils.js';
+} from "react";
+
+function createDeferredPromise(timeout, timeoutMessage) {
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  if (timeout) {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(timeoutMessage || "Deferred promise timed out"));
+    }, timeout);
+    const wrappedResolve = (value) => {
+      clearTimeout(timeoutId);
+      resolve(value);
+    };
+    promise.resolve = wrappedResolve;
+  } else {
+    promise.resolve = resolve;
+  }
+  promise.reject = reject;
+  return promise;
+}
 
 let nextId = 1;
 const getId = () => nextId++;
 
 const Sandbox = forwardRef(function Sandbox(
   { className, sandbox, onLoad, url },
-  ref
+  ref,
 ) {
   const frameRef = useRef(null);
   const loadedRef = useRef(null);
@@ -22,7 +43,7 @@ const Sandbox = forwardRef(function Sandbox(
     function loadListener() {
       loadedRef.current.resolve();
     }
-    frameRef.current.addEventListener('load', loadListener);
+    frameRef.current.addEventListener("load", loadListener);
     return () => cleanup(loadListener);
   }, []);
 
@@ -46,12 +67,12 @@ const Sandbox = forwardRef(function Sandbox(
 
   function reload() {
     sandboxIdRef.current++;
-    loadedRef.current?.reject('Sandbox reloaded'); //any pending postMessages will reject
-    loadedRef.current = createDeferredPromise(10000, 'Sandbox failed to load');
+    loadedRef.current?.reject("Sandbox reloaded"); //any pending postMessages will reject
+    loadedRef.current = createDeferredPromise(10000, "Sandbox failed to load");
     loadedRef.current.catch(() => {});
     //use Date.now to make URL unique - needed to prevent infinite recursion
     //see: https://www.bryanbraun.com/2021/03/24/infinitely-nested-iframes/
-    frameRef.current.src = `${url ? url : ''}/frame.html?${Date.now()}`;
+    frameRef.current.src = `${url ? url : ""}/frame.html?${Date.now()}`;
     if (onLoad) {
       onLoad();
     }
@@ -69,14 +90,14 @@ const Sandbox = forwardRef(function Sandbox(
   async function postMessage(sandboxId, msg, onError = false) {
     try {
       if (sandboxId !== sandboxIdRef.current) {
-        throw new Error('Invalid sandboxId');
+        throw new Error("Invalid sandboxId");
       }
       await loadedRef.current;
-      frameRef.current.contentWindow.postMessage(msg, '*');
+      frameRef.current.contentWindow.postMessage(msg, "*");
     } catch (error) {
-      if (onError === 'throw') {
+      if (onError === "throw") {
         throw error;
-      } else if (onError === 'log') {
+      } else if (onError === "log") {
         console.error(error);
       }
     }
@@ -90,13 +111,13 @@ const Sandbox = forwardRef(function Sandbox(
     let listener;
     try {
       const sandboxId = getSandboxId();
-      const promise = createDeferredPromise(10000, 'Sandbox failed to respond');
+      const promise = createDeferredPromise(10000, "Sandbox failed to respond");
       const id = getId();
       listener = (event) => {
         if (
           !(
             event.data.id === id &&
-            ('error' in event.data || 'response' in event.data)
+            ("error" in event.data || "response" in event.data)
           )
         ) {
           return;
@@ -161,14 +182,14 @@ const Sandbox = forwardRef(function Sandbox(
       if (event.source !== frameRef.current.contentWindow) return;
       _listener(event);
     }
-    window.addEventListener('message', listener);
+    window.addEventListener("message", listener);
     listenersRef.current.set(_listener, listener);
   }
 
   function removeListener(_listener) {
     const listener = listenersRef.current.get(_listener);
     if (listener) {
-      window.removeEventListener('message', listener);
+      window.removeEventListener("message", listener);
       listenersRef.current.delete(_listener);
       return true;
     }
@@ -176,9 +197,9 @@ const Sandbox = forwardRef(function Sandbox(
   }
 
   function cleanup(loadListener) {
-    frameRef.current?.removeEventListener('load', loadListener);
+    frameRef.current?.removeEventListener("load", loadListener);
     listenersRef.current.forEach((listener) => {
-      window.removeEventListener('message', listener);
+      window.removeEventListener("message", listener);
     });
     listenersRef.current.clear();
   }
