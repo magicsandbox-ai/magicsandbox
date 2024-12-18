@@ -1,8 +1,8 @@
 {
-  name: 'llm',
-  version: '0.1.0',
-  description: '',
-  endpoint: 'process.env.PYENDPOINTS_URL/llm',
+  name: "llm",
+  version: "0.1.0",
+  description: "",
+  endpoint: "process.env.ENDPOINT_URL/llm",
   stream: true,
-  decode: 'string',
+  decode: "string",
 }
