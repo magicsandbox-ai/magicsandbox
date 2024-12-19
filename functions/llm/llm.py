@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from litellm import acompletion, model_cost
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse
-from src.shared import length_prefix_transform
+from magicsandbox_streaming import length_prefix_transform
 
 os.environ['ANTHROPIC_API_KEY'] = os.getenv('ANTHROPIC_API_KEY')
 os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
