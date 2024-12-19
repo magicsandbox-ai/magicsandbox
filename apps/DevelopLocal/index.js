@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import Preview from "../Develop/Preview.js";
-import { Toasts } from "components/Toasts.js";
+import { Toasts } from "@components/Toasts.js";
 import { Loader } from "lucide-react";
 
 function App() {

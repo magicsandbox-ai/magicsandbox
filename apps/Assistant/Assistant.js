@@ -7,12 +7,9 @@ import {
   DataLossRisk,
   DownloadRisk,
   RateLimitRisk,
-} from './Risks.js';
-import { handleMagic } from './handleMagic.js';
-import {
-  validateAndDefaultRequest,
-  createDeferredPromise,
-} from 'shared/utils.js';
+} from "./Risks.js";
+import { handleMagic } from "./handleMagic.js";
+import { validateAndDefaultRequest, createDeferredPromise } from "@utils.js";
 
 class Assistant {
   constructor({ sandboxRef, settingsRef, toastsRef, setConfirm, setMessage }) {
@@ -51,8 +48,8 @@ class Assistant {
       this.context.app = app;
       this.context.trust =
         this.settingsRef.current.trust.has(app) || //trusted app version
-        this.settingsRef.current.trust.has(app.split('@')[0]) || //trusted app
-        this.settingsRef.current.trust.has(app.split('.')[0]); //trusted author
+        this.settingsRef.current.trust.has(app.split("@")[0]) || //trusted app
+        this.settingsRef.current.trust.has(app.split(".")[0]); //trusted author
     }
     if (init) {
       this.risks.forEach((risk) => risk.init());
@@ -78,12 +75,12 @@ class Assistant {
       }
     } catch (error) {
       console.error(error);
-      let message = 'Error: please try again';
-      let type = 'error';
-      if (error.name === 'ToastError') {
+      let message = "Error: please try again";
+      let type = "error";
+      if (error.name === "ToastError") {
         message = error.message;
         type = error.type;
-      } else if (error.name === 'RequestSandboxError') {
+      } else if (error.name === "RequestSandboxError") {
         message = error.message;
       }
       this.setMessage(`Error: ${message}`);
@@ -99,18 +96,18 @@ class Assistant {
   async handleScore(score) {
     try {
       await requestFunction(
-        'magicsandbox.scoreApp',
+        "magicsandbox.scoreApp",
         { score, app: this.context.app },
-        { includeUserInfo: true }
+        { includeUserInfo: true },
       );
     } catch (error) {
       console.error(error);
     }
   }
   handleUserAction({ userAction }) {
-    if (userAction === 'event') {
+    if (userAction === "event") {
       this.context.userActionCount++;
-    } else if (userAction === 'isActive') {
+    } else if (userAction === "isActive") {
       //fallback using userActivation.isActive is only triggered once per transient duration
       //which can be a long time (5s for Chrome for me), so we add a large number to userActionCount
       this.context.userActionCount += 100;
@@ -140,7 +137,7 @@ class Assistant {
             id,
             error: {
               message:
-                'User denied previous request and has not since interacted with Sandbox',
+                "User denied previous request and has not since interacted with Sandbox",
             },
           });
           event.error = true;
@@ -166,7 +163,7 @@ class Assistant {
         approved = false;
       } else if (riskResponses.some((response) => response.message)) {
         approved = await this.handleApprove(
-          riskResponses.filter((r) => r.message)
+          riskResponses.filter((r) => r.message),
         );
         askedUser = true;
         if (!approved) {
@@ -177,7 +174,7 @@ class Assistant {
         approved = true;
       }
       riskResponses.forEach(
-        ({ callback, message }) => callback?.(approved, message && askedUser) //askedUser is only true for the risks that returned a message
+        ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
       );
       for (const event of batch) {
         const { id, msg } = event.data;
@@ -185,12 +182,12 @@ class Assistant {
         if (!approved) {
           this.sandboxRef.current.postMessage(event.sandboxId, {
             id,
-            error: { message: error || 'User denied the request' },
+            error: { message: error || "User denied the request" },
           });
         } else {
           requestSandbox(request, data)
             .then(async (response) => {
-              if (request === 'app' || request === 'function') {
+              if (request === "app" || request === "function") {
                 this.handleMetadata(response, id);
               }
               if (response?.[Symbol.asyncIterator]) {
@@ -211,12 +208,12 @@ class Assistant {
       }
     } catch (error) {
       console.error(error);
-      this.toastsRef.current.addToast('An unexpected error occurred', 'error');
+      this.toastsRef.current.addToast("An unexpected error occurred", "error");
       for (const event of batch) {
         const { id } = event.data;
         this.sandboxRef.current.postMessage(event.sandboxId, {
           id,
-          error: { message: 'Unexpected Assistant error' },
+          error: { message: "Unexpected Assistant error" },
         });
       }
     } finally {

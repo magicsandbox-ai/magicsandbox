@@ -8,7 +8,7 @@ Install:
 
 Run:
 
-`npm run magicsandbox init MyApp`
+`npx magicsandbox init MyApp`
 
 This creates a new directory with a basic project structure:
 

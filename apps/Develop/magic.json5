@@ -17,6 +17,6 @@
     sourcesContent: false,
   },
   tailwindConfig: {
-    content: ["apps/Develop/**/*.js", "src/shared/**/*.js"],
+    content: ["apps/Develop/**/*.js", "components/**/*.js"],
   },
 }

@@ -2,11 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import Sandbox from "components/Sandbox.js";
+import Sandbox from "@components/Sandbox.js";
 import BottomNavBar from "./BottomNavBar.js";
 import AssistantSettings from "./AssistantSettings.js";
 import AssistantConfirm from "./AssistantConfirm.js";
-import { Toasts } from "components/Toasts.js";
+import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 
 /*

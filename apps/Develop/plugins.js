@@ -1,19 +1,19 @@
 /* global requestFetch */
 
 //import { parse } from '@babel/parser';
-import babelParser from 'prettier/plugins/babel'; //hack to reduce bundle size, for some reason prettier plugins are pre bundled
-import { isEqual } from 'es-toolkit';
-import semver from 'semver';
-import { createDeferredPromise } from '../../../shared/utils.js';
+import babelParser from "prettier/plugins/babel"; //hack to reduce bundle size, for some reason prettier plugins are pre bundled
+import { isEqual } from "es-toolkit";
+import semver from "semver";
+import { createDeferredPromise } from "@utils.js";
 
 function sanitizeIdentifier(name) {
-  return name.replace(/[^a-zA-Z0-9_$]/g, '_');
+  return name.replace(/[^a-zA-Z0-9_$]/g, "_");
 }
 
 function countLines(s) {
   let c = 0;
   for (let i = 0; i < s.length; i++) {
-    if (s[i] === '\n') {
+    if (s[i] === "\n") {
       c++;
     }
   }
@@ -21,7 +21,7 @@ function countLines(s) {
 }
 
 function babelParse(file, handler) {
-  const ast = babelParser.parsers.babel.parse(file, { sourceType: 'module' });
+  const ast = babelParser.parsers.babel.parse(file, { sourceType: "module" });
   const nodes = ast.program.body;
   nodes.forEach((node, i, nodes) => {
     handler(node, i, nodes);
@@ -32,38 +32,38 @@ function babelParse(file, handler) {
  * Returns {path: string, names: {name: localName}}
  */
 function getImport(node) {
-  if (node.type === 'ImportDeclaration') {
+  if (node.type === "ImportDeclaration") {
     const names = {};
     node.specifiers.forEach((specifier) => {
-      if (specifier.type === 'ImportDefaultSpecifier') {
+      if (specifier.type === "ImportDefaultSpecifier") {
         names.default = specifier.local.name;
-      } else if (specifier.type === 'ImportSpecifier') {
+      } else if (specifier.type === "ImportSpecifier") {
         names[specifier.imported.name] = specifier.local.name;
-      } else if (specifier.type === 'ImportNamespaceSpecifier') {
-        names['*'] = specifier.local.name;
+      } else if (specifier.type === "ImportNamespaceSpecifier") {
+        names["*"] = specifier.local.name;
       } else {
         throw new Error(
-          `Unexpected import syntax, specifier: ${specifier.type}`
+          `Unexpected import syntax, specifier: ${specifier.type}`,
         );
       }
     });
     return { path: node.source.value, names };
-  } else if (node.type === 'ExportNamedDeclaration' && node.source?.value) {
+  } else if (node.type === "ExportNamedDeclaration" && node.source?.value) {
     const names = {};
     node.specifiers.forEach((specifier) => {
-      if (specifier.type === 'ExportSpecifier') {
+      if (specifier.type === "ExportSpecifier") {
         names[specifier.local.name] = specifier.exported.name;
-      } else if (specifier.type === 'ExportNamespaceSpecifier') {
-        names['*'] = specifier.exported.name;
+      } else if (specifier.type === "ExportNamespaceSpecifier") {
+        names["*"] = specifier.exported.name;
       } else {
         throw new Error(
-          `Unexpected export syntax, specifier: ${specifier.type}`
+          `Unexpected export syntax, specifier: ${specifier.type}`,
         );
       }
     });
     return { path: node.source.value, names };
-  } else if (node.type === 'ExportAllDeclaration' && node.source?.value) {
-    return { path: node.source.value, names: { '*': '*' } };
+  } else if (node.type === "ExportAllDeclaration" && node.source?.value) {
+    return { path: node.source.value, names: { "*": "*" } };
   }
 }
 
@@ -107,26 +107,26 @@ function transformImports(file, pkgImports) {
   babelParse(file, (node, i, nodes) => {
     out.push(file.slice(i === 0 ? 0 : nodes[i - 1].end + 1, node.start)); //preserve whitespace between nodes
     const imp = getImport(node);
-    if (imp && !imp.path.startsWith('./')) {
+    if (imp && !imp.path.startsWith("./")) {
       const names = new Set(Object.keys(imp.names));
       pkgImports[imp.path] = union(pkgImports[imp.path] || new Set(), names);
       const renames = Object.entries(imp.names).map(
-        ([name, localName]) => `${name === '*' ? "'*'" : name}: ${localName}`
+        ([name, localName]) => `${name === "*" ? "'*'" : name}: ${localName}`,
       );
       if (renames.length > 0) {
-        out.push(`const {${renames.join(', ')}} = __deps['${imp.path}'];\n`);
+        out.push(`const {${renames.join(", ")}} = __deps['${imp.path}'];\n`);
       } else {
-        out.push('\n'); //replace import for side effects with new line
+        out.push("\n"); //replace import for side effects with new line
       }
       const newLinesToAdd = countLines(file.slice(node.start, node.end)); //need to preserve number of lines for sourcemaps
       for (let i = 0; i < newLinesToAdd; i++) {
-        out.push('\n');
+        out.push("\n");
       }
     } else {
       out.push(file.slice(node.start, node.end + 1));
     }
   });
-  return out.join('');
+  return out.join("");
 }
 
 /**
@@ -148,33 +148,33 @@ function transformToBundleDeps(pkgImports) {
       outputImports.push(`import '${pkg}';`);
       return;
     }
-    if (imports.has('*')) {
+    if (imports.has("*")) {
       outputImports.push(`import * as __${sanitizedPkg} from '${pkg}';`);
       assignmentRenames.push(`'*': __${sanitizedPkg}`);
     }
     const importsArray = Array.from(imports).filter(
-      (importName) => importName !== '*'
+      (importName) => importName !== "*",
     );
     const importRenames = importsArray.map(
-      (importName) => `${importName} as __${sanitizedPkg}__${importName}`
+      (importName) => `${importName} as __${sanitizedPkg}__${importName}`,
     );
     if (importRenames.length > 0) {
       //if only namespace import, we already pushed to outputImports above
-      outputImports.push(`import {${importRenames.join(', ')}} from '${pkg}';`);
+      outputImports.push(`import {${importRenames.join(", ")}} from '${pkg}';`);
     }
     importsArray.forEach((importName) => {
       assignmentRenames.push(`${importName}: __${sanitizedPkg}__${importName}`);
     });
     outputAssignments.push(
-      `__deps['${pkg}'] = {${assignmentRenames.join(', ')}};`
+      `__deps['${pkg}'] = {${assignmentRenames.join(", ")}};`,
     );
   });
-  return `${outputImports.join('\n')}\nwindow.__deps = {};\n${outputAssignments.join('\n')}`;
+  return `${outputImports.join("\n")}\nwindow.__deps = {};\n${outputAssignments.join("\n")}`;
 }
 
 function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
   const plugin = {
-    name: 'bundleDeps',
+    name: "bundleDeps",
     setup(build) {
       let prevPkgImports, pkgImports, prevAppObj;
 
@@ -185,16 +185,16 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
       build.onResolve({ filter: /.*/ }, (args) => {
         const path = args.path;
         if (filesRef.current[path]) {
-          return { path: path, namespace: 'MagicApp' };
-        } else if (path.startsWith('./') && filesRef.current[path.slice(2)]) {
-          return { path: path.slice(2), namespace: 'MagicApp' };
+          return { path: path, namespace: "MagicApp" };
+        } else if (path.startsWith("./") && filesRef.current[path.slice(2)]) {
+          return { path: path.slice(2), namespace: "MagicApp" };
         }
       });
 
-      build.onLoad({ filter: /.*/, namespace: 'MagicApp' }, (args) => {
+      build.onLoad({ filter: /.*/, namespace: "MagicApp" }, (args) => {
         return {
           contents: transformImports(filesRef.current[args.path], pkgImports), //pkgImports updated as side effect
-          loader: 'jsx',
+          loader: "jsx",
         };
       });
 
@@ -209,11 +209,11 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
               bundleDepsCode,
               esbuild,
               build.initialOptions,
-              appObjRef
+              appObjRef,
             );
             bundledDepsRef.current = bundledDeps; //could try to use `this` and save a ref but couldn't get it to work
           } else {
-            bundledDepsRef.current = '';
+            bundledDepsRef.current = "";
           }
           prevPkgImports = pkgImports;
           prevAppObj = { ...appObjRef.current };
@@ -223,9 +223,9 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
             const bundledText = bundledDepsRef.current;
             const text = result.outputFiles[0].text;
             const sourceMapStart =
-              text.lastIndexOf('//# sourceMappingURL=') + 50; //50 chars removes //# sourceMappingURL=data...base64,
+              text.lastIndexOf("//# sourceMappingURL=") + 50; //50 chars removes //# sourceMappingURL=data...base64,
             const decodedSourceMap = JSON.parse(
-              atob(text.slice(sourceMapStart))
+              atob(text.slice(sourceMapStart)),
             );
             let bundledLineCount = countLines(bundledText) + 1; //add 1 because we add one extra line break when concatenating
             const newSourceMap = {
@@ -244,7 +244,7 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
               text: `${bundledText}\n${newText}${encodedSourceMap}`,
             };
           } catch (e) {
-            console.log('Error updating sourcemap', e);
+            console.log("Error updating sourcemap", e);
           }
         }
       });
@@ -262,7 +262,7 @@ async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
       result = await buildDeps(bundleDepsCode, esbuild, options, appObjRef);
     } else {
       console.warn(
-        `optimizedTreeShaking is not enabled for ${appObjRef.current.cdn}` //todo show user
+        `optimizedTreeShaking is not enabled for ${appObjRef.current.cdn}`, //todo show user
       );
     }
   }
@@ -272,11 +272,11 @@ async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
 async function buildDeps(bundleDepsCode, esbuild, options, appObjRef) {
   const result = await esbuild.build({
     ...options,
-    entryPoints: ['bundleDepsCode.js'],
+    entryPoints: ["bundleDepsCode.js"],
     plugins: [
       createImportPlugin(
-        { current: { 'bundleDepsCode.js': bundleDepsCode } }, //filesRef
-        appObjRef
+        { current: { "bundleDepsCode.js": bundleDepsCode } }, //filesRef
+        appObjRef,
       ),
     ],
     globalName: undefined,
@@ -319,7 +319,7 @@ class BuildMetadata {
   constructor(filesRef, appObjRef, log) {
     this.filesRef = filesRef;
     this.appObjRef = appObjRef;
-    this.cdn = appObjRef.current.cdn || 'esm.sh';
+    this.cdn = appObjRef.current.cdn || "esm.sh";
     this.log = log;
     this.importQueue = [];
     this.packageMetadataMap = {}; //{packageId: PackageMetadata}
@@ -328,7 +328,7 @@ class BuildMetadata {
   }
   addImport(imp) {
     if (this.canceled) {
-      imp.onResolvePromise.reject(new Error('Build canceled'));
+      imp.onResolvePromise.reject(new Error("Build canceled"));
       return;
     }
     this.importQueue.push(imp);
@@ -351,7 +351,7 @@ class BuildMetadata {
     //so build doesn't hang
     this.canceled = true;
     this.importQueue.forEach((imp) => {
-      imp.onResolvePromise.reject(new Error('Build canceled'));
+      imp.onResolvePromise.reject(new Error("Build canceled"));
     });
   }
 }
@@ -378,7 +378,7 @@ class PackageMetadata {
     try {
       const { version, pathWithoutFile } = this.resolvePathWithoutFile(imp);
       imp.version = version; //just for debugging
-      imp.resolvedPath = `${pathWithoutFile}${imp.parsedPath.file ? `/${imp.parsedPath.file}` : ''}`;
+      imp.resolvedPath = `${pathWithoutFile}${imp.parsedPath.file ? `/${imp.parsedPath.file}` : ""}`;
       imp
         .handleResolve()
         .then((pluginData) => {
@@ -413,7 +413,7 @@ class PackageMetadata {
     const versions = Object.keys(this.versionPaths);
     if (peer && !this.peer && versions.length > 1) {
       console.warn(
-        `${this.packageId} is marked as a peer dependency, but already has resolved to multiple versions: ${versions.join(', ')}`
+        `${this.packageId} is marked as a peer dependency, but already has resolved to multiple versions: ${versions.join(", ")}`,
       );
     }
     this.peer = Boolean(peer || this.peer);
@@ -432,7 +432,7 @@ class PackageMetadata {
           //no version satisfies range, but it's a peer, so use max and warn
           const maxVersion = semver.rsort(versions)[0];
           console.warn(
-            `Ignoring ${importer} range ${range} when importing peer dependency ${this.packageId}, using ${maxVersion} instead`
+            `Ignoring ${importer} range ${range} when importing peer dependency ${this.packageId}, using ${maxVersion} instead`,
           );
           return {
             version: maxVersion,
@@ -550,12 +550,12 @@ class Import {
     try {
       this.log(`handleResolve ${this.args.path}`);
       const loaded = Boolean(
-        this.buildMetadata.resolvedPaths[this.resolvedPath]
+        this.buildMetadata.resolvedPaths[this.resolvedPath],
       );
       //
       this.buildMetadata.resolvedPaths[this.resolvedPath] = union(
         this.buildMetadata.resolvedPaths[this.resolvedPath] || new Set(),
-        this.parent?.imports?.[this.args.path] || new Set()
+        this.parent?.imports?.[this.args.path] || new Set(),
       );
       if (!loaded) {
         const localPath = this.resolvedPath.slice(1); //format is /file.js
@@ -565,7 +565,7 @@ class Import {
           this.handleContents(localContents);
           this.onResolvePromise.resolve({
             path: this.resolvedPath,
-            namespace: 'import',
+            namespace: "import",
             pluginData: { contents: localContents, import: this },
           });
           //we could return a promise here, but we don't use PackageMetadata for local files
@@ -574,7 +574,7 @@ class Import {
           //fetch files
           const pluginDataPromise = handleFetch(
             this.resolvedPath,
-            this.buildMetadata
+            this.buildMetadata,
           )
             .then(([contentsResponse, pjsonResponse]) => {
               if (
@@ -582,7 +582,7 @@ class Import {
                 pjsonResponse?.status >= 400
               ) {
                 throw new Error(
-                  `fetch error ${this.resolvedPath}: ${contentsResponse.status} ${pjsonResponse?.status}`
+                  `fetch error ${this.resolvedPath}: ${contentsResponse.status} ${pjsonResponse?.status}`,
                 );
               }
               const contents = contentsResponse.body;
@@ -597,7 +597,7 @@ class Import {
             });
           this.onResolvePromise.resolve({
             path: this.resolvedPath,
-            namespace: 'import',
+            namespace: "import",
             pluginData: pluginDataPromise,
           });
           return pluginDataPromise;
@@ -607,7 +607,7 @@ class Import {
         this.createChildrenQueue(0);
         this.onResolvePromise.resolve({
           path: this.resolvedPath,
-          namespace: 'import',
+          namespace: "import",
         });
         //return a promise because PackageMetadata.processNext is expecting one
         return Promise.resolve();
@@ -631,7 +631,7 @@ class Import {
   queueChild(imp) {
     this.log(`queueChild ${this.args.path}`);
     if (this.queueIndex >= this.children.length) {
-      console.warn('Potentially indeterministic build', this);
+      console.warn("Potentially indeterministic build", this);
     }
     this.children[this.queueIndex] = imp;
     this.queueIndex++;
@@ -672,12 +672,12 @@ class Import {
 
 function createImportPlugin(filesRef, appObjRef) {
   return {
-    name: 'import',
+    name: "import",
     setup(build) {
       let buildMetadata, start, log, intervalId;
 
       build.onStart(() => {
-        if (build.initialOptions.logLevel === 'debug') {
+        if (build.initialOptions.logLevel === "debug") {
           log = console.log;
           intervalId = setInterval(() => {
             console.log(buildMetadata);
@@ -687,7 +687,7 @@ function createImportPlugin(filesRef, appObjRef) {
         }
         buildMetadata = new BuildMetadata(filesRef, appObjRef, log);
         start = Date.now();
-        log('onStart');
+        log("onStart");
       });
 
       build.onResolve({ filter: /.*/ }, (args) => {
@@ -710,18 +710,18 @@ function createImportPlugin(filesRef, appObjRef) {
         //this prevents the build from hanging if we provided the incorrect number of imports to createChildrenQueue
         const parent = pluginData?.import?.parent;
         if (parent?.done === false) {
-          console.log('Marked parent as done', parent);
+          console.log("Marked parent as done", parent);
           parent.markDone();
         }
         return {
           contents: contents,
-          loader: 'jsx', //todo other file types?
+          loader: "jsx", //todo other file types?
           pluginData,
         };
       });
 
       build.onEnd((result) => {
-        if (buildMetadata.cdn === 'esm.sh') {
+        if (buildMetadata.cdn === "esm.sh") {
           result.resolvedPaths = buildMetadata.resolvedPaths;
         }
         log(`Build took ${Date.now() - start}ms`);
@@ -746,7 +746,7 @@ function createImportPlugin(filesRef, appObjRef) {
 function parseNormalizedPath(path) {
   const match = path.match(
     // scope         package  version      file
-    /^(?:@([^/]+)\/)?([^@/]+)?(?:@([^/]+))?(?:\/(.+))?$/
+    /^(?:@([^/]+)\/)?([^@/]+)?(?:@([^/]+))?(?:\/(.+))?$/,
   );
   return match
     ? { scope: match[1], package: match[2], version: match[3], file: match[4] }
@@ -757,16 +757,16 @@ function parseNormalizedPath(path) {
  * Returns string in format [@scope/][package][@version][/file]
  */
 function combinePathParts({ scope, package: _package, version, file }) {
-  scope = scope ? `@${scope}/` : '';
-  _package = _package ? _package : '';
-  version = version ? `@${version}` : '';
-  file = file ? `/${file}` : '';
+  scope = scope ? `@${scope}/` : "";
+  _package = _package ? _package : "";
+  version = version ? `@${version}` : "";
+  file = file ? `/${file}` : "";
   return `${scope}${_package}${version}${file}`;
 }
 
 const esmShData = {
-  version: 'v135', //make sure to check header is still valid if updating from v135
-  redirectHeader: 'x-esm-id',
+  version: "v135", //make sure to check header is still valid if updating from v135
+  redirectHeader: "x-esm-id",
 };
 
 /**
@@ -779,11 +779,11 @@ function normalizePath(path, buildMetadata) {
   const filesRef = buildMetadata.filesRef;
   if (filesRef.current[path]) {
     return `/${path}`;
-  } else if (path.startsWith('./') && filesRef.current[path.slice(2)]) {
+  } else if (path.startsWith("./") && filesRef.current[path.slice(2)]) {
     return path.slice(1);
   }
   const cdn = buildMetadata.cdn;
-  if (cdn === 'jsdelivr') {
+  if (cdn === "jsdelivr") {
     // /npm/@scope/package@version/file/+esm
     // /npm/react@19.0.0/+esm
     const match = path.match(/^\/npm\/(.+)\/\+esm$/);
@@ -793,12 +793,12 @@ function normalizePath(path, buildMetadata) {
       //could be a bare user import like 'react'
       return path;
     }
-  } else if (cdn === 'esm.sh') {
+  } else if (cdn === "esm.sh") {
     // /buildversion/@scope/package@version/target/file
     // /v135/react@19.0.0/es2022/react.mjs
     const match = path.match(
       //build    scope          package version    target     file
-      /^\/[^/]+\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))(\/[^/]+\/)(.+)$/
+      /^\/[^/]+\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))(\/[^/]+\/)(.+)$/,
     );
     if (match) {
       return combinePathParts({
@@ -830,10 +830,10 @@ function normalizePath(path, buildMetadata) {
  */
 function handleFetch(resolvedPath, buildMetadata) {
   const { fileUrl, pjsonUrl } = getUrls(resolvedPath, buildMetadata);
-  const filePromise = requestFetch(fileUrl, { responseType: 'string' }).then(
+  const filePromise = requestFetch(fileUrl, { responseType: "string" }).then(
     (response) => {
       if (
-        buildMetadata.cdn === 'esm.sh' &&
+        buildMetadata.cdn === "esm.sh" &&
         response.headers[esmShData.redirectHeader]
       ) {
         //need to follow these redirects for optimizedTreeShaking to work
@@ -842,15 +842,15 @@ function handleFetch(resolvedPath, buildMetadata) {
         return requestFetch(
           `https://esm.sh/${response.headers[esmShData.redirectHeader]}`,
           {
-            responseType: 'string',
-          }
+            responseType: "string",
+          },
         );
       }
       return response;
-    }
+    },
   );
   const pjsonPromise = pjsonUrl
-    ? requestFetch(pjsonUrl, { responseType: 'json' })
+    ? requestFetch(pjsonUrl, { responseType: "json" })
     : Promise.resolve();
   return Promise.all([filePromise, pjsonPromise]);
 }
@@ -863,23 +863,23 @@ function getUrls(resolvedPath, buildMetadata) {
     version: resolvedParsedPath.version,
   });
   const cdn = buildMetadata.cdn;
-  if (cdn === 'jsdelivr') {
+  if (cdn === "jsdelivr") {
     return {
       fileUrl: `https://cdn.jsdelivr.net/npm/${resolvedPath}/+esm`,
       pjsonUrl: `https://cdn.jsdelivr.net/npm/${resolvedPathWithoutFile}/package.json`,
     };
-  } else if (cdn === 'esm.sh') {
-    if (resolvedPathWithoutFile === '') {
+  } else if (cdn === "esm.sh") {
+    if (resolvedPathWithoutFile === "") {
       //this is a file only import like: "/v135/node_process.js"
       return {
         fileUrl: `https://esm.sh/${esmShData.version}/${resolvedParsedPath.file}`,
       };
     }
-    let exports = '';
+    let exports = "";
     if (buildMetadata.imports[resolvedPath]) {
       const imports = buildMetadata.imports[resolvedPath];
-      if (imports.size > 0 && !imports.has('*')) {
-        exports = `?exports=${Array.from(imports).join(',')}`;
+      if (imports.size > 0 && !imports.has("*")) {
+        exports = `?exports=${Array.from(imports).join(",")}`;
       }
     }
     return {

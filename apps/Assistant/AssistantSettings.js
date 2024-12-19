@@ -1,7 +1,7 @@
 /* global requestPutData */
 
 import React from "react";
-import Settings from "components/Settings.js";
+import Settings from "@components/Settings.js";
 
 function AssistantSettings({ assistantRef, setModal, addToast }) {
   const initSettings = [

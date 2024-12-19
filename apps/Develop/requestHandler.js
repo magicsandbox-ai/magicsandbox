@@ -1,6 +1,6 @@
 /* global requestSandbox */
 
-import { validateAndDefaultRequest } from 'shared/utils.js';
+import { validateAndDefaultRequest } from "@utils.js";
 
 export default async function requestHandler({
   event,
@@ -25,7 +25,7 @@ export default async function requestHandler({
       return;
     }
     let cacheKey;
-    if (appObjRef.current.cacheRequests !== false && request === 'app') {
+    if (appObjRef.current.cacheRequests !== false && request === "app") {
       cacheKey = data.app;
       if (cacheKey === requestAppRef.current.cacheKey) {
         sandboxRef.current.postMessage(sandboxId, {
@@ -37,7 +37,7 @@ export default async function requestHandler({
       }
     } else if (
       appObjRef.current.cacheRequests !== false &&
-      request === 'function'
+      request === "function"
     ) {
       cacheKey = JSON.stringify({
         function: data.function,
@@ -58,29 +58,29 @@ export default async function requestHandler({
       }
     } else if (
       [
-        'putData',
-        'deleteData',
-        'getData',
-        'getAllData',
-        'getAllKeysData',
+        "putData",
+        "deleteData",
+        "getData",
+        "getAllData",
+        "getAllKeysData",
       ].includes(request)
     ) {
-      let app = data.app.split('@')[0];
-      app = app.split('.')[1]; //todo allow author in advanced options
+      let app = data.app.split("@")[0];
+      app = app.split(".")[1]; //todo allow author in advanced options
       if (appObjRef.current?.name === app) {
         //todo document shortcomings of this approach: does not check size, eviction policy, assistant may reject writes, etc.
         //todo should even do this?
-        if (request === 'putData') {
+        if (request === "putData") {
           requestDataRef.current[data.key] = data.value;
           response = true;
-        } else if (request === 'deleteData') {
+        } else if (request === "deleteData") {
           delete requestDataRef.current[data.key];
           response = true;
-        } else if (request === 'getData') {
+        } else if (request === "getData") {
           response = requestDataRef.current[data.key];
-        } else if (request === 'getAllData') {
+        } else if (request === "getAllData") {
           response = requestDataRef.current;
-        } else if (request === 'getAllKeysData') {
+        } else if (request === "getAllKeysData") {
           response = Object.keys(requestDataRef.current);
         }
         sandboxRef.current.postMessage(sandboxId, { id, response });
@@ -93,9 +93,9 @@ export default async function requestHandler({
     } catch (e) {
       error = { message: e.message, data: e.data };
     }
-    if (request === 'app') {
+    if (request === "app") {
       requestAppRef.current = { cacheKey, response, error };
-    } else if (request === 'function') {
+    } else if (request === "function") {
       requestFunctionRef.current = { cacheKey, response, error };
     }
     if (response?.[Symbol.asyncIterator]) {

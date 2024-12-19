@@ -1,5 +1,5 @@
-import { formatAsDollars } from 'shared/utils.js';
-import { manageBackups } from './utils.js';
+import { formatAsDollars } from "@utils.js";
+import { manageBackups } from "./utils.js";
 
 /**
  * - init (optional)
@@ -43,7 +43,7 @@ class Risk {
    *     - content: string, will be passed to requestDownload
    */
   handleBatch() {
-    throw new Error('Not implemented');
+    throw new Error("Not implemented");
   }
   handleMetadata() {
     //pass
@@ -53,7 +53,7 @@ class Risk {
 class FinancialRisk extends Risk {
   constructor(args) {
     super(args);
-    this.handleRequests = new Set(['app', 'function']);
+    this.handleRequests = new Set(["app", "function"]);
   }
   init() {
     this.pendingRequests = {};
@@ -67,7 +67,7 @@ class FinancialRisk extends Risk {
       this.handleApprove(approved, askedUser, { ...this.pendingRequests });
     };
     if (this.pendingCost + this.approvedCost > this.assistant.budget) {
-      const app = this.assistant.context.app.split('@')[0];
+      const app = this.assistant.context.app.split("@")[0];
       const pendingSpend = formatAsDollars(this.pendingCost);
       const approvedSpend = formatAsDollars(this.approvedCost);
       const totalSpend = formatAsDollars(this.pendingCost + this.approvedCost);
@@ -114,7 +114,7 @@ class FinancialRisk extends Risk {
 class PublishRisk extends Risk {
   constructor(args) {
     super(args);
-    this.handleRequests = new Set(['publish']);
+    this.handleRequests = new Set(["publish"]);
   }
   init() {
     this.publishRequests = [];
@@ -122,14 +122,14 @@ class PublishRisk extends Risk {
   handleBatch(batch) {
     this._handleBatch(batch);
     if (this.publishRequests.length > 1) {
-      return { error: 'May only publish one Magic App or Function at a time' };
+      return { error: "May only publish one Magic App or Function at a time" };
     } else if (this.publishRequests.length === 1) {
-      const app = this.assistant.context.app.split('@')[0];
-      const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, '_');
+      const app = this.assistant.context.app.split("@")[0];
+      const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
       return {
         message: `${app} is requesting to publish a Magic App or Function`,
         downloadDetails: {
-          text: 'View JSON',
+          text: "View JSON",
           filename: `${app}_publish_request_${now}.json`,
           content: JSON.stringify(this.publishRequests[0], null, 2),
         },
@@ -147,13 +147,13 @@ class PrivacyRisk extends Risk {
   constructor(args) {
     super(args);
     this.handleRequests = new Set([
-      'function',
-      'fetch',
-      'openUrl',
-      'download',
-      'getData',
-      'getAllData',
-      'getAllKeysData',
+      "function",
+      "fetch",
+      "openUrl",
+      "download",
+      "getData",
+      "getAllData",
+      "getAllKeysData",
     ]);
   }
   init() {
@@ -176,13 +176,13 @@ class PrivacyRisk extends Risk {
       if (this.assistant.context.trust) {
         untrustedReads = reads.filter(
           (read) =>
-            read.split('.')[0] !== this.assistant.context.app.split('.')[0]
+            read.split(".")[0] !== this.assistant.context.app.split(".")[0],
         );
       } else {
         untrustedReads = reads;
       }
       untrustedReads = untrustedReads.filter(
-        (read) => !this.userApprovedReads.has(read)
+        (read) => !this.userApprovedReads.has(read),
       );
       if (
         untrustedReads.length > 0 ||
@@ -191,13 +191,13 @@ class PrivacyRisk extends Risk {
             this.userApprovedUserActionCount >
             this.userActionThreshold)
       ) {
-        const app = this.assistant.context.app.split('@')[0];
+        const app = this.assistant.context.app.split("@")[0];
         return {
           callback,
           message: `${app} ${
             untrustedReads.length > 0
-              ? 'has accessed your Magic App data and '
-              : ''
+              ? "has accessed your Magic App data and "
+              : ""
           }is requesting to access the internet`,
           details: reads, //todo
         };
@@ -209,9 +209,9 @@ class PrivacyRisk extends Risk {
   }
   handleRequest(request, data) {
     if (
-      request === 'getData' ||
-      request === 'getAllData' ||
-      request === 'getAllKeysData'
+      request === "getData" ||
+      request === "getAllData" ||
+      request === "getAllKeysData"
     ) {
       this.pendingReads.add(data.app);
     } else {
@@ -234,7 +234,7 @@ class PrivacyRisk extends Risk {
 class DataLossRisk extends Risk {
   constructor(args) {
     super(args);
-    this.handleRequests = new Set(['putData', 'deleteData']);
+    this.handleRequests = new Set(["putData", "deleteData"]);
   }
   init() {
     this.pendingWrites = new Set();
@@ -245,21 +245,21 @@ class DataLossRisk extends Risk {
     this._handleBatch(batch);
     const untrustedWrites = Array.from(this.pendingWrites).filter(
       (write) =>
-        write.split('.')[0] !== this.assistant.context.app.split('.')[0] &&
-        !this.userApprovedWrites.has(write)
+        write.split(".")[0] !== this.assistant.context.app.split(".")[0] &&
+        !this.userApprovedWrites.has(write),
     );
     const callback = (approved, askedUser) => {
       this.handleApprove(
         approved,
         askedUser,
         Array.from(this.pendingWrites),
-        untrustedWrites
+        untrustedWrites,
       );
     };
     if (untrustedWrites.length > 1) {
-      return { error: 'May only make one cross author write at a time' };
+      return { error: "May only make one cross author write at a time" };
     } else if (untrustedWrites.length > 0) {
-      const app = this.assistant.context.app.split('@')[0];
+      const app = this.assistant.context.app.split("@")[0];
       return {
         callback,
         message: `${app} is requesting to overwrite ${untrustedWrites[0]}'s data`,
@@ -269,19 +269,19 @@ class DataLossRisk extends Risk {
     return { callback };
   }
   handleRequest(_, data) {
-    this.pendingWrites.add(data.app.split('@')[0]);
+    this.pendingWrites.add(data.app.split("@")[0]);
   }
   handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
     if (approved) {
       if (askedUser) {
         this.userApprovedWrites = this.userApprovedWrites.union(
-          new Set(untrustedWrites)
+          new Set(untrustedWrites),
         );
       }
       //even though manageBackups checks if backups are needed, we still don't want to run getAllKeysData too often
       //manageBackups still needs to check if a backup is needed because the db is shared across tabs
       const appsNeedingBackup = pendingWrites.filter(
-        (app) => (this.lastAppBackups[app] || 0) < Date.now() - 1000 * 60 * 10
+        (app) => (this.lastAppBackups[app] || 0) < Date.now() - 1000 * 60 * 10,
       );
       if (appsNeedingBackup.length > 0) {
         manageBackups(appsNeedingBackup, this.assistant.toastsRef);
@@ -296,7 +296,7 @@ class DataLossRisk extends Risk {
 class DownloadRisk extends Risk {
   constructor(args) {
     super(args);
-    this.handleRequests = new Set(['download']);
+    this.handleRequests = new Set(["download"]);
   }
   init() {
     this.downloadRequests = [];
@@ -304,9 +304,9 @@ class DownloadRisk extends Risk {
   handleBatch(batch) {
     this._handleBatch(batch);
     if (this.downloadRequests.length > 0) {
-      const app = this.assistant.context.app.split('@')[0];
+      const app = this.assistant.context.app.split("@")[0];
       const n = this.downloadRequests.length;
-      const plural = n > 1 ? 's' : '';
+      const plural = n > 1 ? "s" : "";
       return {
         message: `${app} is requesting to download ${n} file${plural}`,
         details: this.downloadRequests,
@@ -324,12 +324,12 @@ class RateLimitRisk extends Risk {
   constructor(args) {
     super(args);
     this.handleRequests = new Set([
-      'app',
-      'function',
-      'fetch',
-      'openUrl',
-      'publish',
-      'download',
+      "app",
+      "function",
+      "fetch",
+      "openUrl",
+      "publish",
+      "download",
     ]);
   }
   init() {
@@ -339,13 +339,13 @@ class RateLimitRisk extends Risk {
     if (this.lastTs) {
       this.requests = Math.max(
         0,
-        this.requests - (Date.now() - this.lastTs) / 200
+        this.requests - (Date.now() - this.lastTs) / 200,
       );
     }
     this.lastTs = Date.now();
     this._handleBatch(batch);
     if (this.requests > 1000) {
-      return { error: 'Rate limit exceeded' };
+      return { error: "Rate limit exceeded" };
     }
     return {};
   }

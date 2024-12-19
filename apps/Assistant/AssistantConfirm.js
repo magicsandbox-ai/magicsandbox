@@ -1,7 +1,7 @@
 /* global requestDownload */
 
 import React from "react";
-import Confirm from "components/Confirm.js";
+import Confirm from "@components/Confirm.js";
 
 /*
 collapse details

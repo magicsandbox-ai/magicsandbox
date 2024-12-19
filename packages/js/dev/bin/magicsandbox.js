@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { init, dev, publish } from "../index.js";
+import { init, dev, publish } from "../src/index.js";
 import { Command } from "commander";
 import path from "path";
 

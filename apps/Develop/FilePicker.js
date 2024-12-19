@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, Plus } from "lucide-react";
-import Confirm from "components/Confirm.js";
+import Confirm from "@components/Confirm.js";
 
 export default function FilePicker({
   apps,

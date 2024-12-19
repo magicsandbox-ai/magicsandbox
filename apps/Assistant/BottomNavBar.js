@@ -9,7 +9,7 @@ import {
   Loader,
   Maximize2,
 } from "lucide-react";
-import Markdown from "components/Markdown.js";
+import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { parseInput } from "./utils.js";
 import { visit, SKIP } from "unist-util-visit";

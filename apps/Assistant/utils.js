@@ -1,5 +1,5 @@
 /* global requestGetAllKeysData, requestGetAllData, requestPutData, requestDeleteData */
-import { ToastError } from "components/Toasts.js";
+import { ToastError } from "@components/Toasts.js";
 
 function parseInput(input, bangs) {
   const match = input.match(/!\S+/);
