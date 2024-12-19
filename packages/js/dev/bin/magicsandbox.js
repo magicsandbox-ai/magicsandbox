@@ -15,8 +15,8 @@ program
   )
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--function", "Create a Function instead of an App")
-  .action((appPath, options) => {
-    init(handlePath(appPath, options.dir), options.function);
+  .action(async (appPath, options) => {
+    await init(handlePath(appPath, options.dir), options.function);
   });
 
 program
@@ -26,8 +26,8 @@ program
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("-p, --port <number>", "Port to run dev server on", "3000")
   .option("--debug", "Debug build")
-  .action((appPath, options) => {
-    dev(
+  .action(async (appPath, options) => {
+    await dev(
       handlePath(appPath, options.dir),
       parseInt(options.port),
       options.debug,
@@ -43,8 +43,8 @@ program
   )
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--debug", "Debug build")
-  .action((appPath, options) => {
-    publish(handlePath(appPath, options.dir), options.debug);
+  .action(async (appPath, options) => {
+    await publish(handlePath(appPath, options.dir), options.debug);
   });
 
 program.parse();

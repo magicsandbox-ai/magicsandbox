@@ -39,7 +39,16 @@ Run `npm run publish MyApp` to build and publish your App.
 
 Publishing requires an API key, which you can get [here](https://magicsandbox.ai/api-key).
 
-`@magicsandbox.ai/dev` will walk upwards from your App directory, looking for a `.env` file with a `MAGICSANDBOX_API_KEY` environment variable. If it can't find one and `process.env.MAGICSANDBOX_API_KEY` is not set, it will throw an error.
+`@magicsandbox.ai/dev` requires the `MAGICSANDBOX_API_KEY` environment variable to be set, which you can set in a `.env` file in your project root.
+
+```
+MyApp1/
+└── magic.json5
+MyApp2/
+└── magic.json5
+.env
+package.json
+```
 
 ## Documentation
 
@@ -53,7 +62,7 @@ This may be either a JSON or JSON5 file.
 
 If `dependencies` is present in `magic.json`, `@magicsandbox.ai/dev` will handle installing them for you by:
 
-1. Creating a basic `package.json` file using the information in `magic.json`
+1. Creating a `package.json` file using `magic.json`
 2. Running `npm install` to install the dependencies
 3. Deleting `package.json`
 

@@ -1,37 +1,41 @@
-import "dotenv/config";
 import { promises as fsPromises } from "fs";
 import * as esbuild from "esbuild";
-import JSON5 from "json5";
+import { readMagicJson, fileExists, readFile } from "./utils.js";
 import { buildApp } from "./buildApp.js";
 import path from "path";
 import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
 import { pathToFileURL } from "url";
+import { exec as _exec } from "child_process";
+import { promisify } from "util";
 
-async function buildAppLocal(folder, debug, context) {
-  let filePath = `${folder}/magic.json5`;
-  let dir = path.dirname(path.resolve(filePath));
-  const magicObj = await readJson(filePath);
-  const _fileExists = (filename) => fileExists(dir, filename);
-  const _readFile = (filename) => readFile(dir, filename);
+const exec = promisify(_exec);
+
+async function buildAppLocal({ magicPath, debug, context, prod }) {
+  const magicObj = await readMagicJson(magicPath);
+  if (magicObj.dependencies) {
+    await installDependencies(magicPath, magicObj);
+  }
+  const _fileExists = (filename) => fileExists(magicPath, filename);
+  const _readFile = (filename) => readFile(magicPath, filename);
   if (await _fileExists("tailwind.config.js")) {
     const tailwindConfig = await import(
-      pathToFileURL(path.join(dir, "tailwind.config.js"))
+      pathToFileURL(path.join(magicPath, "tailwind.config.js"))
     );
     magicObj.tailwindConfig = tailwindConfig.default;
   }
   magicObj.tailwindConfig.content = magicObj.tailwindConfig.content || [
-    `${dir.replace(/\\/g, "/")}/**/*.js`,
+    `${magicPath.replace(/\\/g, "/")}/**/*.js`,
   ];
   const { appObj, context: newContext } = await buildApp({
     appObj: magicObj,
     esbuild: esbuild,
     esbuildOptions: {
-      absWorkingDir: dir,
-      minify: process.env.NODE_ENV === "production",
-      sourcemap: !(process.env.NODE_ENV === "production"),
+      absWorkingDir: magicPath,
+      minify: prod,
+      sourcemap: !prod,
       metafile: debug,
     },
-    onComplete: debug ? (result) => saveMetafile(result, dir) : undefined,
+    onComplete: debug ? (result) => saveMetafile(result, magicPath) : undefined,
     context,
     fileExists: _fileExists,
     readFile: _readFile,
@@ -39,7 +43,7 @@ async function buildAppLocal(folder, debug, context) {
   });
   if (debug) {
     await fsPromises.writeFile(
-      path.join(dir, "_debug_app.json"),
+      path.join(magicPath, "_debug_app.json"),
       JSON.stringify(appObj, undefined, 2),
       "utf8",
     );
@@ -47,41 +51,34 @@ async function buildAppLocal(folder, debug, context) {
   return { appObj, context: newContext };
 }
 
-async function readJson(filePath) {
-  const data = await fsPromises.readFile(filePath, "utf8");
-  return JSON5.parse(data, (_, value) => {
-    if (typeof value === "string") {
-      return value.replace(/process\.env\.(\w+)/g, (_, p1) => process.env[p1]);
-    }
-    return value;
-  });
-}
-
-async function fileExists(dir, filename) {
-  try {
-    await fsPromises.access(path.join(dir, filename));
-    return true;
-  } catch {
-    return false;
+async function installDependencies(magicPath, magicObj) {
+  if (fileExists(magicPath, "package.json")) {
+    throw new Error(
+      "Cannot include dependencies in magic.json if package.json exists",
+    );
   }
-}
-async function readFile(dir, filename) {
-  return await fsPromises.readFile(path.join(dir, filename), "utf-8");
+  await fsPromises.writeFile(
+    path.join(magicPath, "package.json"),
+    JSON.stringify(magicObj, undefined, 2), //todo don't use all the keys?
+    "utf8",
+  );
+  await exec("npm install", { cwd: magicPath });
+  await fsPromises.unlink(path.join(magicPath, "package.json"));
 }
 
-async function saveMetafile(result, dir) {
+async function saveMetafile(result, magicPath) {
   if (result.metafile) {
     await fsPromises.writeFile(
-      path.join(dir, "_debug_metafile.json"),
+      path.join(magicPath, "_debug_metafile.json"),
       JSON.stringify(result.metafile),
       "utf8",
     );
     await fsPromises.writeFile(
-      path.join(dir, "_debug_metafile.txt"),
+      path.join(magicPath, "_debug_metafile.txt"),
       await esbuild.analyzeMetafile(result.metafile, { verbose: true }),
       "utf8",
     );
   }
 }
 
-export { buildAppLocal, fileExists, readFile };
+export { buildAppLocal };

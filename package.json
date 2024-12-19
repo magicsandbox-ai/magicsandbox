@@ -2,11 +2,6 @@
   "name": "@magicsandbox.ai/root",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "magicsandbox dev -d apps -p 3002",
-    "publish": "magicsandbox publish -d apps",
-    "publish-function": "magicsandbox publish -d functions"
-  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@magicsandbox.ai/dev": "file:packages/js/dev",
@@ -20,5 +15,10 @@
     "prettier": "^3.3.0",
     "prettier-plugin-tailwindcss": "^0.6.5",
     "tailwindcss": "^3.4.6"
+  },
+  "scripts": {
+    "dev": "magicsandbox dev -d apps -p 3002",
+    "publish-function": "magicsandbox publish -d functions",
+    "publish": "magicsandbox publish -d apps"
   }
 }

@@ -121,7 +121,7 @@ async function init(magicPath, isFunction = false) {
         `1. Run "npm run dev ${dirName}" to start the development server`,
       );
       console.log("2. Open https://magicsandbox.ai?app=magicsandbox.DevLocal");
-      console.log("3. Edit your App files and see changes live");
+      console.log("3. Edit your App files and see changes live\n");
     }
   } catch (error) {
     console.error("Failed to initialize:", error.message);

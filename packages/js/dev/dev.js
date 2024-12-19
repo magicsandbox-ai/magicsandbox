@@ -1,7 +1,7 @@
-import { buildAppLocal } from "../buildAppLocal.js";
+import { buildAppLocal } from "./buildAppLocal.js";
 import http from "http";
 
-export function dev(path, port, debug) {
+export function dev(magicPath, port, debug) {
   try {
     const headers = {
       "Access-Control-Allow-Origin": "http://localhost:3000", //todo update url
@@ -12,11 +12,12 @@ export function dev(path, port, debug) {
 
     const server = http.createServer(async (_, res) => {
       try {
-        const { appObj, context } = await buildAppLocal(
-          path,
+        const { appObj, context } = await buildAppLocal({
+          magicPath,
           debug,
-          contextRef.current,
-        );
+          context: contextRef.current,
+          prod: false,
+        });
         contextRef.current = context;
         res.writeHead(200, headers);
         res.end(JSON.stringify(appObj));
@@ -28,8 +29,9 @@ export function dev(path, port, debug) {
 
     server.listen(port, () => {
       console.log(
-        `magicsandbox dev server running at http://localhost:${port}`,
+        `Magic Sandbox dev server running at http://localhost:${port}`,
       );
+      console.log("Open https://magicsandbox.ai?app=magicsandbox.DevLocal");
     });
 
     return server;
