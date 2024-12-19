@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import semantic_search, dot_score
 import torch
-import semver
 import sqlite3
 import boto3
 import json
@@ -155,52 +154,8 @@ class AppData:
         ])
         self.materialize()
 
-app_embeddings = embed([d['description'] or d['name'] for d in app_data])
-
 def findApp(args: FindAppArgs):
-    #todo use maxCost
-    #todo allow appWeights to not specify version
-    #todo cross encoder: https://sbert.net/examples/applications/retrieve_rerank/README.html
-    #todo approximate nearest neighbors
-    input_embedding = embed([args.input])
-    weights = torch.ones(len(app_embeddings))
-    if args.appWeights:
-        for app, weight in args.appWeights.items():
-            if app in app_to_ix:
-                weights[app_to_ix[app]] = weight
-    weights_mask = weights > 0
-    mask = latest_mask | weights_mask
-    def weighted_score(q: torch.Tensor, c: torch.Tensor):
-        masked_weights = weights[mask]
-        return dot_score(q, c) * masked_weights
-    result = semantic_search(input_embedding, 
-                             app_embeddings[mask], 
-                             top_k=1, 
-                             score_function=weighted_score)
-    return ix_to_app[result[0][0]['corpus_id']]
+    pass
 
 def findApp_update(args: FindAppUpdateArgs):
-    global app_embeddings, ix_to_app, app_to_ix, latest, latest_mask
-    for update in args.updates: #todo handle batch better
-        ix = app_to_ix.get(update.id)
-        if ix is None and not valid_app(update):
-            continue
-        app_embedding = embed([update.description or update.name])
-        if ix is None:
-            ix = len(ix_to_app)
-            ix_to_app.append(update.id)
-            app_to_ix[update.id] = ix
-            app_embeddings = torch.cat([app_embeddings, app_embedding], dim=0)
-            latest_version = latest.get(f'{update.author}.{update.name}', '0.0.0')
-            if semver.compare(update.version, latest_version) >= 0:
-                latest[f'{update.author}.{update.name}'] = update.version
-                latest_mask[app_to_ix[f'{update.author}.{update.name}@{latest_version}']] = False
-                latest_mask = torch.cat([latest_mask, torch.tensor([True])], dim=0)
-            else:
-                latest_mask = torch.cat([latest_mask, torch.tensor([False])], dim=0)
-        else:
-            if not valid_app(update):
-                ix_to_app[ix] = None
-                app_to_ix.pop(update.id)
-            app_embeddings.index_copy_(0, torch.tensor([ix]), app_embedding)
-            #handle not valid_app
+    pass
