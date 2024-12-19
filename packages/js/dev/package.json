@@ -15,6 +15,7 @@
   "dependencies": {
     "@magicsandbox.ai/esbuild-plugin-tailwind": "file:../esbuild-plugin-tailwind",
     "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
     "es-toolkit": "^1.29.0",
     "esbuild": "0.23.0",
     "json5": "^2.2.3",

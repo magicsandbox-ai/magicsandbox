@@ -29,11 +29,17 @@ And adds the following to your `package.json`:
 }
 ```
 
-You can then run `npm run dev MyApp`, which will start a local dev server. Open [magicsandbox.ai?app=magicsandbox.DevLocal](https://magicsandbox.ai?app=magicsandbox.DevLocal) to see your App.
+You can then run `npm run dev MyApp`, which will start a local dev server. Open [magicsandbox.ai?app=magicsandbox.DevLocal](https://magicsandbox.ai?app=magicsandbox.DevLocal) to see your App and start making changes.
+
+Run `npm run magicsandbox --help` to see more command line options.
+
+## Publishing
 
 Run `npm run publish MyApp` to build and publish your App.
 
-Run `npm run magicsandbox --help` to see the command line options.
+Publishing requires an API key, which you can get [here](https://magicsandbox.ai/api-key).
+
+`@magicsandbox.ai/dev` will walk upwards from your App directory, looking for a `.env` file with a `MAGICSANDBOX_API_KEY` environment variable. If it can't find one and `process.env.MAGICSANDBOX_API_KEY` is not set, it will throw an error.
 
 ## Documentation
 
