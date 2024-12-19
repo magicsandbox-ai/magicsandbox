@@ -1,7 +1,7 @@
 /* global describe, it */
 
-import { expect } from 'chai';
-import { transformImports, transformToBundleDeps } from '../plugins.js';
+import { expect } from "chai";
+import { transformImports, transformToBundleDeps } from "../plugins.js";
 
 const pkgImports = {}; //note that transformImports updates pkgImports as a side effect, so the order of the tests is important
 
@@ -47,13 +47,13 @@ const {default: f} = __deps['pkg4'];
 const {'*': m} = __deps['pkg7'];
 console.log('rest of file2');`;
 
-describe('transformImports', () => {
-  it('should generate the correct output', () => {
+describe("transformImports", () => {
+  it("should generate the correct output", () => {
     expect(transformImports(file1, pkgImports)).to.equal(
-      expectedTransformedFile1
+      expectedTransformedFile1,
     );
     expect(transformImports(file2, pkgImports)).to.equal(
-      expectedTransformedFile2
+      expectedTransformedFile2,
     );
   });
 });
@@ -72,13 +72,13 @@ __deps['pkg3'] = {'*': __pkg3, default: __pkg3__default};
 __deps['pkg4'] = {default: __pkg4__default};
 __deps['pkg7'] = {'*': __pkg7};`;
 
-describe('transformToBundleDeps', () => {
-  it('should generate the correct output', () => {
+describe("transformToBundleDeps", () => {
+  it("should generate the correct output", () => {
     expect(transformToBundleDeps(pkgImports)).to.equal(expectedBundleDeps);
   });
 });
 
-//cd src/magics/apps/Develop
+//cd apps/Develop
 //npx mocha
 //todo test fetch dynamic import
 

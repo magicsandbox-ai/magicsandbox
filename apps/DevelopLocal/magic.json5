@@ -1,0 +1,7 @@
+{
+  name: "DevelopLocal",
+  version: "0.1.0",
+  tailwindConfig: {
+    content: ["apps/DevelopLocal/**/*.js", "apps/Develop/Preview.js"],
+  },
+}

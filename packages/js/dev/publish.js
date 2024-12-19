@@ -12,16 +12,13 @@ await Promise.all(process.argv.slice(2).map((folder) => publish(folder, true)));
 async function publish(folder, debug) {
   let magicObj, kind;
   try {
-    ({ appObj: magicObj } = await buildAppLocal(
-      `src/magics/apps/${folder}`,
-      debug,
-    ));
+    ({ appObj: magicObj } = await buildAppLocal(`apps/${folder}`, debug));
     kind = "app";
   } catch (error) {
     if (error.code !== "ENOENT") {
       throw error;
     }
-    const filePath = `src/magics/functions/${folder}/magic.json5`;
+    const filePath = `functions/${folder}/magic.json5`;
     const dir = path.dirname(path.resolve(filePath));
     try {
       magicObj = await readJson(filePath);

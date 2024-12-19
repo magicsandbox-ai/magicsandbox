@@ -39,7 +39,7 @@ async function buildAppLocal(folder, debug, context) {
   });
   if (debug) {
     await fsPromises.writeFile(
-      path.join(dir, "app.json"),
+      path.join(dir, "_debug_app.json"),
       JSON.stringify(appObj, undefined, 2),
       "utf8",
     );
@@ -72,12 +72,12 @@ async function readFile(dir, filename) {
 async function saveMetafile(result, dir) {
   if (result.metafile) {
     await fsPromises.writeFile(
-      path.join(dir, "metafile.json"),
+      path.join(dir, "_debug_metafile.json"),
       JSON.stringify(result.metafile),
       "utf8",
     );
     await fsPromises.writeFile(
-      path.join(dir, "metafile.txt"),
+      path.join(dir, "_debug_metafile.txt"),
       await esbuild.analyzeMetafile(result.metafile, { verbose: true }),
       "utf8",
     );

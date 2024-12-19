@@ -1,3 +1,4 @@
 .env
 **/node_modules/
 packages/js/tailwind-browser/dist/index.js
+**/_debug_*

@@ -64,7 +64,11 @@ const debounce = (callback, wait) => {
 };
 
 const exampleFiles = {
-  "magic.json": JSON.stringify({ name: "example", version: "0.1.0" }),
+  "magic.json": `{
+  name: '',
+  version: '0.1.0',
+  description: '',
+}`,
   "index.js": `import React from "react";
 import { createRoot } from "react-dom/client";
 
