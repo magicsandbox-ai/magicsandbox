@@ -14,3 +14,11 @@ return StreamingResponse(
   headers={'x-length-prefix': 'true'}
 )
 ```
+
+## Local Development
+
+```
+pip install -e packages/python/magicsandbox_streaming
+python
+from magicsandbox_streaming import length_prefix_transform
+```
