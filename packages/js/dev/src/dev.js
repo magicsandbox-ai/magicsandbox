@@ -8,20 +8,20 @@ export function dev(magicPath, port, debug) {
       "Content-Type": "application/json",
     };
 
-    const contextRef = { current: undefined };
+    const contextRef = { current: {} };
 
     const server = http.createServer(async (_, res) => {
       try {
-        const { appObj, context } = await buildAppLocal({
+        const { appObj } = await buildAppLocal({
           magicPath,
           debug,
-          context: contextRef.current,
+          contextRef,
           prod: false,
         });
-        contextRef.current = context;
         res.writeHead(200, headers);
         res.end(JSON.stringify(appObj));
       } catch (error) {
+        console.error(error);
         res.writeHead(500, headers);
         res.end(JSON.stringify({ error: error.message }));
       }

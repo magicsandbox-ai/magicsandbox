@@ -7,14 +7,26 @@ import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
 import { pathToFileURL } from "url";
 import { exec as _exec } from "child_process";
 import { promisify } from "util";
+import { isEqual } from "es-toolkit";
 
 const exec = promisify(_exec);
 
-async function buildAppLocal({ magicPath, debug, context, prod }) {
+async function buildAppLocal({ magicPath, debug, contextRef, prod }) {
+  const now = new Date();
+  let log = () => {};
+  // if (debug) {
+  //   log = console.log;
+  // }
   const magicObj = await readMagicJson(magicPath);
-  if (magicObj.dependencies) {
+  log(new Date() - now, "readMagicJson");
+  if (
+    magicObj.dependencies &&
+    !isEqual(magicObj.dependencies, contextRef.current.dependencies)
+  ) {
     await installDependencies(magicPath, magicObj);
   }
+  contextRef.current.dependencies = magicObj.dependencies;
+  log(new Date() - now, "installDependencies");
   const _fileExists = (filename) => fileExists(magicPath, filename);
   const _readFile = (filename) => readFile(magicPath, filename);
   if (await _fileExists("tailwind.config.js")) {
@@ -23,10 +35,15 @@ async function buildAppLocal({ magicPath, debug, context, prod }) {
     );
     magicObj.tailwindConfig = tailwindConfig.default;
   }
-  magicObj.tailwindConfig.content = magicObj.tailwindConfig.content || [
-    `${magicPath.replace(/\\/g, "/")}/**/*.js`,
-  ];
-  const { appObj, context: newContext } = await buildApp({
+  magicObj.tailwindConfig = {
+    content: magicObj.tailwindConfig?.content || [
+      `${magicPath.replace(/\\/g, "/")}/**/*.{html,js,jsx,ts,tsx}`,
+      "!./node_modules",
+    ],
+    ...magicObj.tailwindConfig,
+  };
+  log(new Date() - now, "tailwindConfig");
+  const { appObj, context } = await buildApp({
     appObj: magicObj,
     esbuild: esbuild,
     esbuildOptions: {
@@ -36,11 +53,15 @@ async function buildAppLocal({ magicPath, debug, context, prod }) {
       metafile: debug,
     },
     onComplete: debug ? (result) => saveMetafile(result, magicPath) : undefined,
-    context,
+    context: contextRef.current.context,
     fileExists: _fileExists,
     readFile: _readFile,
     processTailwind,
+    now,
+    log,
   });
+  contextRef.current.context = context;
+  log(new Date() - now, "buildApp");
   if (debug) {
     await fsPromises.writeFile(
       path.join(magicPath, "_debug_app.json"),
@@ -48,11 +69,11 @@ async function buildAppLocal({ magicPath, debug, context, prod }) {
       "utf8",
     );
   }
-  return { appObj, context: newContext };
+  return { appObj };
 }
 
 async function installDependencies(magicPath, magicObj) {
-  if (fileExists(magicPath, "package.json")) {
+  if (await fileExists(magicPath, "package.json")) {
     throw new Error(
       "Cannot include dependencies in magic.json if package.json exists",
     );

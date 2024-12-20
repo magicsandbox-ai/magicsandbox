@@ -37,7 +37,10 @@ async function buildApp({
   fileExists,
   readFile,
   processTailwind,
+  now,
+  log = () => {},
 }) {
+  now = now || new Date();
   appObj = getDefaults(appObj, esbuildOptions);
   await handleShared(appObj, fileExists, readFile);
   if (!appObj.script && (await fileExists(appObj.scriptFile))) {
@@ -51,6 +54,7 @@ async function buildApp({
     await onComplete(result, appObj);
     appObj.script = result.outputFiles[0].text;
   }
+  log(new Date() - now, "esbuild");
   await maybeReadFile(appObj, "html", fileExists, readFile);
   const { processedCss } = await runProcessTailwind(
     appObj,
@@ -58,6 +62,7 @@ async function buildApp({
     readFile,
     processTailwind,
   );
+  log(new Date() - now, "processTailwind");
   appObj.style = processedCss;
   appObj = postBuildSchema.parse(appObj);
   return { appObj, context };

@@ -17,6 +17,7 @@
     "tailwindcss": "^3.4.6"
   },
   "scripts": {
+    "init": "magicsandbox init -d apps",
     "dev": "magicsandbox dev -d apps -p 3002",
     "publish-function": "magicsandbox publish -d functions",
     "publish": "magicsandbox publish -d apps"

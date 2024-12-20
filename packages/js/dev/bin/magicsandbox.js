@@ -26,8 +26,8 @@ program
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("-p, --port <number>", "Port to run dev server on", "3000")
   .option("--debug", "Debug build")
-  .action(async (appPath, options) => {
-    await dev(
+  .action((appPath, options) => {
+    dev(
       handlePath(appPath, options.dir),
       parseInt(options.port),
       options.debug,
