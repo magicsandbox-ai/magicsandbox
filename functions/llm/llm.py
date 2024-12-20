@@ -6,11 +6,7 @@ from fastapi import HTTPException
 from litellm import acompletion, model_cost
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse
-from magicsandbox_streaming import length_prefix_transform
-
-os.environ['ANTHROPIC_API_KEY'] = os.getenv('ANTHROPIC_API_KEY')
-os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
-os.environ["GEMINI_API_KEY"] = os.getenv('GEMINI_API_KEY')
+from magicsandbox_streaming import length_prefix_transform #type: ignore
 
 gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
 gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002')
