@@ -124,7 +124,7 @@ async function init(magicPath, isFunction = false) {
       console.log("3. Edit your App files and see changes live\n");
     }
   } catch (error) {
-    console.error("Failed to initialize:", error.message);
+    console.error("Failed to initialize:", error);
     process.exit(1);
   }
 }

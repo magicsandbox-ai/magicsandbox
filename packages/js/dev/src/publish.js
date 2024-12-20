@@ -48,8 +48,9 @@ async function publish(magicPath, debug) {
       throw new Error(`Error: ${response.status} ${errorMessage}`);
     }
     console.log("Published successfully");
+    process.exit(0); //think this is needed because esbuild keeps the process alive
   } catch (error) {
-    console.error("Failed to publish:", error.message);
+    console.error("Failed to publish:", error);
     process.exit(1);
   }
 }

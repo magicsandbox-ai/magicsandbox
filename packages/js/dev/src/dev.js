@@ -36,7 +36,7 @@ export function dev(magicPath, port, debug) {
 
     return server;
   } catch (error) {
-    console.error("Failed to start dev server:", error.message);
+    console.error("Failed to start dev server:", error);
     process.exit(1);
   }
 }

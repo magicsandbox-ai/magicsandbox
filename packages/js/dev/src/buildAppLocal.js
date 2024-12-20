@@ -11,7 +11,12 @@ import { isEqual } from "es-toolkit";
 
 const exec = promisify(_exec);
 
-async function buildAppLocal({ magicPath, debug, contextRef, prod }) {
+async function buildAppLocal({
+  magicPath,
+  debug,
+  contextRef = { current: {} },
+  prod,
+}) {
   const now = new Date();
   let log = () => {};
   // if (debug) {
@@ -80,7 +85,14 @@ async function installDependencies(magicPath, magicObj) {
   }
   await fsPromises.writeFile(
     path.join(magicPath, "package.json"),
-    JSON.stringify(magicObj, undefined, 2), //todo don't use all the keys?
+    JSON.stringify(
+      {
+        ...magicObj,
+        private: true, //prevent accidental publishing to npm
+      },
+      undefined,
+      2,
+    ), //todo don't use all the keys?
     "utf8",
   );
   await exec("npm install", { cwd: magicPath });
