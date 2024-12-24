@@ -3,8 +3,6 @@
     "id": 1,
     "priority": 1,
     "action": { "type": "allow" },
-    "condition": {
-      "initiatorDomains": ["sandbox.magicsandbox.ai", "localhost"]
-    }
+    "condition": {}
   }
 ]

@@ -3,7 +3,11 @@
   "name": "Magic Sandbox",
   "version": "0.1.0",
   "description": "Provides additional security when using magicsandbox.ai",
-  "host_permissions": ["https://magicsandbox.ai/*", "http://localhost:3000/*"],
+  "host_permissions": [
+    "https://magicsandbox.ai/*",
+    "http://localhost:3000/*",
+    "http://localhost:3001/*"
+  ],
   "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback"],
   "declarative_net_request": {
     "rule_resources": [
