@@ -31,7 +31,7 @@ And adds the following to your `package.json`:
 
 You can then run `npm run dev MyApp`, which will start a local dev server. Open [magicsandbox.ai?app=magicsandbox.DevLocal](https://magicsandbox.ai?app=magicsandbox.DevLocal) to see your App and start making changes.
 
-Run `npm run magicsandbox --help` to see more command line options.
+Run `npx magicsandbox --help` to see more command line options.
 
 ## Publishing
 
