@@ -208,8 +208,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 - Includes headers:
   - `Content-Type: application/json`
   - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`.
-- Includes the body `{ requestId, fn, args, options, userId? }`, where:
-  - `requestId: string` is a unique identifier for the request
+- Includes the body `{ fn, args, options, userInfo? }`, where:
   - `fn`, `args`, `options` were the arguments to [requestFunction](todo)
   - `userInfo` (object): See below type. Included if `options.includeUserInfo` is true
 
@@ -315,7 +314,6 @@ From your endpoint, you can call requestFunction by:
 - Making a POST request to magicsandbox.ai/endpoint-request-function
 - Authenticating using an [API key](todo)
 - Including in the body:
-  - `requestId`: the requestId that was included in the POST request to your endpoint
   - `fn`, `args`, `options`: the arguments to requestFunction
 
 ## Storing and Retrieving Data

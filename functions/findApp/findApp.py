@@ -85,7 +85,7 @@ class AppData:
     
     def get_app_data(self):
         s3 = boto3.client('s3')
-        response = s3.get_object(Bucket=os.getenv('S3_MAGICS_BUCKET_NAME'), Key='magics.json')
+        response = s3.get_object(Bucket=os.getenv('S3_ASSETS_BUCKET_NAME'), Key='magics/magics.json')
         return json.loads(response['Body'].read().decode('utf-8'))
 
     def materialize(self):
