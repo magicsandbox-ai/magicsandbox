@@ -26,6 +26,7 @@ async function publish(magicPath, debug) {
       }));
     }
     const response = await fetch(
+      //todo url
       encodeURI(
         `${process.env.MAIN_URL}/publish?kind=${kind}&name=${magicObj.name}&version=${magicObj.version}`,
       ),
