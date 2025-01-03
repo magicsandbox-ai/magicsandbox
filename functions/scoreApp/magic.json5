@@ -1,5 +1,5 @@
 {
   name: "scoreApp",
   version: "0.0.1",
-  endpoint: "process.env.ENDPOINT_URL/scoreApp",
+  endpoint: "https://magicsandbox.ai/endpoint/scoreApp",
 }

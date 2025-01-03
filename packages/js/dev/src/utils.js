@@ -19,12 +19,7 @@ async function readMagicJson(magicPath) {
       "utf8",
     );
   }
-  return JSON5.parse(data, (_, value) => {
-    if (typeof value === "string") {
-      return value.replace(/process\.env\.(\w+)/g, (_, p1) => process.env[p1]); //todo kill this?
-    }
-    return value;
-  });
+  return JSON5.parse(data);
 }
 
 async function fileExists(dir, filename) {

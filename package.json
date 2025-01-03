@@ -19,7 +19,9 @@
   "scripts": {
     "init": "magicsandbox init -d apps",
     "dev": "magicsandbox dev -d apps -p 3002",
-    "publish-function": "magicsandbox publish -d functions",
-    "publish": "magicsandbox publish -d apps"
+    "publish-function": "magicsandbox publish -d functions --url http://localhost:3000",
+    "publish": "magicsandbox publish -d apps --url http://localhost:3000",
+    "publish-function:prod": "magicsandbox publish -d functions",
+    "publish:prod": "magicsandbox publish -d apps"
   }
 }

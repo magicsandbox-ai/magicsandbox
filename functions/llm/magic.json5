@@ -2,7 +2,7 @@
   name: "llm",
   version: "0.1.0",
   description: "",
-  endpoint: "process.env.ENDPOINT_URL/llm",
+  endpoint: "https://magicsandbox.ai/endpoint/llm",
   stream: true,
   decode: "string",
 }

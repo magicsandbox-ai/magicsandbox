@@ -1,10 +1,8 @@
-import os
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import semantic_search, dot_score
 import torch
 import sqlite3
-import boto3
 import json
 
 '''
@@ -82,11 +80,6 @@ class AppData:
         ])
         self.materialize()
         self.embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-    
-    def get_app_data(self):
-        s3 = boto3.client('s3')
-        response = s3.get_object(Bucket=os.getenv('S3_ASSETS_BUCKET'), Key='magics/magics.json')
-        return json.loads(response['Body'].read().decode('utf-8'))
 
     def materialize(self):
         cur = self.con.cursor()

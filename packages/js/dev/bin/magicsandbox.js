@@ -43,8 +43,9 @@ program
   )
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--debug", "Debug build")
+  .option("--url <url>", "URL to publish to", "https://magicsandbox.ai")
   .action(async (appPath, options) => {
-    await publish(handlePath(appPath, options.dir), options.debug);
+    await publish(handlePath(appPath, options.dir), options.debug, options.url);
   });
 
 program.parse();

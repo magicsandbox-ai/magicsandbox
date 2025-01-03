@@ -3,7 +3,7 @@ import { readMagicJson, fileExists, readFile } from "./utils.js";
 import { handleShared } from "./buildApp.js";
 import { buildAppLocal } from "./buildAppLocal.js";
 
-async function publish(magicPath, debug) {
+async function publish(magicPath, debug, url) {
   try {
     if (!process.env.MAGICSANDBOX_API_KEY) {
       throw new Error("Environment variable MAGICSANDBOX_API_KEY is not set");
@@ -26,9 +26,8 @@ async function publish(magicPath, debug) {
       }));
     }
     const response = await fetch(
-      //todo url
       encodeURI(
-        `${process.env.MAIN_URL}/publish?kind=${kind}&name=${magicObj.name}&version=${magicObj.version}`,
+        `${url}/publish?kind=${kind}&name=${magicObj.name}&version=${magicObj.version}`,
       ),
       {
         method: "POST",
