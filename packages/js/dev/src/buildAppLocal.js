@@ -34,25 +34,32 @@ async function buildAppLocal({
   log(new Date() - now, "installDependencies");
   const _fileExists = (filename) => fileExists(magicPath, filename);
   const _readFile = (filename) => readFile(magicPath, filename);
+  let tailwindPath;
   if (await _fileExists("tailwind.config.js")) {
+    tailwindPath = "tailwind.config.js";
+  } else if (await _fileExists("tailwind.config.mjs")) {
+    tailwindPath = "tailwind.config.mjs";
+  }
+  if (tailwindPath) {
     const tailwindConfig = await import(
-      pathToFileURL(path.join(magicPath, "tailwind.config.js"))
+      pathToFileURL(path.join(magicPath, tailwindPath))
     );
     magicObj.tailwindConfig = tailwindConfig.default;
   }
   magicObj.tailwindConfig = {
     content: magicObj.tailwindConfig?.content || [
       `${magicPath.replace(/\\/g, "/")}/**/*.{html,js,jsx,ts,tsx}`,
-      "!./node_modules",
     ],
     ...magicObj.tailwindConfig,
   };
+  magicObj.tailwindConfig.content.push("!**/node_modules/**");
   log(new Date() - now, "tailwindConfig");
   const { appObj, context } = await buildApp({
     appObj: magicObj,
     esbuild: esbuild,
     esbuildOptions: {
       absWorkingDir: magicPath,
+      nodePaths: [path.join(magicPath, "node_modules")],
       minify: prod,
       sourcemap: !prod,
       metafile: debug,

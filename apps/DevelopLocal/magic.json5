@@ -4,4 +4,7 @@
   tailwindConfig: {
     content: ["apps/DevelopLocal/**/*.js", "apps/Develop/Preview.js"],
   },
+  dependencies: {
+    "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+  },
 }

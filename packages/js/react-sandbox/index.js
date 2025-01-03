@@ -72,7 +72,7 @@ const Sandbox = forwardRef(function Sandbox(
     loadedRef.current.catch(() => {});
     //use Date.now to make URL unique - needed to prevent infinite recursion
     //see: https://www.bryanbraun.com/2021/03/24/infinitely-nested-iframes/
-    frameRef.current.src = `${url ? url : ""}/sandbox.html?${Date.now()}`;
+    frameRef.current.src = `${url ? url : ""}/public/sandbox.html?${Date.now()}`;
     if (onLoad) {
       onLoad();
     }

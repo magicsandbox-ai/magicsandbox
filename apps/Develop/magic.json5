@@ -19,4 +19,7 @@
   tailwindConfig: {
     content: ["apps/Develop/**/*.js", "components/**/*.js"],
   },
+  dependencies: {
+    "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+  },
 }

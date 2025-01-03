@@ -68,24 +68,24 @@ Note that magicsandbox.Develop does not support glob patterns for `content` but 
 };
 ```
 
-`tailwindConfig` is simply an object, so it doesn't support all of Tailwind's configuration options. Rather than supplying `tailwindConfig` in `magic.json`, you can also create a `tailwind.config.js` file. This enables advanced features like `plugins`, `presets`, and `content.transform` that require the config to be evaluated as JavaScript:
+`tailwindConfig` is simply an object, so it doesn't support all of Tailwind's configuration options. Rather than supplying `tailwindConfig` in `magic.json`, you can also create a `tailwind.config.js` or `tailwind.config.mjs` file. This enables advanced features like `plugins`, `presets`, and `content.transform` that require the config to be evaluated as JavaScript:
 
 ```javascript
-import typography from '@tailwindcss/typography';
+import typography from "@tailwindcss/typography";
 
 export default {
   plugins: [typography],
 };
 ```
 
-`tailwindConfig` is not used if `tailwind.config.js` is present.
+`tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
 ### dependencies (object)
 
 Version ranges to use for the packages you import. magicsandbox.Develop supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
 
 ```javascript
-import React from 'react@^18';
+import React from "react@^18";
 ```
 
 However, if you import a package across multiple files, it can be easier to manage the version in `magic.json` using the `dependencies` key:
