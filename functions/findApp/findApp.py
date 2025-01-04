@@ -4,7 +4,8 @@ from sentence_transformers.util import semantic_search, dot_score
 import torch
 import sqlite3
 import json
-
+import os
+import requests
 '''
 embeddings
 updated embeddings
@@ -80,6 +81,15 @@ class AppData:
         ])
         self.materialize()
         self.embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
+    def get_app_data(self):
+        if os.getenv('NODE_ENV') == 'production':
+            url = 'https://magicsandbox.ai/magics'
+        else:
+            url = 'http://localhost:3001/magics'
+        headers = {'Authorization': f'Bearer {os.getenv("MAGICSANDBOX_API_KEY")}'}
+        response = requests.get(url, headers=headers, timeout=30)
+        return response.json()
 
     def materialize(self):
         cur = self.con.cursor()

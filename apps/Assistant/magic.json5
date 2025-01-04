@@ -5,6 +5,10 @@
   esbuildOptions: {
     minify: true,
     sourcemap: false,
+    //the dependencies for components are in node_modules
+    //but node_modules is not a parent of components
+    //so we need to add node_modules to nodePaths
+    nodePaths: ["./node_modules"],
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",

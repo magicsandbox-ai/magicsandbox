@@ -59,7 +59,6 @@ async function buildAppLocal({
     esbuild: esbuild,
     esbuildOptions: {
       absWorkingDir: magicPath,
-      nodePaths: [path.join(magicPath, "node_modules")],
       minify: prod,
       sourcemap: !prod,
       metafile: debug,

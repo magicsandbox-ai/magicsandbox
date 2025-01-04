@@ -1,4 +1,3 @@
-import os
 import json
 from math import floor
 from pydantic import BaseModel
