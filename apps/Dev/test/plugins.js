@@ -78,7 +78,7 @@ describe("transformToBundleDeps", () => {
   });
 });
 
-//cd apps/Develop
+//cd apps/Dev
 //npx mocha
 //todo test fetch dynamic import
 

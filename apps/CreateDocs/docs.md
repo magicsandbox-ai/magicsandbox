@@ -119,7 +119,7 @@ function render() {
 
 render(); //initial render
 
-export { context, api, render }; //magicsandbox.Develop handles assigning these to the global app object for you during the build process
+export { context, api, render }; //magicsandbox.Dev handles assigning these to the global app object for you during the build process
 ```
 
 Now here's what happens if a user submits '!magic make it say "Goodbye!"':
@@ -133,7 +133,7 @@ Now here's what happens if a user submits '!magic make it say "Goodbye!"':
 todo details on how to provide context
 todo details on how to expose api
 todo add example
-todo explain magicsandbox.Develop/esbuild/globalName
+todo explain magicsandbox.Dev/esbuild/globalName
 
 if render errors, Assistant resets app.api and calls render
 
@@ -157,13 +157,13 @@ try {
 
 You can publish Magic Apps and Functions in two ways:
 
-### Using an app like magicsandbox.Develop
+### Using an app like magicsandbox.Dev
 
-magicsandbox.Develop is a convenient way to create and publish Magic Apps. It handles the build process for you, provides a live preview so you can test your App as you develop, and includes a button for easy publishing. See [the magicsandbox.Develop documentation](todo) for more details.
+magicsandbox.Dev is a convenient way to create and publish Magic Apps. It handles the build process for you, provides a live preview so you can test your App as you develop, and includes a button for easy publishing. See [the magicsandbox.Dev documentation](todo) for more details.
 
 magicsandbox.PublishFunction is a simple interface for publishing Magic Functions.
 
-Behind the scenes, magicsandbox.Develop and magicsandbox.PublishFunction call [requestPublish](todo), which we'll cover later.
+Behind the scenes, magicsandbox.Dev and magicsandbox.PublishFunction call [requestPublish](todo), which we'll cover later.
 
 ### Making a POST request to magicsandbox.ai/publish
 

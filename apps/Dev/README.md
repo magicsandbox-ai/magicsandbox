@@ -1,6 +1,6 @@
-# magicsandbox.Develop
+# magicsandbox.Dev
 
-magicsandbox.Develop helps you create and publish Magic Apps. It includes:
+magicsandbox.Dev helps you create and publish Magic Apps. It includes:
 
 - A code editor to develop and configure your App
 - An automated and preconfigured build process using esbuild and Tailwind
@@ -8,11 +8,11 @@ magicsandbox.Develop helps you create and publish Magic Apps. It includes:
 - An AI chat to help with development
 - A button for easy publishing
 
-In the code editor, you'll see a `magic.json` file. This is your Magic App JSON described in the [docs](todo). It accepts all of the Magic App keys (`name`, `version`, `script`, etc.) described in the docs, but it also allows some additional keys. magicsandbox.Develop also provides different default values for `html` and `style`.
+In the code editor, you'll see a `magic.json` file. This is your Magic App JSON described in the [docs](todo). It accepts all of the Magic App keys (`name`, `version`, `script`, etc.) described in the docs, but it also allows some additional keys. magicsandbox.Dev also provides different default values for `html` and `style`.
 
 ## magic.json file
 
-This section lists the additional keys in `magic.json` that magicsandbox.Develop supports and details the different default values for `html` and `style`.
+This section lists the additional keys in `magic.json` that magicsandbox.Dev supports and details the different default values for `html` and `style`.
 
 ### args ({ input: string, budget: number })
 
@@ -30,7 +30,7 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
 {
   entryPoints: [scriptFile], //cannot be overridden
   write: false, //cannot be overridden
-  plugins: [magicsandbox.Develop.customPlugins], //cannot be overridden
+  plugins: [magicsandbox.Dev.customPlugins], //cannot be overridden
   bundle: true,
   globalName: 'app', //assigns exports (i.e. context, api, render) to this global variable
   loader: { '.js': 'jsx' },
@@ -42,7 +42,7 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
 
 ### html (string) (default '<div id="root"></div>')
 
-Unlike when publishing to Magic Sandbox directly, magicsandbox.Develop provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
+Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
 
 ### htmlFile (string) (default 'index.html')
 
@@ -50,7 +50,7 @@ Filename containing `html` code, defaults to `index.html`. Editing this file is 
 
 ### style (string) (default '@tailwind base; @tailwind components; @tailwind utilities;')
 
-Unlike when publishing to Magic Sandbox directly, magicsandbox.Develop provides a default value for `style`, assuming you're using Tailwind if you don't specify `style` or have a `styleFile`.
+Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `style`, assuming you're using Tailwind if you don't specify `style` or have a `styleFile`.
 
 ### styleFile (string) (default 'index.css')
 
@@ -60,7 +60,7 @@ Filename containing `style` code, defaults to `index.css`. Editing this file is 
 
 Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo).
 
-Note that magicsandbox.Develop does not support glob patterns for `content` but instead accepts an array of regex patterns. The default value below will match any file ending in `.js`, `.jsx`, or `.html` and work for most use cases:
+Note that magicsandbox.Dev does not support glob patterns for `content` but instead accepts an array of regex patterns. The default value below will match any file ending in `.js`, `.jsx`, or `.html` and work for most use cases:
 
 ```javascript
 {
@@ -82,7 +82,7 @@ export default {
 
 ### dependencies (object)
 
-Version ranges to use for the packages you import. magicsandbox.Develop supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
+Version ranges to use for the packages you import. magicsandbox.Dev supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
 
 ```javascript
 import React from "react@^18";
@@ -102,7 +102,7 @@ todo dependencies takes precedence over the version ranges specified in the impo
 
 ### overrides (object)
 
-Version ranges to use for all imports, enabling you to override the dependencies of your dependencies. If you're familiar with the behavior of `overrides` in npm, note that magicsandbox.Develop currently supports only a subset of the functionality that npm does:
+Version ranges to use for all imports, enabling you to override the dependencies of your dependencies. If you're familiar with the behavior of `overrides` in npm, note that magicsandbox.Dev currently supports only a subset of the functionality that npm does:
 
 ```javascript
 {
@@ -139,7 +139,7 @@ how to debug/sourcemaps
 
 ### Peer Dependencies
 
-magicsandbox.Develop handles peer dependencies differently than npm. Consider the following dependency graph:
+magicsandbox.Dev handles peer dependencies differently than npm. Consider the following dependency graph:
 
 ```
 root -> (peer@1, dep1, dep2)
@@ -159,7 +159,7 @@ root
       +-- dep3
 ```
 
-magicsandbox.Develop currently takes a simplified approach, assuming a package marked as a peer dependency should only resolve to a single version throughout the tree. It will create the following tree and emit a warning that dep2's and dep3's version ranges for peer@2 are ignored:
+magicsandbox.Dev currently takes a simplified approach, assuming a package marked as a peer dependency should only resolve to a single version throughout the tree. It will create the following tree and emit a warning that dep2's and dep3's version ranges for peer@2 are ignored:
 
 ```
 root

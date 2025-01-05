@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import Preview from "../Develop/Preview.js";
+import Preview from "../Dev/Preview.js";
 import { Toasts } from "@components/Toasts.js";
 import { Loader } from "lucide-react";
 
@@ -46,7 +46,7 @@ function App() {
     }
   }
 
-  //todo a lot of this is duplicated in Develop
+  //todo a lot of this is duplicated in Dev
   const buttonStyle =
     "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
 

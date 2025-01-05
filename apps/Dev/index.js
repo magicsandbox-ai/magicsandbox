@@ -149,17 +149,14 @@ function App() {
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
     let initApps, initSelectedApp, initFiles;
     try {
-      initApps = await requestGetAllKeysData("magicsandbox.Develop");
+      initApps = await requestGetAllKeysData("magicsandbox.Dev");
       initApps = initApps.filter((key) => key !== "selectedApp");
       if (initApps.length === 0) {
         throw new Error(); //fall back to examples
       }
-      initSelectedApp = await requestGetData(
-        "magicsandbox.Develop",
-        "selectedApp",
-      );
+      initSelectedApp = await requestGetData("magicsandbox.Dev", "selectedApp");
       initSelectedApp = initSelectedApp || initApps[0];
-      initFiles = await requestGetData("magicsandbox.Develop", initSelectedApp);
+      initFiles = await requestGetData("magicsandbox.Dev", initSelectedApp);
       if (!initFiles) {
         initApps.push(exampleApp);
         initSelectedApp = exampleApp;
@@ -342,12 +339,12 @@ function App() {
         console.error(`Prettier error: ${error}`);
       }
     }
-    requestPutData("magicsandbox.Develop", app, newFiles); //todo handle database full
+    requestPutData("magicsandbox.Dev", app, newFiles); //todo handle database full
     await build();
     if (!apps.includes(app)) {
       setApps([app, ...apps]);
       setSelectedApp(app);
-      requestPutData("magicsandbox.Develop", "selectedApp", app);
+      requestPutData("magicsandbox.Dev", "selectedApp", app);
     }
   }
 
@@ -357,11 +354,11 @@ function App() {
       if (appsFilesMapRef.current[app]) {
         newFiles = appsFilesMapRef.current[app];
       } else {
-        newFiles = await requestGetData("magicsandbox.Develop", app);
+        newFiles = await requestGetData("magicsandbox.Dev", app);
       }
       setFiles(newFiles);
       setSelectedApp(app);
-      requestPutData("magicsandbox.Develop", "selectedApp", app);
+      requestPutData("magicsandbox.Dev", "selectedApp", app);
       handleSelectFilename("magic.json", app);
       deletedFilesRef.current = {};
     } catch (error) {
@@ -372,14 +369,14 @@ function App() {
   async function deleteApp(app) {
     const newApps = apps.filter((a) => a !== app);
     if (newApps.length === 0) {
-      await requestDeleteData("magicsandbox.Develop", app);
+      await requestDeleteData("magicsandbox.Dev", app);
       const { initSelectedApp } = initData(); //get default example
       handleSelectApp(initSelectedApp);
       setApps([initSelectedApp]);
     } else {
       setApps(newApps);
       handleSelectApp(newApps[0]);
-      requestDeleteData("magicsandbox.Develop", app);
+      requestDeleteData("magicsandbox.Dev", app);
     }
   }
 

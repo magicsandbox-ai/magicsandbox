@@ -1,5 +1,5 @@
 {
-  name: "Develop",
+  name: "Dev",
   version: "0.1.0",
   description: "Develop a Magic Sandbox app or function in the browser",
   esbuildOptions: {
@@ -21,7 +21,7 @@
     nodePaths: ["./node_modules"],
   },
   tailwindConfig: {
-    content: ["apps/Develop/**/*.js", "components/**/*.js"],
+    content: ["apps/Dev/**/*.js", "components/**/*.js"],
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",

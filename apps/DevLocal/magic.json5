@@ -1,8 +1,8 @@
 {
-  name: "DevelopLocal",
+  name: "DevLocal",
   version: "0.1.0",
   tailwindConfig: {
-    content: ["apps/DevelopLocal/**/*.js", "apps/Develop/Preview.js"],
+    content: ["apps/DevLocal/**/*.js", "apps/Dev/Preview.js"],
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
