@@ -4,8 +4,8 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import Sandbox from "@magicsandbox.ai/react-sandbox";
-import requestHandler from "./requestHandler.js";
+import { Sandbox } from "./Sandbox.js";
+import { requestHandler } from "./requestHandler.js";
 
 const Preview = forwardRef(function Preview({ className }, ref) {
   const sandboxRef = useRef(null);
@@ -62,4 +62,4 @@ const Preview = forwardRef(function Preview({ className }, ref) {
   );
 });
 
-export default Preview;
+export { Preview };

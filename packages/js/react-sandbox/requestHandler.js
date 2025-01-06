@@ -1,8 +1,64 @@
 /* global requestSandbox */
 
-import { validateAndDefaultRequest } from "@utils.js";
+const minimumMinCost = 0.001;
 
-export default async function requestHandler({
+/**
+ * Validates the request and adds default values by mutating `data`
+ */
+function validateAndDefaultRequest(request, data, assistant) {
+  const requiredKeys = {
+    app: ["app"],
+    function: ["fn", "args"],
+    putData: ["app", "key", "val"],
+    deleteData: ["app", "key"],
+    getData: ["app", "key"],
+    getAllData: ["app"],
+    getAllKeysData: ["app"],
+    fetch: ["resource"],
+    openUrl: ["url"],
+    publish: ["magicObj"],
+    download: ["options"],
+    urlParams: [],
+  };
+  if (assistant) {
+    delete requiredKeys.urlParams; //assistants should not allow access to urlParams
+    delete data?.options?.backup; //assistants should not allow access to backup storage
+  }
+  if (!(request in requiredKeys)) {
+    return "Invalid request";
+  }
+  data = data || {};
+  const missingKeys = requiredKeys[request].filter(
+    (key) => data[key] === undefined,
+  );
+  if (missingKeys.length > 0) {
+    return `Missing required keys: ${missingKeys.join(", ")}`;
+  }
+  if (request === "app") {
+    data.options = {
+      maxCost: data.options?.maxCost || minimumMinCost,
+    };
+  } else if (request === "function") {
+    data.options = {
+      maxCost: data.options?.maxCost || minimumMinCost,
+      stream: data.options?.stream || false,
+      includeUserInfo: data.options?.includeUserInfo || false,
+    };
+  } else if (request === "fetch") {
+    data.options = {
+      ...data.options,
+      responseType: data.options?.responseType || "auto",
+    };
+  } else if (request === "download") {
+    if (
+      !(data.options.filename && (data.options.url || data.options.content))
+    ) {
+      return "filename and either url or content are required";
+    }
+  }
+}
+
+async function requestHandler({
   event,
   sandboxRef,
   appObjRef,
@@ -106,3 +162,5 @@ export default async function requestHandler({
     console.error(error);
   }
 }
+
+export { validateAndDefaultRequest, requestHandler };

@@ -24,6 +24,26 @@
     content: ["apps/Dev/**/*.js", "components/**/*.js"],
   },
   dependencies: {
+    "@magicsandbox.ai/dev": "file:../../packages/js/dev",
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+    "@magicsandbox.ai/tailwind-browser": "file:../../packages/js/tailwind-browser",
+    "@uiw/react-codemirror": "^4.22.2",
+    "@codemirror/lang-javascript": "^6.1.2",
+    assert: "^2.1.0", //for eslint
+    "esbuild-wasm": "^0.23.0",
+    eslint: "^8.57.0",
+    "eslint-plugin-react": "^7.34.2",
+    "es-toolkit": "^1.29.0",
+    globals: "^15.3.0",
+    json5: "^2.2.3",
+    "lucide-react": "^0.408.0",
+    "path-browserify": "^1.0.1", //for eslint
+    prettier: "^3.3.0",
+    process: "^0.11.10",
+    react: "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-resizable-panels": "^2.0.20",
+    semver: "^7.6.3",
+    util: "^0.12.5", //for eslint
   },
 }

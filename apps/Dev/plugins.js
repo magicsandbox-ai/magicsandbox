@@ -255,7 +255,6 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
 
 async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
   let result = await buildDeps(bundleDepsCode, esbuild, options, appObjRef);
-  console.log(result);
   if (appObjRef.current.optimizedTreeShaking) {
     if (result.resolvedPaths) {
       appObjRef.current.imports = result.resolvedPaths;

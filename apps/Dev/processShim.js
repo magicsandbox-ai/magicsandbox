@@ -1,3 +1,3 @@
-import process from 'node_modules/process/browser.js';
+import process from "./node_modules/process/browser.js";
 
 export { process };

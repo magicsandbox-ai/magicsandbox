@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import Preview from "../Dev/Preview.js";
+import { Preview } from "@magicsandbox.ai/react-sandbox";
 import { Toasts } from "@components/Toasts.js";
 import { Loader } from "lucide-react";
 

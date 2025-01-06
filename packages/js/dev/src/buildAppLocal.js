@@ -54,6 +54,7 @@ async function buildAppLocal({
   };
   magicObj.tailwindConfig.content.push("!**/node_modules/**");
   log(new Date() - now, "tailwindConfig");
+  console.log("Building app...");
   const { appObj, context } = await buildApp({
     appObj: magicObj,
     esbuild: esbuild,
@@ -84,6 +85,7 @@ async function buildAppLocal({
 }
 
 async function installDependencies(magicPath, magicObj) {
+  console.log("Installing dependencies...");
   if (await fileExists(magicPath, "package.json")) {
     throw new Error(
       "Cannot include dependencies in magic.json if package.json exists",

@@ -9,7 +9,8 @@ import {
   RateLimitRisk,
 } from "./Risks.js";
 import { handleMagic } from "./handleMagic.js";
-import { validateAndDefaultRequest, createDeferredPromise } from "@utils.js";
+import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
+import { createDeferredPromise } from "@utils.js";
 
 class Assistant {
   constructor({ sandboxRef, settingsRef, toastsRef, setConfirm, setMessage }) {

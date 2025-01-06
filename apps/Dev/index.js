@@ -1,16 +1,19 @@
-/* global requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
+/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import CodeEditor from "./CodeEditor.js";
-import Preview from "./Preview.js";
+import { Preview } from "@magicsandbox.ai/react-sandbox";
 import { historyField } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import FilePicker from "./FilePicker.js";
 import * as esbuild from "esbuild-wasm";
-import esbuildWasm from "node_modules/esbuild-wasm/esbuild_debug.wasm"; //fork with renaming fix
-import { buildApp, getDefaults, runProcessTailwind } from "../buildApp.js";
+import {
+  buildApp,
+  getDefaults,
+  runProcessTailwind,
+} from "@magicsandbox.ai/dev/buildApp";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
 import processTailwindBrowser from "@magicsandbox.ai/tailwind-browser";
@@ -43,9 +46,17 @@ versioning saves? isomorphic-git?
 create a package lock file?
 */
 
-const esbuildPromise = WebAssembly.compile(esbuildWasm).then((module) => {
-  esbuild.initialize({ wasmModule: module });
-});
+async function initEsbuild() {
+  const esbuildWasmResponse = await requestFetch(
+    "https://esm.sh/esbuild-wasm@0.23.1/esbuild.wasm",
+    { responseType: "bytes" },
+  );
+  return await WebAssembly.compile(esbuildWasmResponse.body).then((module) => {
+    esbuild.initialize({ wasmModule: module });
+  });
+}
+
+const esbuildPromise = initEsbuild();
 
 const debounce = (callback, wait) => {
   let timeoutId = null;
@@ -65,7 +76,7 @@ const debounce = (callback, wait) => {
 
 const exampleFiles = {
   "magic.json": `{
-  name: '',
+  name: 'HelloWorld',
   version: '0.1.0',
   description: '',
 }`,

@@ -8,7 +8,10 @@
   },
   "license": "MIT",
   "type": "module",
-  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./buildApp": "./src/buildApp.js"
+  },
   "bin": {
     "magicsandbox": "./bin/magicsandbox.js"
   },
