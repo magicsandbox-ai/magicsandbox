@@ -25,6 +25,7 @@ async function publish(magicPath, debug, url) {
         prod: true,
       }));
     }
+    console.log("Publishing...");
     const response = await fetch(
       encodeURI(
         `${url}/publish?kind=${kind}&name=${magicObj.name}&version=${magicObj.version}`,

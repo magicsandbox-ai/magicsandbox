@@ -8,11 +8,7 @@
     nodePaths: ["./node_modules"],
   },
   tailwindConfig: {
-    content: [
-      "apps/DevLocal/**/*.js",
-      "components/**/*.js",
-      "apps/Dev/Preview.js",
-    ],
+    content: ["apps/DevLocal/**/*.js", "components/**/*.js"],
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",

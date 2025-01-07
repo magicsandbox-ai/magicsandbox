@@ -57,7 +57,7 @@ const Preview = forwardRef(function Preview({ className }, ref) {
 
   return (
     <div className={className}>
-      <Sandbox ref={sandboxRef} className="h-full w-full" />
+      <Sandbox ref={sandboxRef} style={{ height: "100%", width: "100%" }} />
     </div>
   );
 });
