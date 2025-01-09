@@ -248,8 +248,8 @@ class DataLossRisk extends Risk {
         write.split(".")[0] !== this.assistant.context.app.split(".")[0] &&
         !this.userApprovedWrites.has(write),
     );
-    const callback = (approved, askedUser) => {
-      this.handleApprove(
+    const callback = async (approved, askedUser) => {
+      await this.handleApprove(
         approved,
         askedUser,
         Array.from(this.pendingWrites),
@@ -271,7 +271,7 @@ class DataLossRisk extends Risk {
   handleRequest(_, data) {
     this.pendingWrites.add(data.app.split("@")[0]);
   }
-  handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
+  async handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
     if (approved) {
       if (askedUser) {
         this.userApprovedWrites = this.userApprovedWrites.union(
@@ -284,7 +284,7 @@ class DataLossRisk extends Risk {
         (app) => (this.lastAppBackups[app] || 0) < Date.now() - 1000 * 60 * 10,
       );
       if (appsNeedingBackup.length > 0) {
-        manageBackups(appsNeedingBackup, this.assistant.toastsRef);
+        await manageBackups(appsNeedingBackup, this.assistant.toastsRef);
         appsNeedingBackup.forEach((app) => {
           this.lastAppBackups[app] = Date.now();
         });

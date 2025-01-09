@@ -174,8 +174,10 @@ class Assistant {
       } else {
         approved = true;
       }
-      riskResponses.forEach(
-        ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
+      await Promise.all(
+        riskResponses.map(
+          ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
+        ),
       );
       for (const event of batch) {
         const { id, msg } = event.data;

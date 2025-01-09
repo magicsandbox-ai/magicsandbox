@@ -12,7 +12,7 @@ This documentation is arranged in five main sections:
 
 1. [Magic Apps](todo): we'll learn how to create Magic Apps.
 2. [Magic Functions](todo): we'll cover Magic Functions, which are the backend equivalent to the frontend Magic Apps.
-3. [Sandbox](todo): next we'll learn about the environment in which Magic Apps run and how they can communicate with with the world outside the Sandbox, including calling Magic Functions.
+3. [Sandbox](todo): next we'll learn about the Sandbox, the environment in which Magic Apps run.
 4. [Assistants](todo): then we'll dive into the responsibilities of an Assistant and how you can implement your own.
 5. [Advanced Topics](todo): finally, we'll cover a few more advanced topics.
 
@@ -194,7 +194,7 @@ fetch(
 
 # Magic Functions
 
-Magic Functions are the backend equivalent to Magic Apps. They can be called by Magic Apps and other Magic Functions, and they can call other Magic Functions.
+Magic Functions are the backend equivalent to Magic Apps. Magic Apps can call Magics Functions, and Magic Functions can call other Magic Functions.
 
 Like Magic Apps, Magic Functions are also just JSON objects. See [shared keys](#shared-keys-between-magic-apps-and-magic-functions) above for the keys you can include.
 
@@ -215,6 +215,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 ```typescript
 type UserInfo = {
   id: string;
+  //todo geography?
 };
 ```
 
@@ -246,15 +247,16 @@ Whether you want your endpoint to receive updates when users publish or update A
 
 # Sandbox
 
-As mentioned on the [About](todo) page, Magic Apps execute in a Sandbox to protect the user's privacy and personal data. The Sandbox is implemented as an iframe with a sandbox attribute. The Sandbox environment is restrictive but provides a number of global functions that enable you to bypass these restrictions. Each of these Sandbox functions has a name that begins with `request`, reflecting the fact that they may fail if not approved. The Assistant is responsible for approving Sandbox requests, either automatically if determined to be safe or by asking for user confirmation.
+As described on the [About](todo) page, to protect the user, Magic Apps execute in a Sandbox. The Sandbox is implemented as an iframe with a sandbox attribute. The Sandbox environment is restrictive but provides a number of global functions that enable you to bypass these restrictions. Each of these Sandbox functions has a name that begins with `request`, reflecting the fact that they may fail if not approved. The Assistant is responsible for approving Sandbox requests, either automatically if determined to be safe or by asking for user confirmation.
 
 The Sandbox has the following high level restrictions and associated Sandbox functions:
 
-- No direct network access. This means APIs like fetch don't work. It also means you can't click on a link to an external page, since it can't load within the Sandbox.
+- Limited network access. APIs like `fetch` don't work, and you can't use traditional links, since external pages can't load within the Sandbox.
   - Use `requestApp` and `requestFunction` to call other Magic Apps and Magic Functions
   - Use `requestFetch` to fetch data from another website
   - Use `requestOpenUrl` to open an external link in a new tab
   - Use `requestPublish` to publish a Magic Function
+  - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
 - No direct access to web storage APIs
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
 - Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any [feedback](todo) you have.
@@ -387,6 +389,8 @@ Open a URL in a new tab.
 
 **Returns:** a Promise that resolves to true
 
+todo add example of linking
+
 ### requestPublish (magicObj) => Promise<true>
 
 Publish a Magic Function or Magic App.
@@ -408,6 +412,10 @@ Either `url` or `content` must be provided.
 **Returns:** a Promise that resolves to true
 
 todo why is args an object
+
+### requestUrlParams() => Promise<{ [key: string]: string }>
+
+Retrieve parameters from the URL used to load the page. For example, if the page was loaded using `https://magicsandbox.ai/?input=hello`, then requestUrlParams() would return `{ input: 'hello' }`.
 
 ### requestSandbox (request: string, args: any) => Promise<any>
 
@@ -527,7 +535,9 @@ Assistants should consider the following risks when approving Sandbox requests:
 
 **Relevant Sandbox functions: requestApp, requestFunction**
 
-Assistants should track the cost incurred by requestApp and requestFunction over time and prompt users for approval when exceeding reasonable thresholds. Assistants should consider the cost of a single request, the total spend over varying time periods (e.g., per minute, per hour, per day), and the spend per Function and Author over varying time periods. While tracking spend by Function and Author is important to prevent abuse, it's trivial for a person or group to control multiple Authors, so tracking total spend is also critical.
+Assistants should track the cost incurred by requestApp and requestFunction over time and prompt users for approval when exceeding reasonable thresholds.
+
+todo budget
 
 #### Publishing Risk
 
@@ -537,14 +547,11 @@ Publishing Magic Apps and Functions is potentially dangerous. A malicious App co
 
 #### Privacy Risk
 
-**Relevant Sandbox functions: requestFunction, requestFetch, requestOpenUrl**
-**Also consider: requestGetData, requestGetAllData, requestGetAllKeysData**
+**Relevant Sandbox functions: requestGetData, requestGetAllData, requestGetAllKeysData**
 
-Assistants should warn users about the risks of Sandbox functions that can make network requests and therefore exfiltrate user data.
+Assistants should ask for user approval before allowing cross-App reads.
 
-If the user has not yet interacted with the App Sandbox, then there is no risk of exfiltration, so Assistants can monitor activity in the App Sandbox to determine the level of privacy risk when considering whether a request needs user approval.
-
-When determining the level of privacy risk, Assistants should also consider the impact of data reads using requestGetData, requestGetAllData, and requestGetAllKeysData. The user may not have interacted with the App Sandbox in the current session, but the request could exfiltrate data saved in previous sessions and read in the current session. Assistants should warn users about cross-author reads. For example, if a user is interacting with author1.FunctionThatAppearsToBeSafe, but FunctionThatAppearsToBeSafe has called `requestGetData('author2.FunctionWithHighlySensitiveData', 'key')`, then the user should be warned of the additional risk.
+Currently, there are ways for Apps to access the network without using a Sandbox function, so Assistants should assume that Apps can exfiltrate any data they can access. Assistants should therefore block reads (e.g. requestGetData) as needed rather than attempting to block exfiltration (e.g. requestFetch).
 
 #### Data Loss Risk
 
@@ -583,15 +590,11 @@ Assistants should prompt the user for approval when the App Sandbox attempts to 
 
 Assistants should provide rate limiting to network requests to prevent abuse.
 
-## Additional Assistant Sandbox Functions
-
 trust? track denials in addition to thumbs down
 
-### requestUrlParams() => { [key: string]: string }
+todo handling url params
 
-Retrieve parameters from the URL used to load the page. For example, if the page was loaded using `https://magicsandbox.ai/?input=hello`, then requestUrlParams() would return `{ input: 'hello' }`.
-
-todo add app to example
+todo includeuserinfo
 
 # Advanced Topics
 

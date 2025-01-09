@@ -81,23 +81,22 @@ async function manageBackups(apps, toastsRef) {
         }
       }
     });
-    for (const app of backupsToTake) {
-      requestGetAllData(app)
-        .then(async (data) => {
-          if (data) {
-            return requestPutData(
-              "magicsandbox.Assistant",
-              `${app}@${Date.now()}`,
-              data,
-              {
-                evictionPolicy: "fifo",
-                backup: true,
-              },
-            );
-          }
-        })
-        .catch(errorHandler);
-    }
+    await Promise.all(
+      backupsToTake.map(async (app) => {
+        const data = await requestGetAllData(app);
+        if (data) {
+          await requestPutData(
+            "magicsandbox.Assistant",
+            `${app}@${Date.now()}`,
+            data,
+            {
+              evictionPolicy: "fifo",
+              backup: true,
+            },
+          );
+        }
+      }),
+    );
     for (const key of backupsToDelete) {
       requestDeleteData("magicsandbox.Assistant", key, { backup: true }).catch(
         errorHandler,
