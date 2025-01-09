@@ -27,6 +27,8 @@ When you type or click on something in the Sandbox, you may see a Sandbox reques
 
 todo warn about input not private
 
+todo anonymity, risk of URLs
+
 ## Magic Bang (!magic)
 
 ## Bangs

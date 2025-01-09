@@ -251,13 +251,13 @@ As described on the [About](todo) page, to protect the user, Magic Apps execute 
 
 The Sandbox has the following high level restrictions and associated Sandbox functions:
 
-- Limited network access. APIs like `fetch` don't work, and you can't use traditional links, since external pages can't load within the Sandbox.
+- Limited network access. APIs like `fetch` don't work, and you can't use traditional links.
   - Use `requestApp` and `requestFunction` to call other Magic Apps and Magic Functions
   - Use `requestFetch` to fetch data from another website
-  - Use `requestOpenUrl` to open an external link in a new tab
+  - Use `requestOpenUrl` to open a link in a new tab
   - Use `requestPublish` to publish a Magic Function
   - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
-- No direct access to web storage APIs
+- No direct access to web storage APIs.
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
 - Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any [feedback](todo) you have.
 
@@ -381,15 +381,25 @@ type SerializedResponse = {
 
 ### requestOpenUrl (url) => Promise<true>
 
-Open a URL in a new tab.
+Open a URL in a new tab. Traditional links don't work in the Sandbox, so use `requestOpenUrl` instead.
+
+Don't do this:
+
+```html
+<a href="https://example.com">Click me</a>
+```
+
+Do this instead:
+
+```html
+<a onclick="requestOpenUrl('https://example.com')">Click me</a>
+```
 
 **Arguments**:
 
 - `url` (**required**) (string): URL to open
 
 **Returns:** a Promise that resolves to true
-
-todo add example of linking
 
 ### requestPublish (magicObj) => Promise<true>
 
@@ -549,7 +559,7 @@ Publishing Magic Apps and Functions is potentially dangerous. A malicious App co
 
 **Relevant Sandbox functions: requestGetData, requestGetAllData, requestGetAllKeysData**
 
-Assistants should ask for user approval before allowing cross-App reads.
+Assistants should ask for user approval before allowing cross-author reads.
 
 Currently, there are ways for Apps to access the network without using a Sandbox function, so Assistants should assume that Apps can exfiltrate any data they can access. Assistants should therefore block reads (e.g. requestGetData) as needed rather than attempting to block exfiltration (e.g. requestFetch).
 
@@ -557,9 +567,7 @@ Currently, there are ways for Apps to access the network without using a Sandbox
 
 **Relevant Sandbox functions: requestPutData, requestDeleteData**
 
-Assistants should track which Apps have executed in the App Sandbox and compare this set of Apps to the `app` argument in requestPutData and requestDeleteData. If `app` is not in the set of Apps, the Assistant should prompt the user for approval and warn them about the risk of data loss.
-
-Assistants should also consider data loss risk in scenarios where multiple Apps have executed, even if `app` is in the set of Apps. Consider the case where author1.App1 and author2.App2 have executed, and the Assistant receives `requestDeleteData('author1.App1', 'key')`. If the Assistant cannot reliably determine whether this is a malicious request from author2.App2, it should prompt the user for approval and warn them about the risk of data loss.
+Assistants should ask for user approval before allowing cross-author writes.
 
 Like any other Magic App, Assistants can use the data Sandbox functions to store data. Assistants however can supply a `backup` option to the data Sandbox functions to access a separate storage location with a much higher limit of 1 GB. This backup storage is isolated from the Assistant's main storage and is not backed up in the cloud or synced to other devices. Assistants can backup data to protect against data loss risk:
 
@@ -576,7 +584,7 @@ requestPutData(
 requestGetData("magicsandbox.Assistant", "author.App", { backup: true });
 ```
 
-Assistants should not allow Apps access to this backup storage. See the example code in [Handling Sandbox Requests](todo).
+Assistants should not allow Apps access to this backup storage.
 
 #### Download Risk
 

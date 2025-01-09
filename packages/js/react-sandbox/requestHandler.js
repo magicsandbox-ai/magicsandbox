@@ -21,7 +21,6 @@ function validateAndDefaultRequest(request, data, assistant) {
     urlParams: [],
   };
   if (assistant) {
-    delete requiredKeys.urlParams; //assistants should not allow access to urlParams
     delete data?.options?.backup; //assistants should not allow access to backup storage
   }
   if (!(request in requiredKeys)) {
