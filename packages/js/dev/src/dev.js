@@ -1,17 +1,38 @@
 import { buildAppLocal } from "./buildAppLocal.js";
 import http from "http";
+import open from "open";
+import crypto from "crypto";
 
-export function dev(magicPath, port, debug) {
+export function dev(magicPath, debug, port, url) {
   try {
+    const token = crypto.randomUUID();
+
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": url,
+      "Access-Control-Allow-Headers": "x-token",
+    };
+
     const headers = {
-      "Access-Control-Allow-Origin": "http://localhost:3000", //todo update url
+      ...corsHeaders,
       "Content-Type": "application/json",
     };
 
     const contextRef = { current: {} };
 
-    const server = http.createServer(async (_, res) => {
+    const server = http.createServer(async (req, res) => {
       try {
+        //handle CORS preflight requests
+        if (req.method === "OPTIONS") {
+          res.writeHead(204, corsHeaders);
+          res.end();
+          return;
+        }
+        const reqToken = req.headers["x-token"];
+        if (reqToken !== token) {
+          res.writeHead(401, headers);
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
         const { appObj } = await buildAppLocal({
           magicPath,
           debug,
@@ -31,7 +52,9 @@ export function dev(magicPath, port, debug) {
       console.log(
         `Magic Sandbox dev server running at http://localhost:${port}`,
       );
-      console.log("Open https://magicsandbox.ai?app=magicsandbox.DevLocal");
+      const appUrl = `${url}?app=magicsandbox.DevLocal&port=${port}&token=${token}`;
+      console.log(`Opening ${appUrl} in your default browser...`);
+      open(appUrl);
     });
 
     return server;

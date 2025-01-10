@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { init, dev, publish } from "../src/index.js";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import path from "path";
 
 const program = new Command();
@@ -19,18 +19,24 @@ program
     await init(handlePath(appPath, options.dir), options.function);
   });
 
+const urlOption = new Option("--url <url>")
+  .default("https://magicsandbox.ai")
+  .hideHelp();
+
 program
   .command("dev")
   .description("Start dev server for a Magic App")
   .argument("<path>", "Path to App directory (relative to --dir if specified)")
   .option("-d, --dir <directory>", "Base directory", process.cwd())
-  .option("-p, --port <number>", "Port to run dev server on", "3000")
   .option("--debug", "Debug build")
+  .option("-p, --port <number>", "Port to run dev server on", "3000")
+  .addOption(urlOption)
   .action((appPath, options) => {
     dev(
       handlePath(appPath, options.dir),
-      parseInt(options.port),
       options.debug,
+      parseInt(options.port),
+      options.url,
     );
   });
 
@@ -43,7 +49,7 @@ program
   )
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--debug", "Debug build")
-  .option("--url <url>", "URL to publish to", "https://magicsandbox.ai")
+  .addOption(urlOption)
   .action(async (appPath, options) => {
     await publish(handlePath(appPath, options.dir), options.debug, options.url);
   });

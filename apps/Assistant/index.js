@@ -81,6 +81,7 @@ function App() {
       const { input, app } = await requestUrlParams();
       if (input || app) {
         //todo need better UX if budget is less than maxCost - maybe prompt user to approve?
+        //todo is passing input unsafe?
         await assistantRef.current.handleInput({ input, app });
       }
     }

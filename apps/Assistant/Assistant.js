@@ -3,7 +3,7 @@
 import {
   FinancialRisk,
   PublishRisk,
-  PrivacyRisk,
+  //PrivacyRisk,
   DataLossRisk,
   DownloadRisk,
   RateLimitRisk,
@@ -29,7 +29,7 @@ class Assistant {
     //these add themselves to `this.risks`
     this.financialRisk = new FinancialRisk({ assistant: this });
     this.publishRisk = new PublishRisk({ assistant: this });
-    this.privacyRisk = new PrivacyRisk({ assistant: this });
+    //this.privacyRisk = new PrivacyRisk({ assistant: this });
     this.dataLossRisk = new DataLossRisk({ assistant: this });
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
