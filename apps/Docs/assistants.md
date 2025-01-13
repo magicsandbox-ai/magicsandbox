@@ -17,23 +17,17 @@ The rest of this section assumes you're following this basic pattern. We'll use 
 
 A typical series of interactions between the three looks like this:
 
-```mermaid
-sequenceDiagram
-autonumber
-Note over Magic Sandbox: creates Assistant Sandbox
-Magic Sandbox->>Assistant Sandbox: execute Assistant
-Note over Assistant Sandbox: creates UI and App Sandbox
-Note over Assistant Sandbox: handles user input and determines Magic App to call
-Assistant Sandbox->>Magic Sandbox: requestApp
-Magic Sandbox->>Assistant Sandbox: response
-Assistant Sandbox->>App Sandbox: execute App
-App Sandbox->>Assistant Sandbox: call Sandbox function, e.g. requestFetch
-Note over Assistant Sandbox: approve request or ask user for confirmation
-Assistant Sandbox->>Magic Sandbox: forward request
-Note over Magic Sandbox: Assistant requests are always approved (!)
-Magic Sandbox->>Assistant Sandbox: response
-Assistant Sandbox->>App Sandbox: forward response
-```
+1. Magic Sandbox creates Assistant Sandbox and executes the Assistant
+2. Assistant Sandbox creates UI and App Sandbox
+3. Assistant Sandbox handles user input and determines Magic App to call
+4. Assistant Sandbox calls `requestApp`
+5. Magic Sandbox responds with the App returned by `requestApp`
+6. Assistant Sandbox executes the App in the App Sandbox
+7. App Sandbox calls a Sandbox function, e.g. `requestFetch`
+8. Assistant Sandbox approves the request or asks the user for confirmation
+9. Assistant Sandbox forwards the request to Magic Sandbox
+10. Magic Sandbox responds with the result of the Sandbox function
+11. Assistant Sandbox forwards the response to the App Sandbox
 
 ## Handling User Input and Executing Magic Functions
 

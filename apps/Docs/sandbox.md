@@ -35,7 +35,7 @@ type App = {
   style?: string;
   html?: string;
   script?: string;
-  metadata: { app: string; finalCost: number };
+  metadata: { app: string; finalCost: number; status: "active" | "deprecated" };
 };
 ```
 
@@ -63,6 +63,7 @@ Metadata:
 - finalCost: number
 - errorCode: number
 - errorMessage: string
+- status: "active" | "deprecated" | "inactive"
 
 From your endpoint, you can call requestFunction by:
 

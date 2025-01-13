@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { appNameSchema, versionSchema } from "./schemas.js";
 import { isEqual } from "es-toolkit";
+import { maybeReadFile } from "./utils.js";
 
 const defaultEsbuildOptions = {
   globalName: "app",
@@ -17,7 +18,6 @@ const preBuildSchema = z
     scriptFile: z.string().default("index.js"),
     htmlFile: z.string().default("index.html"),
     styleFile: z.string().default("index.css"),
-    documentationFile: z.string().default("README.md"),
   })
   .passthrough();
 
@@ -42,7 +42,6 @@ async function buildApp({
 }) {
   now = now || new Date();
   appObj = getDefaults(appObj, esbuildOptions);
-  await handleShared(appObj, fileExists, readFile);
   if (!appObj.script && (await fileExists(appObj.scriptFile))) {
     let result;
     const options = {
@@ -78,22 +77,6 @@ function getDefaults(appObj, esbuildOptions) {
   return appObj;
 }
 
-/**
- * If key does not exist and keyFile exists, set key to keyFile contents
- */
-async function maybeReadFile(appObj, key, fileExists, readFile) {
-  if (!appObj[key] && (await fileExists(appObj[`${key}File`]))) {
-    appObj[key] = await readFile(appObj[`${key}File`]);
-  }
-}
-
-/**
- * Steps common to Apps and Functions
- */
-async function handleShared(appObj, fileExists, readFile) {
-  await maybeReadFile(appObj, "documentation", fileExists, readFile);
-}
-
 async function rebuild(esbuild, context, options) {
   let result;
   if (context && isEqual(options, context.previousOptions)) {
@@ -125,4 +108,4 @@ async function runProcessTailwind(
   }
 }
 
-export { buildApp, getDefaults, runProcessTailwind, handleShared };
+export { buildApp, getDefaults, runProcessTailwind };

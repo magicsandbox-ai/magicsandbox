@@ -68,6 +68,10 @@ If `dependencies` is present in `magic.json`, `@magicsandbox.ai/dev` will handle
 
 If `dependencies` is not present in `magic.json`, `@magicsandbox.ai/dev` will assume you're handling installation yourself. You should either use `dependencies` in `magic.json` or `package.json`, not both. `@magicsandbox.ai/dev` will throw an error if both are present.
 
+### documentationFile
+
+todo
+
 ## Debugging
 
 Debug your builds with `npm run dev --debug MyApp`.

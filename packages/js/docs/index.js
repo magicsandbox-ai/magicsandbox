@@ -4,41 +4,9 @@ import remarkRehype from "remark-rehype";
 import rehypeStringify from "rehype-stringify";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
-import mermaid from "mermaid";
-import { visit } from "unist-util-visit";
-import { fromHtmlIsomorphic } from "hast-util-from-html-isomorphic";
 import { toc } from "mdast-util-toc";
 import { visitParents } from "unist-util-visit-parents";
 import { promises as fs } from "fs";
-
-mermaid.initialize({ startOnLoad: false });
-
-function rehypeMermaid() {
-  return async (tree) => {
-    const nodes = [];
-    visit(tree, "element", (node) => {
-      if (
-        node.tagName === "pre" &&
-        node.children.length === 1 &&
-        node.children[0].tagName === "code" &&
-        node.children[0].properties.className?.includes("language-mermaid")
-      ) {
-        nodes.push(node);
-      }
-    });
-    await Promise.all(
-      nodes.map(async (node, i) => {
-        const { svg } = await mermaid.render(
-          `mermaid-${i}`, //these need to be unique
-          node.children[0].children[0].value,
-        );
-        node.tagName = "div";
-        node.properties = { className: "mermaid" };
-        node.children = fromHtmlIsomorphic(svg, { fragment: true }).children;
-      }),
-    );
-  };
-}
 
 function remarkToc() {
   return function (tree) {
@@ -72,7 +40,6 @@ async function docs(paths, folder) {
     .use(remarkParse)
     .use(remarkRehype)
     .use(rehypeSlug)
-    .use(rehypeMermaid)
     .use(rehypeHighlight)
     .use(rehypeStringify)
     .process(markdown);
@@ -83,8 +50,8 @@ async function docs(paths, folder) {
     .use(rehypeIndentNav)
     .use(rehypeStringify)
     .process(markdown);
-  html = html.replace("%%MAIN%%", main.result);
-  html = html.replace("%%NAV%%", nav.result);
+  html = html.replace("%%MAIN%%", main);
+  html = html.replace("%%NAV%%", nav);
   await fs.writeFile(new URL("./index.html", folder), html, "utf8");
   await fs.copyFile(
     new URL("./files/index.js", import.meta.url),

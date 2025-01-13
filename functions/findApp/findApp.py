@@ -36,7 +36,7 @@ class FindAppUpdateItem(BaseModel):
     description: str
     kind: str
     type: str
-    deprecated: bool
+    status: str
 
 class FindAppUpdateArgs(BaseModel):
     updates: list[FindAppUpdateItem]
@@ -58,7 +58,7 @@ class AppData:
                 description TEXT,
                 kind TEXT,
                 type TEXT,
-                deprecated BOOLEAN
+                status TEXT
             )
         ''')
         cur.executemany('''
@@ -76,7 +76,7 @@ class AppData:
                 item['description'],
                 item['kind'],
                 item['type'],
-                item['deprecated']
+                item['status']
             ) for item in app_data
         ])
         self.materialize()
@@ -100,7 +100,7 @@ class AppData:
                             , row_number() over (partition by author, name order by major desc, minor desc, patch desc) = 1 as latest
                          FROM _app_data
                          WHERE kind = 'app' 
-                            and not deprecated 
+                            and status = 'active'
                             and type != 'assistant'
                          ''')
         self.con.commit()
@@ -127,7 +127,7 @@ class AppData:
         cur.executemany('''
             INSERT INTO _app_data (
                 id, author, name, version, major, minor, patch,
-                description, kind, type, deprecated
+                description, kind, type, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 author = excluded.author,
@@ -139,7 +139,7 @@ class AppData:
                 description = excluded.description,
                 kind = excluded.kind,
                 type = excluded.type,
-                deprecated = excluded.deprecated
+                status = excluded.status
         ''', [
             (
                 item.id,
@@ -152,7 +152,7 @@ class AppData:
                 item.description,
                 item.kind,
                 item.type,
-                item.deprecated
+                item.status
             ) for item in args.updates
         ])
         self.materialize()

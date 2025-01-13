@@ -1,6 +1,5 @@
 import "dotenv/config";
-import { readMagicJson, fileExists, readFile } from "./utils.js";
-import { handleShared } from "./buildApp.js";
+import { readMagicJson, fileExists, readFile, maybeReadFile } from "./utils.js";
 import { buildAppLocal } from "./buildAppLocal.js";
 
 async function publish(magicPath, debug, url) {
@@ -12,11 +11,8 @@ async function publish(magicPath, debug, url) {
     let kind;
     if (magicObj.endpoint) {
       kind = "function";
-      await handleShared(
-        magicObj, //mutates magicObj
-        (filename) => fileExists(magicPath, filename),
-        (filename) => readFile(magicPath, filename),
-      );
+      magicObj.documentationFile = magicObj.documentationFile || "README.md";
+      await maybeReadFile(magicObj, "documentation", fileExists, readFile);
     } else {
       kind = "app";
       ({ appObj: magicObj } = await buildAppLocal({

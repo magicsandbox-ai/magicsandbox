@@ -215,14 +215,19 @@ fetch(
 
 ## Updating Magic Apps and Functions
 
-You can update Magic Apps and Functions by republishing with the same name and version. The following keys have restrictions on updates:
+You can update Magic Apps and Functions by publishing again with the same name and version.
+
+Updates have the following restrictions:
 
 - `script`, `html`, `style`: cannot be updated. Publish a new version instead.
-- `minCost`, `finalCost`: for Apps, can only be decreased.
+- Apps cannot be changed to Functions or vice versa.
 
-### Deprecating Magic Apps and Functions
+Note that you only need to provide the keys you're updating. In fact, this is required for Apps, as the server will throw an error if you include `script`, `html`, or `style` when republishing an App. For example, to update `description`, you can publish the following:
 
-To deprecate a Magic App or Function, republish with `deprecated` set to a number greater than 0, which represents the number of days until the App or Function can no longer be called. Apps and Functions have different deprecation behavior:
-
-- Apps: must allow at least 30 days
-- Functions: can be deprecated immediately
+```javascript
+{
+  name: "MyApp",
+  version: "1.0.0",
+  description: "This is my new description and improved description",
+}
+```

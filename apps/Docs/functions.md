@@ -33,6 +33,10 @@ const hashedKey = crypto.createHash("sha256").update(apiKey).digest("hex");
 hashed_key = hashlib.sha256(api_key.encode()).hexdigest()
 ```
 
+### documentation (string)
+
+Documentation of how to use your Function.
+
 ### decode (string) (default 'json')
 
 Specifies how to decode the response from your Function's endpoint. Supported values:

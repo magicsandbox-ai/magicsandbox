@@ -42,10 +42,6 @@ Function types:
 
 App or Function description. This is used to discover your App or Function, so while not required, you should fill this out.
 
-### documentation (string)
-
-Documentation of how to interact with your App or Function.
-
 ### minCost (number) (default 0.001)
 
 Minimum cost in dollars required to call your App or Function. Must be at least $0.001.
@@ -62,9 +58,13 @@ For Functions, `finalCost` is not actually accepted as a key in the Magic App JS
 
 Set to true to make your App or Function private. Note: this just means your App or Function won't be published publicly [todo link to more info](todo). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
 
-### deprecated (number) (default 0)
+### status (string) (default 'active')
 
-Set to a number greater than 0 to deprecate your App or Function. See [Deprecating Magic Apps and Functions](#deprecating-magic-apps-and-functions) for details.
+Controls the availability of your App or Function. Supported values:
+
+- `'active'` (default): App or Function is fully available.
+- `'deprecated'`: App or Function is available but users receive deprecation warnings.
+- `'inactive'`: Function cannot be called. Note that Apps cannot currently be inactive.
 
 ## Making Your App Magical
 

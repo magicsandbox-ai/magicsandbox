@@ -21,10 +21,8 @@ const sharedSchema = z
     author: z.string(),
     version: versionSchema,
     description: z.string().optional(),
-    documentation: z.string().optional(),
     minCost: z.number().gte(minimumMinCost).default(minimumMinCost),
     private: z.boolean().default(false),
-    deprecated: z.boolean().default(false),
   })
   .strict();
 
@@ -44,9 +42,11 @@ const functionSchema = sharedSchema.extend({
         message: "Endpoint must start with 'https'",
       },
     ),
-  decode: z.string().default("json"),
+  documentation: z.string().optional(),
+  decode: z.enum(["json", "string", "bytes"]).default("json"),
   stream: z.boolean().default(false),
   subscribeToUpdates: z.boolean().default(false),
+  status: z.enum(["active", "deprecated", "inactive"]).default("active"),
 });
 
 const appSchema = sharedSchema
@@ -55,6 +55,7 @@ const appSchema = sharedSchema
     kind: z.literal("app"),
     type: z.enum(["assistant"]).optional(),
     finalCost: z.number().gte(minimumMinCost).optional(),
+    status: z.enum(["active", "deprecated"]).default("active"),
   })
   .transform((appObj) => ({
     ...appObj,

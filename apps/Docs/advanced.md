@@ -160,7 +160,7 @@ type MagicMetadata = {
   documentation: string;
   type: string;
   minCost: number;
-  deprecated: boolean;
+  status: "active" | "deprecated" | "inactive";
   decode: "json" | "string" | "bytes";
   stream: boolean;
 };
