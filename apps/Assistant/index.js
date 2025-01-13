@@ -82,7 +82,7 @@ function App() {
       if (input || app) {
         //todo need better UX if budget is less than maxCost - maybe prompt user to approve?
         //todo is passing input unsafe?
-        await assistantRef.current.handleInput({ input, app });
+        //await assistantRef.current.handleInput({ input, app });
       }
     }
     if (!settingsRef.current) {

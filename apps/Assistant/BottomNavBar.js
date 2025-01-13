@@ -82,6 +82,8 @@ function BottomNavBar({
 
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const maximizeButtonRef = useRef(null);
+  const shouldFocusMaximizeButtonRef = useRef(false);
 
   useEffect(() => {
     inputRef.current.focus();
@@ -92,9 +94,22 @@ function BottomNavBar({
     inputRef.current.style.height = `${inputRef.current.scrollHeight + 4}px`; //add 4 because scrollHeight does not include border
   }, [inputValue]);
 
+  useEffect(() => {
+    if (shouldFocusMaximizeButtonRef.current) {
+      maximizeButtonRef.current.focus();
+      shouldFocusMaximizeButtonRef.current = false;
+    }
+  }, [collapsed]);
+
   function handleMagic() {
     setMagic(!magic); //todo different default message for magic?
     inputRef.current.focus();
+  }
+
+  function handleEscape(e) {
+    if (e.key === "Escape") {
+      setCollapsed(true);
+    }
   }
 
   function handleSettings() {
@@ -191,8 +206,13 @@ function BottomNavBar({
     placeholder = "Ask anything.";
   }
 
+  function handleMaximize() {
+    setCollapsed(!collapsed);
+    shouldFocusMaximizeButtonRef.current = true;
+  }
+
   const maximizeComponent = (
-    <button className="mx-2" onClick={() => setCollapsed(!collapsed)}>
+    <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
       <Maximize2 />
     </button>
   );
@@ -216,11 +236,13 @@ function BottomNavBar({
                 ? "focus-within:outline focus-within:outline-stone-500"
                 : "py-2"
             }`}
+            onKeyDown={handleEscape}
+            tabIndex={-1}
           >
             {!collapsed && (
               <>
                 <div className="flex">
-                  <p className={messageStyle + "grow"}>
+                  <p className={assistantMessageStyle + " grow"}>
                     {messages.length === 0 ? "What can I help you with?" : ""}
                   </p>
                   {maximizeComponent}

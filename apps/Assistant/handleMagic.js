@@ -9,49 +9,51 @@ async function handleMagic({
   const sandboxId = assistant.sandboxRef.current.getSandboxId();
   let context, selection;
   if (!assistant.context.app) {
-    context = 'This is a blank page you can use to run scripts as needed.';
+    context = "This is a blank page you can use to run scripts as needed.";
   } else {
     try {
       ({ context, selection } =
         await assistant.sandboxRef.current.postMessageAndWaitForResponse({
-          request: 'context',
+          request: "context",
         }));
-    } catch (error) {
-      context = 'App did not provide context';
+    } catch {
+      context = "App did not provide context";
     }
   }
   const llmMessages = [
-    { role: 'system', content: systemPrompt },
+    { role: "system", content: systemPrompt },
     ...messages.map((message, i) => {
       if (i % 2 === 0) {
         return {
-          role: 'user',
+          role: "user",
           content: `<user_request>
 ${message}
 </user_request>`,
         };
       } else {
-        return { role: 'assistant', content: message };
+        return { role: "assistant", content: message };
       }
     }),
-    { role: 'user', content: createFinalMessage(input, context, selection) },
+    { role: "user", content: createFinalMessage(input, context, selection) },
   ];
   console.log(llmMessages);
   const stream = await requestFunction(
-    'magicsandbox.llm',
+    "magicsandbox.llm",
     {
       messages: llmMessages,
     },
     {
       maxCost,
       stream: true,
-    }
+    },
   );
   const { response, script } = await parseStream(stream, assistant.setMessage);
   console.log(response);
   if (script) {
     assistant.sandboxRef.current.postMessage(sandboxId, {
-      script: `${script};
+      script: `(async () => {
+${script}
+})();
 
 if (typeof app !== 'undefined' && app?.render) {
   try {
@@ -65,13 +67,13 @@ if (typeof app !== 'undefined' && app?.render) {
 }
 
 async function parseStream(stream, setMessage) {
-  let response = ''; //todo delete only for debugging
-  let buffer = ''; //tags may be split across chunks
-  const startTag = '<magic_script>';
-  const endTag = '</magic_script>';
-  let message = '';
+  let response = ""; //todo delete only for debugging
+  let buffer = ""; //tags may be split across chunks
+  const startTag = "<magic_script>";
+  const endTag = "</magic_script>";
+  let message = "";
   let inScript = false;
-  let script = '';
+  let script = "";
   for await (const chunk of stream) {
     if (chunk.result) {
       response += chunk.result;
@@ -117,16 +119,16 @@ function processBuffer({
     const endIndex = buffer.indexOf(endTag, i);
     i = Math.min(
       startIndex === -1 ? Infinity : startIndex,
-      endIndex === -1 ? Infinity : endIndex
+      endIndex === -1 ? Infinity : endIndex,
     );
     let result;
     if (i === Infinity) {
       result = bufferLength > 0 ? buffer.slice(0, -bufferLength) : buffer;
-      buffer = bufferLength > 0 ? buffer.slice(-bufferLength) : '';
+      buffer = bufferLength > 0 ? buffer.slice(-bufferLength) : "";
     } else {
       result = buffer.slice(0, i);
       buffer = buffer.slice(
-        i + (startIndex === i ? startTag.length : endTag.length)
+        i + (startIndex === i ? startTag.length : endTag.length),
       );
     }
     if (inScript) {
@@ -135,10 +137,10 @@ function processBuffer({
     message += result;
     if (startIndex === i) {
       inScript = true;
-      message += '~~~magicscript\n';
+      message += "~~~magicscript\n";
     } else if (endIndex === i) {
       inScript = false;
-      message += '\n~~~';
+      message += "\n~~~";
     }
   }
   setMessage(message);
@@ -179,7 +181,7 @@ The <user_highlighted_text> may not be relevant, so you should give precedence t
 Magic Sandbox executes apps in a sandboxed iframe, so your script does not have network access, access to storage APIs, or permission to use browser features like creating popups or downloading files.`;
 
 function createFinalMessage(input, context, selection) {
-  let selectionPrompt = '';
+  let selectionPrompt = "";
 
   if (selection && selection.length < 1000) {
     selectionPrompt = `\n\n<user_highlighted_text>

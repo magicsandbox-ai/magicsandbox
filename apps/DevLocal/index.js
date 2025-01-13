@@ -19,8 +19,8 @@ function DocsLink({ children }) {
 }
 
 function App() {
-  const [state, setState] = useState("loading");
-  const [isLoading, setIsLoading] = useState(false);
+  const [state, setState] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   const previewRef = useRef(null);
   const toastsRef = useRef(null);
@@ -29,22 +29,14 @@ function App() {
 
   useEffect(() => {
     async function init() {
-      const { port, token } = await requestUrlParams();
-      if (!port || !token) {
-        setState("error");
-        return;
-      }
-      portRef.current = port;
-      tokenRef.current = token;
-      setState("ready");
-    }
-    init();
-  }, []);
-
-  useEffect(() => {
-    async function loadPreview() {
       try {
-        setIsLoading(true);
+        const { port, token } = await requestUrlParams();
+        if (!port || !token) {
+          setState("error");
+          return;
+        }
+        portRef.current = port;
+        tokenRef.current = token;
         await previewApp();
       } catch (error) {
         console.error(error);
@@ -53,10 +45,8 @@ function App() {
         setIsLoading(false);
       }
     }
-    if (state === "ready") {
-      loadPreview();
-    }
-  }, [state]);
+    init();
+  }, []);
 
   async function previewApp() {
     const sandboxId = previewRef.current.getSandboxId();
@@ -102,14 +92,6 @@ function App() {
   const buttonStyle =
     "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
 
-  if (state === "loading") {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader className="h-10 w-10 animate-spin" />
-      </div>
-    );
-  }
-
   if (state === "error") {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-lg font-semibold text-stone-700">
@@ -128,21 +110,23 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col text-stone-700">
-      <div className="flex items-center border-b border-stone-500 px-2 py-0.5">
-        <div className="flex-1" /> {/* spacer */}
-        <div className="flex gap-12">
-          <button className={buttonStyle} onClick={handleUpdate}>
-            Update Preview
-          </button>
-          <button className={buttonStyle} onClick={handlePublish}>
-            Publish
-          </button>
-        </div>
-        <div className="flex flex-1 justify-end">
-          {isLoading && <Loader className="animate-spin" />}
-        </div>
+      <div className="flex items-center justify-center gap-12 border-b border-stone-500 px-2 py-0.5">
+        <button className={buttonStyle} onClick={handleUpdate}>
+          Update Preview
+        </button>
+        <button className={buttonStyle} onClick={handlePublish}>
+          Publish
+        </button>
       </div>
-      <Preview ref={previewRef} className="w-full grow" />
+      {isLoading && (
+        <div className="flex grow items-center justify-center">
+          <Loader className="h-10 w-10 animate-spin" />
+        </div>
+      )}
+      <Preview
+        ref={previewRef}
+        className={isLoading ? "hidden" : "w-full grow"}
+      />
       <Toasts ref={toastsRef} />
     </div>
   );
