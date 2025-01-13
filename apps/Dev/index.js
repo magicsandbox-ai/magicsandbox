@@ -230,11 +230,14 @@ function App() {
         console.error(`Error building tailwind.config.js`, error); //todo toast
       }
     }
-    config.content = config.content || [".+js$", ".+jsx$", ".+html$"];
-    config.content = config.content.map((pattern) => new RegExp(pattern));
+    const excludeContent = new Set(config.excludeContent || []);
     config.content = Object.entries(filesRef.current)
-      .filter(([filename]) =>
-        config.content.some((regex) => regex.test(filename)),
+      .filter(
+        ([filename]) =>
+          (filename.endsWith(".js") ||
+            filename.endsWith(".jsx") ||
+            filename.endsWith(".html")) &&
+          !excludeContent.has(filename),
       )
       .map(([filename, value]) => {
         const filenameSplit = filename.split(".");

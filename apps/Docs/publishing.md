@@ -54,11 +54,11 @@ Filename containing `style` code, defaults to `index.css`. Editing this file is 
 
 Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo).
 
-Note that magicsandbox.Dev does not support glob patterns for `content` but instead accepts an array of regex patterns. The default value below will match any file ending in `.js`, `.jsx`, or `.html` and work for most use cases:
+magicsandbox.Dev does not support configuring `content`. By default, all files ending in `.js`, `.jsx`, or `.html` are included. You can add an `excludeContent` key to exclude files:
 
 ```javascript
 {
-  content: ['.+js$', '.+jsx$', '.+html$'],
+  excludeContent: ['utils.js', 'index.html],
 };
 ```
 

@@ -52,7 +52,19 @@ async function buildAppLocal({
     ],
     ...magicObj.tailwindConfig,
   };
-  magicObj.tailwindConfig.content.push("!**/node_modules/**");
+  if (magicObj.excludeContent) {
+    magicObj.tailwindConfig.content = [
+      ...magicObj.tailwindConfig.content,
+      ...magicObj.excludeContent.map(
+        (c) => `!${magicPath.replace(/\\/g, "/")}/${c}`,
+      ),
+    ];
+  }
+  if (
+    !magicObj.tailwindConfig.content.some((c) => c?.includes("node_modules"))
+  ) {
+    magicObj.tailwindConfig.content.push("!**/node_modules/**");
+  }
   log(new Date() - now, "tailwindConfig");
   console.log("Building app...");
   const { appObj, context } = await buildApp({

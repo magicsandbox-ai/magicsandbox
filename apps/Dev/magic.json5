@@ -12,9 +12,7 @@
     },
     inject: ["./processShim.js"], //for eslint
     loader: { ".js": "jsx", ".wasm": "binary" },
-    //metafile: true,
     minify: true,
-    sourcesContent: false,
     //the dependencies for components are in node_modules
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths

@@ -68,6 +68,24 @@ If `dependencies` is present in `magic.json`, `@magicsandbox.ai/dev` will handle
 
 If `dependencies` is not present in `magic.json`, `@magicsandbox.ai/dev` will assume you're handling installation yourself. You should either use `dependencies` in `magic.json` or `package.json`, not both. `@magicsandbox.ai/dev` will throw an error if both are present.
 
+### tailwindConfig
+
+Unlike `magicsandbox.Dev`, `@magicsandbox.ai/dev` supports configuring `content` in the usual way. `@magicsandbox.ai/dev` also supports `excludeContent` to enable porting Apps from `magicsandbox.Dev`. Behind the scenes, it transforms:
+
+```javascript
+{
+  excludeContent: ['utils.js', 'index.html],
+};
+```
+
+into:
+
+```javascript
+{
+  content: ['!path/to/MyApp/utils.js', '!path/to/MyApp/index.html'],
+};
+```
+
 ### documentationFile
 
 todo

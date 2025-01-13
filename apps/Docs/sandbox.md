@@ -175,8 +175,6 @@ Either `url` or `content` must be provided.
 
 **Returns:** a Promise that resolves to true
 
-todo why is args an object
-
 ### requestUrlParams() => Promise<{ [key: string]: string }>
 
 Retrieve parameters from the URL used to load the page. For example, if the page was loaded using `https://magicsandbox.ai/?input=hello`, then requestUrlParams() would return `{ input: 'hello' }`.
