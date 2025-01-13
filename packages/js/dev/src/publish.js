@@ -1,6 +1,9 @@
 import "dotenv/config";
-import { readMagicJson, fileExists, readFile, maybeReadFile } from "./utils.js";
+import { readMagicJson, fileExists, readFile } from "./localUtils.js";
+import { maybeReadFile } from "./utils.js";
 import { buildAppLocal } from "./buildAppLocal.js";
+import path from "path";
+import fsPromises from "fs/promises";
 
 async function publish(magicPath, debug, url) {
   try {
@@ -12,7 +15,12 @@ async function publish(magicPath, debug, url) {
     if (magicObj.endpoint) {
       kind = "function";
       magicObj.documentationFile = magicObj.documentationFile || "README.md";
-      await maybeReadFile(magicObj, "documentation", fileExists, readFile);
+      await maybeReadFile(
+        magicObj, //mutates magicObj
+        "documentation",
+        (filename) => fileExists(magicPath, filename),
+        (filename) => readFile(magicPath, filename),
+      );
     } else {
       kind = "app";
       ({ appObj: magicObj } = await buildAppLocal({
@@ -20,6 +28,13 @@ async function publish(magicPath, debug, url) {
         debug,
         prod: true,
       }));
+    }
+    if (debug) {
+      await fsPromises.writeFile(
+        path.join(magicPath, "_debug_magic.json"),
+        JSON.stringify(magicObj, undefined, 2),
+        "utf8",
+      );
     }
     console.log("Publishing...");
     const response = await fetch(

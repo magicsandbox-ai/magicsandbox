@@ -1,6 +1,6 @@
 import { promises as fsPromises } from "fs";
 import * as esbuild from "esbuild";
-import { readMagicJson, fileExists, readFile } from "./utils.js";
+import { readMagicJson, fileExists, readFile } from "./localUtils.js";
 import { buildApp } from "./buildApp.js";
 import path from "path";
 import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
@@ -74,13 +74,6 @@ async function buildAppLocal({
   });
   contextRef.current.context = context;
   log(new Date() - now, "buildApp");
-  if (debug) {
-    await fsPromises.writeFile(
-      path.join(magicPath, "_debug_app.json"),
-      JSON.stringify(appObj, undefined, 2),
-      "utf8",
-    );
-  }
   return { appObj };
 }
 

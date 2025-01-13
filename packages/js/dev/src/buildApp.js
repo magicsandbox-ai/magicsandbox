@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { appNameSchema, versionSchema } from "./schemas.js";
 import { isEqual } from "es-toolkit";
 import { maybeReadFile } from "./utils.js";
 
@@ -13,8 +12,8 @@ const defaultEsbuildOptions = {
 
 const preBuildSchema = z
   .object({
-    name: appNameSchema,
-    version: versionSchema,
+    name: z.string(),
+    version: z.string(),
     scriptFile: z.string().default("index.js"),
     htmlFile: z.string().default("index.html"),
     styleFile: z.string().default("index.css"),
