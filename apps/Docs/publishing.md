@@ -1,26 +1,20 @@
-# magicsandbox.Dev
+# Publishing
 
-magicsandbox.Dev helps you create and publish Magic Apps. It includes:
+## magicsandbox.Dev
 
-- A code editor to develop and configure your App
-- An automated and preconfigured build process using esbuild and Tailwind
-- A live preview so you can test your App as you develop
-- An AI chat to help with development
-- A button for easy publishing
+The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It handles the build process for you, provides a live preview so you can test your App as you develop, and includes a button for easy publishing.
 
-In the code editor, you'll see a `magic.json` file. This is your Magic App JSON described in the [docs](todo). It accepts all of the Magic App keys (`name`, `version`, `script`, etc.) described in the docs, but it also allows some additional keys. magicsandbox.Dev also provides different default values for `html` and `style`.
+With magicsandbox.Dev, you'll edit a `magic.json` file, which is your Magic App JSON. magicsandbox.Dev supports all of the keys documented in [Magic Apps](magic-apps), but it also allows additional keys to make development easier. magicsandbox.Dev also provides different default values for `html` and `style`. These details are covered in the next section.
 
-## magic.json file
+### magic.json
 
-This section lists the additional keys in `magic.json` that magicsandbox.Dev supports and details the different default values for `html` and `style`.
+#### args ({ input: string, budget: number })
 
-### args ({ input: string, budget: number })
-
-### scriptFile (string) (default 'index.js')
+#### scriptFile (string) (default 'index.js')
 
 Filename containing `script` code, defaults to `index.js`. Editing this file is usually more convenient than editing the `script` key in `magic.json` directly.
 
-### esbuildOptions (object) (default below)
+#### esbuildOptions (object) (default below)
 
 Options to pass to [esbuild](https://esbuild.github.io/api/#build) during the [build process](todo).
 
@@ -40,23 +34,23 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
 };
 ```
 
-### html (string) (default '<div id="root"></div>')
+#### html (string) (default '<div id="root"></div>')
 
 Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
 
-### htmlFile (string) (default 'index.html')
+#### htmlFile (string) (default 'index.html')
 
 Filename containing `html` code, defaults to `index.html`. Editing this file is usually more convenient than editing the `html` key in `magic.json` directly.
 
-### style (string) (default '@tailwind base; @tailwind components; @tailwind utilities;')
+#### style (string) (default '@tailwind base; @tailwind components; @tailwind utilities;')
 
 Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `style`, assuming you're using Tailwind if you don't specify `style` or have a `styleFile`.
 
-### styleFile (string) (default 'index.css')
+#### styleFile (string) (default 'index.css')
 
 Filename containing `style` code, defaults to `index.css`. Editing this file is usually more convenient than editing the `style` key in `magic.json` directly.
 
-### tailwindConfig (object) (default below)
+#### tailwindConfig (object) (default below)
 
 Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo).
 
@@ -80,7 +74,7 @@ export default {
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
-### dependencies (object)
+#### dependencies (object)
 
 Version ranges to use for the packages you import. magicsandbox.Dev supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
 
@@ -100,7 +94,7 @@ However, if you import a package across multiple files, it can be easier to mana
 
 todo dependencies takes precedence over the version ranges specified in the import statements
 
-### overrides (object)
+#### overrides (object)
 
 Version ranges to use for all imports, enabling you to override the dependencies of your dependencies. If you're familiar with the behavior of `overrides` in npm, note that magicsandbox.Dev currently supports only a subset of the functionality that npm does:
 
@@ -117,19 +111,21 @@ Version ranges to use for all imports, enabling you to override the dependencies
 }
 ```
 
-### cacheRequests (boolean) (default true)
+#### cacheRequests (boolean) (default true)
 
 Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development. Set to false to disable.
 
-### cdn (string) (default 'esm.sh')
+#### cdn (string) (default 'esm.sh')
 
 The CDN to use for the build process. Supported values are `esm.sh` and `jsdelivr `.
 
-### optimizedTreeShaking (boolean) (default false)
+#### optimizedTreeShaking (boolean) (default false)
 
 Whether to further minify the build by tree shaking unused imports, which requires two build passes. This is only supported for `cdn` `esm.sh`.
 
-## Build Process
+### magicsandbox.Dev Advanced Details
+
+This section covers advanced details about how magicsandbox.Dev works and can be skipped if you're just getting started.
 
 fetch plugin: jsdelivr, version resolution, allow multiple versions
 bundle deps plugin: imports not hoisted or sealed, dynamic imports?
@@ -137,7 +133,7 @@ tailwind browser
 request handler caveats? author, data? cache, assistant rejecting
 how to debug/sourcemaps
 
-### Peer Dependencies
+#### Peer Dependencies
 
 magicsandbox.Dev handles peer dependencies differently than npm. Consider the following dependency graph:
 
@@ -170,3 +166,63 @@ root
 ```
 
 This is actually more convenient for peer dependencies like React when you want to ensure only a single version is used globally. However, it may not support more advanced use cases. Please [create an issue](todo) if you have any feedback.
+
+## @magicsandbox.ai/dev
+
+The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Magic Apps locally. Refer to the docs for more details.
+
+## magicsandbox.PublishFunction
+
+The App [magicsandbox.PublishFunction](https://magicsandbox.ai?app=magicsandbox.PublishFunction) is a simple interface for publishing Magic Functions.
+
+## Custom Methods
+
+You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server. magicsandbox.Dev specific keys like `scriptFile` are not supported.
+
+### Custom Magic App
+
+Rather than using magicsandbox.Dev or magicsandbox.PublishFunction, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](todo).
+
+### Custom Local Development
+
+You can publish Magic Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
+
+- URL parameters:
+  - `kind`: 'app' or 'function'
+  - `name`: App or Function name
+  - `version`: App or Function version
+- Headers:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
+- Body:
+  - the App or Function JSON object
+
+Here's an example:
+
+```javascript
+fetch(
+  `https://magicsandbox.ai/publish?kind=app&name=${appObj.name}&version=${appObj.version}`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(appObj),
+  },
+);
+```
+
+## Updating Magic Apps and Functions
+
+You can update Magic Apps and Functions by republishing with the same name and version. The following keys have restrictions on updates:
+
+- `script`, `html`, `style`: cannot be updated. Publish a new version instead.
+- `minCost`, `finalCost`: for Apps, can only be decreased.
+
+### Deprecating Magic Apps and Functions
+
+To deprecate a Magic App or Function, republish with `deprecated` set to a number greater than 0, which represents the number of days until the App or Function can no longer be called. Apps and Functions have different deprecation behavior:
+
+- Apps: must allow at least 30 days
+- Functions: can be deprecated immediately

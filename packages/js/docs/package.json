@@ -1,0 +1,25 @@
+{
+  "name": "@magicsandbox.ai/docs",
+  "version": "0.1.0",
+  "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.js",
+  "dependencies": {
+    "hast-util-from-html-isomorphic": "^2.0.0",
+    "mdast-util-toc": "^7.1.0",
+    "mermaid": "^11.4.1",
+    "rehype-highlight": "^7.0.1",
+    "rehype-slug": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.1",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "unist-util-visit-parents": "^6.0.1"
+  }
+}

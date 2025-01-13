@@ -23,6 +23,8 @@
     "publish": "magicsandbox publish -d apps --url http://localhost:3000",
     "dev:prod": "magicsandbox dev -d apps",
     "publish-function:prod": "magicsandbox publish -d functions",
-    "publish:prod": "magicsandbox publish -d apps"
+    "publish:prod": "magicsandbox publish -d apps",
+    "docs": "node apps/Docs/build.mjs",
+    "about": "node apps/About/build.mjs"
   }
 }
