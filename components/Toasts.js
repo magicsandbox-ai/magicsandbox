@@ -3,20 +3,20 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useRef,
-} from 'react';
+} from "react";
 
 const Toast = ({ message, type, visible, onClose }) => {
   const toastStyles = {
-    success: 'bg-green-500 text-white',
-    info: 'bg-stone-50 text-stone-700 border border-stone-500',
-    infoDark: 'bg-stone-700 text-white',
-    warning: 'bg-yellow-500 text-black',
-    error: 'bg-red-500 text-white',
+    success: "bg-green-500 text-white",
+    info: "bg-stone-50 text-stone-700 border border-stone-500",
+    infoDark: "bg-stone-700 text-white",
+    warning: "bg-yellow-500 text-black",
+    error: "bg-red-500 text-white",
   };
 
   return (
     <div
-      className={`${toastStyles[type]} rounded-md p-2 text-sm font-bold shadow-lg transition-opacity duration-500 ease-out ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`${toastStyles[type]} rounded-md p-2 text-sm font-bold shadow-lg transition-opacity duration-500 ease-out ${visible ? "opacity-100" : "opacity-0"}`}
     >
       <span>{message}</span>
       <button onClick={onClose} className="ml-2 hover:font-bold">
@@ -26,7 +26,7 @@ const Toast = ({ message, type, visible, onClose }) => {
   );
 };
 
-const Toasts = forwardRef(function Toasts(_, ref) {
+const Toasts = forwardRef(function Toasts({ className }, ref) {
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
 
@@ -50,8 +50,8 @@ const Toasts = forwardRef(function Toasts(_, ref) {
   const fadeToast = (id) => {
     setToasts((prevToasts) =>
       prevToasts.map((toast) =>
-        toast.id === id ? { ...toast, visible: false } : toast
-      )
+        toast.id === id ? { ...toast, visible: false } : toast,
+      ),
     );
     setTimeout(() => removeToast(id), 500);
   };
@@ -61,7 +61,7 @@ const Toasts = forwardRef(function Toasts(_, ref) {
   };
 
   return (
-    <div className="fixed right-4 top-11 z-50 flex flex-col space-y-2">
+    <div className={`${className} fixed right-4 z-50 flex flex-col space-y-2`}>
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -78,7 +78,7 @@ const Toasts = forwardRef(function Toasts(_, ref) {
 class ToastError extends Error {
   constructor(message, type) {
     super(message);
-    this.name = 'ToastError';
+    this.name = "ToastError";
     this.type = type;
   }
 }

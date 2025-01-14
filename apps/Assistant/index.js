@@ -193,7 +193,7 @@ function App() {
         }}
       />
       {modalComponent}
-      <Toasts ref={toastsRef} />
+      <Toasts className="top-2" ref={toastsRef} />
     </div>
   );
 }

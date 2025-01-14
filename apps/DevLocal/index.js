@@ -127,7 +127,7 @@ function App() {
         ref={previewRef}
         className={isLoading ? "hidden" : "w-full grow"}
       />
-      <Toasts ref={toastsRef} />
+      <Toasts className="top-2" ref={toastsRef} />
     </div>
   );
 }
