@@ -1,4 +1,4 @@
-/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
+/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish, requestDownload */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
@@ -132,6 +132,7 @@ function App() {
     if (Object.keys(files).length > 0) {
       //don't bother on initial render
       filesRef.current = files;
+      api.files = filesRef.current;
       debouncedCallProcessTailwind();
     }
   }, [files]);
@@ -145,8 +146,6 @@ function App() {
     );
     importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
-
-  api.files = filesRef.current;
 
   const filenames = Object.keys(files);
   const value = files[selectedFilename];
@@ -521,11 +520,24 @@ ${value}
   .join("\n")}
 </files>
 
-Do not run any scripts, just answer the user's question about the code.
-  `;
+API:
+
+- app.api.download(): download files to the user's computer
+
+Usage:
+
+- If the user is asking a question about the code, answer it and don't run any scripts.
+- Otherwise, use the API to complete the user's request.
+`;
 }
 
-const api = {};
+const api = {
+  download: () => {
+    Object.entries(api.files).forEach(([filename, content]) => {
+      requestDownload({ filename, content });
+    });
+  },
+};
 
 function render() {
   root.render(<App />);

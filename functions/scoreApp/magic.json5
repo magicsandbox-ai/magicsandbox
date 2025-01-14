@@ -1,5 +1,0 @@
-{
-  name: "scoreApp",
-  version: "0.0.1",
-  endpoint: "https://magicsandbox.ai/endpoint/scoreApp",
-}

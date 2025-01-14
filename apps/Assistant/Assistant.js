@@ -37,8 +37,6 @@ class Assistant {
   initContext() {
     this.context.app = null;
     this.context.trust = null;
-    this.context.userActionCount = 0;
-    this.context.deniedUserActionCount = null;
   }
   updateContext({ init, result }) {
     if (init) {
@@ -105,15 +103,6 @@ class Assistant {
       console.error(error);
     }
   }
-  handleUserAction({ userAction }) {
-    if (userAction === "event") {
-      this.context.userActionCount++;
-    } else if (userAction === "isActive") {
-      //fallback using userActivation.isActive is only triggered once per transient duration
-      //which can be a long time (5s for Chrome for me), so we add a large number to userActionCount
-      this.context.userActionCount += 100;
-    }
-  }
   handleRequest(event) {
     window.clearTimeout(this.requestTimeoutId);
     event.sandboxId = this.sandboxRef.current.getSandboxId();
@@ -128,22 +117,9 @@ class Assistant {
     this.isProcessing = true;
     let batch = [...this.requestQueue];
     this.requestQueue = [];
-    const denied =
-      this.context.deniedUserActionCount === this.context.userActionCount;
     try {
       for (const event of batch) {
         const { id, msg } = event.data;
-        if (denied) {
-          this.sandboxRef.current.postMessage(event.sandboxId, {
-            id,
-            error: {
-              message:
-                "User denied previous request and has not since interacted with Sandbox",
-            },
-          });
-          event.error = true;
-          continue;
-        }
         let { request, data } = msg;
         const validation = validateAndDefaultRequest(request, data, true);
         if (validation) {
@@ -168,7 +144,6 @@ class Assistant {
         );
         askedUser = true;
         if (!approved) {
-          this.context.deniedUserActionCount = this.context.userActionCount;
           this.handleScore(-0.1);
         }
       } else {

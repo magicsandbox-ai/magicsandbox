@@ -18,6 +18,8 @@ requirements:
 - vector search can account for user provided weights
 - sqlite, duckdb, pgvector, chroma, faiss?
 careful with case sensitivity
+
+todo variable cost for ratings?
 '''
 
 class FindAppArgs(BaseModel):
@@ -80,7 +82,7 @@ class AppData:
             ) for item in app_data
         ])
         self.materialize()
-        self.embedder = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        self.embedder = SentenceTransformer(os.getenv('EMBEDDING_MODEL'))
 
     def get_app_data(self):
         if os.getenv('NODE_ENV') == 'production':

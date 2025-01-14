@@ -61,9 +61,7 @@ Metadata:
 
 - fn: string, resolved with version
 - finalCost: number
-- errorCode: number
-- errorMessage: string
-- status: "active" | "deprecated" | "inactive"
+- status: "active" | "deprecated"
 
 From your endpoint, you can call requestFunction by:
 

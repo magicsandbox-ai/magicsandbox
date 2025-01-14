@@ -146,88 +146,32 @@ class PublishRisk extends Risk {
 class PrivacyRisk extends Risk {
   constructor(args) {
     super(args);
-    this.handleRequests = new Set([
-      "function",
-      "fetch",
-      "openUrl",
-      "download",
-      "getData",
-      "getAllData",
-      "getAllKeysData",
-    ]);
+    this.handleRequests = new Set(["getData", "getAllData", "getAllKeysData"]);
   }
   init() {
     this.pendingReads = new Set();
-    this.approvedReads = new Set();
     this.userApprovedReads = new Set();
-    this.userApprovedUserActionCount = 0;
-    this.userActionThreshold =
-      this.assistant.settingsRef.current.privacyRiskUserActionThreshold; //todo increase after user approval? or remove it?
-    this.batchPrivacyRisk = false;
   }
   handleBatch(batch) {
     this._handleBatch(batch);
-    const reads = Array.from(this.pendingReads.union(this.approvedReads));
-    const callback = (approved, askedUser) => {
-      this.handleApprove(approved, askedUser, new Set(reads));
-    };
-    if (this.batchPrivacyRisk) {
-      let untrustedReads;
-      if (this.assistant.context.trust) {
-        untrustedReads = reads.filter(
-          (read) =>
-            read.split(".")[0] !== this.assistant.context.app.split(".")[0],
-        );
-      } else {
-        untrustedReads = reads;
-      }
-      untrustedReads = untrustedReads.filter(
-        (read) => !this.userApprovedReads.has(read),
-      );
-      if (
-        untrustedReads.length > 0 ||
-        (!this.assistant.context.trust &&
-          this.assistant.context.userActionCount -
-            this.userApprovedUserActionCount >
-            this.userActionThreshold)
-      ) {
-        const app = this.assistant.context.app.split("@")[0];
-        return {
-          callback,
-          message: `${app} ${
-            untrustedReads.length > 0
-              ? "has accessed your Magic App data and "
-              : ""
-          }is requesting to access the internet`,
-          details: reads, //todo
-        };
-      }
+    const app = this.assistant.context.app.split("@")[0];
+    const untrustedReads = Array.from(this.pendingReads).filter(
+      (read) => isCrossAuthor(read, app) && !this.userApprovedReads.has(read),
+    );
+    if (untrustedReads.length > 0) {
+      const callback = (approved, askedUser) => {
+        this.handleApprove(approved, askedUser, untrustedReads);
+      };
+      return {
+        callback,
+        message: `${app} is requesting to read ${untrustedReads[0]}'s data`,
+      };
     }
     this.pendingReads = new Set();
-    this.batchPrivacyRisk = false;
-    return { callback };
+    return {};
   }
-  handleRequest(request, data) {
-    if (
-      request === "getData" ||
-      request === "getAllData" ||
-      request === "getAllKeysData"
-    ) {
-      this.pendingReads.add(data.app);
-    } else {
-      this.batchPrivacyRisk = true;
-    }
-  }
-  handleApprove(approved, askedUser, reads) {
-    if (approved) {
-      if (askedUser) {
-        this.userApprovedReads = this.userApprovedReads.union(reads);
-        this.userApprovedUserActionCount =
-          this.assistant.context.userActionCount;
-      } else {
-        this.approvedReads = this.approvedReads.union(reads);
-      }
-    }
+  handleRequest(_, data) {
+    this.pendingReads.add(data.app.split("@")[0]);
   }
 }
 
@@ -243,10 +187,10 @@ class DataLossRisk extends Risk {
   }
   handleBatch(batch) {
     this._handleBatch(batch);
+    const app = this.assistant.context.app.split("@")[0];
     const untrustedWrites = Array.from(this.pendingWrites).filter(
       (write) =>
-        write.split(".")[0] !== this.assistant.context.app.split(".")[0] &&
-        !this.userApprovedWrites.has(write),
+        isCrossAuthor(write, app) && !this.userApprovedWrites.has(write),
     );
     const callback = async (approved, askedUser) => {
       await this.handleApprove(
@@ -259,7 +203,6 @@ class DataLossRisk extends Risk {
     if (untrustedWrites.length > 1) {
       return { error: "May only make one cross author write at a time" };
     } else if (untrustedWrites.length > 0) {
-      const app = this.assistant.context.app.split("@")[0];
       return {
         callback,
         message: `${app} is requesting to overwrite ${untrustedWrites[0]}'s data`,
@@ -302,18 +245,21 @@ class DownloadRisk extends Risk {
     this.downloadRequests = [];
   }
   handleBatch(batch) {
-    this._handleBatch(batch);
-    if (this.downloadRequests.length > 0) {
-      const app = this.assistant.context.app.split("@")[0];
-      const n = this.downloadRequests.length;
-      const plural = n > 1 ? "s" : "";
-      return {
-        message: `${app} is requesting to download ${n} file${plural}`,
-        details: this.downloadRequests,
-      };
+    try {
+      this._handleBatch(batch);
+      if (this.downloadRequests.length > 0) {
+        const app = this.assistant.context.app.split("@")[0];
+        const n = this.downloadRequests.length;
+        const plural = n > 1 ? "s" : "";
+        return {
+          message: `${app} is requesting to download ${n} file${plural}`,
+          details: this.downloadRequests,
+        };
+      }
+      return {};
+    } finally {
+      this.downloadRequests = [];
     }
-    this.downloadRequests = [];
-    return {};
   }
   handleRequest(_, data) {
     this.downloadRequests.push(data.filename);
@@ -352,6 +298,10 @@ class RateLimitRisk extends Risk {
   handleRequest() {
     this.requests++;
   }
+}
+
+function isCrossAuthor(app1, app2) {
+  return app1.split(".")[0] !== app2.split(".")[0];
 }
 
 export {

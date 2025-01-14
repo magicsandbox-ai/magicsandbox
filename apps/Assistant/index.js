@@ -32,7 +32,6 @@ const defaultSettings = {
   appWeights: {},
   bangs: {},
   trust: new Set(),
-  privacyRiskUserActionThreshold: 5,
 };
 
 function App() {
@@ -106,61 +105,8 @@ function App() {
     return () => sandboxRef.current.removeListener(handleRequest);
   }, []);
 
-  useEffect(() => {
-    function handleUserAction(event) {
-      const userAction = event.data.userAction;
-      if (userAction) {
-        assistantRef.current.handleUserAction({ userAction });
-      }
-    }
-    sandboxRef.current.addListener(handleUserAction);
-    return () => sandboxRef.current.removeListener(handleUserAction);
-  }, []);
-
   function setMessage(message) {
     setMessages((messages) => [...messages.slice(0, -1), message]);
-  }
-
-  function onSandboxLoad() {
-    const sandboxId = sandboxRef.current.getSandboxId();
-    const script = `
-(function postUserActionToParent() {
-  //use iife to avoid cluttering global scope
-  let sendIsActive = false;
-  let lastIsActive = false;
-  ['keydown', 'pointerup'].forEach((eventType) => {
-    window.addEventListener(
-      eventType,
-      (event) => {
-        //since we've captured the event, we don't need the fallback
-        if (event.isTrusted) {
-          lastIsActive = true;
-          sendIsActive = false;
-          parent.postMessage({ userAction: 'event' }, '*');
-        }
-      },
-      true
-    );
-  });
-  //this is a fallback to capture user actions in nested iframes
-  setInterval(() => {
-    if (sendIsActive) {
-      parent.postMessage({ userAction: 'isActive' }, '*');
-      sendIsActive = false;
-    }
-    //todo handle browsers where userActivation is unsupported
-    const isActive = navigator.userActivation?.isActive;
-    if (isActive && !lastIsActive) {
-      //technically this could run prior to the event listeners above
-      //the spec requires that isActive is set prior to dispatching the event
-      //so we set sendIsActive to true to send the message next time, giving the event listeners a chance to set sendIsActive to false
-      sendIsActive = true;
-    }
-    lastIsActive = isActive;
-  }, 100);
-})();
-    `;
-    sandboxRef.current.postMessage(sandboxId, { script });
   }
 
   let modalComponent;
@@ -177,11 +123,7 @@ function App() {
   }
   return (
     <div className="flex h-screen w-full flex-col">
-      <Sandbox
-        ref={sandboxRef}
-        className="w-full grow"
-        onLoad={onSandboxLoad}
-      />
+      <Sandbox ref={sandboxRef} className="w-full grow" />
       <BottomNavBar
         {...{
           setModal,
