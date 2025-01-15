@@ -155,5 +155,3 @@ Assistants should provide rate limiting to network requests to prevent abuse.
 trust? track denials in addition to thumbs down
 
 todo handling url params
-
-todo includeuserinfo

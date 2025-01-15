@@ -41,7 +41,6 @@ function validateAndDefaultRequest(request, data, assistant) {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
       stream: data.options?.stream || false,
-      includeUserInfo: data.options?.includeUserInfo || false,
     };
   } else if (request === "fetch") {
     data.options = {

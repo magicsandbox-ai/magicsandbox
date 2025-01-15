@@ -94,11 +94,10 @@ class Assistant {
   }
   async handleScore(score) {
     try {
-      await requestFunction(
-        "magicsandbox.scoreApp",
-        { score, app: this.context.app },
-        { includeUserInfo: true },
-      );
+      await requestFunction("magicsandbox.scoreApp", {
+        score,
+        app: this.context.app,
+      });
     } catch (error) {
       console.error(error);
     }

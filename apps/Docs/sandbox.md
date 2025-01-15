@@ -50,7 +50,6 @@ Executes a Magic Function and returns the result.
 - `options` (object):
   - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Refer to [variable costs](todo) for more details.
   - `stream` (boolean) (default false): Whether to stream the result.
-  - `includeUserInfo` (boolean) (default false): Whether to include [user info](todo).
 
 **Returns:** a Promise that includes the result from the Function and metadata about the Function call. The type depends on the `stream` option.
 

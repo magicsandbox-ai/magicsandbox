@@ -15,3 +15,5 @@ Finds Magic Apps that are relevant to a user input. Optionally, provide a user r
   - `embedding` (number[]): Embedding of the App.
   - `score` (number): Score of the App, which is the dot product of the App's embedding and inputEmbedding.
   - `minCost` (number): The minimum cost to call the App.
+
+Block Apps from using rating?
