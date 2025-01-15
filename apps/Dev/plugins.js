@@ -499,7 +499,11 @@ class Import {
       throw error;
     });
     this.parent = parent;
-    this.normalizedPath = normalizePath(this.args.path, this.buildMetadata);
+    this.normalizedPath = normalizePath(
+      this.args.path,
+      this.buildMetadata,
+      this.parent,
+    );
     this.parsedPath = parseNormalizedPath(this.normalizedPath);
     this.packageId = combinePathParts({
       scope: this.parsedPath.scope,
@@ -507,6 +511,7 @@ class Import {
     });
     this.resolvedPath = undefined;
     this.version = undefined;
+    this.url = undefined;
     this.imports = undefined; //{path: Set of imported names}
     this.children = undefined;
     this.ready = false;
@@ -522,13 +527,15 @@ class Import {
       normalizedPath: this.normalizedPath,
       resolvedPath: this.resolvedPath,
       version: this.version,
+      url: this.url,
       children: this.children,
     };
   }
   resolve() {
     try {
       this.log(`Import.resolve ${this.args.path}`);
-      if (this.packageId) {
+      //don't resolve esm.sh node polyfills
+      if (this.packageId && this.packageId !== "node") {
         /*
         buildMetadata creates a PackageMetadata if needed and the resolve is added to PackageMetadata's queue
         this is so resolves can run in parallel as much as possible
@@ -557,15 +564,15 @@ class Import {
         this.parent?.imports?.[this.args.path] || new Set(),
       );
       if (!loaded) {
-        const localPath = this.resolvedPath.slice(1); //format is /file.js
-        const localContents = this.buildMetadata.filesRef.current[localPath];
-        if (localContents) {
+        if (!this.packageId) {
           //local file
-          this.handleContents(localContents);
+          const contents =
+            this.buildMetadata.filesRef.current[this.resolvedPath.slice(1)]; //format is /file.js
+          this.handleContents(contents);
           this.onResolvePromise.resolve({
             path: this.resolvedPath,
             namespace: "import",
-            pluginData: { contents: localContents, import: this },
+            pluginData: { contents, import: this },
           });
           //we could return a promise here, but we don't use PackageMetadata for local files
           //so if we used PackageMetadata but are in this code path, there's a bug, and it's better to error
@@ -574,6 +581,7 @@ class Import {
           const pluginDataPromise = handleFetch(
             this.resolvedPath,
             this.buildMetadata,
+            this,
           )
             .then(([contentsResponse, pjsonResponse]) => {
               if (
@@ -764,21 +772,25 @@ function combinePathParts({ scope, package: _package, version, file }) {
 }
 
 const esmShData = {
-  version: "v135", //make sure to check header is still valid if updating from v135
-  redirectHeader: "x-esm-id",
+  //prefix removed in v136
+  redirectHeader: "x-esm-path", //renamed to x-esm-path in v136
 };
 
 /**
  * Returns string in format [@scope/][package][@version][/file]
  */
-function normalizePath(path, buildMetadata) {
+function normalizePath(path, buildMetadata, parent) {
   //first check for local files
   //which can be in format 'file.js' or './file.js'
   //and return format '/file.js'
   const filesRef = buildMetadata.filesRef;
   if (filesRef.current[path]) {
     return `/${path}`;
-  } else if (path.startsWith("./") && filesRef.current[path.slice(2)]) {
+  } else if (
+    path.startsWith("./") &&
+    filesRef.current[path.slice(2)] &&
+    !parent?.url //esm.sh uses relative paths which could collide with local files
+  ) {
     return path.slice(1);
   }
   const cdn = buildMetadata.cdn;
@@ -793,11 +805,17 @@ function normalizePath(path, buildMetadata) {
       return path;
     }
   } else if (cdn === "esm.sh") {
-    // /buildversion/@scope/package@version/target/file
-    // /v135/react@19.0.0/es2022/react.mjs
+    if (path.startsWith(".")) {
+      // new URL('./pack.mjs', 'https://esm.sh/msgpackr@1.11.2/es2022/msgpackr.mjs').pathname
+      // becomes: '/msgpackr@1.11.2/es2022/pack.mjs'
+      // which will match first match below
+      path = new URL(path, parent.url).pathname;
+    }
+    // /@scope/package@version/target/file
+    // /react@19.0.0/es2022/react.mjs
     const match = path.match(
-      //build    scope          package version    target     file
-      /^\/[^/]+\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))(\/[^/]+\/)(.+)$/,
+      //  scope          package version    target     file
+      /^\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))(\/[^/]+\/)(.+)$/,
     );
     if (match) {
       return combinePathParts({
@@ -808,13 +826,26 @@ function normalizePath(path, buildMetadata) {
         file: match[5] === `${match[2]}.mjs` ? undefined : match[5],
       });
     }
-    // esm.sh also imports node builtins that look like
-    // /v135/node_process.js
-    // ./node_process.js
-    const nodeBuiltInMatch = path.match(/^[/.][^/]*\/(.+)$/);
-    if (nodeBuiltInMatch) {
+    // /@scope/package@version/file?target
+    // /scheduler@^0.25.0?target=es2022
+    // /highlight.js@~11.11.0/lib/languages/1c?target=es2022
+    const match2 = path.match(
+      //  scope          package version     file
+      /^\/(?:@([^/]+)\/)?([^@]+)(?:@([^?/]+))(?:\/([^?]+))?/,
+    );
+    if (match2) {
       return combinePathParts({
-        file: nodeBuiltInMatch[1],
+        scope: match2[1],
+        package: match2[2],
+        version: match2[3],
+        file: match2[4],
+      });
+    }
+    const match3 = path.match(/^\/node\/(.+)$/);
+    if (match3) {
+      return combinePathParts({
+        package: "node",
+        file: match3[1],
       });
     }
     //could be a bare user import like 'react'
@@ -827,8 +858,9 @@ function normalizePath(path, buildMetadata) {
 /**
  * Returns Promise<[contentsResponse, pjsonResponse]>
  */
-function handleFetch(resolvedPath, buildMetadata) {
+function handleFetch(resolvedPath, buildMetadata, imp) {
   const { fileUrl, pjsonUrl } = getUrls(resolvedPath, buildMetadata);
+  imp.url = fileUrl;
   const filePromise = requestFetch(fileUrl, { responseType: "string" }).then(
     (response) => {
       if (
@@ -838,12 +870,9 @@ function handleFetch(resolvedPath, buildMetadata) {
         //need to follow these redirects for optimizedTreeShaking to work
         //otherwise initial page marks everything as imported
         //see: https://esm.sh/v135/lucide-react@0.468.0?exports=Sparkle
-        return requestFetch(
-          `https://esm.sh/${response.headers[esmShData.redirectHeader]}`,
-          {
-            responseType: "string",
-          },
-        );
+        const redirectUrl = `https://esm.sh${response.headers[esmShData.redirectHeader]}`;
+        imp.url = redirectUrl;
+        return requestFetch(redirectUrl, { responseType: "string" });
       }
       return response;
     },
@@ -868,10 +897,10 @@ function getUrls(resolvedPath, buildMetadata) {
       pjsonUrl: `https://cdn.jsdelivr.net/npm/${resolvedPathWithoutFile}/package.json`,
     };
   } else if (cdn === "esm.sh") {
-    if (resolvedPathWithoutFile === "") {
-      //this is a file only import like: "/v135/node_process.js"
+    if (resolvedParsedPath.package === "node") {
+      //esm.sh node polyfills are in format /node/file.js
       return {
-        fileUrl: `https://esm.sh/${esmShData.version}/${resolvedParsedPath.file}`,
+        fileUrl: `https://esm.sh/node/${resolvedParsedPath.file}`,
       };
     }
     let exports = "";
@@ -882,7 +911,7 @@ function getUrls(resolvedPath, buildMetadata) {
       }
     }
     return {
-      fileUrl: `https://esm.sh/${esmShData.version}/${resolvedPath}${exports}`,
+      fileUrl: `https://esm.sh/${resolvedPath}${exports}`,
       pjsonUrl: `https://esm.sh/${resolvedPathWithoutFile}/package.json`,
     };
   } else {

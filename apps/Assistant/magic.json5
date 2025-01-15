@@ -3,8 +3,6 @@
   version: "0.1.0",
   type: "assistant",
   esbuildOptions: {
-    minify: false,
-    sourcemap: true,
     //the dependencies for components are in node_modules
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths

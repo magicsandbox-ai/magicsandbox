@@ -113,6 +113,7 @@ async function requestHandler({
     } else if (request === "putData" || request === "deleteData") {
       if (!appObjRef.current?.writeData?.enabled) {
         //don't write, store in requestDataRef
+        //todo serialize, disallow null, what else to match behavior?
         if (request === "putData") {
           requestDataRef.current.db[data.app] =
             requestDataRef.current.db[data.app] || {};
@@ -147,7 +148,10 @@ async function requestHandler({
       } else if (request === "getAllData") {
         response = requestDataRef.current.db[data.app];
       } else if (request === "getAllKeysData") {
-        response = Object.keys(requestDataRef.current.db[data.app]);
+        response = requestDataRef.current.db[data.app];
+        if (response !== undefined) {
+          response = Object.keys(response);
+        }
       }
       if (response !== undefined) {
         //found, return

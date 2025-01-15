@@ -76,10 +76,13 @@ function App() {
       });
       /* urlParams */
       const { input, app } = await requestUrlParams();
-      if (input || app) {
+      //calling handleInput in DevLocal creates an infinite loop, so only call it in top sandbox
+      const isTopSandbox = parent.parent.window === parent.window;
+      if ((input || app) && isTopSandbox) {
+        //running DevLocal creates an infinite loop
         //todo need better UX if budget is less than maxCost - maybe prompt user to approve?
         //todo is passing input unsafe?
-        //await assistantRef.current.handleInput({ input, app });
+        await assistantRef.current.handleInput({ input, app });
       }
     }
     if (!settingsRef.current) {
