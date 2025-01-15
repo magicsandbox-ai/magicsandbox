@@ -8,7 +8,7 @@ async function handleMagic({
 }) {
   const sandboxId = assistant.sandboxRef.current.getSandboxId();
   let context, selection;
-  if (!assistant.context.app) {
+  if (!assistant.app) {
     context = "This is a blank page you can use to run scripts as needed.";
   } else {
     try {

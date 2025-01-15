@@ -31,7 +31,6 @@ const defaultSettings = {
   findApp: "magicsandbox.findApp",
   appWeights: {},
   bangs: {},
-  trust: new Set(),
 };
 
 function App() {
@@ -53,7 +52,6 @@ function App() {
           "settings",
         );
         if (savedSettings) {
-          savedSettings.trust = new Set(savedSettings.trust);
           settingsRef.current = savedSettings;
         }
       } catch (error) {

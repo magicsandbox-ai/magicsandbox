@@ -6,12 +6,6 @@ import Settings from "@components/Settings.js";
 function AssistantSettings({ assistantRef, setModal, addToast }) {
   const initSettings = [
     {
-      key: "trust",
-      name: "Trust",
-      description: "Trusted Apps or Authors",
-      value: assistantRef.current.settingsRef.current.trust,
-    },
-    {
       key: "bangs",
       name: "Bangs",
       description: "Shortcuts to load Magic Apps",

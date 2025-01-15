@@ -14,8 +14,9 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 - Includes headers:
   - `Content-Type: application/json`
   - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`.
-- Includes the body `{ fn, args, options, userInfo? }`, where:
-  - `fn`, `args`, `options` were the arguments to [requestFunction](todo)
+- Includes the body `{ fn, args, options, app }`, where:
+  - `fn`, `args`, `options` were the arguments to [requestFunction](#requestFunction)
+  - `app` is the name of the App that is calling the Function. Note: this is provided by the user's Assistant and is not verified by Magic Sandbox.
 
 ```javascript
 const hashedKey = crypto.createHash("sha256").update(apiKey).digest("hex");

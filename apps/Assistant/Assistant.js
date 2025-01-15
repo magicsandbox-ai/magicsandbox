@@ -3,7 +3,7 @@
 import {
   FinancialRisk,
   PublishRisk,
-  //PrivacyRisk,
+  PrivacyRisk,
   DataLossRisk,
   DownloadRisk,
   RateLimitRisk,
@@ -19,9 +19,8 @@ class Assistant {
     this.toastsRef = toastsRef;
     this.setConfirm = setConfirm;
     this.setMessage = setMessage;
-    this.context = {};
-    this.initContext();
     this.budget = null;
+    this.app = null;
     this.requestTimeoutId = null;
     this.requestQueue = [];
     this.isProcessing = false;
@@ -29,38 +28,17 @@ class Assistant {
     //these add themselves to `this.risks`
     this.financialRisk = new FinancialRisk({ assistant: this });
     this.publishRisk = new PublishRisk({ assistant: this });
-    //this.privacyRisk = new PrivacyRisk({ assistant: this });
+    this.privacyRisk = new PrivacyRisk({ assistant: this });
     this.dataLossRisk = new DataLossRisk({ assistant: this });
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
-  initContext() {
-    this.context.app = null;
-    this.context.trust = null;
-  }
-  updateContext({ init, result }) {
-    if (init) {
-      this.initContext();
-    }
-    const app = result?.metadata.app; //resolved with version
-    if (app) {
-      this.context.app = app;
-      this.context.trust =
-        this.settingsRef.current.trust.has(app) || //trusted app version
-        this.settingsRef.current.trust.has(app.split("@")[0]) || //trusted app
-        this.settingsRef.current.trust.has(app.split(".")[0]); //trusted author
-    }
-    if (init) {
-      this.risks.forEach((risk) => risk.init());
-    }
-  }
   async handleInput({ input, magic, app, messages }) {
     try {
-      this.budget = 0.1; //todo //can be mutated by FinancialRisk which is not very clean
       if (magic) {
         await handleMagic({
           input,
-          maxCost: this.budget,
+          maxCost: this.budget, //todo need to subtract what's already been spent? what if app has not been called?
           assistant: this,
           messages,
         });
@@ -68,7 +46,6 @@ class Assistant {
         await handleApp({
           input,
           app,
-          maxCost: this.budget,
           assistant: this,
         });
       }
@@ -86,6 +63,9 @@ class Assistant {
       this.toastsRef.current.addToast(message, type);
     }
   }
+  updateBudget() {
+    this.budget = 0.1; //todo //can be mutated by FinancialRisk
+  }
   handleThumbsUp() {
     this.handleScore(1);
   }
@@ -96,7 +76,7 @@ class Assistant {
     try {
       await requestFunction("magicsandbox.scoreApp", {
         score,
-        app: this.context.app,
+        app: this.app,
       });
     } catch (error) {
       console.error(error);
@@ -230,28 +210,27 @@ class Assistant {
   }
 }
 
-async function handleApp({ input, app, maxCost, assistant }) {
+async function handleApp({ input, app, assistant }) {
   assistant.sandboxRef.current.reload();
   const sandboxId = assistant.sandboxRef.current.getSandboxId();
+  assistant.updateBudget();
   if (!app) {
     app = await requestFunction(assistant.settingsRef.current.findApp, {
       input,
-      maxCost,
+      maxCost: assistant.budget,
       appWeights: assistant.settingsRef.current.appWeights,
     });
     //prompt tuning?
     //send weights / prompt tuning parameters as buffers? careful with how requestFunction serializes. maybe not worth it
   }
   assistant.setMessage(`Loading ${app}...`);
-  const result = await requestApp(app, { maxCost });
-  assistant.updateContext({
-    init: true,
-    result,
-  });
+  const result = await requestApp(app, { maxCost: assistant.budget }); //todo subtract what's already been spent?
+  assistant.app = result.metadata.app;
+  assistant.risks.forEach((risk) => risk.init());
   assistant.sandboxRef.current.postMessage(sandboxId, {
     args: {
       input,
-      budget: maxCost, //todo? finalCost?
+      budget: assistant.budget, //todo subtract what's already been spent? finalCost?
     },
     ...result,
   });
