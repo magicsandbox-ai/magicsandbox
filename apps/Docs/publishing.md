@@ -8,31 +8,9 @@ With magicsandbox.Dev, you'll edit a `magic.json` file, which is your Magic App 
 
 ### magic.json
 
-#### args ({ input: string, budget: number })
-
 #### scriptFile (string) (default 'index.js')
 
 Filename containing `script` code, defaults to `index.js`. Editing this file is usually more convenient than editing the `script` key in `magic.json` directly.
-
-#### esbuildOptions (object) (default below)
-
-Options to pass to [esbuild](https://esbuild.github.io/api/#build) during the [build process](todo).
-
-The default values below can be overridden, except for `entryPoints`, `write`, and `plugins`:
-
-```javascript
-{
-  entryPoints: [scriptFile], //cannot be overridden
-  write: false, //cannot be overridden
-  plugins: [magicsandbox.Dev.customPlugins], //cannot be overridden
-  bundle: true,
-  globalName: 'app', //assigns exports (i.e. context, api, render) to this global variable
-  loader: { '.js': 'jsx' },
-  target: 'es2020',
-  minify: publishing ? true : false, //true when building for publishing, false when building for live preview
-  sourcemap: publishing ? false : true, //false when building for publishing, true when building for live preview
-};
-```
 
 #### html (string) (default '<div id="root"></div>')
 
@@ -74,6 +52,23 @@ export default {
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
+#### args ({ input: string, budget: number })
+
+#### cacheRequests (boolean) (default true)
+
+Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development. Set to false to disable.
+
+#### writeData (object) (default { enabled: false, requestAppMaxCost: 0 })
+
+Whether to write data to the database when calling `requestPutData` or `requestDeleteData`. If not enabled, data will be maintained in memory, so it can be retrieved by later calls to `requestGetData` but will be lost when the server restarts.
+
+Magic Sandbox requires that an App was successfully called with `requestApp` before writing to the database. Therefore, to enable writing data:
+
+- A version of your App must have been published successfully.
+- You must set `writeData.enabled` to true and `writeData.requestAppMaxCost` to a number that's greater than your App's minCost.
+
+After you do so, magicsandbox.Dev will call `requestApp` once and begin writing to the database.
+
 #### dependencies (object)
 
 Version ranges to use for the packages you import. magicsandbox.Dev supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
@@ -111,9 +106,25 @@ Version ranges to use for all imports, enabling you to override the dependencies
 }
 ```
 
-#### cacheRequests (boolean) (default true)
+#### esbuildOptions (object) (default below)
 
-Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development. Set to false to disable.
+Options to pass to [esbuild](https://esbuild.github.io/api/#build) during the [build process](todo).
+
+The default values below can be overridden, except for `entryPoints`, `write`, and `plugins`:
+
+```javascript
+{
+  entryPoints: [scriptFile], //cannot be overridden
+  write: false, //cannot be overridden
+  plugins: [magicsandbox.Dev.customPlugins], //cannot be overridden
+  bundle: true,
+  globalName: 'app', //assigns exports (i.e. context, api, render) to this global variable
+  loader: { '.js': 'jsx' },
+  target: 'es2020',
+  minify: publishing ? true : false, //true when building for publishing, false when building for live preview
+  sourcemap: publishing ? false : true, //false when building for publishing, true when building for live preview
+};
+```
 
 #### cdn (string) (default 'esm.sh')
 

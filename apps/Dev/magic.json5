@@ -12,7 +12,6 @@
     },
     inject: ["./processShim.js"], //for eslint
     loader: { ".js": "jsx", ".wasm": "binary" },
-    minify: true,
     //the dependencies for components are in node_modules
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths
@@ -43,5 +42,9 @@
     "react-resizable-panels": "^2.0.20",
     semver: "^7.6.3",
     util: "^0.12.5", //for eslint
+  },
+  writeData: {
+    enabled: true,
+    requestAppMaxCost: 0.001,
   },
 }

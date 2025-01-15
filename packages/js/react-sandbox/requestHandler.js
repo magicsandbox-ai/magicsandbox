@@ -1,4 +1,4 @@
-/* global requestSandbox */
+/* global requestSandbox, requestApp */
 
 const minimumMinCost = 0.001;
 
@@ -110,33 +110,47 @@ async function requestHandler({
         });
         return;
       }
-    } else if (
-      [
-        "putData",
-        "deleteData",
-        "getData",
-        "getAllData",
-        "getAllKeysData",
-      ].includes(request)
-    ) {
-      let app = data.app.split("@")[0];
-      app = app.split(".")[1]; //todo allow author in advanced options
-      if (appObjRef.current?.name === app) {
-        //todo document shortcomings of this approach: does not check size, eviction policy, assistant may reject writes, etc.
-        //todo should even do this?
+    } else if (request === "putData" || request === "deleteData") {
+      if (!appObjRef.current?.writeData?.enabled) {
+        //don't write, store in requestDataRef
         if (request === "putData") {
-          requestDataRef.current[data.key] = data.value;
-          response = true;
+          requestDataRef.current.db[data.app] =
+            requestDataRef.current.db[data.app] || {};
+          requestDataRef.current.db[data.app][data.key] = data.val;
         } else if (request === "deleteData") {
-          delete requestDataRef.current[data.key];
-          response = true;
-        } else if (request === "getData") {
-          response = requestDataRef.current[data.key];
-        } else if (request === "getAllData") {
-          response = requestDataRef.current;
-        } else if (request === "getAllKeysData") {
-          response = Object.keys(requestDataRef.current);
+          delete requestDataRef.current.db[data.app]?.[data.key];
         }
+        sandboxRef.current.postMessage(sandboxId, { id, response: true });
+        return;
+      } else if (!requestDataRef.current.requestedApp) {
+        //requestApp must be called before we can write to database
+        try {
+          await requestApp(data.app, {
+            maxCost: appObjRef.current?.writeData?.requestAppMaxCost,
+          });
+        } catch (error) {
+          console.error("requestApp error", error);
+          //probably requestSandbox will fail but perhaps author has called requestApp themselves, so don't throw
+        } finally {
+          requestDataRef.current.requestedApp = true;
+        }
+        //fall through to requestSandbox
+      }
+    } else if (
+      request === "getData" ||
+      request === "getAllData" ||
+      request === "getAllKeysData"
+    ) {
+      //for reads, we return data in requestDataRef if found
+      if (request === "getData") {
+        response = requestDataRef.current.db[data.app]?.[data.key];
+      } else if (request === "getAllData") {
+        response = requestDataRef.current.db[data.app];
+      } else if (request === "getAllKeysData") {
+        response = Object.keys(requestDataRef.current.db[data.app]);
+      }
+      if (response !== undefined) {
+        //found, return
         sandboxRef.current.postMessage(sandboxId, { id, response });
         return;
       }
