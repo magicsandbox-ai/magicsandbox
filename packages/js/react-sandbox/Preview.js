@@ -3,11 +3,21 @@ import React, {
   useImperativeHandle,
   useRef,
   useEffect,
+  useState,
 } from "react";
 import { Sandbox } from "./Sandbox.js";
 import { requestHandler } from "./requestHandler.js";
 
-const Preview = forwardRef(function Preview({ className }, ref) {
+const Preview = forwardRef(function Preview(
+  {
+    className,
+    loadingIndicator = <p>Loading...</p>, // default simple text fallback
+    initLoadingState = false,
+  },
+  ref,
+) {
+  const [state, setState] = useState(initLoadingState);
+
   const sandboxRef = useRef(null);
   const appObjRef = useRef(null);
   const requestAppRef = useRef({});
@@ -34,6 +44,7 @@ const Preview = forwardRef(function Preview({ className }, ref) {
       getSandboxId,
       reload,
       update,
+      error,
     };
   }, []);
 
@@ -42,6 +53,7 @@ const Preview = forwardRef(function Preview({ className }, ref) {
   }
 
   function reload() {
+    setState("loading");
     sandboxRef.current.reload();
   }
 
@@ -53,11 +65,37 @@ const Preview = forwardRef(function Preview({ className }, ref) {
       style: appObj.style,
       args: appObj.args,
     });
+    setState("ready");
+  }
+
+  function error() {
+    setState("error");
   }
 
   return (
     <div className={className}>
-      <Sandbox ref={sandboxRef} style={{ height: "100%", width: "100%" }} />
+      <Sandbox
+        ref={sandboxRef}
+        style={
+          state !== "ready"
+            ? { display: "none" }
+            : { height: "100%", width: "100%" }
+        }
+      />
+      {state !== "ready" && (
+        <div
+          style={{
+            display: "flex",
+            height: "100%",
+            width: "100%",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {state === "loading" && loadingIndicator}
+          {state === "error" && <p>Error updating preview.</p>}
+        </div>
+      )}
     </div>
   );
 });

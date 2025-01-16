@@ -257,8 +257,13 @@ async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
   let result = await buildDeps(bundleDepsCode, esbuild, options, appObjRef);
   if (appObjRef.current.optimizedTreeShaking) {
     if (result.resolvedPaths) {
-      appObjRef.current.imports = result.resolvedPaths;
-      result = await buildDeps(bundleDepsCode, esbuild, options, appObjRef);
+      result = await buildDeps(
+        bundleDepsCode,
+        esbuild,
+        options,
+        appObjRef,
+        result.resolvedPaths,
+      );
     } else {
       console.warn(
         `optimizedTreeShaking is not enabled for ${appObjRef.current.cdn}`, //todo show user
@@ -268,7 +273,7 @@ async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
   return result.outputFiles[0].text;
 }
 
-async function buildDeps(bundleDepsCode, esbuild, options, appObjRef) {
+async function buildDeps(bundleDepsCode, esbuild, options, appObjRef, imports) {
   const result = await esbuild.build({
     ...options,
     entryPoints: ["bundleDepsCode.js"],
@@ -276,6 +281,7 @@ async function buildDeps(bundleDepsCode, esbuild, options, appObjRef) {
       createImportPlugin(
         { current: { "bundleDepsCode.js": bundleDepsCode } }, //filesRef
         appObjRef,
+        imports,
       ),
     ],
     globalName: undefined,
@@ -296,9 +302,8 @@ optimizedTreeShaking:
   - Import.handleContents calls getImports and saves it to Import.imports - at this point we don't know its children resolvedPaths
   - Import.handleResolve looks up its parent Import.imports and uses resolvedPath to save to BuildMetadata.resolvedPaths
   - build.onEnd saves BuildMetadata.resolvedPaths to result.resolvedPaths
-  - bundleDeps saves result.resolvedPaths to appObjRef.current.imports
 - Second build:
-  - BuildMetadata.imports is set to appObjRef.current.imports
+  - BuildMetadata.imports is set to result.resolvedPaths from first build (todo could name these better)
   - getUrls uses BuildMetadata.imports to construct an esm.sh url that tree shakes
 */
 
@@ -315,7 +320,7 @@ optimizedTreeShaking:
 */
 
 class BuildMetadata {
-  constructor(filesRef, appObjRef, log) {
+  constructor(filesRef, appObjRef, imports, log) {
     this.filesRef = filesRef;
     this.appObjRef = appObjRef;
     this.cdn = appObjRef.current.cdn || "esm.sh";
@@ -323,7 +328,7 @@ class BuildMetadata {
     this.importQueue = [];
     this.packageMetadataMap = {}; //{packageId: PackageMetadata}
     this.resolvedPaths = {}; //{resolvedPath: Set of imported names}
-    this.imports = appObjRef.current.imports || {}; //{resolvedPath: Set of imported names}
+    this.imports = imports || {}; //{resolvedPath: Set of imported names}
   }
   addImport(imp) {
     if (this.canceled) {
@@ -677,14 +682,14 @@ class Import {
   }
 }
 
-function createImportPlugin(filesRef, appObjRef) {
+function createImportPlugin(filesRef, appObjRef, imports) {
   return {
     name: "import",
     setup(build) {
       let buildMetadata, start, log, intervalId;
 
       build.onStart(() => {
-        if (build.initialOptions.logLevel === "debug") {
+        if (appObjRef.current.debug) {
           log = console.log;
           intervalId = setInterval(() => {
             console.log(buildMetadata);
@@ -692,7 +697,7 @@ function createImportPlugin(filesRef, appObjRef) {
         } else {
           log = () => {};
         }
-        buildMetadata = new BuildMetadata(filesRef, appObjRef, log);
+        buildMetadata = new BuildMetadata(filesRef, appObjRef, imports, log);
         start = Date.now();
         log("onStart");
       });

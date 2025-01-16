@@ -4,28 +4,27 @@ import React from "react";
 import Confirm from "@components/Confirm.js";
 
 /*
-collapse details
 learn more button
-maybe identify some as high risk?
 */
 
 function AssistantConfirm({ confirm }) {
   const { riskResponses, callback } = confirm;
   const customContent = (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 break-words">
       {riskResponses.map((r, i) => {
         const { message, details, downloadDetails } = r;
         return (
           <div key={i}>
-            {message && <div>{message}</div>}
-            {details && details.map((d, i) => <div key={i}>{d}</div>)}
+            {message && <p>{message}</p>}
+            {details && <Details details={details} />}
             {downloadDetails && (
               <a
+                className="cursor-pointer text-blue-600 hover:underline"
                 onClick={() =>
-                  requestDownload({
-                    filename: downloadDetails.filename,
-                    content: downloadDetails.content,
-                  })
+                  requestDownload(
+                    downloadDetails.filename,
+                    downloadDetails.content,
+                  )
                 }
               >
                 {downloadDetails.text}
@@ -36,6 +35,10 @@ function AssistantConfirm({ confirm }) {
       })}
     </div>
   );
+  const header =
+    riskResponses.length > 1
+      ? `Approve ${riskResponses.length} Sandbox Requests?`
+      : "Approve Sandbox Request?";
   const buttons = [
     {
       text: "Approve",
@@ -51,10 +54,21 @@ function AssistantConfirm({ confirm }) {
   return (
     <Confirm
       onClose={() => callback(false)}
-      header="Approve Sandbox Requests?"
+      header={header}
       customContent={customContent}
       buttons={buttons}
     />
+  );
+}
+
+function Details({ details }) {
+  return (
+    <details>
+      <summary>Details</summary>
+      {details.map((d, i) => (
+        <p key={i}>{d}</p>
+      ))}
+    </details>
   );
 }
 

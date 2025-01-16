@@ -161,17 +161,14 @@ Publish a Magic Function or Magic App.
 
 todo
 
-### requestDownload ({ filename: string, url: string, content: BlobPart }) => Promise<true>
+### requestDownload (filename: string, content: BlobPart }) => Promise<true>
 
 Download a file.
 
-**Arguments:** an object with the following keys:
+**Arguments:**
 
 - `filename` (**required**) (string): filename to use for the downloaded file
-- `url` (string): URL to download
-- `content` (BlobPart): content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types.
-
-Either `url` or `content` must be provided.
+- `content` (**required**) (BlobPart): content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types.
 
 **Returns:** a Promise that resolves to true
 

@@ -104,9 +104,9 @@ function App() {
     processedCss: "",
     classMap: {},
   });
-  const [isLoading, setIsLoading] = useState(false);
 
   const previewRef = useRef(null);
+  const previewPanelRef = useRef(null);
   const deletedFilesRef = useRef({});
   const appObjRef = useRef(null);
   const contextRef = useRef(null);
@@ -407,7 +407,6 @@ function App() {
 
   async function build(esbuildOptions) {
     try {
-      setIsLoading(true);
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
       let _appObj = JSON5.parse(files["magic.json"]);
@@ -434,9 +433,23 @@ function App() {
     } catch (error) {
       //todo
       console.error(error);
-    } finally {
-      setIsLoading(false);
+      previewRef.current.error();
     }
+  }
+
+  function handleResizePreview(platform) {
+    let targetWidth;
+    if (platform === "desktop") {
+      previewPanelRef.current.resize(100);
+      return;
+    } else if (platform === "mobile") {
+      targetWidth = 360;
+    } else if (platform === "tablet") {
+      targetWidth = 768;
+    } else {
+      throw new Error(`Invalid platform: ${platform}`);
+    }
+    previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
   const buttonStyle =
@@ -449,22 +462,36 @@ function App() {
       onKeyDown={handleKeyDown}
     >
       <div className="flex items-center border-b border-stone-500 px-2 py-0.5">
-        <div className="flex-1" /> {/* spacer */}
+        <div className="flex flex-1">
+          <i className="text-xs">Ctrl+S to save and update preview</i>
+        </div>
         <div className="flex gap-12">
           <button className={buttonStyle} onClick={handleSave}>
             Update Preview
+          </button>
+          <button
+            className={buttonStyle}
+            onClick={() => handleResizePreview("mobile")}
+          >
+            Preview Mobile
+          </button>
+          <button
+            className={buttonStyle}
+            onClick={() => handleResizePreview("tablet")}
+          >
+            Preview Tablet
+          </button>
+          <button
+            className={buttonStyle}
+            onClick={() => handleResizePreview("desktop")}
+          >
+            Preview Desktop
           </button>
           <button className={buttonStyle} onClick={handlePublish}>
             Publish
           </button>
         </div>
-        <div className="flex flex-1 justify-end">
-          {isLoading ? (
-            <Loader className="animate-spin" />
-          ) : (
-            <i className="text-xs">Ctrl+S to save and refresh preview</i>
-          )}
-        </div>
+        <div className="flex-1" /> {/* spacer */}
       </div>
       <PanelGroup
         className="grow"
@@ -496,8 +523,12 @@ function App() {
           />
         </Panel>
         <PanelResizeHandle className={panelResizeHandleStyle} />
-        <Panel>
-          <Preview ref={previewRef} className="h-full" />
+        <Panel ref={previewPanelRef}>
+          <Preview
+            ref={previewRef}
+            className="h-full"
+            loadingIndicator={<Loader className="h-10 w-10 animate-spin" />}
+          />
         </Panel>
       </PanelGroup>
     </div>
@@ -534,7 +565,7 @@ Usage:
 const api = {
   download: () => {
     Object.entries(api.files).forEach(([filename, content]) => {
-      requestDownload({ filename, content });
+      requestDownload(filename, content);
     });
   },
 };

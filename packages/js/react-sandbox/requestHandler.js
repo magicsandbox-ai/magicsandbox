@@ -18,7 +18,7 @@ function validateAndDefaultRequest(request, data, assistant) {
     fetch: ["resource"],
     openUrl: ["url"],
     publish: ["magicObj"],
-    download: ["options"],
+    download: ["filename", "content"],
     urlParams: [],
   };
   if (assistant) {
@@ -54,12 +54,6 @@ function validateAndDefaultRequest(request, data, assistant) {
       ...data.options,
       responseType: data.options?.responseType || "auto",
     };
-  } else if (request === "download") {
-    if (
-      !(data.options.filename && (data.options.url || data.options.content))
-    ) {
-      return "filename and either url or content are required";
-    }
   }
 }
 

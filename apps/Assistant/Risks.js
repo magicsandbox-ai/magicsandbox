@@ -62,29 +62,35 @@ class FinancialRisk extends Risk {
     this.approvedCost = 0;
   }
   handleBatch(batch) {
-    this._handleBatch(batch);
-    const callback = (approved, askedUser) => {
-      this.handleApprove(approved, askedUser, { ...this.pendingRequests });
-    };
-    if (this.pendingCost + this.approvedCost > this.assistant.budget) {
-      const app = this.assistant.app.split("@")[0];
-      const pendingSpend = formatAsDollars(this.pendingCost);
-      const approvedSpend = formatAsDollars(this.approvedCost);
-      const totalSpend = formatAsDollars(this.pendingCost + this.approvedCost);
-      const budget = formatAsDollars(this.assistant.budget);
-      return {
-        callback,
-        message: `${app} is requesting to spend ${pendingSpend}, for a total of ${totalSpend}`,
-        details: [
-          `Budget: ${budget}`,
-          `Approved spend: ${approvedSpend}`,
-          `Pending spend: ${pendingSpend}`,
-        ],
+    try {
+      this._handleBatch(batch);
+      const pendingRequests = this.pendingRequests;
+      const callback = (approved, askedUser) => {
+        this.handleApprove(approved, askedUser, pendingRequests);
       };
+      if (this.pendingCost + this.approvedCost > this.assistant.budget) {
+        const app = this.assistant.app.split("@")[0];
+        const pendingSpend = formatAsDollars(this.pendingCost);
+        const approvedSpend = formatAsDollars(this.approvedCost);
+        const totalSpend = formatAsDollars(
+          this.pendingCost + this.approvedCost,
+        );
+        const budget = formatAsDollars(this.assistant.budget);
+        return {
+          callback,
+          message: `${app} is requesting to spend ${pendingSpend}, for a total of ${totalSpend}`,
+          details: [
+            `Budget: ${budget}`,
+            `Approved spend: ${approvedSpend}`,
+            `Pending spend: ${pendingSpend}`,
+          ],
+        };
+      }
+      return { callback };
+    } finally {
+      this.pendingRequests = {};
+      this.pendingCost = 0;
     }
-    this.pendingRequests = {};
-    this.pendingCost = 0;
-    return { callback };
   }
   handleRequest(_, data, id) {
     this.pendingRequests[id] = data;
@@ -120,23 +126,28 @@ class PublishRisk extends Risk {
     this.publishRequests = [];
   }
   handleBatch(batch) {
-    this._handleBatch(batch);
-    if (this.publishRequests.length > 1) {
-      return { error: "May only publish one Magic App or Function at a time" };
-    } else if (this.publishRequests.length === 1) {
-      const app = this.assistant.app.split("@")[0];
-      const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
-      return {
-        message: `${app} is requesting to publish a Magic App or Function`,
-        downloadDetails: {
-          text: "View JSON",
-          filename: `${app}_publish_request_${now}.json`,
-          content: JSON.stringify(this.publishRequests[0], null, 2),
-        },
-      };
+    try {
+      this._handleBatch(batch);
+      if (this.publishRequests.length > 1) {
+        return {
+          error: "May only publish one Magic App or Function at a time",
+        };
+      } else if (this.publishRequests.length === 1) {
+        const app = this.assistant.app.split("@")[0];
+        const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
+        return {
+          message: `${app} is requesting to publish a Magic App or Function`,
+          downloadDetails: {
+            text: "Download Magic App JSON",
+            filename: `${app}_publish_request_${now}.json`,
+            content: JSON.stringify(this.publishRequests[0], null, 2),
+          },
+        };
+      }
+      return {};
+    } finally {
+      this.publishRequests = [];
     }
-    this.publishRequests = [];
-    return {};
   }
   handleRequest(_, data) {
     this.publishRequests.push(data.magicObj);
@@ -153,22 +164,25 @@ class PrivacyRisk extends Risk {
     this.userApprovedReads = new Set();
   }
   handleBatch(batch) {
-    this._handleBatch(batch);
-    const app = this.assistant.app.split("@")[0];
-    const untrustedReads = Array.from(this.pendingReads).filter(
-      (read) => isCrossAuthor(read, app) && !this.userApprovedReads.has(read),
-    );
-    if (untrustedReads.length > 0) {
-      const callback = (approved, askedUser) => {
-        this.handleApprove(approved, askedUser, untrustedReads);
-      };
-      return {
-        callback,
-        message: `${app} is requesting to read ${untrustedReads[0]}'s data`,
-      };
+    try {
+      this._handleBatch(batch);
+      const app = this.assistant.app.split("@")[0];
+      const untrustedReads = Array.from(this.pendingReads).filter(
+        (read) => isCrossAuthor(read, app) && !this.userApprovedReads.has(read),
+      );
+      if (untrustedReads.length > 0) {
+        const callback = (approved, askedUser) => {
+          this.handleApprove(approved, askedUser, untrustedReads);
+        };
+        return {
+          callback,
+          message: `${app} is requesting to read ${untrustedReads[0]}'s data`,
+        };
+      }
+      return {};
+    } finally {
+      this.pendingReads = new Set();
     }
-    this.pendingReads = new Set();
-    return {};
   }
   handleRequest(_, data) {
     this.pendingReads.add(data.app.split("@")[0]);
@@ -186,30 +200,34 @@ class DataLossRisk extends Risk {
     this.lastAppBackups = {};
   }
   handleBatch(batch) {
-    this._handleBatch(batch);
-    const app = this.assistant.app.split("@")[0];
-    const untrustedWrites = Array.from(this.pendingWrites).filter(
-      (write) =>
-        isCrossAuthor(write, app) && !this.userApprovedWrites.has(write),
-    );
-    const callback = async (approved, askedUser) => {
-      await this.handleApprove(
-        approved,
-        askedUser,
-        Array.from(this.pendingWrites),
-        untrustedWrites,
+    try {
+      this._handleBatch(batch);
+      const app = this.assistant.app.split("@")[0];
+      const pendingWrites = Array.from(this.pendingWrites);
+      const untrustedWrites = pendingWrites.filter(
+        (write) =>
+          isCrossAuthor(write, app) && !this.userApprovedWrites.has(write),
       );
-    };
-    if (untrustedWrites.length > 1) {
-      return { error: "May only make one cross author write at a time" };
-    } else if (untrustedWrites.length > 0) {
-      return {
-        callback,
-        message: `${app} is requesting to overwrite ${untrustedWrites[0]}'s data`,
+      const callback = async (approved, askedUser) => {
+        await this.handleApprove(
+          approved,
+          askedUser,
+          pendingWrites,
+          untrustedWrites,
+        );
       };
+      if (untrustedWrites.length > 1) {
+        return { error: "May only make one cross author write at a time" };
+      } else if (untrustedWrites.length > 0) {
+        return {
+          callback,
+          message: `${app} is requesting to overwrite ${untrustedWrites[0]}'s data`,
+        };
+      }
+      return { callback };
+    } finally {
+      this.pendingWrites = new Set();
     }
-    this.pendingWrites = new Set();
-    return { callback };
   }
   handleRequest(_, data) {
     this.pendingWrites.add(data.app.split("@")[0]);

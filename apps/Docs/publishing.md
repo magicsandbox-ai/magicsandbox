@@ -126,9 +126,13 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
 };
 ```
 
+#### debug (boolean) (default false)
+
+Enable additional logging to debug the build.
+
 #### cdn (string) (default 'esm.sh')
 
-The CDN to use for the build process. Supported values are `esm.sh` and `jsdelivr `.
+The CDN to use for the build. Supported values are `esm.sh` and `jsdelivr `.
 
 #### optimizedTreeShaking (boolean) (default false)
 
