@@ -56,7 +56,7 @@ async function manageBackups(apps, toastsRef) {
       let maxTs = Date.now();
       let minTs = maxTs - 1000 * 60 * 10;
       const minMinTs = Date.now() - 1000 * 60 * 60 * 24 * 7;
-      if (tsArray[0] < minTs) {
+      if (tsArray[0] || 0 < minTs) {
         backupsToTake.push(app);
       }
       function updateMinMaxTs(minTs, maxTs) {

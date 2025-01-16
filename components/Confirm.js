@@ -1,12 +1,14 @@
-import React from 'react';
-import ModalOverlay from './ModalOverlay.js';
+import React from "react";
+import ModalOverlay from "./ModalOverlay.js";
 
 function InnerConfirm({ onClose, header, message, buttons, customContent }) {
-  function handleClick(onClick) {
+  function handleClick(onClick, closeOnClick = true) {
     if (onClick) {
       onClick();
     }
-    onClose();
+    if (closeOnClick) {
+      onClose();
+    }
   }
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -17,9 +19,9 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
         {buttons.map((b, i) => (
           <button
             key={i}
-            className={'rounded px-4 py-2 font-bold ' + b.className}
+            className={"rounded px-4 py-2 font-bold " + b.className}
             onClick={() => {
-              handleClick(b.onClick);
+              handleClick(b.onClick, b.closeOnClick);
             }}
           >
             {b.text}

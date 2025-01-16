@@ -174,9 +174,12 @@ class PrivacyRisk extends Risk {
         const callback = (approved, askedUser) => {
           this.handleApprove(approved, askedUser, untrustedReads);
         };
+        const n = untrustedReads.length;
+        const plural = n > 1 ? "s" : "";
         return {
           callback,
-          message: `${app} is requesting to read ${untrustedReads[0]}'s data`,
+          message: `${app} is requesting to access your data from ${n} other App${plural}`,
+          details: untrustedReads,
         };
       }
       return {};
@@ -186,6 +189,14 @@ class PrivacyRisk extends Risk {
   }
   handleRequest(_, data) {
     this.pendingReads.add(data.app.split("@")[0]);
+  }
+  handleApprove(approved, askedUser, untrustedReads) {
+    if (approved && askedUser) {
+      this.userApprovedReads = union(
+        this.userApprovedReads,
+        new Set(untrustedReads),
+      );
+    }
   }
 }
 
@@ -216,12 +227,13 @@ class DataLossRisk extends Risk {
           untrustedWrites,
         );
       };
-      if (untrustedWrites.length > 1) {
-        return { error: "May only make one cross author write at a time" };
-      } else if (untrustedWrites.length > 0) {
+      if (untrustedWrites.length > 0) {
+        const n = untrustedWrites.length;
+        const plural = n > 1 ? "s" : "";
         return {
           callback,
-          message: `${app} is requesting to overwrite ${untrustedWrites[0]}'s data`,
+          message: `${app} is requesting to overwrite your data for ${n} other App${plural}`,
+          details: untrustedWrites,
         };
       }
       return { callback };
@@ -235,7 +247,8 @@ class DataLossRisk extends Risk {
   async handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
     if (approved) {
       if (askedUser) {
-        this.userApprovedWrites = this.userApprovedWrites.union(
+        this.userApprovedWrites = union(
+          this.userApprovedWrites,
           new Set(untrustedWrites),
         );
       }
@@ -316,6 +329,12 @@ class RateLimitRisk extends Risk {
   handleRequest() {
     this.requests++;
   }
+}
+
+function union(set1, set2) {
+  const out = new Set(set1);
+  set2.forEach((item) => out.add(item));
+  return out;
 }
 
 function isCrossAuthor(app1, app2) {

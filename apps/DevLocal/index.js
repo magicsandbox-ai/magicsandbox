@@ -20,7 +20,7 @@ function DocsLink({ children }) {
 
 function App() {
   const [state, setState] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [widthClass, setWidthClass] = useState("w-full");
 
   const previewRef = useRef(null);
   const toastsRef = useRef(null);
@@ -41,8 +41,7 @@ function App() {
       } catch (error) {
         console.error(error);
         toastsRef.current.addToast("Failed to load preview", "error");
-      } finally {
-        setIsLoading(false);
+        previewRef.current.error();
       }
     }
     init();
@@ -62,20 +61,17 @@ function App() {
 
   async function handleUpdate() {
     try {
-      setIsLoading(true);
       previewRef.current.reload();
       await previewApp();
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("Failed to update preview", "error");
-    } finally {
-      setIsLoading(false);
+      previewRef.current.error();
     }
   }
 
   async function handlePublish() {
     try {
-      setIsLoading(true);
       previewRef.current.reload();
       const appObj = await previewApp();
       await requestPublish(appObj);
@@ -83,12 +79,23 @@ function App() {
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("Failed to publish", "error");
-    } finally {
-      setIsLoading(false);
+      previewRef.current.error();
     }
   }
 
   //todo a lot of this is duplicated in Dev
+  function handleResizePreview(platform) {
+    if (platform === "desktop") {
+      setWidthClass("w-full");
+    } else if (platform === "mobile") {
+      setWidthClass("w-[360px]");
+    } else if (platform === "tablet") {
+      setWidthClass("w-[768px]");
+    } else {
+      throw new Error(`Invalid platform: ${platform}`);
+    }
+  }
+
   const buttonStyle =
     "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
 
@@ -109,23 +116,38 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col text-stone-700">
-      <div className="flex items-center justify-center gap-12 border-b border-stone-500 px-2 py-0.5">
+    <div className="flex h-screen flex-col items-center text-stone-700">
+      <div className="flex w-full items-center justify-center gap-12 border-b border-stone-500 px-2 py-0.5">
         <button className={buttonStyle} onClick={handleUpdate}>
           Update Preview
+        </button>
+        <button
+          className={buttonStyle}
+          onClick={() => handleResizePreview("mobile")}
+        >
+          Preview Mobile
+        </button>
+        <button
+          className={buttonStyle}
+          onClick={() => handleResizePreview("tablet")}
+        >
+          Preview Tablet
+        </button>
+        <button
+          className={buttonStyle}
+          onClick={() => handleResizePreview("desktop")}
+        >
+          Preview Desktop
         </button>
         <button className={buttonStyle} onClick={handlePublish}>
           Publish
         </button>
       </div>
-      {isLoading && (
-        <div className="flex grow items-center justify-center">
-          <Loader className="h-10 w-10 animate-spin" />
-        </div>
-      )}
       <Preview
         ref={previewRef}
-        className={isLoading ? "hidden" : "w-full grow"}
+        className={`grow ${widthClass} ${widthClass === "w-full" ? "" : "border-x border-stone-500"}`}
+        loadingIndicator={<Loader className="h-10 w-10 animate-spin" />}
+        initLoadingState={true}
       />
       <Toasts className="top-2" ref={toastsRef} />
     </div>

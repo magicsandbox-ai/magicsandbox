@@ -1,11 +1,7 @@
-/* global requestDownload */
+/* global requestDownload requestOpenUrl */
 
 import React from "react";
 import Confirm from "@components/Confirm.js";
-
-/*
-learn more button
-*/
 
 function AssistantConfirm({ confirm }) {
   const { riskResponses, callback } = confirm;
@@ -42,13 +38,19 @@ function AssistantConfirm({ confirm }) {
   const buttons = [
     {
       text: "Approve",
-      className: "bg-stone-300 hover:bg-stone-400 text-black",
+      className: "bg-stone-300 hover:bg-stone-400 text-black w-32",
       onClick: () => callback(true),
     },
     {
       text: "Deny",
-      className: "bg-red-500 hover:bg-red-700 text-white",
+      className: "bg-red-500 hover:bg-red-700 text-white w-32",
       onClick: () => callback(false),
+    },
+    {
+      text: "Learn More",
+      className: "bg-blue-500 hover:bg-blue-700 text-white w-32",
+      onClick: () => requestOpenUrl("?app=magicsandbox.About"), //todo link to a section
+      closeOnClick: false,
     },
   ];
   return (
