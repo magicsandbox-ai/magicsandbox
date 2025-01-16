@@ -78,7 +78,10 @@ async function handleRequest(event) {
   if (!confirmed) {
     response = { error: "User denied the request" };
   } else {
-    delete data.options?.backup; //don't allow apps to access backup storage, see below for details
+    delete data.options?.backup; //don't allow apps to access backup storage
+    if (request === "function") {
+      data.options.app = currentApp; //identify the app that called requestFunction
+    }
     // 3. forward the request
     response = await requestSandbox(request, data);
   }
@@ -90,6 +93,10 @@ window.addEventListener("message", handleRequest);
 ```
 
 todo update with proper error handling
+
+### Providing App to requestFunction calls
+
+Assistants are responsible for identifying the App that called requestFunction. Assistants should pass an additional `app` option to requestFunction and prevent Apps from setting this option without user approval.
 
 ### Guidelines for Approving Sandbox Requests
 

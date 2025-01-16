@@ -142,6 +142,9 @@ class Assistant {
             error: { message: error || "User denied the request" },
           });
         } else {
+          if (request === "function") {
+            data.options.app = this.app;
+          }
           requestSandbox(request, data)
             .then(async (response) => {
               if (request === "app" || request === "function") {
