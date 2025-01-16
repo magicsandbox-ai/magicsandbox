@@ -2,7 +2,7 @@ import json
 from math import floor
 from pydantic import BaseModel
 from fastapi import HTTPException
-from litellm import acompletion, model_cost
+from litellm import acompletion
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
@@ -14,35 +14,38 @@ default_tokenizer = DefaultTokenizer()
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
 supported_models = {
     'claude-3-5-sonnet-20241022': {
+        'input_cost_per_token': 3 / 1000000,
+        'output_cost_per_token': 15 / 1000000,
         'tokenizer': default_tokenizer,
         'max_vision_tokens': 1600,
     },
     'gpt-4o-2024-08-06': {
+        'input_cost_per_token': 2.5 / 1000000,
+        'output_cost_per_token': 10 / 1000000,
         'tokenizer': gpt_4o_tokenizer,
         'max_vision_tokens': 1445,
     },
     'gpt-4o-mini-2024-07-18': {
+        'input_cost_per_token': 0.15 / 1000000,
+        'output_cost_per_token': 0.6 / 1000000,
         'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
         'max_vision_tokens': 1445,
     },
     'gemini/gemini-1.5-flash-002': {
+        'input_cost_per_token': 0.075 / 1000000,
+        'output_cost_per_token': 0.3 / 1000000,
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'vision_disabled': True, # can't compute cost for audio/video so need to disable until can filter it out specifically
     },
     'gemini/gemini-1.5-flash-8b-001': {
+        'input_cost_per_token': 0.0375 / 1000000,
+        'output_cost_per_token': 0.15 / 1000000,
         'tokenizer': gemini_tokenizer, # note: 8b not yet included in get_tokenizer_for_model. assume same as flash-002
         'max_vision_tokens': 0,
         'vision_disabled': True,
     }
 }
-model_cost['gemini/gemini-1.5-flash-8b-001'] = { #not included in model_costfor some reason
-    'input_cost_per_token': 0.0375 / 1000000,
-    'output_cost_per_token': 0.15 / 1000000,
-}
-supported_models = {model: model_cost[model] | model_info for model, model_info in supported_models.items()}
-
-base_token_count = 3 # every reply is primed with <|start|>assistant<|message|>
 
 class LlmArgs(BaseModel):
     model: str | None = None
@@ -115,6 +118,8 @@ def find_model(args: LlmArgs, maxCost: float):
     # trim messages so that we can use the last model in the list (which should be the cheapest)
     args.messages = trim_messages(args, model, input_tokens, maxCost)
     return model, maxCost
+
+base_token_count = 3 # every reply is primed with <|start|>assistant<|message|>
 
 def messages_token_counter(messages, tokenizer, max_vision_tokens, return_list=False):
     # reference: https://github.com/jalcantarab/openai-cookbook/blob/62574a79b8cef067baa7b4143a77f366078d5d98/examples/How_to_count_tokens_with_tiktoken.ipynb
