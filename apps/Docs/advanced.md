@@ -32,8 +32,6 @@ The Sandbox can reconstruct your writes and properly parse JSON if you prefix ea
 1. Including an `x-length-prefix` header in your response
 2. Prefixing each chunk of your response with its 4-byte length (big-endian uint32)
 
-If `decode` is set to 'json' and you don't send the `x-length-prefix` header, Magic Sandbox won't stream the result into the Sandbox.
-
 Rather than implement this yourself, you can use the [JavaScript](todo) or [Python](todo) helpers and do something like:
 
 ```javascript

@@ -35,6 +35,7 @@ Documentation of how to use your Function.
 Specifies how to decode the response from your Function's endpoint. Supported values:
 
 - `'json'` (default): Parse the response as JSON. If parsing fails, the response will be returned as a string.
+- `'msgpack'`: Parse the response using msgpack. If parsing fails, `requestFunction` will throw an error.
 - `'string'`: Decode the response as a UTF-8 string
 - `'bytes'`: Return the raw bytes as an ArrayBuffer
 

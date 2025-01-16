@@ -79,7 +79,10 @@ Each Magic App can store up to 10 MB of data. There is no concept of App version
 
 ### requestPutData (app: string, key: string, val: any, options?) => true
 
-Store a key/value pair using App's storage. `val` will be serialized using JSON.stringify. `val` may not be `null`.
+Store a key/value pair using App's storage.
+
+- `val` may not be `null`.
+- `val` will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
 
 **Options:**
 
