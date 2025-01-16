@@ -1,6 +1,7 @@
 /* global requestSandbox, requestApp */
 
 const minimumMinCost = 0.001;
+const maximumMaxCost = 1;
 
 /**
  * Validates the request and adds default values by mutating `data`
@@ -37,11 +38,17 @@ function validateAndDefaultRequest(request, data, assistant) {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
     };
+    if (data.options.maxCost > maximumMaxCost) {
+      return `maxCost must be less than or equal to ${maximumMaxCost}`;
+    }
   } else if (request === "function") {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
       stream: data.options?.stream || false,
     };
+    if (data.options.maxCost > maximumMaxCost) {
+      return `maxCost must be less than or equal to ${maximumMaxCost}`;
+    }
   } else if (request === "fetch") {
     data.options = {
       ...data.options,

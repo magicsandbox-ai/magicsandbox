@@ -44,7 +44,7 @@ App or Function description. This is used to discover your App or Function, so w
 
 ### minCost (number) (default 0.001)
 
-Minimum cost in dollars required to call your App or Function. Must be at least $0.001.
+Minimum cost in dollars required to call your App or Function. Must be between $0.001 and $1.00.
 
 ### finalCost (number)
 

@@ -26,7 +26,7 @@ Retrieves a Magic App's `style`, `html`, and `script`.
 
 - `app` (**required**) (string): Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `options` (object):
-  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Magic Apps can't charge variable costs, so you'll be charged the App's minCost.
+  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's finalCost.
 
 **Returns:** a Promise that resolves to an App:
 
@@ -48,7 +48,7 @@ Executes a Magic Function and returns the result.
 - `fn` (**required**) (string): Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `args` (**required**) (any): Arguments to pass to the called Function.
 - `options` (object):
-  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Refer to [variable costs](todo) for more details.
+  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00. Refer to [variable costs](todo) for more details.
   - `stream` (boolean) (default false): Whether to stream the result.
 
 **Returns:** a Promise that includes the result from the Function and metadata about the Function call. The type depends on the `stream` option.

@@ -23,6 +23,8 @@ When you type or click on something in the Sandbox, you may see a Sandbox reques
 
 ## Assistants
 
+how to change
+
 ## Privacy
 
 todo warn about input not private
