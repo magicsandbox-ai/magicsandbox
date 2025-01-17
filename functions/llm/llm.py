@@ -1,3 +1,4 @@
+from ..body import Body
 import json
 from math import floor
 from pydantic import BaseModel
@@ -6,6 +7,26 @@ from litellm import acompletion
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
+
+class LlmArgs(BaseModel):
+    model: str | None = None
+    messages: list[dict] | None = None
+    max_completion_tokens: int | None = None
+    response_format: dict | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    logit_bias: dict | None = None
+    ## these would require returning the whole object, not just the content
+    ## careful with token_counter if enabling these. and trim_messages: https://github.com/BerriAI/litellm/issues/4931
+    # 'logprobs',
+    # 'tools',
+    # 'tool_choice',
+    # 'parallel_tool_calls',
+
+class LlmBody(Body):
+    args: LlmArgs | str
 
 gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
 gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002')
@@ -47,33 +68,16 @@ supported_models = {
     }
 }
 
-class LlmArgs(BaseModel):
-    model: str | None = None
-    messages: list[dict] | None = None
-    max_completion_tokens: int | None = None
-    response_format: dict | None = None
-    temperature: float | None = None
-    top_p: float | None = None
-    frequency_penalty: float | None = None
-    presence_penalty: float | None = None
-    logit_bias: dict | None = None
-    ## these would require returning the whole object, not just the content
-    ## careful with token_counter if enabling these. and trim_messages: https://github.com/BerriAI/litellm/issues/4931
-    # 'logprobs',
-    # 'tools',
-    # 'tool_choice',
-    # 'parallel_tool_calls',
-
-async def llm(_args: LlmArgs | str, options):
-    if isinstance(_args, str):
-        args = LlmArgs(messages=[{"role": "user", "content": _args}])
+async def llm(body: LlmBody):
+    if isinstance(body.args, str):
+        args = LlmArgs(messages=[{"role": "user", "content": body.args}])
     else:
-        args = _args
+        args = body.args
     if args.messages is None:
         raise HTTPException(status_code=400, detail='messages required')
     if args.max_completion_tokens is None:
         args.max_completion_tokens = 1000
-    model, expected_cost = find_model(args, options.maxCost) # note that this may modify args.messages and args.max_completion_tokens
+    model, expected_cost = find_model(args, body.options.maxCost) # note that this may modify args.messages and args.max_completion_tokens
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
     api_args.update({

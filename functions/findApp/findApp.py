@@ -1,3 +1,4 @@
+from ..body import Body
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import semantic_search, dot_score
@@ -7,6 +8,8 @@ import json
 import os
 import requests
 from litellm import completion
+import re
+from .prompts import get_app_descriptions_from_input_prompt
 
 '''
 embeddings
@@ -24,11 +27,19 @@ careful with case sensitivity
 todo variable cost for ratings?
 '''
 
+class Rating(BaseModel):
+    input: str
+    app: str
+    rating: float
+
 class FindAppArgs(BaseModel):
     input: str
     maxCost: float = 0.001
     apps: list[str] = []
-    rating: dict | None = None
+    rating: Rating | None = None
+
+class FindAppBody(Body):
+    args: FindAppArgs
 
 class FindAppUpdateItem(BaseModel):
     id: str
@@ -42,9 +53,6 @@ class FindAppUpdateItem(BaseModel):
     kind: str
     type: str
     status: str
-
-class FindAppUpdateArgs(BaseModel):
-    updates: list[FindAppUpdateItem]
 
 class AppData:
     def __init__(self):
@@ -91,7 +99,10 @@ class AppData:
         if os.getenv('NODE_ENV') == 'production':
             url = 'https://magicsandbox.ai/magics'
         else:
-            url = 'http://localhost:3001/magics'
+            if os.getenv('PORT'): # indicates running locally with docker compose
+                url = 'http://main:3000/magics?docker=true' # query param used to generate correct redirect url
+            else:
+                url = 'http://localhost:3000/magics'
         headers = {'Authorization': f'Bearer {os.getenv("MAGICSANDBOX_API_KEY")}'}
         response = requests.get(url, headers=headers, timeout=30)
         return response.json()
@@ -110,23 +121,7 @@ class AppData:
                          ''')
         self.con.commit()
 
-    def embed(self, sentences):
-        #normalize so we can use dot product which is faster than cosine similarity #todo do we need this for input?
-        return self.embedder.encode(sentences, normalize_embeddings=True, convert_to_tensor=True)
-    
-    def embed_input(self, input: str):
-        descriptions = get_app_descriptions_from_input(input)
-        description_embeddings = self.embed(descriptions)
-        weights = torch.tensor([0.4, 0.3, 0.2])[:len(descriptions)] #todo max? or another approach?
-        return torch.sum(
-            description_embeddings * weights.unsqueeze(1),
-            dim=0
-        )
-        
-    def find_app(self, args: FindAppArgs):
-        input_embedding = self.embed_input(args.input)
-    
-    def update_app(self, args: FindAppUpdateArgs):
+    def update_app(self, items: list[FindAppUpdateItem]):
         cur = self.con.cursor()
         cur.executemany('''
             INSERT INTO _app_data (
@@ -157,54 +152,49 @@ class AppData:
                 item.kind,
                 item.type,
                 item.status
-            ) for item in args.updates
+            ) for item in items
         ])
         self.materialize()
+        
+    def find_app(self, args: FindAppArgs):
+        input_embedding = self.embed_input(args.input)
+    
+    def embed_input(self, input: str):
+        descriptions = self.get_app_descriptions_from_input(input)
+        description_embeddings = self.embed(descriptions)
+        weights = torch.tensor([0.4, 0.3, 0.2])[:len(descriptions)] #todo max? or another approach?
+        return torch.sum(
+            description_embeddings * weights.unsqueeze(1),
+            dim=0
+        )
 
-def get_app_descriptions_from_input(input: str):
-    # todo only part of input, prompt caching?
-    prompt = f'''You are helping to match user input to an appropriate web app on a platform called Magic Sandbox.
+    def get_app_descriptions_from_input(input: str):
+        # todo prompt caching?
+        prompt = get_app_descriptions_from_input_prompt(input)
+        response = completion(
+            model='gemini/gemini-1.5-flash-002',
+            messages=[{'role': 'user', 'content': prompt}],
+            max_completion_tokens=200,
+        )
+        content = response['choices'][0]['message']['content']
+        descriptions = re.findall(r'"(.+?)"', content)
+        return descriptions
 
-Every app has a description, and the appropriate app will be selected using semantic similarity. The challenge is that app descriptions are often vague (e.g. "search engine") while user input is often specific (e.g. "weather near me").
+    def embed(self, sentences):
+        #normalize so we can use dot product which is faster than cosine similarity #todo do we need this for input?
+        return self.embedder.encode(sentences, normalize_embeddings=True, convert_to_tensor=True)
 
-Your task is to:
-1. Understand the user's underlying goal or problem, even if not directly stated
-2. Identify 1-3 types of apps that could help achieve that goal
-3. For each app type, generate a description as a space-separated list of relevant keywords (not full sentences)
+    def rate_app(self, rating: Rating):
+        #todo
+        pass
 
-Order your descriptions from most to least relevant if providing multiple. If the input is unclear or too broad, focus on the most likely interpretation.
 
-<examples>
-input: "weather near me"
-descriptions: ["weather forecast radar map", "search engine"]
+appdata = AppData()
 
-input: "help me build a React component"
-descriptions: ["code editor IDE development", "AI code assistant", "documentation viewer"]
+def findApp(body: FindAppBody):
+    if body.args.rating and body.app.startswith('magicsandbox.Assistant'):
+        appdata.rate_app(body.args.rating)
+    return appdata.find_app(body.args)
 
-input: "I want to write a story"
-descriptions: ["text editor writing notes", "AI writing assistant"]
-
-input: "show me cute pictures of cats"
-descriptions: ["image search photos gallery", "social media feed"]
-
-input: "what is the meaning of life?"
-descriptions: ["AI chat assistant philosophy"]
-
-input: "draw something"
-descriptions: ["digital art drawing canvas", "AI image generation art", "whiteboard collaboration drawing"]
-</examples>
-
-input: {input[:500]}
-descriptions: '''
-    response = completion(
-        model='gemini/gemini-1.5-flash-002',
-        messages=[{'role': 'user', 'content': prompt}],
-        max_tokens=200
-    )
-    return response['choices'][0]['message']['content']
-
-def findApp(args: FindAppArgs):
-    pass
-
-def findApp_update(args: FindAppUpdateArgs):
-    pass
+def findApp_update(items: list[FindAppUpdateItem]):
+    return appdata.update_app(items)

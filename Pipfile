@@ -10,8 +10,10 @@ fastapi = {extras = ["standard"] }
 tiktoken = "*"
 litellm = "*"
 google-cloud-aiplatform = {extras = ["tokenization"] }
+msgpack = "*"
 
 [dev-packages]
+jupyter = "*"
 
 [requires]
 python_version = "3.12"
