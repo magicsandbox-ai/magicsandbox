@@ -5,7 +5,7 @@ Finds Magic Apps that are relevant to a user input.
 - `input` (**required**) (string): User input.
 - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the App call.
 - `apps` (string[]): Up to 10 Apps to include in the result, regardless of score.
-- `rating` ({ input: string, app: string, rating: number }): A user rating for a previous input and App combination. This is only used if the caller is `magicsandbox.Assistant`.
+- `rating` ({ inputId: string, app: string, rating: number }): A user rating for a previous input and App combination. This is only used if the caller is `magicsandbox.Assistant`.
 
 **Returns:** an object with keys:
 
@@ -15,3 +15,4 @@ Finds Magic Apps that are relevant to a user input.
   - `embedding` (number[]): Embedding of the App.
   - `score` (number): Score of the App, which is the dot product of the App's embedding and inputEmbedding.
   - `minCost` (number): The minimum cost to call the App.
+- `inputId` (string): An ID that can be used to supply a future rating.

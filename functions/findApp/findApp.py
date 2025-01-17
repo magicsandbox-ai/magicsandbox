@@ -28,7 +28,7 @@ todo variable cost for ratings?
 '''
 
 class Rating(BaseModel):
-    input: str
+    inputId: str
     app: str
     rating: float
 
@@ -111,13 +111,13 @@ class AppData:
         cur = self.con.cursor()
         cur.execute('DROP TABLE IF EXISTS app_data')
         cur.execute('''
-                         CREATE TABLE app_data AS
-                         SELECT *
-                            , row_number() over (partition by author, name order by major desc, minor desc, patch desc) = 1 as latest
-                         FROM _app_data
-                         WHERE kind = 'app' 
-                            and status = 'active'
-                            and type != 'assistant'
+            CREATE TABLE app_data AS
+            SELECT *
+              , row_number() over (partition by author, name order by major desc, minor desc, patch desc) = 1 as latest
+            FROM _app_data
+            WHERE kind = 'app' 
+              and status = 'active'
+              and type != 'assistant'
                          ''')
         self.con.commit()
 
@@ -158,17 +158,23 @@ class AppData:
         
     def find_app(self, args: FindAppArgs):
         input_embedding = self.embed_input(args.input)
+        result = semantic_search(input_embedding, 
+                            app_embeddings, 
+                            top_k=10, 
+                            score_function=dot_product)
     
     def embed_input(self, input: str):
         descriptions = self.get_app_descriptions_from_input(input)
-        description_embeddings = self.embed(descriptions)
-        weights = torch.tensor([0.4, 0.3, 0.2])[:len(descriptions)] #todo max? or another approach?
-        return torch.sum(
+        description_embeddings = self.embed(descriptions + [input])
+        # arbitrary weights
+        weights = torch.tensor([0.5, 0.4, 0.3, 0.2])[:len(descriptions)]
+        combined_embedding = torch.sum(
             description_embeddings * weights.unsqueeze(1),
             dim=0
         )
+        return combined_embedding / torch.norm(combined_embedding)
 
-    def get_app_descriptions_from_input(input: str):
+    def get_app_descriptions_from_input(self, input: str):
         # todo prompt caching?
         prompt = get_app_descriptions_from_input_prompt(input)
         response = completion(
@@ -181,11 +187,26 @@ class AppData:
         return descriptions
 
     def embed(self, sentences):
-        #normalize so we can use dot product which is faster than cosine similarity #todo do we need this for input?
         return self.embedder.encode(sentences, normalize_embeddings=True, convert_to_tensor=True)
 
     def rate_app(self, rating: Rating):
-        #todo
+        input_embedding = self.get_input_embedding(rating.inputId)
+        app_embedding = self.get_app_embedding(rating.app)
+        app_embedding_norm = app_embedding.norm()
+        rating = min(max(rating.rating, -.1), .5)
+        learning_rate = .05
+        self.set_app_embedding(
+            rating.app, 
+            app_embedding + learning_rate * rating * input_embedding / app_embedding_norm
+            )
+
+    def get_input_embedding(self, inputId: str):
+        pass
+
+    def get_app_embedding(self, app: str):
+        pass
+        
+    def set_app_embedding(self, app: str, embedding: torch.Tensor):
         pass
 
 
