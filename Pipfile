@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+sentence-transformers = "*"
+fastapi = {extras = ["standard"] }
+tiktoken = "*"
+litellm = "*"
+google-cloud-aiplatform = {extras = ["tokenization"] }
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

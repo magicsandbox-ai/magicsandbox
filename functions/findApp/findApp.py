@@ -117,7 +117,7 @@ class AppData:
     def embed_input(self, input: str):
         descriptions = get_app_descriptions_from_input(input)
         description_embeddings = self.embed(descriptions)
-        weights = torch.tensor([0.4, 0.3, 0.2])[:len(descriptions)]
+        weights = torch.tensor([0.4, 0.3, 0.2])[:len(descriptions)] #todo max? or another approach?
         return torch.sum(
             description_embeddings * weights.unsqueeze(1),
             dim=0
