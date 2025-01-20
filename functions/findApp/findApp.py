@@ -155,7 +155,7 @@ class AppData:
               and status = 'active'
               and type != 'assistant'
         ''')
-        cur.execute('CREATE INDEX idx_author_name ON app_data(author_name)')
+        cur.execute('CREATE INDEX idx_author_name ON app_data(author_name)') # does index on id remain?
         self.con.commit()
 
     def init_app_embeddings(self):
@@ -184,6 +184,8 @@ class AppData:
             if app[0] not in self.app_embeddings['apps_to_ix']:
                 apps_to_embed.append(app[0])
                 sentences.append(app[1] or app[2])
+        if len(apps_to_embed) == 0:
+            return
         new_apps_to_ix = {app: ix + len(self.app_embeddings['apps']) for ix, app in enumerate(apps_to_embed)}
         new_embeddings = self.embed(sentences)
         self.app_embeddings = {
@@ -293,20 +295,21 @@ class AppData:
         return self.embedder.encode(sentences, normalize_embeddings=True, convert_to_tensor=True)
 
     def get_valid_apps(self, maxCost: float, apps: list[str]):
-        # todo app may not have an embedding
         cur = self.con.cursor()
-        query = 'SELECT id, minCost FROM app_data WHERE (latest AND minCost <= :maxCost)'
-        if len(apps) == 0:
-            cur.execute(query, {'maxCost': maxCost})
-        elif len(apps) == 1:
-            cur.execute(query + ''' OR id = :app OR author_name = :app''', {'maxCost': maxCost, 'app': apps[0]})
-        else:
-            cur.execute('CREATE TEMP TABLE requested_apps (app TEXT)')
+        if len(apps) == 1:
+            cur.execute('SELECT id, description, name, minCost FROM app_data WHERE id = :app OR author_name = :app', {'app': apps[0]})
+            app_data = cur.fetchall()
+        elif len(apps) > 1:
+            cur.execute('DROP TABLE IF EXISTS requested_apps')
+            cur.execute('CREATE TEMP TABLE requested_apps (app TEXT COLLATE NOCASE)')
             cur.executemany('INSERT INTO requested_apps VALUES (?)', [(app,) for app in apps])
-            cur.execute(query + ''' OR id IN (SELECT app FROM requested_apps)
-                OR author_name IN (SELECT app FROM requested_apps)''', 
-                {'maxCost': maxCost})
-        return {row[0]: row[1] for row in cur.fetchall()}
+            cur.execute('SELECT id, description, name, minCost FROM app_data WHERE id IN (SELECT app FROM requested_apps) OR author_name IN (SELECT app FROM requested_apps)')
+            app_data = cur.fetchall()
+        else:
+            app_data = []
+        self.add_app_embeddings(app_data)
+        cur.execute('SELECT id, minCost FROM app_data WHERE latest AND minCost <= ?', (maxCost,))
+        return {row[0]: row[1] for row in cur.fetchall()} | {row[0]: row[3] for row in app_data}
 
     def rate_app(self, rating: Rating):
         input_embedding = self.input_ids.pop(rating.inputId, None)
