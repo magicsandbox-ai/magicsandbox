@@ -11,6 +11,8 @@ tiktoken = "*"
 litellm = "*"
 google-cloud-aiplatform = {extras = ["tokenization"] }
 msgpack = "*"
+httpx = "*"
+boto3 = "*"
 
 [dev-packages]
 jupyter = "*"

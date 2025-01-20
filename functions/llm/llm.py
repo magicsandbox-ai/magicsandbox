@@ -84,6 +84,7 @@ async def llm(body: LlmBody):
         'model': model,
         'stream': True,
         'stream_options': {'include_usage': True},
+        'timeout': 60,
     })
     stream = await acompletion(**api_args)
     return StreamingResponse(length_prefix_transform(openai_transform(stream, model, expected_cost), final_object=True),
