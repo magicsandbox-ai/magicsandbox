@@ -153,6 +153,9 @@ type MagicMetadata = {
   author: string;
   name: string;
   version: string;
+  major: number;
+  minor: number;
+  patch: number;
   kind: "app" | "function";
   description: string;
   documentation: string;

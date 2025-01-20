@@ -12,24 +12,14 @@ import asyncio
 import traceback
 import boto3
 import msgpack
+from fastapi import Response
+import uuid
 from .prompts import get_app_descriptions_from_input_prompt
 
 '''
 create s3 endpoint bucket
-embeddings
-updated embeddings
-persist embeddings - S3, once per hour, .npy file, metadata json separate
-requirements:
-- vector search is very fast
-- updates infrequent, not as important to be fast
-- persistent data, but only checkpoints - so could be in memory
-- apply filters prior to vector search (latest, cost, valid)
-- vector search can account for user provided weights
-- sqlite, duckdb, pgvector, chroma, faiss?
-careful with case sensitivity
 adjust this to enable functions as well
-
-todo variable cost for ratings?
+variable cost for ratings?
 '''
 
 class Rating(BaseModel):
@@ -54,9 +44,10 @@ class FindAppUpdateItem(BaseModel):
     major: int
     minor: int
     patch: int
-    description: str
     kind: str
+    description: str
     type: str
+    minCost: float
     status: str
 
 class AppData:
@@ -81,7 +72,7 @@ class AppData:
             response = client.get(url, headers=headers, timeout=30.0)
             app_data = response.json()
         self.init_db(app_data)
-        self.app_embeddings = self.get_app_embeddings()
+        self.init_app_embeddings()
 
     async def sync_app_data(self):
         url, headers = self.get_url_and_headers()
@@ -114,15 +105,16 @@ class AppData:
                 major INTEGER,
                 minor INTEGER,
                 patch INTEGER,
-                description TEXT,
                 kind TEXT,
+                description TEXT,
                 type TEXT,
+                minCost NUMERIC,
                 status TEXT
             )
         ''')
         cur.executemany('''
             INSERT INTO _app_data 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
             (
                 item['id'],
@@ -132,9 +124,10 @@ class AppData:
                 item['major'],
                 item['minor'],
                 item['patch'],
-                item['description'],
                 item['kind'],
+                item['description'],
                 item['type'],
+                item['minCost'],
                 item['status']
             ) for item in app_data
         ])
@@ -154,21 +147,46 @@ class AppData:
                          ''')
         self.con.commit()
 
-    def get_app_embeddings(self):
+    def init_app_embeddings(self):
         response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key='findApp/app_embeddings.msgpack')
-        return msgpack.unpackb(response['Body'].read())
+        app_embeddings = msgpack.unpackb(response['Body'].read())
+        self.app_embeddings = {
+            'apps': app_embeddings['apps'],
+            'embeddings': torch.tensor(app_embeddings['embeddings'])
+        }
+        cur = self.con.cursor()
+        cur.execute('SELECT id, description, name FROM app_data')
+        self.add_app_embeddings(cur.fetchall())
+
+    def add_app_embeddings(self, app_data):
+        apps_with_embeddings = set(self.app_embeddings['apps'])
+        apps_to_embed = []
+        sentences = []
+        for app in app_data:
+            if app[0] not in apps_with_embeddings:
+                apps_to_embed.append(app[0])
+                sentences.append(app[1] or app[2])
+        new_embeddings = self.embed(sentences)
+        self.app_embeddings = {
+            'apps': self.app_embeddings['apps'] + apps_to_embed,
+            'embeddings': torch.cat([self.app_embeddings['embeddings'], new_embeddings])
+        }
 
     def persist_app_embeddings(self):
         # todo make async?
-        self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key='findApp/app_embeddings.msgpack', Body=msgpack.packb(self.app_embeddings))
+        app_embeddings = {
+            'apps': self.app_embeddings['apps'],
+            'embeddings': self.app_embeddings['embeddings'].tolist()
+        }
+        self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key='findApp/app_embeddings.msgpack', Body=msgpack.packb(app_embeddings))
 
     def update_app_data(self, items: list[FindAppUpdateItem]):
         cur = self.con.cursor()
         cur.executemany('''
             INSERT INTO _app_data (
                 id, author, name, version, major, minor, patch,
-                description, kind, type, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                description, kind, type, minCost, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 author = excluded.author,
                 name = excluded.name,
@@ -179,6 +197,7 @@ class AppData:
                 description = excluded.description,
                 kind = excluded.kind,
                 type = excluded.type,
+                minCost = excluded.minCost,
                 status = excluded.status
         ''', [
             (
@@ -192,13 +211,14 @@ class AppData:
                 item.description,
                 item.kind,
                 item.type,
+                item.minCost,
                 item.status
             ) for item in items
         ])
         self.materialize_db()
+        self.add_app_embeddings([(item.id, item.description, item.name) for item in items])
         
     async def find_app(self, args: FindAppArgs):
-        # todo translate index after mask, what if app embedding doesn't exist?
         input_embedding = await self.embed_input(args.input)
         valid_apps = self.get_valid_apps(args.maxCost, args.apps)
         valid_mask = torch.tensor([id in valid_apps for id in self.app_embeddings['apps']])
@@ -208,14 +228,21 @@ class AppData:
             top_k=10,
             score_function=dot_score)
         apps = []
-        for i in search_result[0]:
-            apps.append(self.app_embeddings['apps'][original_indices[i]])
-        return {
-            'inputEmbedding': input_embedding,
+        for d in search_result[0]:
+            ix = original_indices[d[0]]
+            app = self.app_embeddings['apps'][ix]
+            apps.append({
+                'app': app,
+                'embedding': self.app_embeddings['embeddings'][ix].tolist(),
+                'score': d[1],
+                'minCost': valid_apps[app]
+            })
+        response = {
+            'inputEmbedding': input_embedding.tolist(),
             'apps': apps,
             'inputId': str(uuid.uuid4())
         }
-    
+        return Response(content=msgpack.packb(response))
 
     async def embed_input(self, input: str):
         descriptions = await self.get_app_descriptions_from_input(input)
@@ -248,12 +275,12 @@ class AppData:
         # todo include apps here?
         cur = self.con.cursor()
         cur.execute('''
-            SELECT id
+            SELECT id, minCost
             FROM app_data
             WHERE id IN (?)
-              OR (latest AND cost <= ?)
+              OR (latest AND minCost <= ?)
         ''', (apps, maxCost))
-        return {row[0] for row in cur.fetchall()}
+        return {row[0]: row[1] for row in cur.fetchall()}
 
     def rate_app(self, rating: Rating):
         input_embedding = self.get_input_embedding(rating.inputId)
