@@ -27,6 +27,10 @@ issues with scaling this horizontally:
  - instances will overwrite each other when persisting embeddings / not share updates
 '''
 
+class TestingSkipException(Exception):
+    """Raised when skipping operations during testing"""
+    pass
+    
 class Rating(BaseModel):
     inputId: str
     app: str
@@ -56,7 +60,7 @@ class FindAppUpdateItem(BaseModel):
     status: str
 
 class AppData:
-    def __init__(self):
+    def __init__(self, init_data):
         self.con = sqlite3.connect(':memory:')
         self.embedder = SentenceTransformer(os.getenv('EMBEDDING_MODEL'))
         self.s3 = boto3.client('s3')
@@ -65,8 +69,10 @@ class AppData:
         else:
             self.path = 'dev/findApp'
         self.input_ids = {}
+        self.init_data = init_data # use for testing
         self.init_app_data()
-        asyncio.create_task(self.schedule_sync_app_data())
+        if self.init_data is None: # skip sync when testing
+            asyncio.create_task(self.schedule_sync_app_data())
 
     async def schedule_sync_app_data(self):
         while True:
@@ -77,12 +83,15 @@ class AppData:
                 traceback.print_exc()
 
     def init_app_data(self):
-        url, headers = self.get_url_and_headers()
-        with httpx.Client() as client:
-            response = client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
-            app_data = response.json()
+        if self.init_data is not None: # skip request when testing
+            app_data = self.init_data
+        else:
+            url, headers = self.get_url_and_headers()
+            with httpx.Client() as client:
+                response = client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
+                app_data = response.json()
         self.init_db(app_data)
-        self.init_app_embeddings()
+        self.init_app_embeddings(skip_request=self.init_data is not None)
 
     async def sync_app_data(self):
         url, headers = self.get_url_and_headers()
@@ -157,12 +166,14 @@ class AppData:
             FROM _app_data
             WHERE kind = 'app' 
               and status = 'active'
-              and type != 'assistant'
+              and COALESCE(type, '') != 'assistant'
         ''')
         self.con.commit()
 
-    def init_app_embeddings(self):
+    def init_app_embeddings(self, skip_request = False):
         try:
+            if skip_request:
+                raise TestingSkipException()
             response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/app_embeddings.msgpack')
             app_embeddings = msgpack.unpackb(response['Body'].read())
             self.app_embeddings = {
@@ -170,7 +181,7 @@ class AppData:
                 'apps_to_ix': {app: ix for ix, app in enumerate(app_embeddings['apps'])},
                 'embeddings': torch.tensor(app_embeddings['embeddings'])
             }
-        except self.s3.exceptions.NoSuchKey: #todo remove this
+        except (self.s3.exceptions.NoSuchKey, TestingSkipException): #todo remove NoSuchKey
             self.app_embeddings = {
                 'apps': [],
                 'apps_to_ix': {},
@@ -257,8 +268,10 @@ class AppData:
                 item.status
             ) for item in items
         ])
-        self.materialize_db()
+        # add_app_embeddings needs to run prior to materialize_db
+        # since a new version is initialized with the embedding of the previous latest version (pulled from app_data)
         self.add_app_embeddings([(item.id, item.description, item.name) for item in items])
+        self.materialize_db()
         
     async def find_app(self, args: FindAppArgs):
         input_embedding = await self.embed_input(args.input)
@@ -273,12 +286,12 @@ class AppData:
             score_function=dot_score)
         apps = []
         for d in search_result[0]:
-            ix = original_indices[d[0]]
+            ix = original_indices[d['corpus_id']]
             app = self.app_embeddings['apps'][ix]
             apps.append({
                 'app': app,
                 'embedding': self.app_embeddings['embeddings'][ix].tolist(),
-                'score': d[1],
+                'score': d['score'],
                 'minCost': valid_apps[app]
             })
         response = {
@@ -291,7 +304,7 @@ class AppData:
     async def embed_input(self, input: str):
         descriptions = await self.get_app_descriptions_from_input(input)
         description_embeddings = self.embed(descriptions + [input])
-        weights = torch.tensor([0.5, 0.4, 0.3, 0.2])[:len(descriptions)] # todo different weights? or another approach?
+        weights = torch.tensor([0.5, 0.4, 0.3, 0.2])[:len(descriptions) + 1] # todo different weights? or another approach?
         combined_embedding = torch.sum(
             description_embeddings * weights.unsqueeze(1),
             dim=0
@@ -352,9 +365,9 @@ class AppData:
         new_app_embedding = app_embedding + learning_rate * rating * input_embedding
         self.app_embeddings['embeddings'][ix] = new_app_embedding / new_app_embedding.norm() * new_app_embedding_norm
 
-def init_app_data():
+def init_app_data(init_data):
     global app_data
-    app_data = AppData()
+    app_data = AppData(init_data)
     return app_data
 
 async def findApp(body: FindAppBody):
