@@ -50,8 +50,8 @@ class FindAppUpdateItem(BaseModel):
     minor: int
     patch: int
     kind: str
-    description: str
-    type: str
+    description: str | None
+    type: str | None
     minCost: float
     status: str
 
@@ -59,11 +59,13 @@ class AppData:
     def __init__(self):
         self.con = sqlite3.connect(':memory:')
         self.embedder = SentenceTransformer(os.getenv('EMBEDDING_MODEL'))
-        self.s3 = boto3.client('s3')  # Create S3 client once
-        self.init_app_data()
+        self.s3 = boto3.client('s3')
+        if os.getenv('NODE_ENV') == 'production':
+            self.path = 'prod/findApp'
+        else:
+            self.path = 'dev/findApp'
         self.input_ids = {}
-        # if os.getenv('NODE_ENV') == 'production': #todo
-        #     asyncio.create_task(self.schedule_sync_app_data())
+        self.init_app_data()
         asyncio.create_task(self.schedule_sync_app_data())
 
     async def schedule_sync_app_data(self):
@@ -77,7 +79,7 @@ class AppData:
     def init_app_data(self):
         url, headers = self.get_url_and_headers()
         with httpx.Client() as client:
-            response = client.get(url, headers=headers, timeout=30.0)
+            response = client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
             app_data = response.json()
         self.init_db(app_data)
         self.init_app_embeddings()
@@ -85,7 +87,7 @@ class AppData:
     async def sync_app_data(self):
         url, headers = self.get_url_and_headers()
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, timeout=30.0)
+            response = await client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
             app_data = response.json()
         self.init_db(app_data)
         self.persist_app_embeddings()
@@ -110,6 +112,7 @@ class AppData:
                 id TEXT COLLATE NOCASE PRIMARY KEY,
                 author TEXT,
                 name TEXT,
+                author_name TEXT COLLATE NOCASE,
                 version TEXT,
                 major INTEGER,
                 minor INTEGER,
@@ -123,12 +126,13 @@ class AppData:
         ''')
         cur.executemany('''
             INSERT INTO _app_data 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
             (
                 item['id'],
                 item['author'],
                 item['name'],
+                item['author'] + '.' + item['name'],
                 item['version'],
                 item['major'],
                 item['minor'],
@@ -140,6 +144,7 @@ class AppData:
                 item['status']
             ) for item in app_data
         ])
+        cur.execute('CREATE INDEX idx_author_name ON _app_data (author_name)')
         self.materialize_db()
 
     def materialize_db(self):
@@ -148,19 +153,17 @@ class AppData:
         cur.execute('''
             CREATE TABLE app_data AS
             SELECT *
-                , author || '.' || name COLLATE NOCASE as author_name
-                , row_number() over (partition by author, name order by major desc, minor desc, patch desc) = 1 as latest
+                , row_number() over (partition by author_name order by major desc, minor desc, patch desc) = 1 as latest
             FROM _app_data
             WHERE kind = 'app' 
               and status = 'active'
               and type != 'assistant'
         ''')
-        cur.execute('CREATE INDEX idx_author_name ON app_data(author_name)') # does index on id remain?
         self.con.commit()
 
     def init_app_embeddings(self):
         try:
-            response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key='findApp/app_embeddings.msgpack')
+            response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/app_embeddings.msgpack')
             app_embeddings = msgpack.unpackb(response['Body'].read())
             self.app_embeddings = {
                 'apps': app_embeddings['apps'],
@@ -178,20 +181,35 @@ class AppData:
         self.add_app_embeddings(cur.fetchall())
 
     def add_app_embeddings(self, app_data):
-        apps_to_embed = []
-        sentences = []
+        updated_apps = []
+        updated_apps_embeddings = []
+        new_apps = []
+        new_apps_sentences = []
+        cur = self.con.cursor()
+        cur.execute('SELECT author_name, id FROM app_data')
+        latest_apps = {row[0]: row[1] for row in cur.fetchall()}
         for app in app_data:
             if app[0] not in self.app_embeddings['apps_to_ix']:
-                apps_to_embed.append(app[0])
-                sentences.append(app[1] or app[2])
-        if len(apps_to_embed) == 0:
+                latest_app = latest_apps.get(app[0].split('@')[0], None)
+                if latest_app:
+                    updated_apps.append(app[0])
+                    updated_apps_embeddings.append(self.app_embeddings['embeddings'][self.app_embeddings['apps_to_ix'][latest_app]])
+                else:
+                    new_apps.append(app[0])
+                    new_apps_sentences.append(app[1] or app[2])
+        if len(updated_apps) + len(new_apps) == 0:
             return
-        new_apps_to_ix = {app: ix + len(self.app_embeddings['apps']) for ix, app in enumerate(apps_to_embed)}
-        new_embeddings = self.embed(sentences)
+        updated_apps_to_ix = {app: ix + len(self.app_embeddings['apps']) for ix, app in enumerate(updated_apps)}
+        new_apps_to_ix = {app: ix + len(self.app_embeddings['apps']) + len(updated_apps) for ix, app in enumerate(new_apps)}
+        new_apps_embeddings = self.embed(new_apps_sentences)
+        embeddings_to_cat = [self.app_embeddings['embeddings']]
+        if len(updated_apps_embeddings) > 0:
+            embeddings_to_cat.append(torch.stack(updated_apps_embeddings))
+        embeddings_to_cat.append(new_apps_embeddings)
         self.app_embeddings = {
-            'apps': self.app_embeddings['apps'] + apps_to_embed,
-            'apps_to_ix': self.app_embeddings['apps_to_ix'] | new_apps_to_ix,
-            'embeddings': torch.cat([self.app_embeddings['embeddings'], new_embeddings])
+            'apps': self.app_embeddings['apps'] + updated_apps + new_apps,
+            'apps_to_ix': self.app_embeddings['apps_to_ix'] | updated_apps_to_ix | new_apps_to_ix,
+            'embeddings': torch.cat(embeddings_to_cat)
         }
 
     def persist_app_embeddings(self):
@@ -200,18 +218,19 @@ class AppData:
             'apps': self.app_embeddings['apps'],
             'embeddings': self.app_embeddings['embeddings'].tolist()
         }
-        self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key='findApp/app_embeddings.msgpack', Body=msgpack.packb(app_embeddings))
+        self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/app_embeddings.msgpack', Body=msgpack.packb(app_embeddings))
 
     def update_app_data(self, items: list[FindAppUpdateItem]):
         cur = self.con.cursor()
         cur.executemany('''
             INSERT INTO _app_data (
-                id, author, name, version, major, minor, patch,
+                id, author, name, author_name, version, major, minor, patch,
                 description, kind, type, minCost, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 author = excluded.author,
                 name = excluded.name,
+                author_name = excluded.author_name,
                 version = excluded.version,
                 major = excluded.major,
                 minor = excluded.minor,
@@ -226,6 +245,7 @@ class AppData:
                 item.id,
                 item.author,
                 item.name,
+                item.author + '.' + item.name,
                 item.version,
                 item.major,
                 item.minor,
@@ -295,15 +315,16 @@ class AppData:
         return self.embedder.encode(sentences, normalize_embeddings=True, convert_to_tensor=True)
 
     def get_valid_apps(self, maxCost: float, apps: list[str]):
+        apps = apps[:10] # at most 10 as documented
         cur = self.con.cursor()
         if len(apps) == 1:
-            cur.execute('SELECT id, description, name, minCost FROM app_data WHERE id = :app OR author_name = :app', {'app': apps[0]})
+            cur.execute('SELECT id, description, name, minCost FROM _app_data WHERE id = :app OR author_name = :app', {'app': apps[0]})
             app_data = cur.fetchall()
         elif len(apps) > 1:
             cur.execute('DROP TABLE IF EXISTS requested_apps')
             cur.execute('CREATE TEMP TABLE requested_apps (app TEXT COLLATE NOCASE)')
             cur.executemany('INSERT INTO requested_apps VALUES (?)', [(app,) for app in apps])
-            cur.execute('SELECT id, description, name, minCost FROM app_data WHERE id IN (SELECT app FROM requested_apps) OR author_name IN (SELECT app FROM requested_apps)')
+            cur.execute('SELECT id, description, name, minCost FROM _app_data WHERE id IN (SELECT app FROM requested_apps) OR author_name IN (SELECT app FROM requested_apps)')
             app_data = cur.fetchall()
         else:
             app_data = []
@@ -331,8 +352,10 @@ class AppData:
         new_app_embedding = app_embedding + learning_rate * rating * input_embedding
         self.app_embeddings['embeddings'][ix] = new_app_embedding / new_app_embedding.norm() * new_app_embedding_norm
 
-
-app_data = AppData()
+def init_app_data():
+    global app_data
+    app_data = AppData()
+    return app_data
 
 async def findApp(body: FindAppBody):
     if body.args.rating and body.app.startswith('magicsandbox.Assistant'):

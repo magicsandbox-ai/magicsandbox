@@ -17,6 +17,8 @@ boto3 = "*"
 [dev-packages]
 jupyter = "*"
 magicsandbox-streaming = {editable = true, path = "packages/python/magicsandbox_streaming"}
+pytest = "*"
+pytest-asyncio = "*"
 
 [requires]
 python_version = "3.12"
