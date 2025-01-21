@@ -6,7 +6,7 @@ import msgpack
 import os
 os.environ['EMBEDDING_MODEL'] = 'sentence-transformers/all-mpnet-base-v2'
 # need to pass S3_ENDPOINT_BUCKET, GEMINI_API_KEY as env vars
-from .main import init_app_data, FindAppUpdateItem, FindAppArgs, Rating
+from .main import AppData, FindAppUpdateItem, FindAppArgs, Rating
 
 '''
 note: the order of these tests matters (which is probably not a good practice)
@@ -15,7 +15,7 @@ test maxCost
 
 @pytest.fixture(scope="module")
 def app_data(): #type: ignore
-    return init_app_data([])
+    return AppData([])
 
 def test_insert(app_data):
     app_data.update_app_data([FindAppUpdateItem(

@@ -60,7 +60,7 @@ class FindAppUpdateItem(BaseModel):
     status: str
 
 class AppData:
-    def __init__(self, init_data):
+    def __init__(self, init_data = None):
         self.con = sqlite3.connect(':memory:')
         self.embedder = SentenceTransformer(os.getenv('EMBEDDING_MODEL'))
         self.s3 = boto3.client('s3')
@@ -71,10 +71,11 @@ class AppData:
         self.input_ids = {}
         self.init_data = init_data # use for testing
         self.init_app_data()
-        if self.init_data is None: # skip sync when testing
-            asyncio.create_task(self.schedule_sync_app_data())
 
-    async def schedule_sync_app_data(self):
+    async def start_background_tasks(self):
+        asyncio.create_task(self.background_sync_app_data())
+
+    async def background_sync_app_data(self):
         while True:
             await asyncio.sleep(3600)
             try:
@@ -365,15 +366,11 @@ class AppData:
         new_app_embedding = app_embedding + learning_rate * rating * input_embedding
         self.app_embeddings['embeddings'][ix] = new_app_embedding / new_app_embedding.norm() * new_app_embedding_norm
 
-def init_app_data(init_data):
-    global app_data
-    app_data = AppData(init_data)
-    return app_data
 
-async def findApp(body: FindAppBody):
+async def findApp(app_data: AppData, body: FindAppBody):
     if body.args.rating and body.app.startswith('magicsandbox.Assistant'):
         app_data.rate_app(body.args.rating)
     return await app_data.find_app(body.args)
 
-def findApp_update(items: list[FindAppUpdateItem]):
+def findApp_update(app_data: AppData, items: list[FindAppUpdateItem]):
     return app_data.update_app_data(items)
