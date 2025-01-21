@@ -14,7 +14,7 @@ The Sandbox has the following high level restrictions and associated Sandbox fun
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
 - Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any [feedback](todo) you have.
 
-todo error handling - RequestSandboxError
+todo error handling - RequestSandboxError. data is populated with minCost: error.data?.minCost
 
 ## Calling Magic Apps and Functions
 

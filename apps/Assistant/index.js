@@ -4,38 +4,20 @@ import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
 import BottomNavBar from "./BottomNavBar.js";
-import AssistantSettings from "./AssistantSettings.js";
 import AssistantConfirm from "./AssistantConfirm.js";
+import RiskConfirm from "./RiskConfirm.js";
+import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 
-/*
-App
-  Handles Sandbox requests
-  Auth
-  Generate API key
-  Payments
-  Manages settings: which Assistant to use
-  Initiates the Assistant
-  Syncs data
-  Welcome modal if first visit
-  Displays payments?
-Assistant
-  Creates UI, handles input
-  Confirms Sandbox requests
-  Manages settings: bangs (plus maxCost), trust (apps and authors?), some built in bangs?
-  Display functions on page?
-*/
-
 const defaultSettings = {
-  findApp: "magicsandbox.findApp",
-  appWeights: {},
   bangs: {},
 };
 
 function App() {
-  const [modal, setModal] = useState("");
   const [confirm, setConfirm] = useState(null);
+  const [risk, setRisk] = useState(null);
+  const [modal, setModal] = useState("");
   const [messages, setMessages] = useState([]);
 
   const sandboxRef = useRef(null);
@@ -72,6 +54,7 @@ function App() {
         toastsRef,
         settingsRef,
         setConfirm,
+        setRisk,
         setMessage,
       });
       /* urlParams */
@@ -79,7 +62,6 @@ function App() {
       //calling handleInput in DevLocal creates an infinite loop, so only call it in top sandbox
       const isTopSandbox = parent.parent.window === parent.window;
       if ((input || app) && isTopSandbox) {
-        //running DevLocal creates an infinite loop
         //todo need better UX if budget is less than maxCost - maybe prompt user to approve?
         //todo is passing input unsafe?
         await assistantRef.current.handleInput({ input, app });
@@ -113,6 +95,8 @@ function App() {
   let modalComponent;
   if (confirm) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
+  } else if (risk) {
+    modalComponent = <RiskConfirm risk={risk} />;
   } else if (modal === "settings") {
     modalComponent = (
       <AssistantSettings

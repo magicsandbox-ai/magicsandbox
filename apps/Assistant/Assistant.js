@@ -10,14 +10,22 @@ import {
 } from "./Risks.js";
 import { handleMagic } from "./handleMagic.js";
 import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
-import { createDeferredPromise } from "@utils.js";
+import { createDeferredPromise, formatAsDollars } from "@utils.js";
 
 class Assistant {
-  constructor({ sandboxRef, settingsRef, toastsRef, setConfirm, setMessage }) {
+  constructor({
+    sandboxRef,
+    settingsRef,
+    toastsRef,
+    setConfirm,
+    setRisk,
+    setMessage,
+  }) {
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
     this.toastsRef = toastsRef;
     this.setConfirm = setConfirm;
+    this.setRisk = setRisk;
     this.setMessage = setMessage;
     this.budget = null;
     this.app = null;
@@ -189,10 +197,10 @@ class Assistant {
     const approved = createDeferredPromise();
     const callback = (response) => {
       //arrow function ensures `this` refers to Assistant
-      this.setConfirm(null);
+      this.setRisk(null);
       approved.resolve(response);
     };
-    this.setConfirm({
+    this.setRisk({
       riskResponses,
       callback,
     });
@@ -213,21 +221,40 @@ class Assistant {
   }
 }
 
-async function handleApp({ input, app, assistant }) {
+async function handleApp({ input, _app, assistant }) {
   assistant.sandboxRef.current.reload();
   const sandboxId = assistant.sandboxRef.current.getSandboxId();
   assistant.updateBudget();
-  if (!app) {
-    app = await requestFunction(assistant.settingsRef.current.findApp, {
+  let app;
+  if (!_app) {
+    //const { inputEmbedding, apps, inputId }
+    const { apps } = await requestFunction("magicsandbox.findApp", {
       input,
       maxCost: assistant.budget,
-      appWeights: assistant.settingsRef.current.appWeights,
     });
-    //prompt tuning?
-    //send weights / prompt tuning parameters as buffers? careful with how requestFunction serializes. maybe not worth it
+    app = apps[0].app;
+  } else {
+    app = _app;
   }
   assistant.setMessage(`Loading ${app}...`);
-  const result = await requestApp(app, { maxCost: assistant.budget }); //todo subtract what's already been spent?
+  let result;
+  try {
+    result = await requestApp(app, { maxCost: assistant.budget }); //todo subtract what's already been spent?
+  } catch (error) {
+    if (_app && error.data?.minCost) {
+      //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve
+      assistant.setConfirm({
+        header: `Open App ${app}?`,
+        message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than your budget`,
+        callback: async (response) => {
+          assistant.setConfirm(null);
+          if (response) {
+            result = await requestApp(app, { maxCost: error.data.minCost });
+          }
+        },
+      });
+    }
+  }
   assistant.app = result.metadata.app;
   assistant.risks.forEach((risk) => risk.init());
   assistant.sandboxRef.current.postMessage(sandboxId, {
