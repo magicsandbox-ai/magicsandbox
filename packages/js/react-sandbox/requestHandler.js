@@ -37,6 +37,7 @@ function validateAndDefaultRequest(request, data, assistant) {
   if (request === "app") {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
+      updateUrl: data.options?.updateUrl || false,
     };
     if (data.options.maxCost > maximumMaxCost) {
       return `maxCost must be less than or equal to ${maximumMaxCost}`;

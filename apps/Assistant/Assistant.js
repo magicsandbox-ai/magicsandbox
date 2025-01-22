@@ -1,4 +1,4 @@
-/* global requestSandbox, requestFunction, requestApp */
+/* global requestSandbox, requestFunction, requestApp, requestGetData, requestPutData */
 
 import {
   FinancialRisk,
@@ -27,7 +27,7 @@ class Assistant {
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
     this.setMessage = setMessage;
-    this.budget = null;
+    this.budget = null; //mutated by updateBudget and FinancialRisk
     this.app = null;
     this.requestTimeoutId = null;
     this.requestQueue = [];
@@ -41,12 +41,45 @@ class Assistant {
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
+  async updateBudget() {
+    /* todos
+    - handle case where balanceDays is small better?
+    - what to do if user is running out of balance?
+    - handle case where balance is small for unauthenticated users?
+    */
+    const { balance, balanceDays } = window.args;
+    const usageData = await requestGetData(
+      "magicsandbox.Assistant",
+      "usageData",
+    );
+    const now = Date.now();
+    let avgDaysBetweenUsage = 0.2;
+    if (usageData) {
+      const daysSinceLastUsage = (now - usageData.ts) / (1000 * 60 * 60 * 24);
+      const alpha = 0.05;
+      avgDaysBetweenUsage = Math.min(
+        alpha * daysSinceLastUsage +
+          (1 - alpha) * usageData.avgDaysBetweenUsage,
+        1,
+      );
+    }
+    this.budget = Math.min(
+      balance / (balanceDays / avgDaysBetweenUsage),
+      balance,
+      0.2,
+    );
+    requestPutData("magicsandbox.Assistant", "usageData", {
+      avgDaysBetweenUsage,
+      ts: now,
+    }).catch(console.error);
+  }
   async handleInput({ input, magic, app, messages, urlParams }) {
     try {
+      await this.updateBudget();
       if (magic) {
         await handleMagic({
           input,
-          maxCost: this.budget, //todo need to subtract what's already been spent? what if app has not been called?
+          maxCost: this.budget,
           assistant: this,
           messages,
         });
@@ -129,9 +162,6 @@ class Assistant {
     }
     handleAppResult(result);
   }
-  updateBudget() {
-    this.budget = 0.1; //todo //can be mutated by FinancialRisk
-  }
   handleThumbsUp() {
     this.handleScore(1);
   }
@@ -140,10 +170,14 @@ class Assistant {
   }
   async handleScore(score) {
     try {
-      await requestFunction("magicsandbox.scoreApp", {
-        score,
-        app: this.app,
-      });
+      await requestFunction(
+        "magicsandbox.findApp",
+        {
+          score, //todo
+          app: this.app,
+        },
+        { app: "magicsandbox.Assistant" },
+      );
     } catch (error) {
       console.error(error);
     }
@@ -296,7 +330,6 @@ class Assistant {
       await this.abortPromise;
       this.abortPromise = null;
     }
-    this.updateBudget();
     this.app = null;
     this.risks.forEach((risk) => risk.init());
   }

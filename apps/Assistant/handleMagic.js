@@ -193,7 +193,7 @@ ${selection}
 ${input}
 </user_request>
 <app_context>
-${context}
+${context.slice(0, 50000)}
 </app_context>${selectionPrompt}`;
 }
 

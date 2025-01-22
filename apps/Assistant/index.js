@@ -65,7 +65,7 @@ function App() {
           callback: (response) => {
             setConfirm(null);
             if (response) {
-              setMessages([`Loading ${app} from URL...`]);
+              setMessages([`Loading ${app} from URL...`, "Working on it..."]);
               assistantRef.current.handleInput({
                 app,
                 input: "",
