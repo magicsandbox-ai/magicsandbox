@@ -19,10 +19,10 @@ function validateAndDefaultRequest(request, data, assistant) {
     openUrl: ["url"],
     publish: ["magicObj"],
     download: ["filename", "content"],
-    urlParams: [],
   };
   if (assistant) {
-    delete data?.options?.backup; //assistants should not allow access to backup storage
+    delete data?.options?.backup; //assistants should not allow apps to access backup storage
+    delete data?.options?.updateUrl; //assistants should not allow apps to updateUrl
   }
   if (!(request in requiredKeys)) {
     return "Invalid request";

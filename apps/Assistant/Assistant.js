@@ -41,7 +41,7 @@ class Assistant {
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
-  async handleInput({ input, magic, app, messages }) {
+  async handleInput({ input, magic, app, messages, urlParams }) {
     try {
       if (magic) {
         await handleMagic({
@@ -54,6 +54,7 @@ class Assistant {
         await this.handleApp({
           input,
           app,
+          urlParams,
         });
       }
     } catch (error) {
@@ -70,7 +71,7 @@ class Assistant {
       this.toastsRef.current.addToast(message, type);
     }
   }
-  async handleApp({ input, app: _app }) {
+  async handleApp({ input, app: _app, urlParams }) {
     this.reload();
     const sandboxId = this.sandboxRef.current.getSandboxId();
     let app;
@@ -91,6 +92,7 @@ class Assistant {
         args: {
           input,
           budget: this.budget, //todo subtract what's already been spent? finalCost?
+          urlParams: urlParams || {},
         },
         ...result,
       });
@@ -98,7 +100,10 @@ class Assistant {
     };
     let result;
     try {
-      result = await requestApp(app, { maxCost: this.budget }); //todo subtract what's already been spent?
+      result = await requestApp(app, {
+        maxCost: this.budget,
+        updateUrl: true,
+      }); //todo subtract what's already been spent?
     } catch (error) {
       if (_app && error.data?.minCost) {
         //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve
@@ -108,7 +113,10 @@ class Assistant {
           callback: async (response) => {
             this.setConfirm(null);
             if (response) {
-              result = await requestApp(app, { maxCost: error.data.minCost });
+              result = await requestApp(app, {
+                maxCost: error.data.minCost,
+                updateUrl: true,
+              });
               handleAppResult(result);
             } else {
               this.setMessage(`${app} not opened`);

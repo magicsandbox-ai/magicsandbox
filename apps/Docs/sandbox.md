@@ -172,10 +172,6 @@ Download a file.
 
 **Returns:** a Promise that resolves to true
 
-### requestUrlParams() => Promise<{ [key: string]: string }>
-
-Retrieve parameters from the URL used to load the page. For example, if the page was loaded using `https://magicsandbox.ai/?input=hello`, then requestUrlParams() would return `{ input: 'hello' }`.
-
 ### requestSandbox (request: string, args: any) => Promise<any>
 
 A convenience function to call other Sandbox functions.

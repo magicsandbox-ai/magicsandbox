@@ -44,6 +44,8 @@ The 'frame.html' file loads [frame.js](todo), which sets up a listener in the Ap
 
 todo url params
 
+todo updateUrl in requestApp
+
 ## Handling Sandbox Requests
 
 When the App Sandbox calls a Sandbox function like requestFetch, it uses postMessage to send a message to its parent, the Assistant Sandbox, that looks like this:

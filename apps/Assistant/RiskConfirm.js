@@ -6,7 +6,7 @@ import Confirm from "@components/Confirm.js";
 function RiskConfirm({ risk }) {
   const { riskResponses, callback } = risk;
   const customContent = (
-    <div className="flex flex-col gap-4 break-words">
+    <div className="flex flex-col gap-4">
       {riskResponses.map((r, i) => {
         const { message, details, downloadDetails } = r;
         return (

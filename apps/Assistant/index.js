@@ -1,4 +1,4 @@
-/* global requestGetData, requestUrlParams */
+/* global requestGetData */
 
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -27,7 +27,6 @@ function App() {
 
   useEffect(() => {
     async function init() {
-      /* settings */
       try {
         const savedSettings = await requestGetData(
           "magicsandbox.Assistant",
@@ -48,7 +47,6 @@ function App() {
           ...settingsRef.current,
         };
       }
-      /* assistant */
       assistantRef.current = new Assistant({
         sandboxRef,
         toastsRef,
@@ -57,19 +55,22 @@ function App() {
         setRisk,
         setMessage,
       });
-      /* urlParams */
-      const { app } = await requestUrlParams();
+      const { app } = window.args.urlParams;
       //calling handleInput in DevLocal creates an infinite loop, so only call it in top sandbox
       const isTopSandbox = parent.parent.window === parent.window;
       if (app && isTopSandbox) {
         setConfirm({
           header: `Open App ${app}?`,
-          message: `${app} from URL`,
+          message: `The link you opened includes a request to open this App`,
           callback: (response) => {
             setConfirm(null);
             if (response) {
               setMessages([`Loading ${app} from URL...`]);
-              assistantRef.current.handleInput({ app, input: "" });
+              assistantRef.current.handleInput({
+                app,
+                input: "",
+                urlParams: window.args.urlParams,
+              });
             }
           },
         });

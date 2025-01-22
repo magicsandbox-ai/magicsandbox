@@ -1,4 +1,4 @@
-/* global requestFetch requestPublish requestUrlParams */
+/* global requestFetch requestPublish */
 
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -30,7 +30,7 @@ function App() {
   useEffect(() => {
     async function init() {
       try {
-        const { port, token } = await requestUrlParams();
+        const { port, token } = window.args.urlParams;
         if (!port || !token) {
           setState("error");
           return;
