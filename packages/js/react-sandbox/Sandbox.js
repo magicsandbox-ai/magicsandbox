@@ -11,18 +11,24 @@ function createDeferredPromise(timeout, timeoutMessage) {
     resolve = res;
     reject = rej;
   });
+  promise.resolved = false;
+  let wrappedResolve;
   if (timeout) {
     const timeoutId = setTimeout(() => {
       reject(new Error(timeoutMessage || "Deferred promise timed out"));
     }, timeout);
-    const wrappedResolve = (value) => {
+    wrappedResolve = (value) => {
       clearTimeout(timeoutId);
       resolve(value);
+      promise.resolved = true;
     };
-    promise.resolve = wrappedResolve;
   } else {
-    promise.resolve = resolve;
+    wrappedResolve = (value) => {
+      resolve(value);
+      promise.resolved = true;
+    };
   }
+  promise.resolve = wrappedResolve;
   promise.reject = reject;
   return promise;
 }
@@ -180,6 +186,9 @@ const Sandbox = forwardRef(function Sandbox(
   function addListener(_listener) {
     function listener(event) {
       if (event.source !== frameRef.current.contentWindow) return;
+      //don't listen to messages between reload and load event
+      //in case frame is reloaded but old frame had sent a message we hadn't received yet
+      if (!loadedRef.current?.resolved) return;
       _listener(event);
     }
     window.addEventListener("message", listener);

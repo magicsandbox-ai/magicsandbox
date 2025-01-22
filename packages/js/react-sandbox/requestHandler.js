@@ -102,7 +102,7 @@ async function requestHandler({
       if (cacheKey === requestFunctionRef.current.cacheKey) {
         response = requestFunctionRef.current.response;
         if (response?.[Symbol.asyncIterator]) {
-          response = await sandboxRef.current.streamData(response);
+          response = sandboxRef.current.streamData(response);
         }
         sandboxRef.current.postMessage(sandboxId, {
           id,
@@ -172,7 +172,7 @@ async function requestHandler({
       requestFunctionRef.current = { cacheKey, response, error };
     }
     if (response?.[Symbol.asyncIterator]) {
-      response = await sandboxRef.current.streamData(response);
+      response = sandboxRef.current.streamData(response);
     }
     sandboxRef.current.postMessage(sandboxId, { id, response, error });
   } catch (error) {

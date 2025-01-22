@@ -58,13 +58,21 @@ function App() {
         setMessage,
       });
       /* urlParams */
-      const { input, app } = await requestUrlParams();
+      const { app } = await requestUrlParams();
       //calling handleInput in DevLocal creates an infinite loop, so only call it in top sandbox
       const isTopSandbox = parent.parent.window === parent.window;
-      if ((input || app) && isTopSandbox) {
-        //todo need better UX if budget is less than maxCost - maybe prompt user to approve?
-        //todo is passing input unsafe?
-        await assistantRef.current.handleInput({ input, app });
+      if (app && isTopSandbox) {
+        setConfirm({
+          header: `Open App ${app}?`,
+          message: `${app} from URL`,
+          callback: (response) => {
+            setConfirm(null);
+            if (response) {
+              setMessages([`Loading ${app} from URL...`]);
+              assistantRef.current.handleInput({ app, input: "" });
+            }
+          },
+        });
       }
     }
     if (!settingsRef.current) {

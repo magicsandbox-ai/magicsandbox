@@ -51,10 +51,9 @@ class Assistant {
           messages,
         });
       } else {
-        await handleApp({
+        await this.handleApp({
           input,
           app,
-          assistant: this,
         });
       }
     } catch (error) {
@@ -70,6 +69,57 @@ class Assistant {
       this.setMessage(`Error: ${message}`);
       this.toastsRef.current.addToast(message, type);
     }
+  }
+  async handleApp({ input, app: _app }) {
+    this.reload();
+    const sandboxId = this.sandboxRef.current.getSandboxId();
+    let app;
+    if (!_app) {
+      //const { inputEmbedding, apps, inputId }
+      const { apps } = await requestFunction("magicsandbox.findApp", {
+        input,
+        maxCost: this.budget,
+      });
+      app = apps[0].app;
+    } else {
+      app = _app;
+    }
+    this.setMessage(`Loading ${app}...`);
+    const handleAppResult = (result) => {
+      this.app = result.metadata.app;
+      this.sandboxRef.current.postMessage(sandboxId, {
+        args: {
+          input,
+          budget: this.budget, //todo subtract what's already been spent? finalCost?
+        },
+        ...result,
+      });
+      this.setMessage(`${result.metadata.app} loaded`);
+    };
+    let result;
+    try {
+      result = await requestApp(app, { maxCost: this.budget }); //todo subtract what's already been spent?
+    } catch (error) {
+      if (_app && error.data?.minCost) {
+        //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve
+        this.setConfirm({
+          header: `Open App ${app}?`,
+          message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than your budget`,
+          callback: async (response) => {
+            this.setConfirm(null);
+            if (response) {
+              result = await requestApp(app, { maxCost: error.data.minCost });
+              handleAppResult(result);
+            } else {
+              this.setMessage(`${app} not opened`);
+            }
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
+    handleAppResult(result);
   }
   updateBudget() {
     this.budget = 0.1; //todo //can be mutated by FinancialRisk
@@ -129,6 +179,7 @@ class Assistant {
         approved = await this.handleApprove(
           riskResponses.filter((r) => r.message),
         );
+        if (this.abortPromise) return;
         askedUser = true;
         if (!approved) {
           this.handleScore(-0.1);
@@ -141,39 +192,44 @@ class Assistant {
           ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
         ),
       );
-      for (const event of batch) {
-        const { id, msg } = event.data;
-        const { request, data } = msg;
-        if (!approved) {
-          this.sandboxRef.current.postMessage(event.sandboxId, {
-            id,
-            error: { message: error || "User denied the request" },
-          });
-        } else {
-          if (request === "function") {
-            data.options.app = this.app;
-          }
-          requestSandbox(request, data)
-            .then(async (response) => {
-              if (request === "app" || request === "function") {
-                this.handleMetadata(response, id);
-              }
+      if (this.abortPromise) return;
+      await Promise.all(
+        batch.map(async (event) => {
+          const { id, msg } = event.data;
+          const { request, data } = msg;
+          if (!approved) {
+            this.sandboxRef.current.postMessage(event.sandboxId, {
+              id,
+              error: { message: error || "User denied the request" },
+            });
+          } else {
+            if (request === "function") {
+              data.options.app = this.app;
+            }
+            try {
+              const response = await requestSandbox(request, data);
+              if (this.abortPromise) return;
+              let finalResponse = response;
               if (response?.[Symbol.asyncIterator]) {
-                response = await this.sandboxRef.current.streamData(response);
+                finalResponse = this.sandboxRef.current.streamData(response);
               }
               this.sandboxRef.current.postMessage(event.sandboxId, {
                 id,
-                response,
+                response: finalResponse,
               });
-            })
-            .catch((error) => {
+              if (request === "app" || request === "function") {
+                await this.handleMetadata(response, id);
+              }
+            } catch (error) {
+              if (this.abortPromise) return;
               this.sandboxRef.current.postMessage(event.sandboxId, {
                 id,
                 error: { message: error.message, data: error.data },
               });
-            });
-        }
-      }
+            }
+          }
+        }),
+      );
     } catch (error) {
       console.error(error);
       this.toastsRef.current.addToast("An unexpected error occurred", "error");
@@ -191,25 +247,27 @@ class Assistant {
           this.processRequestBatch();
         }, 50);
       }
+      this.abortPromise?.resolve();
     }
   }
   async handleApprove(riskResponses) {
-    const approved = createDeferredPromise();
+    this.handleApprovePromise = createDeferredPromise();
     const callback = (response) => {
       //arrow function ensures `this` refers to Assistant
       this.setRisk(null);
-      approved.resolve(response);
+      this.handleApprovePromise.resolve(response);
     };
     this.setRisk({
       riskResponses,
       callback,
     });
-    return approved;
+    return this.handleApprovePromise;
   }
   async handleMetadata(response, id) {
     let metadata;
     if (response?.[Symbol.asyncIterator]) {
       for await (const chunk of response) {
+        if (this.abortPromise) return;
         if (chunk.metadata) {
           metadata = chunk.metadata;
         }
@@ -219,52 +277,21 @@ class Assistant {
     }
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
-}
-
-async function handleApp({ input, _app, assistant }) {
-  assistant.sandboxRef.current.reload();
-  const sandboxId = assistant.sandboxRef.current.getSandboxId();
-  assistant.updateBudget();
-  let app;
-  if (!_app) {
-    //const { inputEmbedding, apps, inputId }
-    const { apps } = await requestFunction("magicsandbox.findApp", {
-      input,
-      maxCost: assistant.budget,
-    });
-    app = apps[0].app;
-  } else {
-    app = _app;
-  }
-  assistant.setMessage(`Loading ${app}...`);
-  let result;
-  try {
-    result = await requestApp(app, { maxCost: assistant.budget }); //todo subtract what's already been spent?
-  } catch (error) {
-    if (_app && error.data?.minCost) {
-      //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve
-      assistant.setConfirm({
-        header: `Open App ${app}?`,
-        message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than your budget`,
-        callback: async (response) => {
-          assistant.setConfirm(null);
-          if (response) {
-            result = await requestApp(app, { maxCost: error.data.minCost });
-          }
-        },
-      });
+  async reload() {
+    this.sandboxRef.current.reload();
+    this.requestQueue = [];
+    this.handleApprovePromise?.resolve(false);
+    this.setRisk(null);
+    this.setConfirm(null);
+    if (this.isProcessing) {
+      this.abortPromise = createDeferredPromise();
+      await this.abortPromise;
+      this.abortPromise = null;
     }
+    this.updateBudget();
+    this.app = null;
+    this.risks.forEach((risk) => risk.init());
   }
-  assistant.app = result.metadata.app;
-  assistant.risks.forEach((risk) => risk.init());
-  assistant.sandboxRef.current.postMessage(sandboxId, {
-    args: {
-      input,
-      budget: assistant.budget, //todo subtract what's already been spent? finalCost?
-    },
-    ...result,
-  });
-  assistant.setMessage(`${result.metadata.app} loaded`);
 }
 
 export { Assistant };
