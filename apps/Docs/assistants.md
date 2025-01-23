@@ -46,6 +46,8 @@ todo url params
 
 todo updateUrl in requestApp
 
+todo reload
+
 ## Handling Sandbox Requests
 
 When the App Sandbox calls a Sandbox function like requestFetch, it uses postMessage to send a message to its parent, the Assistant Sandbox, that looks like this:

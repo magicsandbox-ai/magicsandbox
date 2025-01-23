@@ -42,12 +42,11 @@ class Assistant {
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
   async updateBudget() {
-    /* todos
-    - handle case where balanceDays is small better?
-    - what to do if user is running out of balance?
-    - handle case where balance is small for unauthenticated users?
-    */
     const { balance, balanceDays } = window.args;
+    if (!balanceDays || balance < 0.05) {
+      this.budget = Math.min(balance, 0.005);
+      return;
+    }
     const usageData = await requestGetData(
       "magicsandbox.Assistant",
       "usageData",
@@ -63,10 +62,13 @@ class Assistant {
         1,
       );
     }
-    this.budget = Math.min(
-      balance / (balanceDays / avgDaysBetweenUsage),
-      balance,
-      0.2,
+    this.budget = Math.max(
+      Math.min(
+        balance / (balanceDays / avgDaysBetweenUsage),
+        balance / 5,
+        0.2, //todo allow configuring
+      ),
+      0.005,
     );
     requestPutData("magicsandbox.Assistant", "usageData", {
       avgDaysBetweenUsage,
@@ -107,13 +109,22 @@ class Assistant {
   async handleApp({ input, app: _app, urlParams }) {
     this.reload();
     const sandboxId = this.sandboxRef.current.getSandboxId();
+    let budget = this.budget;
     let app;
     if (!_app) {
+      const requestFunctionMaxCost = 0.001;
+      const { result } = await requestFunction(
+        "magicsandbox.findApp",
+        {
+          input,
+          maxCost: this.budget, //this is an argument for findApp
+        },
+        { maxCost: requestFunctionMaxCost }, //this is an option for requestFunction
+      );
       //const { inputEmbedding, apps, inputId }
-      const { apps } = await requestFunction("magicsandbox.findApp", {
-        input,
-        maxCost: this.budget,
-      });
+      const { apps } = result;
+      budget -= requestFunctionMaxCost;
+      this.financialRisk.approvedCost += requestFunctionMaxCost;
       app = apps[0].app;
     } else {
       app = _app;
@@ -121,10 +132,11 @@ class Assistant {
     this.setMessage(`Loading ${app}...`);
     const handleAppResult = (result) => {
       this.app = result.metadata.app;
+      budget = Math.max(budget - result.metadata.finalCost, 0);
       this.sandboxRef.current.postMessage(sandboxId, {
         args: {
           input,
-          budget: this.budget, //todo subtract what's already been spent? finalCost?
+          budget,
           urlParams: urlParams || {},
         },
         ...result,
@@ -133,10 +145,7 @@ class Assistant {
     };
     let result;
     try {
-      result = await requestApp(app, {
-        maxCost: this.budget,
-        updateUrl: true,
-      }); //todo subtract what's already been spent?
+      result = await requestApp(app, { maxCost: budget, updateUrl: true });
     } catch (error) {
       if (_app && error.data?.minCost) {
         //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve

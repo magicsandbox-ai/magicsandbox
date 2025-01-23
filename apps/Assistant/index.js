@@ -97,6 +97,17 @@ function App() {
     return () => sandboxRef.current.removeListener(handleRequest);
   }, []);
 
+  useEffect(() => {
+    function handleReload(event) {
+      if (event.source !== parent) return;
+      if (event.data === "reload") {
+        assistantRef.current.reload();
+      }
+    }
+    window.addEventListener("message", handleReload);
+    return () => window.removeEventListener("message", handleReload);
+  }, []);
+
   function setMessage(message) {
     setMessages((messages) => [...messages.slice(0, -1), message]);
   }
