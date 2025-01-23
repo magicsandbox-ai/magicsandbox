@@ -167,6 +167,8 @@ type MagicMetadata = {
 };
 ```
 
+todo app.messageHandler
+
 ## Questions or Feedback
 
 For additional questions or feedback, please create an issue on [GitHub](todo) or reach out to help@magicsandbox.com or feedback@magicsandbox.com. We'd love to hear from you!

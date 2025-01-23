@@ -49,8 +49,25 @@ ${message}
       stream: true,
     },
   );
-  const { response, script } = await parseStream(stream, assistant.setMessage);
-  console.log(response);
+  let message = "";
+  let script = "";
+  let prevTag;
+  for await (const { content, tag } of xmlParser({
+    stream,
+    chunkProcessor: (chunk) => chunk.result,
+  })) {
+    if (tag === "magic_script") {
+      if (tag !== prevTag) {
+        message += "~~~magicscript\n";
+      }
+      script += content;
+    } else if (prevTag === "magic_script") {
+      message += "\n~~~";
+    }
+    prevTag = tag;
+    message += content;
+    assistant.setMessage(message);
+  }
   if (script) {
     assistant.sandboxRef.current.postMessage(sandboxId, {
       script: `(async () => {
@@ -66,87 +83,6 @@ if (typeof app !== 'undefined' && app?.render) {
 }`,
     });
   }
-}
-
-async function parseStream(stream, setMessage) {
-  let response = ""; //todo delete only for debugging
-  let buffer = ""; //tags may be split across chunks
-  const startTag = "<magic_script>";
-  const endTag = "</magic_script>";
-  let message = "";
-  let inScript = false;
-  let script = "";
-  for await (const chunk of stream) {
-    if (chunk.result) {
-      response += chunk.result;
-      buffer += chunk.result;
-      ({ buffer, message, script, inScript } = processBuffer({
-        buffer,
-        message,
-        script,
-        startTag,
-        endTag,
-        bufferLength: endTag.length - 1, //maintain this much buffer to handle tags split across chunks
-        inScript,
-        setMessage,
-      }));
-    }
-  }
-  ({ script } = processBuffer({
-    buffer,
-    message,
-    script,
-    startTag,
-    endTag,
-    bufferLength: 0, //now we're done, so process any remaining buffer
-    inScript,
-    setMessage,
-  }));
-  return { response, script };
-}
-
-function processBuffer({
-  buffer,
-  message,
-  script,
-  startTag,
-  endTag,
-  bufferLength,
-  inScript,
-  setMessage,
-}) {
-  let i = 0;
-  while (buffer.length > bufferLength) {
-    const startIndex = buffer.indexOf(startTag, i);
-    const endIndex = buffer.indexOf(endTag, i);
-    i = Math.min(
-      startIndex === -1 ? Infinity : startIndex,
-      endIndex === -1 ? Infinity : endIndex,
-    );
-    let result;
-    if (i === Infinity) {
-      result = bufferLength > 0 ? buffer.slice(0, -bufferLength) : buffer;
-      buffer = bufferLength > 0 ? buffer.slice(-bufferLength) : "";
-    } else {
-      result = buffer.slice(0, i);
-      buffer = buffer.slice(
-        i + (startIndex === i ? startTag.length : endTag.length),
-      );
-    }
-    if (inScript) {
-      script += result;
-    }
-    message += result;
-    if (startIndex === i) {
-      inScript = true;
-      message += "~~~magicscript\n";
-    } else if (endIndex === i) {
-      inScript = false;
-      message += "\n~~~";
-    }
-  }
-  setMessage(message);
-  return { buffer, message, script, inScript };
 }
 
 const systemPrompt = `You are a user's assistant on a platform called Magic Sandbox. The user is interacting with a web app and is asking for your help.
@@ -169,6 +105,10 @@ Additional text to display to the user if needed.
 
 You should execute a script only if it's clear that the user is expecting you to update the app. Otherwise, if you think providing a code sample in your response would be helpful, include it in your response without a <magic_script> tag and ask the user if they'd like you to execute it.
 
+Your script runs in an async IIFE, so you can use \`await\` as needed. Any variables you create are not available in the global scope, so you don't have access to any variables you might have created in a previous message's script.
+
+Magic Sandbox executes apps in a sandboxed iframe, so your script does not have network access, access to storage APIs, or permission to use browser features like creating popups or downloading files.
+
 Each message from the user will include the user's request in a <user_request> tag.
 
 The user's final message will include additional context:
@@ -176,11 +116,9 @@ The user's final message will include additional context:
 1. Context provided by the app in an <app_context> tag
 2. Text highlighted by the user within the app (if any) in a <user_highlighted_text> tag
 
-The <app_context> may detail the app's API, which you can access in your script using the global object \`app.api\`. Your script can directly manipulate the DOM as needed, but you should prefer using \`app.api\` to fulfill the <user_request> when possible.
+The <app_context> may detail the app's API, which you can access in your script using the global object \`app.api\`. Your script can directly manipulate the DOM as needed, but you should prefer using \`app.api\` to fulfill the <user_request> when possible. If an app instructs you to only use the API, you should follow that instruction. If you can't solve the user's request using the API, apologize to the user, explain that you can't do that, and suggest any relevant alternatives.
 
-The <user_highlighted_text> may not be relevant, so you should give precedence to the <user_request> and the <app_context>. If the <user_request> is vague (e.g. "help me understand this"), you can primarily focus on the <user_highlighted_text> when responding.
-
-Magic Sandbox executes apps in a sandboxed iframe, so your script does not have network access, access to storage APIs, or permission to use browser features like creating popups or downloading files.`;
+The <user_highlighted_text> may not be relevant, so you should give precedence to the <user_request> and the <app_context>. If the <user_request> is vague (e.g. "help me understand this"), you should focus on the <user_highlighted_text> when responding.`;
 
 function createFinalMessage(input, context, selection) {
   let selectionPrompt = "";

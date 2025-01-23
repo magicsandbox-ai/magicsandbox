@@ -553,9 +553,14 @@ ${value}
 
 API:
 
+- app.api.updateFiles(updateString)
 - app.api.download(): download files to the user's computer
 
 Usage:
+
+
+
+Instructions:
 
 - If the user is asking a question about the code, answer it and don't run any scripts.
 - Otherwise, use the API to complete the user's request.
@@ -576,4 +581,12 @@ function render() {
 
 render(); //initial render
 
-export { context, api, render };
+function messageHandler(event) {
+  if (event.data.script) {
+    event.data.script = event.data.script.replace(/```(.*?)```/g, (_, p1) => {
+      return JSON.stringify(p1); //handle escaping inside triple backticks
+    });
+  }
+}
+
+export { context, api, render, messageHandler };
