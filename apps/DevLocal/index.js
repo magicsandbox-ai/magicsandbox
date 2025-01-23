@@ -147,7 +147,7 @@ function App() {
         ref={previewRef}
         className={`grow ${widthClass} ${widthClass === "w-full" ? "" : "border-x border-stone-500"}`}
         loadingIndicator={<Loader className="h-10 w-10 animate-spin" />}
-        initLoadingState={true}
+        initState="loading"
       />
       <Toasts className="top-2" ref={toastsRef} />
     </div>

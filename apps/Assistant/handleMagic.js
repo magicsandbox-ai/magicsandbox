@@ -1,5 +1,7 @@
 /* global requestFunction */
 
+import { xmlParser } from "@magicsandbox.ai/streaming";
+
 async function handleMagic({
   input,
   maxCost,

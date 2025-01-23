@@ -10,6 +10,7 @@
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+    "@magicsandbox.ai/streaming": "file:../../packages/js/streaming",
     react: "^18.3.1",
     "react-dom": "^18.3.1",
     "lucide-react": "^0.408.0",

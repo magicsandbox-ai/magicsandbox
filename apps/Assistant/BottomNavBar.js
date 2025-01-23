@@ -1,8 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Sparkle,
-  Sparkles,
-  Settings,
   ThumbsUp,
   ThumbsDown,
   CircleArrowUp,
@@ -11,7 +8,6 @@ import {
 } from "lucide-react";
 import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
-import { parseInput } from "./utils.js";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
 
@@ -67,16 +63,15 @@ const rehypeSanitizeOptions = {
 };
 
 function BottomNavBar({
-  setModal,
+  //setModal,
   settingsRef,
   toastsRef,
   assistantRef,
   messages,
   setMessages,
 }) {
-  const [inputValue, setInputValue] = useState("");
+  const [input, setInput] = useState("");
   const [collapsed, setCollapsed] = useState(true);
-  const [magic, setMagic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [live, setLive] = useState(true);
 
@@ -92,7 +87,7 @@ function BottomNavBar({
   useEffect(() => {
     inputRef.current.style.height = "auto"; //allow to shrink if needed
     inputRef.current.style.height = `${inputRef.current.scrollHeight + 4}px`; //add 4 because scrollHeight does not include border
-  }, [inputValue]);
+  }, [input]);
 
   useEffect(() => {
     if (shouldFocusMaximizeButtonRef.current) {
@@ -101,28 +96,23 @@ function BottomNavBar({
     }
   }, [collapsed]);
 
-  function handleMagic() {
-    setMagic(!magic); //todo different default message for magic?
-    inputRef.current.focus();
-  }
-
   function handleEscape(e) {
     if (e.key === "Escape") {
       setCollapsed(true);
     }
   }
 
-  function handleSettings() {
-    setModal("settings");
-  }
+  // function handleSettings() {
+  //   setModal("settings");
+  // }
 
   function handleChange(e) {
-    setInputValue(e.target.value);
+    setInput(e.target.value);
   }
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); //this is needed to prevent creating a newline after setInputValue('')
+      e.preventDefault(); //this is needed to prevent creating a newline after setInput('')
       handleSubmit();
     }
   }
@@ -130,29 +120,17 @@ function BottomNavBar({
   async function handleSubmit() {
     //don't let user submit while loading
     //todo let user stop loading?
-    if (inputValue === "" || !settingsRef.current || isLoading) {
+    if (input === "" || !settingsRef.current || isLoading) {
       return;
     }
     try {
       setIsLoading(true);
-      setInputValue("");
-      const {
-        input,
-        magic: _magic,
-        app,
-      } = parseInput(inputValue, settingsRef.current.bangs);
-      const newMagic = magic || _magic;
-      setMagic(newMagic);
-      if (newMagic) {
-        setCollapsed(false);
-        setMessages([...messages, inputValue, "Working on it..."]);
-      } else {
-        setMessages([inputValue, "Working on it..."]);
-      }
+      setInput("");
+      setCollapsed(false);
+      setMessages([...messages, input, "Working on it..."]);
       await assistantRef.current.handleInput({
         input,
-        magic: newMagic,
-        app,
+        magic: true,
         messages,
       });
       setLive(true);
@@ -219,15 +197,7 @@ function BottomNavBar({
 
   return (
     <div className="flex items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
-      <div className="flex flex-1 items-center justify-end gap-2">
-        <button onClick={handleMagic}>
-          {magic ? (
-            <Sparkles className="fill-yellow-200 text-stone-700" />
-          ) : (
-            <Sparkle />
-          )}
-        </button>
-      </div>
+      <div className="flex-1" /> {/* spacer */}
       <div className="flex h-11 w-1/2 max-w-screen-lg flex-initial items-center">
         <div className="relative h-full w-full">
           <div
@@ -281,7 +251,7 @@ function BottomNavBar({
                 className={`mx-1 max-h-[124px] grow resize-none px-1 text-sm ${
                   collapsed ? "outline-0" : ""
                 }`}
-                value={inputValue}
+                value={input}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
                 rows={1}
@@ -306,9 +276,9 @@ function BottomNavBar({
             <ThumbsDown />
           </button>
         )}
-        <button className="ml-auto mr-4" onClick={handleSettings}>
+        {/* <button className="ml-auto mr-4" onClick={handleSettings}>
           <Settings />
-        </button>
+        </button> */}
       </div>
     </div>
   );

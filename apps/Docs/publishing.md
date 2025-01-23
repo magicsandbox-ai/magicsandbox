@@ -30,7 +30,7 @@ Filename containing `style` code, defaults to `index.css`. Editing this file is 
 
 #### tailwindConfig (object) (default below)
 
-Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo).
+Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo). Currently only Tailwind v3 is supported.
 
 magicsandbox.Dev does not support configuring `content`. By default, all files ending in `.js`, `.jsx`, or `.html` are included. You can add an `excludeContent` key to exclude files:
 

@@ -12,11 +12,11 @@ const Preview = forwardRef(function Preview(
   {
     className,
     loadingIndicator = <p>Loading...</p>, // default simple text fallback
-    initLoadingState = false,
+    initState = "ready",
   },
   ref,
 ) {
-  const [state, setState] = useState(initLoadingState);
+  const [state, setState] = useState(initState);
 
   const sandboxRef = useRef(null);
   const appObjRef = useRef(null);
@@ -63,7 +63,12 @@ const Preview = forwardRef(function Preview(
       script: appObj.script,
       html: appObj.html,
       style: appObj.style,
-      args: appObj.args,
+      args: {
+        input: "",
+        budget: 0.005,
+        urlParams: window.args.urlParams,
+        ...appObj.args,
+      },
     });
     setState("ready");
   }

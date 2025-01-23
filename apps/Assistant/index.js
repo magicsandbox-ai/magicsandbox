@@ -1,5 +1,3 @@
-/* global requestGetData */
-
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
@@ -9,10 +7,6 @@ import RiskConfirm from "./RiskConfirm.js";
 import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
-
-const defaultSettings = {
-  bangs: {},
-};
 
 function App() {
   const [confirm, setConfirm] = useState(null);
@@ -27,26 +21,27 @@ function App() {
 
   useEffect(() => {
     async function init() {
-      try {
-        const savedSettings = await requestGetData(
-          "magicsandbox.Assistant",
-          "settings",
-        );
-        if (savedSettings) {
-          settingsRef.current = savedSettings;
-        }
-      } catch (error) {
-        console.error(error);
-        toastsRef.current.addToast(
-          "Failed to load Assistant settings. Using default settings",
-          "error",
-        );
-      } finally {
-        settingsRef.current = {
-          ...defaultSettings,
-          ...settingsRef.current,
-        };
-      }
+      // try {
+      //   const savedSettings = await requestGetData(
+      //     "magicsandbox.Assistant",
+      //     "settings",
+      //   );
+      //   if (savedSettings) {
+      //     settingsRef.current = savedSettings;
+      //   }
+      // } catch (error) {
+      //   console.error(error);
+      //   toastsRef.current.addToast(
+      //     "Failed to load Assistant settings. Using default settings",
+      //     "error",
+      //   );
+      // } finally {
+      //   settingsRef.current = {
+      //     ...defaultSettings,
+      //     ...settingsRef.current,
+      //   };
+      // }
+      settingsRef.current = {};
       assistantRef.current = new Assistant({
         sandboxRef,
         toastsRef,
