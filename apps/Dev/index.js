@@ -537,11 +537,6 @@ function App() {
 
 const root = createRoot(document.getElementById("root"));
 
-//10000 token context limit
-//use search/replace if files are large
-//later - some kind of graph approach to pick out most relevant files? only include functions that are imported/exported?
-//show all of current file? focus on what's higlighted? what's the UX?
-
 function context() {
   //todo what if files too large?
   return `The user is editing the below files:

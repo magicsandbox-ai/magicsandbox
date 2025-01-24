@@ -33,6 +33,29 @@ function parse(file) {
   return output;
 }
 
+function summarize(file) {
+  const ast = babelParser.parsers.babel.parse(file, {
+    sourceType: "module",
+  });
+  const nodes = ast.program.body;
+  for (const node of nodes) {
+    if (node.type === "ImportDeclaration") {
+      console.log(file.slice(node.start, node.end));
+    } else if (node.type === "FunctionDeclaration") {
+      console.log(file.slice(node.start, node.body.start));
+      //include comments?
+      //JSX?
+      //whole thing if short?
+    } else if (node.type === "ClassDeclaration") {
+      //todo
+    } else if (node.type === "VariableDeclaration") {
+      //todo
+    } else if (node.type === "ExpressionStatement") {
+      //todo
+    }
+  }
+}
+
 const files = glob.sync("./**/*.js", {
   ignore: ["**/node_modules/**"],
   absolute: true,

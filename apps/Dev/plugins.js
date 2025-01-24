@@ -1,7 +1,6 @@
 /* global requestFetch */
 
-//import { parse } from '@babel/parser';
-import babelParser from "prettier/plugins/babel"; //hack to reduce bundle size, for some reason prettier plugins are pre bundled
+import { babelParse } from "./parser.js";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
 import { createDeferredPromise } from "@utils.js";
@@ -18,14 +17,6 @@ function countLines(s) {
     }
   }
   return c;
-}
-
-function babelParse(file, handler) {
-  const ast = babelParser.parsers.babel.parse(file, { sourceType: "module" });
-  const nodes = ast.program.body;
-  nodes.forEach((node, i, nodes) => {
-    handler(node, i, nodes);
-  });
 }
 
 /**
