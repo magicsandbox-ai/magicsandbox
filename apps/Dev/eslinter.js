@@ -5,6 +5,8 @@ import globals from "globals";
 import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
 
+//https://github.com/eslint/eslint/issues/18715
+
 export default function eslinter() {
   const config = {
     languageOptions: {

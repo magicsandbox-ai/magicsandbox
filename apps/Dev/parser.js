@@ -1,4 +1,4 @@
-//import { parse } from '@babel/parser';
+import { parse } from "@babel/parser";
 import babelParser from "prettier/plugins/babel"; //hack to reduce bundle size, for some reason prettier plugins are pre bundled
 
 function babelParse(file, handler) {

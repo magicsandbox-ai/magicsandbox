@@ -18,16 +18,9 @@ import { babelParse } from "./parser.js";
 - scriptfile references
 - all file summaries ranked by depth
 - all files ranked by depth
-*/
 
-/*
-file:
-  - 
-node:
-  - summary: string
-  - content: string
-  - filename: string //where it's defined
-  - references: node[]
+handle if non js too big. also if non js file is selected how to indicate that? also file selection in general
+if exported, I want to see where it's used
 */
 
 class Context {
@@ -68,9 +61,23 @@ class Context {
       return this.format((file) => file.content);
     }
     Object.values(this.files).forEach((file) => file.parse());
+    //selected nodes add themselves to this.nodes during file.parse()
+    let nextPriority = 1;
     while (this.nodes.length > 0) {
       const node = this.nodes.shift();
-      //todo
+      if (node.file.priority === null) {
+        node.file.priority = nextPriority;
+        nextPriority++;
+      }
+      if (node.depth <= 1) {
+        const nodesToAdd = node.getReferences();
+        nodesToAdd.forEach((nodeToAdd) => {
+          if (nodeToAdd.depth === null) {
+            nodeToAdd.depth = node.depth + 1;
+            this.nodes.push(nodeToAdd);
+          }
+        });
+      }
     }
     return this.format((file) => file.get());
   }
@@ -79,7 +86,7 @@ class Context {
     //todo sort
     const files = [this.files["magic.json"]];
     const jsFiles = Object.values(this.files)
-      .filter((file) => file.include)
+      .filter((file) => file.priority !== null)
       .sort((a, b) => a.priority - b.priority);
     files.push(...jsFiles);
     files.push(
@@ -108,10 +115,14 @@ class File {
     this.selected = selected;
     this.selection = selection;
     this.nodes = [];
+    this.priority = null;
   }
 
   parse() {
-    if (!this.js) return;
+    if (!this.js) {
+      this.context.length += this.content.length;
+      return;
+    }
     let selectionStart, selectionEnd;
     if (this.selection && this.selection.length < this.content.length) {
       selectionStart = this.content.indexOf(this.selection);
@@ -128,9 +139,6 @@ class File {
         }
         const node = new Node(this, node, selected);
         this.nodes.push(node);
-        if (selected) {
-          this.context.nodes.push(node);
-        }
       });
     } catch (e) {
       console.error(e); //todo
@@ -144,10 +152,16 @@ class File {
 }
 
 class Node {
-  constructor(file, node, selected) {
+  constructor(context, file, node, selected) {
+    this.context = context;
     this.file = file;
     this.node = node;
     this.selected = selected;
+    this.depth = null;
+    if (selected) {
+      this.depth = 0;
+      this.context.nodes.push(this);
+    }
   }
 }
 
