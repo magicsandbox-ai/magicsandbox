@@ -61,6 +61,9 @@ class Context {
       return this.format((file) => file.content);
     }
     Object.values(this.files).forEach((file) => file.parse());
+    Object.values(this.files).forEach((file) => {
+      file.resolveReferences();
+    });
     //selected nodes add themselves to this.nodes during file.parse()
     let nextPriority = 1;
     while (this.nodes.length > 0) {
@@ -115,6 +118,7 @@ class File {
     this.selected = selected;
     this.selection = selection;
     this.nodes = [];
+    this.definitions = {};
     this.priority = null;
   }
 
@@ -132,21 +136,45 @@ class File {
       selectionEnd = this.content.length;
     }
     try {
-      this.ast = parse(this.content, (_node) => {
+      this.ast = parse(this.content);
+      //https://eslint.org/docs/latest/extend/scope-manager-interface#scopemanager-interface
+      this.scopeManager = eslintScope.analyze(this.ast, {
+        ecmaVersion: 2022, //todo this is duplicated
+        sourceType: "module",
+      });
+      this.ast.body.forEach((astNode) => {
         let selected = false;
         if (selectionStart && selectionEnd) {
-          selected = node.start < selectionEnd && node.end > selectionStart;
+          selected =
+            astNode.start < selectionEnd && astNode.end > selectionStart;
         }
-        const node = new Node(this, _node, selected);
+        const node = new Node(this.context, this, astNode, selected);
         this.nodes.push(node);
-      });
-      this.scopeManager = eslintScope.analyze(this.ast, {
-        ecmaVersion: 2022,
-        sourceType: "module",
       });
     } catch (e) {
       console.error(e); //todo
     }
+  }
+
+  resolveReferences() {
+    this.nodes.forEach((node) => {
+      node.references.forEach((reference) => {
+        if (reference.type === "ImportBinding") {
+          const referenceFilename = reference.parent.source.value.slice(2); //remove ./
+          const referenceFile = this.context.files[referenceFilename];
+          if (referenceFile) {
+            referenceFile.resolveReference(reference);
+          }
+        } else {
+          this.resolveReference(reference);
+        }
+      });
+    });
+  }
+
+  resolveReference(reference) {
+    //todo - find the top level node that contains the reference
+    //references should be a dict?
   }
 
   get() {
@@ -156,16 +184,43 @@ class File {
 }
 
 class Node {
-  constructor(context, file, node, selected) {
+  constructor(context, file, astNode, selected) {
     this.context = context;
     this.file = file;
-    this.node = node;
+    this.astNode = astNode;
     this.selected = selected;
     this.depth = null;
     if (selected) {
       this.depth = 0;
       this.context.nodes.push(this);
     }
+    this.scope = this.file.scopeManager.acquire(this.astNode);
+    this.file.scopeManager
+      .getDeclaredVariables(this.astNode)
+      .forEach((variable) => {
+        if (this.file.definitions[variable.name]) {
+          console.warn("duplicate definition", variable); //todo remove this
+        }
+        this.file.definitions[variable.name] = variable.defs;
+      });
+    this.references = [];
+    //this.scope.through is a list of references outside the scope (which is what we want)
+    //confusingly, this.scope.references is a list of references inside the scope - ignore this
+    //need child scopes even for through. why is references shorter than through??
+    this.scope.through.forEach((reference) => {
+      const resolved = reference.resolved;
+      if (resolved) {
+        if (resolved.identifiers.length !== resolved.defs.length) {
+          console.warn("identifiers !== defs", reference); //todo remove this
+        }
+        if (resolved.defs.length === 0) {
+          console.warn("no defs", reference); //todo remove this
+        }
+        this.references.push(...resolved.defs);
+      } else {
+        console.warn("unresolved reference", reference); //todo remove this
+      }
+    });
   }
 }
 
