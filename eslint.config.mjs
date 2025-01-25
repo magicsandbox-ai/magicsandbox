@@ -27,13 +27,4 @@ export default {
       version: "detect",
     },
   },
-  overrides: [
-    {
-      env: { jest: true },
-      files: ["**/*.test.js"],
-      rules: {
-        "no-unused-vars": "off",
-      },
-    },
-  ],
 };

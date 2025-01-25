@@ -31,6 +31,10 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "jest": {
-    "transform": {}
+    "transform": {},
+    "moduleNameMapper": {
+      "^@components/(.*)$": "<rootDir>/components/$1",
+      "^@utils.js$": "<rootDir>/utils.js"
+    }
   }
 }

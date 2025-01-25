@@ -1,5 +1,5 @@
-import { babelParse } from "./parser.js";
-
+import { parse } from "./parser.js";
+import * as eslintScope from "eslint-scope";
 //10000 token context limit - 25000 characters
 //use search/replace if files are large
 //later - some kind of graph approach to pick out most relevant files? only include functions that are imported/exported?
@@ -132,13 +132,17 @@ class File {
       selectionEnd = this.content.length;
     }
     try {
-      babelParse(this.content, (node) => {
+      this.ast = parse(this.content, (_node) => {
         let selected = false;
         if (selectionStart && selectionEnd) {
           selected = node.start < selectionEnd && node.end > selectionStart;
         }
-        const node = new Node(this, node, selected);
+        const node = new Node(this, _node, selected);
         this.nodes.push(node);
+      });
+      this.scopeManager = eslintScope.analyze(this.ast, {
+        ecmaVersion: 2022,
+        sourceType: "module",
       });
     } catch (e) {
       console.error(e); //todo

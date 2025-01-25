@@ -1,6 +1,6 @@
 /* global requestFetch */
 
-import { babelParse } from "./parser.js";
+import { parse, getImport } from "./parser.js";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
 import { createDeferredPromise } from "@utils.js";
@@ -19,45 +19,6 @@ function countLines(s) {
   return c;
 }
 
-/**
- * Returns {path: string, names: {name: localName}}
- */
-function getImport(node) {
-  if (node.type === "ImportDeclaration") {
-    const names = {};
-    node.specifiers.forEach((specifier) => {
-      if (specifier.type === "ImportDefaultSpecifier") {
-        names.default = specifier.local.name;
-      } else if (specifier.type === "ImportSpecifier") {
-        names[specifier.imported.name] = specifier.local.name;
-      } else if (specifier.type === "ImportNamespaceSpecifier") {
-        names["*"] = specifier.local.name;
-      } else {
-        throw new Error(
-          `Unexpected import syntax, specifier: ${specifier.type}`,
-        );
-      }
-    });
-    return { path: node.source.value, names };
-  } else if (node.type === "ExportNamedDeclaration" && node.source?.value) {
-    const names = {};
-    node.specifiers.forEach((specifier) => {
-      if (specifier.type === "ExportSpecifier") {
-        names[specifier.local.name] = specifier.exported.name;
-      } else if (specifier.type === "ExportNamespaceSpecifier") {
-        names["*"] = specifier.exported.name;
-      } else {
-        throw new Error(
-          `Unexpected export syntax, specifier: ${specifier.type}`,
-        );
-      }
-    });
-    return { path: node.source.value, names };
-  } else if (node.type === "ExportAllDeclaration" && node.source?.value) {
-    return { path: node.source.value, names: { "*": "*" } };
-  }
-}
-
 function union(set1, set2) {
   const out = new Set(set1);
   set2.forEach((item) => out.add(item));
@@ -69,7 +30,7 @@ function union(set1, set2) {
  */
 function getImports(file) {
   const imports = {};
-  babelParse(file, (node) => {
+  parse(file, (node) => {
     const imp = getImport(node);
     if (imp) {
       const names = new Set(Object.keys(imp.names));
@@ -95,7 +56,7 @@ https://esbuild.github.io/try/#YgAwLjI0LjAAe2J1bmRsZTogdHJ1ZSwgZ2xvYmFsTmFtZTogJ
 */
 function transformImports(file, pkgImports) {
   const out = [];
-  babelParse(file, (node, i, nodes) => {
+  parse(file, (node, i, nodes) => {
     out.push(file.slice(i === 0 ? 0 : nodes[i - 1].end + 1, node.start)); //preserve whitespace between nodes
     const imp = getImport(node);
     if (imp && !imp.path.startsWith("./")) {
@@ -920,4 +881,5 @@ export {
   createImportPlugin,
   transformImports,
   transformToBundleDeps,
+  getImports,
 };

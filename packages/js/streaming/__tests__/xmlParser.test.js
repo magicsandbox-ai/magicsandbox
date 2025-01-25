@@ -1,3 +1,4 @@
+import { describe, expect, test } from "@jest/globals";
 import { xmlParser } from "../xmlParser";
 
 async function* createMockStream(chunks) {

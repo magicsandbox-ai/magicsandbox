@@ -1,11 +1,22 @@
-/* global describe, it */
+import { describe, expect, test } from "@jest/globals";
+import {
+  transformImports,
+  transformToBundleDeps,
+  getImports,
+} from "../plugins.js";
 
-import { expect } from "chai";
-import { transformImports, transformToBundleDeps } from "../plugins.js";
+/*
+npm run test -- apps/Dev
 
-const pkgImports = {}; //note that transformImports updates pkgImports as a side effect, so the order of the tests is important
+notes:
+- note that transformImports updates pkgImports as a side effect, so the order of the tests is important
+- preserving line numbers is important for sourcemaps
 
-//note that preserving line numbers is important for sourcemaps
+todos:
+- add test for fetching dynamic imports
+*/
+
+const pkgImports = {};
 
 const file1 = `/* global requestFunction */
 
@@ -48,13 +59,9 @@ const {'*': m} = __deps['pkg7'];
 console.log('rest of file2');`;
 
 describe("transformImports", () => {
-  it("should generate the correct output", () => {
-    expect(transformImports(file1, pkgImports)).to.equal(
-      expectedTransformedFile1,
-    );
-    expect(transformImports(file2, pkgImports)).to.equal(
-      expectedTransformedFile2,
-    );
+  test("should generate the correct output", () => {
+    expect(transformImports(file1, pkgImports)).toBe(expectedTransformedFile1);
+    expect(transformImports(file2, pkgImports)).toBe(expectedTransformedFile2);
   });
 });
 
@@ -73,19 +80,12 @@ __deps['pkg4'] = {default: __pkg4__default};
 __deps['pkg7'] = {'*': __pkg7};`;
 
 describe("transformToBundleDeps", () => {
-  it("should generate the correct output", () => {
-    expect(transformToBundleDeps(pkgImports)).to.equal(expectedBundleDeps);
+  test("should generate the correct output", () => {
+    expect(transformToBundleDeps(pkgImports)).toBe(expectedBundleDeps);
   });
 });
 
-//cd apps/Dev
-//npx mocha
-//todo test fetch dynamic import
-
-/*
-todo add test for exports
-
-const file = `import f, {f1} from 'react-dom/client';
+const getImportsFile = `import f, {f1} from 'react-dom/client';
 import {g as g1, h, i} from 'pkg2';
 import l, * as j from 'pkg3';
 import 'pkg5';
@@ -99,4 +99,22 @@ export { x as v } from "pkg12";
 export * as ns from "pkg13";
 export * from "pkg14";
 `;
-*/
+
+const expectedGetImports = {
+  "react-dom/client": new Set(["default", "f1"]),
+  pkg2: new Set(["g", "h", "i"]),
+  pkg3: new Set(["default", "*"]),
+  pkg5: new Set([]),
+  "./file2.js": new Set(["default"]),
+  pkg10: new Set(["default", "function2"]),
+  pkg11: new Set(["x"]),
+  pkg12: new Set(["x"]),
+  pkg13: new Set(["*"]),
+  pkg14: new Set(["*"]),
+};
+
+describe("getImports", () => {
+  test("should generate the correct output", () => {
+    expect(getImports(getImportsFile)).toEqual(expectedGetImports);
+  });
+});
