@@ -16,43 +16,4 @@ function parse(file, handler) {
   return ast;
 }
 
-/**
- * Returns {path: string, names: {name: localName}}
- */
-function getImport(node) {
-  if (node.type === "ImportDeclaration") {
-    const names = {};
-    node.specifiers.forEach((specifier) => {
-      if (specifier.type === "ImportDefaultSpecifier") {
-        names.default = specifier.local.name;
-      } else if (specifier.type === "ImportSpecifier") {
-        names[specifier.imported.name] = specifier.local.name;
-      } else if (specifier.type === "ImportNamespaceSpecifier") {
-        names["*"] = specifier.local.name;
-      } else {
-        throw new Error(
-          `Unexpected import syntax, specifier: ${specifier.type}`,
-        );
-      }
-    });
-    return { path: node.source.value, names };
-  } else if (node.type === "ExportNamedDeclaration" && node.source?.value) {
-    const names = {};
-    node.specifiers.forEach((specifier) => {
-      if (specifier.type === "ExportSpecifier") {
-        names[specifier.local.name] = specifier.exported.name;
-      } else if (specifier.type === "ExportNamespaceSpecifier") {
-        names["*"] = specifier.exported.name;
-      } else {
-        throw new Error(
-          `Unexpected export syntax, specifier: ${specifier.type}`,
-        );
-      }
-    });
-    return { path: node.source.value, names };
-  } else if (node.type === "ExportAllDeclaration" && node.source?.value) {
-    return { path: node.source.value, names: { "*": "*" } };
-  }
-}
-
-export { parse, getImport };
+export { parse };
