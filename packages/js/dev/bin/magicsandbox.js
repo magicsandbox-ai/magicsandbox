@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
-import { init, dev, publish } from "../src/index.js";
+import { init, dev, publish, install } from "../src/index.js";
 import { Command, Option } from "commander";
 import path from "path";
+
+/*
+todos:
+- make path optional?
+*/
 
 const program = new Command();
 
@@ -52,6 +57,19 @@ program
   .addOption(urlOption)
   .action(async (appPath, options) => {
     await publish(handlePath(appPath, options.dir), options.debug, options.url);
+  });
+
+program
+  .command("install")
+  .description("Install dependencies for a Magic App or Function")
+  .argument(
+    "<path>",
+    "Path to App/Function directory (relative to --dir if specified)",
+  )
+  .argument("<packages...>", "Packages to install")
+  .option("-d, --dir <directory>", "Base directory", process.cwd())
+  .action(async (appPath, packages, options) => {
+    await install(handlePath(appPath, options.dir), packages);
   });
 
 program.parse();

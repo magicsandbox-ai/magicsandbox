@@ -66,7 +66,9 @@ If `dependencies` is present in `magic.json`, `@magicsandbox.ai/dev` will handle
 2. Running `npm install` to install the dependencies
 3. Deleting `package.json`
 
-If `dependencies` is not present in `magic.json`, `@magicsandbox.ai/dev` will assume you're handling installation yourself. You should either use `dependencies` in `magic.json` or `package.json`, not both. `@magicsandbox.ai/dev` will throw an error if both are present.
+If `dependencies` is not present in `magic.json`, `@magicsandbox.ai/dev` will assume you're handling dependencies yourself. You should either use `dependencies` in `magic.json` or `package.json`, not both. `@magicsandbox.ai/dev` will throw an error if both are present.
+
+todo install `npx magicsandbox install MyApp react`
 
 ### tailwindConfig
 

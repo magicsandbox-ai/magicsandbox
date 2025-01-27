@@ -1,4 +1,4 @@
-/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish, requestDownload */
+/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
@@ -22,30 +22,6 @@ import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
 import { Loader } from "lucide-react";
 import { context as _context } from "./context.js";
-
-/*
-AI chat
-  window.setChat
-  codemirror merge?
-  ctrl enter to chat, pops open chat panel, ctrl s closes it?
-  https://aider.chat/docs/repomap.html
-  automated screenshot and multi modal chat? html2canvas or html-to-image?
-
-how to get client frame in certain state? so I can develop function B that sits on top of function A?
-  maybe special mock up function call? server does its thing, App ignores reset, frame saves globals rather than scripts
-
-support vue, others?
-
-add errors besides just console - toast
-
-pull down published functions?
-
-store panel sizes? https://react-resizable-panels.vercel.app/examples/external-persistence
-
-versioning saves? isomorphic-git?
-
-create a package lock file?
-*/
 
 async function initEsbuild() {
   const esbuildWasmResponse = await requestFetch(
@@ -550,13 +526,7 @@ function context() {
   );
 }
 
-const api = {
-  download: () => {
-    Object.entries(api.files).forEach(([filename, content]) => {
-      requestDownload(filename, content);
-    });
-  },
-};
+const api = {};
 
 function render() {
   root.render(<App />);

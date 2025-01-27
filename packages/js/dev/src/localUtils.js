@@ -2,23 +2,30 @@ import { promises as fsPromises } from "fs";
 import JSON5 from "json5";
 import path from "path";
 
-async function readMagicJson(magicPath) {
-  let data;
-  try {
-    data = await fsPromises.readFile(
-      path.join(magicPath, "magic.json5"),
-      "utf8",
-    );
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-    data = await fsPromises.readFile(
-      path.join(magicPath, "magic.json"),
-      "utf8",
-    );
+async function getMagicJsonPath(magicPath) {
+  if (await fileExists(magicPath, "magic.json5")) {
+    return path.join(magicPath, "magic.json5");
   }
+  return path.join(magicPath, "magic.json");
+}
+
+async function readMagicJson(magicPath) {
+  const magicJsonPath = await getMagicJsonPath(magicPath);
+  const data = await fsPromises.readFile(magicJsonPath, "utf8");
   return JSON5.parse(data);
+}
+
+async function writeMagicJson(magicPath, magicObj) {
+  const magicJsonPath = await getMagicJsonPath(magicPath);
+  let stringify = JSON5.stringify;
+  if (magicJsonPath.endsWith(".json")) {
+    stringify = JSON.stringify;
+  }
+  await fsPromises.writeFile(
+    magicJsonPath,
+    stringify(magicObj, undefined, 2),
+    "utf8",
+  );
 }
 
 async function fileExists(dir, filename) {
@@ -33,4 +40,4 @@ async function readFile(dir, filename) {
   return await fsPromises.readFile(path.join(dir, filename), "utf-8");
 }
 
-export { readMagicJson, fileExists, readFile };
+export { readMagicJson, writeMagicJson, fileExists, readFile };

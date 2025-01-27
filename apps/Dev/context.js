@@ -45,6 +45,8 @@ tests:
 - unnamed default export
 
 todos:
+- what file is currently selected
+- if non-js file, don't put js before it
 - prompt: docs. use search/replace if files are large
 - how to get docs for dependencies and Functions
 - re-exporting/barrel modules/ExportAllDeclaration/ExportNamespaceSpecifier
@@ -352,39 +354,35 @@ class Node {
   }
 
   summarize() {
-    const type = this.astNode.type;
-    let start = this.astNode.start;
-    let end = this.astNode.end;
+    const astNode = this.astNode;
+    const type = astNode.type;
+    let start = astNode.start;
+    let end = astNode.end;
+    const slice = (start, end) => this.file.content.slice(start, end);
     if (
       type === "ImportDeclaration" ||
       type === "ExportNamedDeclaration" ||
-      type === "ExportAllDeclaration"
+      type === "ExportAllDeclaration" ||
+      //if we're default exporting something we already defined, include it, otherwise no
+      (type === "ExportDefaultDeclaration" && astNode.declaration.name)
     ) {
-      //pass
-    } else if (type === "ExportDefaultDeclaration") {
-      end = Math.min(end, start + 100); //this could be quite long if defining a function for example
-    } else if (this.astNode.params) {
+      //pass, use start to end
+    } else if (astNode.params) {
       //FunctionDeclaration, FunctionExpression, ArrowFunctionExpression
-      end = this.astNode.body.start;
-    } else if (this.astNode.body?.type === "ClassBody") {
+      end = astNode.body.start - 1;
+    } else if (astNode.body?.type === "ClassBody") {
       //ClassDeclaration, ClassExpression
-      const body = this.astNode.body.body
+      const body = astNode.body.body
         .filter((node) => node.type === "MethodDefinition")
-        .map((node) =>
-          this.file.content.slice(node.start, node.value.body.start - 1),
-        );
-      return `${this.file.content.slice(start, this.astNode.body.start) - 1} {
+        .map((node) => slice(node.start, node.value.body.start - 1));
+      return `${slice(start, astNode.body.start - 1)} {
 ${body.join("\n")}
 }`;
-    } else if (type === "VariableDeclaration") {
-      //todo
-    } else if (type === "ExpressionStatement") {
-      //todo
     } else {
       end = Math.min(end, start + 100);
     }
-    const content = this.file.content.slice(start, end);
-    if (end < this.astNode.end) {
+    const content = slice(start, end);
+    if (end < astNode.end) {
       return content + "...";
     }
     return content;

@@ -5,11 +5,8 @@ import { buildApp } from "./buildApp.js";
 import path from "path";
 import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
 import { pathToFileURL } from "url";
-import { exec as _exec } from "child_process";
-import { promisify } from "util";
 import { isEqual } from "es-toolkit";
-
-const exec = promisify(_exec);
+import { installDependencies } from "./install.js";
 
 async function buildAppLocal({
   magicPath,
@@ -28,6 +25,7 @@ async function buildAppLocal({
     magicObj.dependencies &&
     !isEqual(magicObj.dependencies, contextRef.current.dependencies)
   ) {
+    console.log("Installing dependencies...");
     await installDependencies(magicPath, magicObj);
   }
   contextRef.current.dependencies = magicObj.dependencies;
@@ -87,29 +85,6 @@ async function buildAppLocal({
   contextRef.current.context = context;
   log(new Date() - now, "buildApp");
   return { appObj };
-}
-
-async function installDependencies(magicPath, magicObj) {
-  console.log("Installing dependencies...");
-  if (await fileExists(magicPath, "package.json")) {
-    throw new Error(
-      "Cannot include dependencies in magic.json if package.json exists",
-    );
-  }
-  await fsPromises.writeFile(
-    path.join(magicPath, "package.json"),
-    JSON.stringify(
-      {
-        ...magicObj,
-        private: true, //prevent accidental publishing to npm
-      },
-      undefined,
-      2,
-    ), //todo don't use all the keys?
-    "utf8",
-  );
-  await exec("npm install", { cwd: magicPath });
-  await fsPromises.unlink(path.join(magicPath, "package.json"));
 }
 
 async function saveMetafile(result, magicPath) {
