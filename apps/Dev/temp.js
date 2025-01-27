@@ -4,9 +4,8 @@ import fs from "fs";
 import * as espree from "espree";
 import * as eslintScope from "eslint-scope";
 
-//const file = fs.readFileSync("apps/Dev/index.js", "utf8");
-
-const file = fs.readFileSync("apps/Assistant/index.js", "utf8");
+const file = fs.readFileSync("apps/Dev/index.js", "utf8");
+//const file = fs.readFileSync("apps/Assistant/index.js", "utf8");
 
 const ast = espree.parse(file, {
   ecmaVersion: 2022,
@@ -15,18 +14,58 @@ const ast = espree.parse(file, {
   range: true, //required for eslint-scope
 });
 
-const scopeManager = eslintScope.analyze(ast, {
-  ecmaVersion: 2022,
+/*
+this section is copied from eslint-scope/lib/index.js so we can override Referencer
+*/
+const eslintScopeOptions = {
+  optimistic: false,
+  directive: false,
+  nodejsScope: false,
+  impliedStrict: false,
   sourceType: "module",
-});
+  ecmaVersion: 2022,
+  childVisitorKeys: null,
+  fallback: "iteration",
+  ignoreEval: true,
+};
 
-const node = ast.body[9];
+class JSXReferencer extends eslintScope.Referencer {
+  constructor(options, scopeManager) {
+    super(options, scopeManager);
+  }
+  JSXIdentifier(node) {
+    //ignore tags like "div"
+    if (node.name[0] === node.name[0].toUpperCase()) {
+      //hack to change type to Identifier, otherwise eslint-scope will ignore it
+      node.type = "Identifier";
+      this.currentScope().__referencing(node);
+    }
+  }
+}
 
-console.log(scopeManager.acquire(node));
+function analyze(tree, options) {
+  const scopeManager = new eslintScope.ScopeManager(options);
+  const referencer = new JSXReferencer(options, scopeManager);
+  referencer.visit(tree);
+  if (scopeManager.__currentScope !== null) {
+    throw new Error("currentScope should be null.");
+  }
+  return scopeManager;
+}
 
-console.log(scopeManager.getDeclaredVariables(node));
+const scopeManager = analyze(ast, eslintScopeOptions);
 
 console.log(scopeManager);
+
+//const node = ast.body[21];
+// const node = ast.body[9];
+// const scope = scopeManager.acquire(node);
+// const references = [];
+// scope.through.forEach((reference) => {
+//   references.push(...(reference.resolved?.defs || []));
+// });
+
+// console.log(references);
 
 /*
 for each node, get its scope plus its recursive child scopes. get all (resolved?) references

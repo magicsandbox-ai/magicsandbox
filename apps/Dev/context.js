@@ -228,4 +228,4 @@ function context(rawFiles, selectedFilename, selection, scriptFile) {
   return new Context(rawFiles, selectedFilename, selection, scriptFile).get();
 }
 
-export { context };
+export { context, Context, File, Node };
