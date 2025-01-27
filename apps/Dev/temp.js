@@ -4,8 +4,7 @@ import fs from "fs";
 import * as espree from "espree";
 import * as eslintScope from "eslint-scope";
 
-const file = fs.readFileSync("apps/Dev/eslinter.js", "utf8");
-//const file = fs.readFileSync("apps/Assistant/index.js", "utf8");
+const file = fs.readFileSync("apps/Assistant/Assistant.js", "utf8");
 
 const ast = espree.parse(file, {
   ecmaVersion: 2022,

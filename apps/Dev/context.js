@@ -124,18 +124,20 @@ class Context {
   }
 
   summarize() {
-    /*
-    - magic.json
-    - depth 0 nodes
-    - depth 0 files
-    - non js files
-    - depth 1 nodes
-    - depth 1 files
-    - depth 2 nodes
-    - depth 2 files
-    */
+    const items = [
+      this.files["magic.json"],
+      ...this.processedNodes.filter((node) => node.depth === 0),
+      ...this.files.filter((file) => !file.js),
+      ...this.processedNodes.filter((node) => node.depth === 1),
+      ...this.processedNodes.filter((node) => node.depth === 2),
+    ];
     this.length = 0;
-    this.files["magic.json"].add();
+    let i = 0;
+    while (i < items.length && this.length <= this.maxLength) {
+      const item = items[i];
+      this.length += item.add();
+      i++;
+    }
   }
 
   format(method) {
@@ -148,9 +150,12 @@ ${fileString}
 </${file.filename}>`);
       }
     });
-    return `<files>
+    return `The user is editing the below files:
+<files>
 ${fileStrings.join("\n")}
-</files>`;
+</files>
+
+${restofPrompt}`;
   }
 }
 
@@ -261,15 +266,30 @@ class File {
     if (!this.js) {
       this.summary.push(this.content);
       return this.content.length;
+    } else {
+      let summaryLength = 0;
+      this.nodes.forEach((node) => {
+        const nodeSummary = node.summarize();
+        summaryLength += nodeSummary.length;
+        this.summary.push(nodeSummary);
+      });
+      return summaryLength;
     }
-    //todo
   }
 
   addNode(node) {
     if (this.summary.length > 0) {
-      //todo
+      const oldLength = this.summary[node.index].length;
+      this.summary[node.index] = this.content.slice(
+        node.astNode.start,
+        node.astNode.end,
+      );
+      return this.summary[node.index].length - oldLength;
+    } else {
+      const summaryLength = this.add();
+      const additionalNodeLength = this.addNode(node);
+      return summaryLength + additionalNodeLength;
     }
-    //todo
   }
 
   get() {
@@ -330,10 +350,64 @@ class Node {
   add() {
     return this.file.addNode(this);
   }
+
+  summarize() {
+    const type = this.astNode.type;
+    let start = this.astNode.start;
+    let end = this.astNode.end;
+    if (
+      type === "ImportDeclaration" ||
+      type === "ExportNamedDeclaration" ||
+      type === "ExportAllDeclaration"
+    ) {
+      //pass
+    } else if (type === "ExportDefaultDeclaration") {
+      end = Math.min(end, start + 100); //this could be quite long if defining a function for example
+    } else if (this.astNode.params) {
+      //FunctionDeclaration, FunctionExpression, ArrowFunctionExpression
+      end = this.astNode.body.start;
+    } else if (this.astNode.body?.type === "ClassBody") {
+      //ClassDeclaration, ClassExpression
+      const body = this.astNode.body.body
+        .filter((node) => node.type === "MethodDefinition")
+        .map((node) =>
+          this.file.content.slice(node.start, node.value.body.start - 1),
+        );
+      return `${this.file.content.slice(start, this.astNode.body.start) - 1} {
+${body.join("\n")}
+}`;
+    } else if (type === "VariableDeclaration") {
+      //todo
+    } else if (type === "ExpressionStatement") {
+      //todo
+    } else {
+      end = Math.min(end, start + 100);
+    }
+    const content = this.file.content.slice(start, end);
+    if (end < this.astNode.end) {
+      return content + "...";
+    }
+    return content;
+  }
 }
 
 function context(rawFiles, selectedFilename, selection, scriptFile) {
   return new Context(rawFiles, selectedFilename, selection, scriptFile).get();
 }
 
-export { context, Context, File, Node };
+const restofPrompt = `API:
+
+- app.api.updateFiles(updateString)
+- app.api.download(): download files to the user's computer
+
+Usage:
+
+
+
+Instructions:
+
+- If the user is asking a question about the code, answer it and don't run any scripts.
+- Otherwise, use the API to complete the user's request.
+`;
+
+export { context, Context };

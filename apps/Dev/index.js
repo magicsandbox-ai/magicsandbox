@@ -21,6 +21,7 @@ import prettier from "prettier/standalone";
 import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
 import { Loader } from "lucide-react";
+import { context as _context } from "./context.js";
 
 /*
 AI chat
@@ -132,7 +133,6 @@ function App() {
     if (Object.keys(files).length > 0) {
       //don't bother on initial render
       filesRef.current = files;
-      api.files = filesRef.current;
       debouncedCallProcessTailwind();
     }
   }, [files]);
@@ -146,6 +146,9 @@ function App() {
     );
     importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
+
+  api.files = files;
+  api.selectedFilename = selectedFilename;
 
   const filenames = Object.keys(files);
   const value = files[selectedFilename];
@@ -189,6 +192,7 @@ function App() {
     let appObj;
     try {
       appObj = JSON5.parse(filesRef.current["magic.json"]);
+      api.scriptFile = appObj.scriptFile || "index.js"; //todo this is sloppy
     } catch {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
@@ -538,33 +542,12 @@ function App() {
 const root = createRoot(document.getElementById("root"));
 
 function context() {
-  //todo what if files too large?
-  return `The user is editing the below files:
-
-<files>
-${Object.entries(api.files)
-  .map(
-    ([filename, value]) => `<${filename}>
-${value}
-</${filename}>`,
-  )
-  .join("\n")}
-</files>
-
-API:
-
-- app.api.updateFiles(updateString)
-- app.api.download(): download files to the user's computer
-
-Usage:
-
-
-
-Instructions:
-
-- If the user is asking a question about the code, answer it and don't run any scripts.
-- Otherwise, use the API to complete the user's request.
-`;
+  return _context(
+    api.files,
+    api.selectedFilename,
+    window.getSelection().toString(),
+    api.scriptFile,
+  );
 }
 
 const api = {
