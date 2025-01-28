@@ -47,13 +47,13 @@ export default function FilePicker({
             <X size={16} />
           </button>
         </div>
-        {filenames.map((filename) => (
+        {filenames.map(({ filename, merge }) => (
           <div
             className={`flex rounded-md ${selectedFilename === filename ? "border-2 border-black" : "border"} gap-px px-1 py-px`}
             key={filename}
           >
             <button onClick={() => setSelectedFilename(filename)}>
-              {filename}
+              {`${filename}${merge ? "*" : ""}`}
             </button>
             {filename !== "magic.json" && (
               <button onClick={() => deleteFile(filename)}>

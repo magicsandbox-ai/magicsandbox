@@ -1,4 +1,4 @@
-import { readMagicJson, writeMagicJson, fileExists } from "./localUtils.js";
+import { readMagicJson, updateMagicJson, fileExists } from "./localUtils.js";
 import { execSync } from "child_process";
 import path from "path";
 import { promises as fsPromises } from "fs";
@@ -37,8 +37,9 @@ async function installDependencies(magicPath, magicObj, packages) {
     "utf8",
   );
   pjson = JSON.parse(pjson);
-  magicObj.dependencies = pjson.dependencies;
-  await writeMagicJson(magicPath, magicObj);
+  await updateMagicJson(magicPath, (obj) => {
+    obj.dependencies = pjson.dependencies;
+  });
   await fsPromises.unlink(path.join(magicPath, "package.json"));
 }
 

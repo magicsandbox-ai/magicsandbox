@@ -1,6 +1,7 @@
 import { promises as fsPromises } from "fs";
 import JSON5 from "json5";
 import path from "path";
+import * as fleece from "golden-fleece";
 
 async function getMagicJsonPath(magicPath) {
   if (await fileExists(magicPath, "magic.json5")) {
@@ -15,17 +16,12 @@ async function readMagicJson(magicPath) {
   return JSON5.parse(data);
 }
 
-async function writeMagicJson(magicPath, magicObj) {
+async function updateMagicJson(magicPath, updater) {
   const magicJsonPath = await getMagicJsonPath(magicPath);
-  let stringify = JSON5.stringify;
-  if (magicJsonPath.endsWith(".json")) {
-    stringify = JSON.stringify;
-  }
-  await fsPromises.writeFile(
-    magicJsonPath,
-    stringify(magicObj, undefined, 2),
-    "utf8",
-  );
+  const str = await fsPromises.readFile(magicJsonPath, "utf8");
+  const obj = fleece.evaluate(str);
+  updater(obj);
+  await fsPromises.writeFile(magicJsonPath, fleece.patch(str, obj), "utf8");
 }
 
 async function fileExists(dir, filename) {
@@ -40,4 +36,4 @@ async function readFile(dir, filename) {
   return await fsPromises.readFile(path.join(dir, filename), "utf-8");
 }
 
-export { readMagicJson, writeMagicJson, fileExists, readFile };
+export { readMagicJson, updateMagicJson, fileExists, readFile };

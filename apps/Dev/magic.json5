@@ -44,6 +44,7 @@
     "react-resizable-panels": "^2.0.20",
     semver: "^7.6.3",
     util: "^0.12.5", //for eslint
+    "@codemirror/merge": "^6.8.0",
   },
   writeData: {
     enabled: true,

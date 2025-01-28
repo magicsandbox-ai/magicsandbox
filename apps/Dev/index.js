@@ -428,7 +428,10 @@ function App() {
   api.selectedFilename = selectedFilename;
   api.setMerges = setMerges;
 
-  const filenames = Object.keys(files);
+  const filenames = Object.keys(files).map((filename) => ({
+    filename,
+    merge: Boolean(merges[filename]),
+  }));
   const value = files[selectedFilename];
   const merge = merges[selectedFilename];
   const setMerge = (nextMerge) => {
