@@ -1,15 +1,15 @@
 // note the \ in the example below is to escape < for jsdoc
 /**
- * Parses the top level tags of a stream that optionally contains XML tags
+ * Parses the top level tags of a stream
  *
  * Arguments: an object with keys:
  * - stream (AsyncIterable<any>): The stream to parse
- * - chunkProcessor (function(any) => string) (default (chunk) => chunk): A function that returns the XML string from a chunk of the stream
- * - maxTagLength (number) (default 100): The maximum expected length of an XML tag
+ * - chunkProcessor (function(any) => string) (default (chunk) => chunk): A function that returns a string from a chunk of the stream
+ * - maxTagLength (number) (default 100): The maximum expected length of a tag
  *
  * Returns:
  * - AsyncGenerator<{content: string, tag?: string}>
- *   - content: A string of content from the XML stream
+ *   - content: A string of content from the stream
  *   - tag: The name of the top level tag enclosing the content, if any
  *
  * Example: "hello world\<example>test\</example>goodbye"
@@ -20,9 +20,9 @@
  * - {content: 'test', tag: 'example'}
  * - {content: 'goodbye'}
  *
- * Usage: for await (const {content, tag} of xmlParser({stream: ...})) {
+ * Usage: for await (const {content, tag} of tagStreamParser({stream: ...})) {
  */
-async function* xmlParser({
+async function* tagStreamParser({
   stream,
   chunkProcessor = (chunk) => chunk,
   maxTagLength = 100,
@@ -80,4 +80,31 @@ function processBuffer({ buffer, tag, bufferLength }) {
   return { buffer, tag, results };
 }
 
-export { xmlParser };
+/**
+ * Parses the top level tags of a string
+ *
+ * Arguments: a string
+ *
+ * Returns: {[tag?: string]: string}
+ *
+ * Example: "hello world\<example>test\</example>goodbye"
+ *
+ * Returns: {
+ *   undefined: "hello worldgoodbye",
+ *   example: "test"
+ * }
+ */
+function tagParser(string) {
+  const result = {};
+  const { results } = processBuffer({
+    buffer: string,
+    tag: undefined,
+    bufferLength: 0,
+  });
+  for (const { content, tag } of results) {
+    result[tag] = result[tag] ? result[tag] + content : content;
+  }
+  return result;
+}
+
+export { tagStreamParser, tagParser };

@@ -22,6 +22,7 @@ import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
 import { Loader } from "lucide-react";
 import { context as _context } from "./context.js";
+import { tagParser } from "@magicsandbox.ai/streaming";
 
 async function initEsbuild() {
   const esbuildWasmResponse = await requestFetch(
@@ -76,6 +77,7 @@ function App() {
   const [apps, setApps] = useState([]);
   const [selectedApp, setSelectedApp] = useState("");
   const [files, setFiles] = useState({});
+  const [merges, setMerges] = useState({});
   const [selectedFilename, setSelectedFilename] = useState("magic.json");
   const [tailwindState, setTailwindState] = useState({
     processedCss: "",
@@ -123,16 +125,6 @@ function App() {
     importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
 
-  api.files = files;
-  api.selectedFilename = selectedFilename;
-
-  const filenames = Object.keys(files);
-  const value = files[selectedFilename];
-  const initialState = {
-    json: editorStateRef.current[selectedApp + selectedFilename]?.state,
-    fields: { history: historyField },
-  };
-
   async function initData() {
     const exampleObj = JSON5.parse(exampleFiles["magic.json"]);
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
@@ -168,11 +160,11 @@ function App() {
     let appObj;
     try {
       appObj = JSON5.parse(filesRef.current["magic.json"]);
-      api.scriptFile = appObj.scriptFile || "index.js"; //todo this is sloppy
     } catch {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
     appObj = await getDefaults(appObj);
+    api.scriptFile = appObj.scriptFile;
     //this is only used for tailwind tooltips, so skip building tailwind.config.js
     //not worth the slow build that potentially makes network requests
     setTailwindState(
@@ -432,6 +424,22 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
+  api.files = files;
+  api.selectedFilename = selectedFilename;
+  api.setMerges = setMerges;
+
+  const filenames = Object.keys(files);
+  const value = files[selectedFilename];
+  const merge = merges[selectedFilename];
+  const setMerge = (nextMerge) => {
+    const nextMerges = { ...merges, [selectedFilename]: nextMerge };
+    setMerges(nextMerges);
+  };
+  const initialState = {
+    json: editorStateRef.current[selectedApp + selectedFilename]?.state,
+    fields: { history: historyField },
+  };
+
   const buttonStyle =
     "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
   const panelResizeHandleStyle = "w-px bg-stone-500";
@@ -500,6 +508,8 @@ function App() {
             onChange={onChange}
             selectedFilename={selectedFilename}
             cssClassMap={tailwindState.classMap || {}}
+            merge={merge}
+            setMerge={setMerge}
           />
         </Panel>
         <PanelResizeHandle className={panelResizeHandleStyle} />
@@ -526,7 +536,15 @@ function context() {
   );
 }
 
-const api = {};
+const api = {
+  updateFiles: (updateString) => {
+    /*
+    todo find/replace
+    what if there are outstanding merges? use them? or not?
+    */
+    api.setMerges(tagParser(updateString));
+  },
+};
 
 function render() {
   root.render(<App />);

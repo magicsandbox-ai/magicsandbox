@@ -1,6 +1,6 @@
 /* global requestFunction */
 
-import { xmlParser } from "@magicsandbox.ai/streaming";
+import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
 async function handleMagic({
   input,
@@ -52,7 +52,7 @@ ${message}
   let message = "";
   let script = "";
   let prevTag;
-  for await (const { content, tag } of xmlParser({
+  for await (const { content, tag } of tagStreamParser({
     stream,
     chunkProcessor: (chunk) => chunk.result,
   })) {
