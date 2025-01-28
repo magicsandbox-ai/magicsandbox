@@ -164,7 +164,7 @@ function App() {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
     appObj = await getDefaults(appObj);
-    api.scriptFile = appObj.scriptFile;
+    privateApi.scriptFile = appObj.scriptFile;
     //this is only used for tailwind tooltips, so skip building tailwind.config.js
     //not worth the slow build that potentially makes network requests
     setTailwindState(
@@ -424,9 +424,10 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
-  api.files = files;
-  api.selectedFilename = selectedFilename;
-  api.setMerges = setMerges;
+  privateApi.files = files;
+  privateApi.setFiles = setFiles;
+  privateApi.selectedFilename = selectedFilename;
+  privateApi.setMerges = setMerges;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -435,7 +436,13 @@ function App() {
   const value = files[selectedFilename];
   const merge = merges[selectedFilename];
   const setMerge = (nextMerge) => {
-    const nextMerges = { ...merges, [selectedFilename]: nextMerge };
+    let nextMerges;
+    if (nextMerge) {
+      nextMerges = { ...merges, [selectedFilename]: nextMerge };
+    } else {
+      nextMerges = { ...merges };
+      delete nextMerges[selectedFilename];
+    }
     setMerges(nextMerges);
   };
   const initialState = {
@@ -532,20 +539,28 @@ const root = createRoot(document.getElementById("root"));
 
 function context() {
   return _context(
-    api.files,
-    api.selectedFilename,
+    privateApi.files,
+    privateApi.selectedFilename,
     window.getSelection().toString(),
-    api.scriptFile,
+    privateApi.scriptFile,
   );
 }
 
+const privateApi = {};
+
 const api = {
   updateFiles: (updateString) => {
-    /*
-    todo find/replace
-    what if there are outstanding merges? use them? or not?
-    */
-    api.setMerges(tagParser(updateString));
+    const updatedFiles = tagParser(updateString); //todo find/replace
+    privateApi.setFiles({ ...privateApi.files, ...updatedFiles });
+    //merges are the original files (kind of poorly named), so we want to keep any outstanding original files rather than overwrite them
+    privateApi.setMerges({
+      ...Object.fromEntries(
+        Object.entries(privateApi.files).filter(
+          ([filename]) => filename in updatedFiles,
+        ),
+      ),
+      ...privateApi.merges,
+    });
   },
 };
 
