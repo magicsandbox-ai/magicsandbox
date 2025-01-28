@@ -1,5 +1,3 @@
-/* global requestFetch requestPublish */
-
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Preview } from "@magicsandbox.ai/react-sandbox";

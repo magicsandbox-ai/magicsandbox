@@ -1,5 +1,3 @@
-/* global requestGetAllKeysData, requestGetAllData, requestPutData, requestDeleteData */
-
 import { formatAsDollars } from "@utils.js";
 
 /**

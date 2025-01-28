@@ -1,5 +1,3 @@
-/* global requestPutData */
-
 import React from "react";
 import Settings from "@components/Settings.js";
 

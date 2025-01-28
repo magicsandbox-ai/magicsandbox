@@ -1,5 +1,3 @@
-/* global requestFunction */
-
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
 async function handleMagic({

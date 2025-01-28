@@ -1,5 +1,3 @@
-/* global requestSandbox, requestApp */
-
 const minimumMinCost = 0.001;
 const maximumMaxCost = 1;
 

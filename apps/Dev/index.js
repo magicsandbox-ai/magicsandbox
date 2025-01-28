@@ -1,5 +1,3 @@
-/* global requestFetch, requestGetAllKeysData, requestGetData, requestPutData, requestDeleteData, requestPublish */
-
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import CodeEditor from "./CodeEditor.js";

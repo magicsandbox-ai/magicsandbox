@@ -1,4 +1,5 @@
 import globals from "globals";
+import { globals as magicSandboxGlobals } from "@magicsandbox.ai/dev";
 import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
 
@@ -7,6 +8,7 @@ export default {
     globals: {
       ...globals.browser,
       ...globals.node,
+      ...magicSandboxGlobals,
     },
     parserOptions: {
       ecmaFeatures: {

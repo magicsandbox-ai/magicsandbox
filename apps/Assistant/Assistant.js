@@ -1,5 +1,3 @@
-/* global requestSandbox, requestFunction, requestApp, requestGetData, requestPutData */
-
 import {
   FinancialRisk,
   PublishRisk,

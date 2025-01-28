@@ -92,6 +92,10 @@ into:
 
 todo
 
+## Globals
+
+This package exports a `globals` object that can be used with your linter. See [here](https://github.com/magicsandbox-ai/magicsandbox/blob/main/eslint.config.mjs) for an example.
+
 ## Debugging
 
 Debug your builds with `npm run dev --debug MyApp`.

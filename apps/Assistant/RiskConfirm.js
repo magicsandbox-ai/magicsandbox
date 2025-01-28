@@ -1,5 +1,3 @@
-/* global requestDownload requestOpenUrl */
-
 import React from "react";
 import Confirm from "@components/Confirm.js";
 

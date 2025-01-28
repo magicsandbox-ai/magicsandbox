@@ -1,5 +1,3 @@
-/* global requestFetch */
-
 import { parse } from "./parser.js";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
