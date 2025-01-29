@@ -12,9 +12,7 @@ The Sandbox has the following high level restrictions and associated Sandbox fun
   - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
 - No direct access to web storage APIs.
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
-- Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any [feedback](todo) you have.
-
-todo error handling - RequestSandboxError. data is populated with minCost: error.data?.minCost
+- Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any feedback you have by creating an [issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue).
 
 ## Calling Magic Apps and Functions
 
@@ -182,3 +180,12 @@ A convenience function to call other Sandbox functions.
 - `args` (any): the arguments to pass to the Sandbox function
 
 **Returns:** the result from the Sandbox function
+
+## Error Handling
+
+If a Sandbox function throws an error, it will have the following properties:
+
+- `name` (string): "RequestSandboxError"
+- `message` (string): a message describing the error
+- `data?` (any): an optional object containing additional error data
+  - `minCost?` (number): provided if calling requestApp or requestFunction with a maxCost that is less than the App or Function's minCost

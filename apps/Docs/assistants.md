@@ -48,6 +48,8 @@ todo updateUrl in requestApp
 
 todo reload
 
+todo expectations on magic. what context assistant is expected to have vs. what app provides
+
 ## Handling Sandbox Requests
 
 When the App Sandbox calls a Sandbox function like requestFetch, it uses postMessage to send a message to its parent, the Assistant Sandbox, that looks like this:

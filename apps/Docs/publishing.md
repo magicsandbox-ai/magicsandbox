@@ -186,17 +186,13 @@ This is actually more convenient for peer dependencies like React when you want 
 
 The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Magic Apps locally. Refer to the docs for more details.
 
-## magicsandbox.PublishFunction
-
-The App [magicsandbox.PublishFunction](https://magicsandbox.ai?app=magicsandbox.PublishFunction) is a simple interface for publishing Magic Functions.
-
 ## Custom Methods
 
 You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server. magicsandbox.Dev specific keys like `scriptFile` are not supported.
 
 ### Custom Magic App
 
-Rather than using magicsandbox.Dev or magicsandbox.PublishFunction, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](todo).
+Rather than using magicsandbox.Dev, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](todo).
 
 ### Custom Local Development
 

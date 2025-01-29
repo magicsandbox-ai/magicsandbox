@@ -81,7 +81,7 @@ import { createRoot } from "react-dom/client";
 
 function context() {
   return `API:
-  - setText: (text: string) => void, updates the displayed text`;
+  - app.api.setText: (text: string) => void, updates the displayed text`;
 }
 
 const api = {
@@ -106,3 +106,5 @@ Now here's what happens if a user asks the Assistant to 'make it say "Goodbye!"'
 1. The Assistant calls `app.context()` to get the context string.
 2. The Assistant generates the script `app.api.setText("Goodbye!");`.
 3. The Assistant executes the script in the Sandbox, updating the App to display "Goodbye!" as requested.
+
+Assistants are aware of how Magic Sandbox works and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context. Depending on your App, you may want to provide additional context. For example, `magicsandbox.Dev` includes the [publishing](#publishing) documentation in its context.

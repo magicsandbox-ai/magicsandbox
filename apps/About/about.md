@@ -34,3 +34,7 @@ todo anonymity, risk of URLs
 ## Magic Bang (!magic)
 
 ## Bangs
+
+## Still Need Help?
+
+Please send an email to help@magicsandbox.ai. We want to know how to fix your problem!
