@@ -11,7 +11,7 @@
       resolve: "./dummy.js",
     },
     inject: ["./processShim.js"], //for eslint
-    loader: { ".js": "jsx", ".wasm": "binary" },
+    loader: { ".js": "jsx", ".wasm": "binary", ".md": "text" },
     //the dependencies for components are in node_modules
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths
