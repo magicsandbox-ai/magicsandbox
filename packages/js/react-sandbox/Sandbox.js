@@ -109,15 +109,19 @@ const Sandbox = forwardRef(function Sandbox(
     }
   }
 
-  async function postMessageAndWaitForResponse(msg) {
+  async function postMessageAndWaitForResponse(sandboxId, msg, timeout) {
     /*
   -->{id: number, msg: any}
   <--{id: number, response: any, error: {message: string, data: any}}
     */
     let listener;
     try {
-      const sandboxId = getSandboxId();
-      const promise = createDeferredPromise(10000, "Sandbox failed to respond");
+      let promise;
+      if (timeout) {
+        promise = createDeferredPromise(timeout, "Sandbox failed to respond");
+      } else {
+        promise = createDeferredPromise();
+      }
       const id = getId();
       listener = (event) => {
         if (

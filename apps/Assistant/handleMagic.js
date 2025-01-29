@@ -14,9 +14,13 @@ async function handleMagic({
   } else {
     try {
       ({ context, selection } =
-        await assistant.sandboxRef.current.postMessageAndWaitForResponse({
-          request: "context",
-        }));
+        await assistant.sandboxRef.current.postMessageAndWaitForResponse(
+          sandboxId,
+          {
+            request: "context",
+          },
+          10000,
+        ));
     } catch {
       context = "App did not provide context";
     }
@@ -55,12 +59,15 @@ ${message}
     stream,
     chunkProcessor: (chunk) => chunk.result,
   })) {
-    if (tag === "magic_script") {
+    if (tag === "final_script" || tag === "intermediate_script") {
       if (tag !== prevTag) {
         message += "~~~magicscript\n";
       }
       script += content;
-    } else if (prevTag === "magic_script") {
+    } else if (
+      prevTag === "final_script" ||
+      prevTag === "intermediate_script"
+    ) {
       message += "\n~~~";
     }
     prevTag = tag;
@@ -68,11 +75,17 @@ ${message}
     assistant.setMessage(message);
   }
   if (script) {
-    assistant.sandboxRef.current.postMessage(sandboxId, {
-      script: `(async () => {
-${script}
-})();`,
-    });
+    script = `(async () => {${script}})();`;
+    await assistant.sandboxRef.current.postMessageAndWaitForResponse(
+      sandboxId,
+      {
+        request: "script",
+        data: {
+          script,
+        },
+      },
+      30000,
+    );
   }
 }
 
@@ -113,13 +126,16 @@ console.log('This code will be executed in the app');
 Additional text to display to the user if needed.
 </example_assistant_message>
 
-Your scripts run in an async IIFE, so you can use \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
+Your scripts run in an async function, so you can use top level \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
 
-Any logs or errors from your script will be included in the user's next message in <logs> tags. The actual request from the user will be included in <user_request> tags:
+Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should serialize objects appropriately before logging them. The actual request from the user will be included in <user_request> tags:
 
 <example_user_message>
 <logs>
-This is an example of a log message.
+[log] This is an example of a console.log message.
+[error] This is an example of a console.error message.
+[Uncaught Error] Error: This is an example of an uncaught error message.
+    at <anonymous>:1:1
 </logs>
 <user_request>
 This is an example of a user request.

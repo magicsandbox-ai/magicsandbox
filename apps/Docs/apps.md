@@ -70,7 +70,7 @@ Controls the availability of your App or Function. Supported values:
 
 Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it exposes information to the Assistant by creating two global variables:
 
-- `app.context`: (any) => string, a function that returns a string giving the Assistant context about your App. You can think of this like documentation, but it might not be just a hardcoded string - you may want to update it dynamically based on the current state of your App.
+- `app.context`: (any) => string, an optionally async function that returns a string giving the Assistant context about your App. You can think of this like documentation, but it might not be just a hardcoded string - you may want to update it dynamically based on the current state of your App.
 - `app.api`: { [key: string]: any }, an object that exposes your App's API to the Assistant.
 
 Let's look at a simple example:
