@@ -2,7 +2,6 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import sandboxDocs from "../Docs/sandbox.md";
 
 async function handleMagic({
-  input,
   maxCost,
   assistant,
   messages, //this does not include the latest user message, which is `input`
@@ -52,6 +51,7 @@ ${message}
       stream: true,
     },
   );
+  let intermediate = false;
   let message = "";
   let script = "";
   let prevTag;
@@ -59,6 +59,9 @@ ${message}
     stream,
     chunkProcessor: (chunk) => chunk.result,
   })) {
+    if (tag === "intermediate_script") {
+      intermediate = true;
+    }
     if (tag === "final_script" || tag === "intermediate_script") {
       if (tag !== prevTag) {
         message += "~~~magicscript\n";
@@ -72,21 +75,42 @@ ${message}
     }
     prevTag = tag;
     message += content;
-    assistant.setMessage(message);
+    assistant.setDisplayContent(message);
   }
+  assistant.setMessages((messages) => {
+    return [
+      ...messages.slice(0, -1),
+      { role: "assistant", content: message, displayContent: message },
+    ];
+  });
+  let logs;
   if (script) {
-    script = `(async () => {${script}})();`;
-    await assistant.sandboxRef.current.postMessageAndWaitForResponse(
-      sandboxId,
-      {
-        request: "script",
-        data: {
-          script,
+    ({ logs } =
+      await assistant.sandboxRef.current.postMessageAndWaitForResponse(
+        sandboxId,
+        {
+          request: "script",
+          data: {
+            script,
+          },
         },
-      },
-      30000,
-    );
+        30000,
+      ));
   }
+  let intermediateScriptCallback;
+  if (intermediate) {
+    intermediateScriptCallback = (response) => {
+      if (response) {
+        const newMessages = [
+          ...messages.slice(0, -1),
+          { role: "user", content: todoformatlogs },
+        ];
+        assistant.setMessages(newMessages);
+        assistant.handleMagic({ messages: newMessages });
+      }
+    };
+  }
+  return { intermediateScriptCallback };
 }
 
 function createFinalMessage(input, context, selection) {

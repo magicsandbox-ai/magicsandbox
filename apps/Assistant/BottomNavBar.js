@@ -74,6 +74,8 @@ function BottomNavBar({
   const [collapsed, setCollapsed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [live, setLive] = useState(true);
+  const [intermediateScriptCallback, setIntermediateScriptCallback] =
+    useState(null);
 
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -127,12 +129,19 @@ function BottomNavBar({
       setIsLoading(true);
       setInput("");
       setCollapsed(false);
-      setMessages([...messages, input, "Working on it..."]);
-      await assistantRef.current.handleInput({
-        input,
-        magic: true,
-        messages,
-      });
+      const newMessages = [
+        ...messages,
+        { role: "user", content: input, displayContent: input },
+        { role: "assistant", displayContent: "Working on it..." },
+      ];
+      setMessages(newMessages);
+      const { intermediateScriptCallback } =
+        await assistantRef.current.handleMagic({
+          messages: newMessages,
+        });
+      if (intermediateScriptCallback) {
+        setIntermediateScriptCallback(intermediateScriptCallback);
+      }
       setLive(true);
     } catch (error) {
       console.error(error);
@@ -174,14 +183,13 @@ function BottomNavBar({
     scrollToBottom = true;
   }
 
+  const displayMessages = messages.filter((message) => message.displayContent);
+
   let placeholder;
-  if (collapsed) {
-    placeholder =
-      messages.length > 0
-        ? messages[messages.length - 1]
-        : "What can I help you with?";
+  if (displayMessages.length > 0) {
+    placeholder = displayMessages[displayMessages.length - 1].displayContent;
   } else {
-    placeholder = "Ask anything.";
+    placeholder = "Ask your Assistant anything.";
   }
 
   function handleMaximize() {
@@ -213,7 +221,9 @@ function BottomNavBar({
               <>
                 <div className="flex">
                   <p className={assistantMessageStyle + " grow"}>
-                    {messages.length === 0 ? "What can I help you with?" : ""}
+                    {displayMessages.length === 0
+                      ? "What can I help you with?"
+                      : ""}
                   </p>
                   {maximizeComponent}
                 </div>
@@ -221,16 +231,18 @@ function BottomNavBar({
                   ref={messagesContainerRef}
                   className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto"
                 >
-                  {messages.map((message, i) => (
+                  {displayMessages.map((message, i) => (
                     <Markdown
                       className={
-                        i % 2 === 0 ? userMessageStyle : assistantMessageStyle
+                        message.role === "user"
+                          ? userMessageStyle
+                          : assistantMessageStyle
                       }
                       key={i}
                       rehypePlugins={rehypePlugins}
                       rehypeSanitizeOptions={rehypeSanitizeOptions}
                       onComplete={
-                        scrollToBottom && i === messages.length - 1
+                        scrollToBottom && i === displayMessages.length - 1
                           ? () => {
                               messagesContainerRef.current.scrollTop =
                                 messagesContainerRef.current.scrollHeight;
@@ -238,13 +250,25 @@ function BottomNavBar({
                           : undefined
                       }
                     >
-                      {i % 2 === 0 ? replaceSingleLineBreaks(message) : message}
+                      {message.role === "user"
+                        ? replaceSingleLineBreaks(message.displayContent)
+                        : message.displayContent}
                     </Markdown>
                   ))}
                 </div>
+                {intermediateScriptCallback && (
+                  <button
+                    onClick={() => {
+                      intermediateScriptCallback(true);
+                      setIntermediateScriptCallback(null);
+                    }}
+                  >
+                    Allow Assistant to continue?
+                  </button>
+                )}
+                <hr className="mx-2 border-stone-300" />
               </>
             )}
-            {!collapsed && <hr className="mx-2 border-stone-300" />}
             <div className="flex items-center">
               <textarea
                 ref={inputRef}

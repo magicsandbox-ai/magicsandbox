@@ -12,6 +12,12 @@ function App() {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
+  /*
+  messages is an array of objects with keys:
+  - role: "user" or "assistant"
+  - content: the content to use in the API. if not set, excluded from API call
+  - displayContent: the content to display in the UI. if not set, not shown in the UI
+  */
   const [messages, setMessages] = useState([]);
 
   const sandboxRef = useRef(null);
@@ -48,10 +54,10 @@ function App() {
         settingsRef,
         setConfirm,
         setRisk,
-        setMessage,
+        setMessages,
       });
       const { app } = window.args.urlParams;
-      //calling handleInput in DevLocal creates an infinite loop, so only call it in top sandbox
+      //calling handleApp in DevLocal creates an infinite loop, so only call it in top sandbox
       const isTopSandbox = parent.parent.window === parent.window;
       if (app && isTopSandbox) {
         setConfirm({
@@ -60,8 +66,13 @@ function App() {
           callback: (response) => {
             setConfirm(null);
             if (response) {
-              setMessages([`Loading ${app} from URL...`, "Working on it..."]);
-              assistantRef.current.handleInput({
+              setMessages([
+                {
+                  role: "assistant",
+                  displayContent: `Loading ${app} from URL...`,
+                },
+              ]);
+              assistantRef.current.handleApp({
                 app,
                 input: "",
                 urlParams: window.args.urlParams,
@@ -102,10 +113,6 @@ function App() {
     window.addEventListener("message", handleReload);
     return () => window.removeEventListener("message", handleReload);
   }, []);
-
-  function setMessage(message) {
-    setMessages((messages) => [...messages.slice(0, -1), message]);
-  }
 
   let modalComponent;
   if (confirm) {
