@@ -68,69 +68,41 @@ Controls the availability of your App or Function. Supported values:
 
 ## Making Your App Magical
 
-Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it exposes information to the Assistant by creating three global variables:
+Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it exposes information to the Assistant by creating two global variables:
 
-- `app.context`: () => string, a function that returns a string giving the Assistant context about your App. You can think of this like documentation, but it might not be just a hardcoded string - you may want to update it dynamically based on the current state of your App.
+- `app.context`: (any) => string, a function that returns a string giving the Assistant context about your App. You can think of this like documentation, but it might not be just a hardcoded string - you may want to update it dynamically based on the current state of your App.
 - `app.api`: { [key: string]: any }, an object that exposes your App's API to the Assistant.
-- `app.render`: () => void, a function that rerenders your App.
 
 Let's look at a simple example:
 
 ```javascript
-import React from "react";
+import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 
 function context() {
   return `API:
-  - text: string, the text to display`;
+  - setText: (text: string) => void, updates the displayed text`;
 }
 
 const api = {
-  text: "Hello, world!",
+  setText: null,
 };
 
 function App() {
-  return <div>{api.text}</div>;
+  const [text, setText] = useState("Hello, world!");
+
+  api.setText = setText;
+
+  return <div>{text}</div>;
 }
 
-const root = createRoot(document.getElementById("root"));
+createRoot(document.getElementById("root")).render(<App />);
 
-function render() {
-  root.render(<App />);
-}
-
-render(); //initial render
-
-export { context, api, render }; //magicsandbox.Dev handles assigning these to the global app object for you during the build process
+export { context, api }; //magicsandbox.Dev handles assigning these to the global app object for you during the build process
 ```
 
-Now here's what happens if a user submits '!magic make it say "Goodbye!"':
+Now here's what happens if a user asks the Assistant to 'make it say "Goodbye!"':
 
-1. The Assistant will call app.context() to get the context string.
-2. Using AI, the Assistant will read the context and generate the script `app.api.text = 'Goodbye!'; app.render();`.
-3. The Assistant executes the script in the Sandbox, updating the App to display 'Goodbye!' as requested.
-
-### Best Practices
-
-todo details on how to provide context
-todo details on how to expose api
-todo add example
-todo explain magicsandbox.Dev/esbuild/globalName
-
-if render errors, Assistant resets app.api and calls render
-
-```javascript
-try {
-  const prevApi = app.api;
-  app.api.text = "Goodbye!";
-  app.render();
-} catch (error) {
-  //notify user
-  app.api = prevApi;
-  try {
-    app.render();
-  } catch (error) {
-    //notify user
-  }
-}
-```
+1. The Assistant calls `app.context()` to get the context string.
+2. The Assistant generates the script `app.api.setText("Goodbye!");`.
+3. The Assistant executes the script in the Sandbox, updating the App to display "Goodbye!" as requested.

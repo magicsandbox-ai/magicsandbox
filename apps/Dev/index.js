@@ -533,7 +533,7 @@ function App() {
   );
 }
 
-const root = createRoot(document.getElementById("root"));
+createRoot(document.getElementById("root")).render(<App />);
 
 function context() {
   return _context(
@@ -562,12 +562,6 @@ const api = {
   },
 };
 
-function render() {
-  root.render(<App />);
-}
-
-render(); //initial render
-
 function messageHandler(event) {
   if (event.data.script) {
     event.data.script = event.data.script.replace(/```(.*?)```/g, (_, p1) => {
@@ -576,4 +570,4 @@ function messageHandler(event) {
   }
 }
 
-export { context, api, render, messageHandler };
+export { context, api, messageHandler };

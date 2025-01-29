@@ -118,7 +118,7 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
   write: false, //cannot be overridden
   plugins: [magicsandbox.Dev.customPlugins], //cannot be overridden
   bundle: true,
-  globalName: 'app', //assigns exports (i.e. context, api, render) to this global variable
+  globalName: 'app', //assigns exports (i.e. context, api) to this global variable
   loader: { '.js': 'jsx' },
   target: 'es2020',
   minify: publishing ? true : false, //true when building for publishing, false when building for live preview

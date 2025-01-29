@@ -70,15 +70,7 @@ ${message}
     assistant.sandboxRef.current.postMessage(sandboxId, {
       script: `(async () => {
 ${script}
-})();
-
-if (typeof app !== 'undefined' && app?.render) {
-  try {
-    app.render();
-  } catch (error) {
-    console.error(error);
-  }
-}`,
+})();`,
     });
   }
 }
