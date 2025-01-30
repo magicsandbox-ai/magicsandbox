@@ -80,10 +80,6 @@ async function docs(paths, folder) {
     new URL("./files/index.css", import.meta.url),
     new URL("./index.css", folder),
   );
-  await fs.copyFile(
-    new URL("./files/tailwind.config.mjs", import.meta.url),
-    new URL("./tailwind.config.mjs", folder),
-  );
   await fs.writeFile(new URL("./index.md", folder), markdown, "utf8");
 }
 
