@@ -42,9 +42,14 @@ class Assistant {
   setDisplayContent(newDisplayContent) {
     this.setMessages((messages) => {
       const message = messages[messages.length - 1];
-      if (message.role !== "assistant") {
-        console.error("Invalid setDisplayContent call");
-        return messages;
+      if (message?.role !== "assistant") {
+        return [
+          ...messages,
+          {
+            role: "assistant",
+            displayContent: newDisplayContent,
+          },
+        ];
       }
       return [
         ...messages.slice(0, -1),
@@ -102,12 +107,13 @@ class Assistant {
     this.setDisplayContent(`Error: ${message}`);
     this.toastsRef.current.addToast(message, type);
   }
-  async handleMagic({ messages }) {
+  async handleMagic({ input, messages }) {
     try {
       await this.updateBudget();
       return await handleMagic({
         maxCost: this.budget,
         assistant: this,
+        input,
         messages,
       });
     } catch (error) {
@@ -117,11 +123,12 @@ class Assistant {
   async handleApp({ input, app: _app, urlParams }) {
     try {
       await this.reload();
-      await this.updateBudget();
       const sandboxId = this.sandboxRef.current.getSandboxId();
+      await this.updateBudget();
       let budget = this.budget;
       let app;
       if (!_app) {
+        this.setDisplayContent(`Working on it...`);
         const requestFunctionMaxCost = 0.001;
         const { result } = await requestFunction(
           "magicsandbox.findApp",
@@ -136,10 +143,11 @@ class Assistant {
         budget -= requestFunctionMaxCost;
         this.financialRisk.approvedCost += requestFunctionMaxCost;
         app = apps[0].app;
+        this.setDisplayContent(`Loading ${app}...`);
       } else {
         app = _app;
+        this.setDisplayContent(`Loading ${app}...`);
       }
-      this.setDisplayContent(`Loading ${app}...`);
       const handleAppResult = (result) => {
         this.app = result.metadata.app;
         budget = Math.max(budget - result.metadata.finalCost, 0);
@@ -348,6 +356,7 @@ class Assistant {
     this.handleApprovePromise?.resolve(false);
     this.setRisk(null);
     this.setConfirm(null);
+    this.setMessages([]);
     if (this.isProcessing) {
       this.abortPromise = createDeferredPromise();
       await this.abortPromise;

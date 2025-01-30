@@ -1,12 +1,41 @@
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import sandboxDocs from "../Docs/sandbox.md";
 
-async function handleMagic({
-  maxCost,
-  assistant,
-  messages, //this does not include the latest user message, which is `input`
-}) {
+async function handleMagic({ maxCost, assistant, input, messages }) {
   const sandboxId = assistant.sandboxRef.current.getSandboxId();
+  const prevMessage = messages[messages.length - 1];
+  let newMessages;
+  if (prevMessage?.role === "user") {
+    //we've already created a message with the logs, so append the user input
+    //we may not have input if the previous message had an intermediate_script, so handle that too
+    newMessages = [
+      ...messages.slice(0, -1),
+      {
+        role: "user",
+        content: input
+          ? `${prevMessage.content}\n${formatInput(input)}`
+          : prevMessage.content,
+        displayContent: input,
+      },
+    ];
+  } else {
+    if (!input) {
+      throw new Error("Invalid handleMagic call");
+    }
+    newMessages = [
+      ...messages,
+      {
+        role: "user",
+        content: formatInput(input),
+        displayContent: input,
+      },
+    ];
+  }
+  newMessages.push({
+    role: "assistant",
+    displayContent: "Working on it...",
+  });
+  assistant.setMessages(newMessages);
   let context, selection;
   if (!assistant.app) {
     context = "This is a blank page you can use to run scripts as needed.";
@@ -24,23 +53,17 @@ async function handleMagic({
       context = "App did not provide context";
     }
   }
-  const llmMessages = [
-    { role: "system", content: systemPrompt },
-    ...messages.map((message, i) => {
-      if (i % 2 === 0) {
-        return {
-          role: "user",
-          content: `<user_request>
-${message}
-</user_request>`,
-        };
-      } else {
-        return { role: "assistant", content: message };
-      }
-    }),
-    { role: "user", content: createFinalMessage(input, context, selection) },
-  ];
-  console.log(llmMessages);
+  const llmMessages = newMessages
+    .filter((message) => message.content)
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+  llmMessages[llmMessages.length - 1].content += formatContext(
+    context,
+    selection,
+  );
+  llmMessages.unshift({ role: "system", content: systemPrompt });
   const stream = await requestFunction(
     "magicsandbox.llm",
     {
@@ -51,7 +74,7 @@ ${message}
       stream: true,
     },
   );
-  let intermediate = false;
+  let intermediateScript = false;
   let message = "";
   let script = "";
   let prevTag;
@@ -60,7 +83,7 @@ ${message}
     chunkProcessor: (chunk) => chunk.result,
   })) {
     if (tag === "intermediate_script") {
-      intermediate = true;
+      intermediateScript = true;
     }
     if (tag === "final_script" || tag === "intermediate_script") {
       if (tag !== prevTag) {
@@ -75,17 +98,15 @@ ${message}
     }
     prevTag = tag;
     message += content;
-    assistant.setDisplayContent(message);
+    assistant.setMessages((messages) => {
+      return [
+        ...messages.slice(0, -1),
+        { role: "assistant", content: message, displayContent: message },
+      ];
+    });
   }
-  assistant.setMessages((messages) => {
-    return [
-      ...messages.slice(0, -1),
-      { role: "assistant", content: message, displayContent: message },
-    ];
-  });
-  let logs;
   if (script) {
-    ({ logs } =
+    const { logs } =
       await assistant.sandboxRef.current.postMessageAndWaitForResponse(
         sandboxId,
         {
@@ -95,38 +116,49 @@ ${message}
           },
         },
         30000,
-      ));
+      );
+    assistant.setMessages((messages) => {
+      return [...messages, { role: "user", content: formatLogs(logs) }];
+    });
   }
-  let intermediateScriptCallback;
-  if (intermediate) {
-    intermediateScriptCallback = (response) => {
-      if (response) {
-        const newMessages = [
-          ...messages.slice(0, -1),
-          { role: "user", content: todoformatlogs },
-        ];
-        assistant.setMessages(newMessages);
-        assistant.handleMagic({ messages: newMessages });
-      }
-    };
-  }
-  return { intermediateScriptCallback };
+  return { intermediateScript };
 }
 
-function createFinalMessage(input, context, selection) {
-  let selectionPrompt = "";
+function formatInput(input) {
+  return `<user_request>
+${input}
+</user_request>`;
+}
 
+function formatLogs(logs) {
+  let formattedLogs = "";
+  let length = 0;
+  for (const log of logs) {
+    if (length + log.length > 10000) {
+      formattedLogs += `${log.slice(0, 10000 - length)}...\n...`;
+      break;
+    } else if (log.length > 1000) {
+      formattedLogs += `${log.slice(0, 1000)}...\n`;
+      length += 1000;
+    } else {
+      formattedLogs += `${log}\n`;
+      length += log.length;
+    }
+  }
+  return `<logs>
+${formattedLogs}
+</logs>`;
+}
+
+function formatContext(context, selection) {
+  let selectionPrompt = "";
   if (selection && selection.length < 1000) {
     selectionPrompt = `\n\n<user_highlighted_text>
 ${selection}
 </user_highlighted_text>`;
   }
-
-  return `<user_request>
-${input}
-</user_request>
-<app_context>
-${context.slice(0, 50000)}
+  return `\n<app_context>
+${context}
 </app_context>${selectionPrompt}`;
 }
 
@@ -152,7 +184,7 @@ Additional text to display to the user if needed.
 
 Your scripts run in an async function, so you can use top level \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
 
-Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should serialize objects appropriately before logging them. The actual request from the user will be included in <user_request> tags:
+Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. The actual request from the user will be included in <user_request> tags:
 
 <example_user_message>
 <logs>

@@ -66,12 +66,6 @@ function App() {
           callback: (response) => {
             setConfirm(null);
             if (response) {
-              setMessages([
-                {
-                  role: "assistant",
-                  displayContent: `Loading ${app} from URL...`,
-                },
-              ]);
               assistantRef.current.handleApp({
                 app,
                 input: "",
@@ -138,7 +132,6 @@ function App() {
           toastsRef,
           assistantRef,
           messages,
-          setMessages,
         }}
       />
       {modalComponent}

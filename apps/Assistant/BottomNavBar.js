@@ -68,14 +68,12 @@ function BottomNavBar({
   toastsRef,
   assistantRef,
   messages,
-  setMessages,
 }) {
   const [input, setInput] = useState("");
   const [collapsed, setCollapsed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [live, setLive] = useState(true);
-  const [intermediateScriptCallback, setIntermediateScriptCallback] =
-    useState(null);
+  const [intermediateScript, setIntermediateScript] = useState(null);
 
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -120,27 +118,24 @@ function BottomNavBar({
   }
 
   async function handleSubmit() {
+    if (input === "") return;
+    setInput("");
+    await handleInput(input);
+  }
+
+  async function handleInput(input) {
     //don't let user submit while loading
     //todo let user stop loading?
-    if (input === "" || !settingsRef.current || isLoading) {
-      return;
-    }
+    if (!settingsRef.current || isLoading) return;
     try {
       setIsLoading(true);
-      setInput("");
       setCollapsed(false);
-      const newMessages = [
-        ...messages,
-        { role: "user", content: input, displayContent: input },
-        { role: "assistant", displayContent: "Working on it..." },
-      ];
-      setMessages(newMessages);
-      const { intermediateScriptCallback } =
-        await assistantRef.current.handleMagic({
-          messages: newMessages,
-        });
-      if (intermediateScriptCallback) {
-        setIntermediateScriptCallback(intermediateScriptCallback);
+      const { intermediateScript } = await assistantRef.current.handleMagic({
+        input,
+        messages,
+      });
+      if (intermediateScript) {
+        setIntermediateScript(intermediateScript);
       }
       setLive(true);
     } catch (error) {
@@ -256,11 +251,11 @@ function BottomNavBar({
                     </Markdown>
                   ))}
                 </div>
-                {intermediateScriptCallback && (
+                {intermediateScript && (
                   <button
                     onClick={() => {
-                      intermediateScriptCallback(true);
-                      setIntermediateScriptCallback(null);
+                      handleInput();
+                      setIntermediateScript(null);
                     }}
                   >
                     Allow Assistant to continue?
