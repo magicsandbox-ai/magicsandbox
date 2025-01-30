@@ -40,7 +40,7 @@ async function buildAppLocal({
   }
   if (tailwindPath) {
     const tailwindConfig = await import(
-      pathToFileURL(path.join(magicPath, tailwindPath))
+      pathToFileURL(path.join(magicPath, tailwindPath)) + `#${Date.now()}` //break the cache in case this has changed
     );
     magicObj.tailwindConfig = tailwindConfig.default;
   }
@@ -84,6 +84,13 @@ async function buildAppLocal({
   });
   contextRef.current.context = context;
   log(new Date() - now, "buildApp");
+  if (debug) {
+    await fsPromises.writeFile(
+      path.join(magicPath, "_debug_magic.json"),
+      JSON.stringify(appObj, undefined, 2),
+      "utf8",
+    );
+  }
   return { appObj };
 }
 

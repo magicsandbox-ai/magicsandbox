@@ -2,7 +2,4 @@
   name: "Docs",
   version: "0.1.0",
   description: "Magic Sandbox documentation",
-  dependencies: {
-    "@tailwindcss/typography": "^0.5.15",
-  },
 }

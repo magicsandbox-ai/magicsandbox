@@ -12,18 +12,38 @@ async function scrollToId() {
 
 scrollToId();
 
+const navLinks = Object.fromEntries(
+  Array.from(document.querySelectorAll("#nav a")).map((a) => [
+    a.href.split("#")[1],
+    a,
+  ]),
+);
+const boldLinks = new Set();
+let linksToUnbold = [];
+
 const observer = new IntersectionObserver(
   (entries) => {
     entries.forEach((entry) => {
       const id = entry.target.getAttribute("id");
       if (entry.isIntersecting) {
-        document
-          .querySelector(`#nav a[href="#${id}"]`)
-          .classList.add("font-bold");
+        boldLinks.add(id);
+        const el = navLinks[id];
+        if (el) {
+          el.classList.add("font-bold");
+          el.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+        linksToUnbold.forEach((id) => {
+          boldLinks.delete(id);
+          navLinks[id]?.classList.remove("font-bold");
+        });
+        linksToUnbold = [];
       } else {
-        document
-          .querySelector(`#nav a[href="#${id}"]`)
-          .classList.remove("font-bold");
+        if (boldLinks.size > 1) {
+          boldLinks.delete(id);
+          navLinks[id]?.classList.remove("font-bold");
+        } else {
+          linksToUnbold.push(id);
+        }
       }
     });
   },

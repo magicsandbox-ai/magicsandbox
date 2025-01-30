@@ -22,7 +22,7 @@ function rehypeIndentNav() {
       const parent = parents[parents.length - 1];
       const depth = parents.filter((p) => p.tagName === "ul").length;
       if (node.tagName === "a") {
-        parent.properties.style = `padding-left: ${(depth - 1) * 8}px;`; //subtract 1 since we don't want to indent the first level
+        parent.properties.style = `margin: 8px 0px 0px ${(depth - 1) * 16}px;`; //subtract 1 since we don't want to indent the first level
       }
     });
   };

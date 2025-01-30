@@ -2,18 +2,15 @@
 <div class="flex h-screen w-full overflow-hidden">
   <div
     id="nav"
-    class="prose prose-stone prose-sm prose-a:no-underline hidden max-w-md overflow-y-auto border-r border-stone-500 p-1 md:block"
+    class="hidden max-w-md overflow-y-auto border-r border-stone-500 px-2 pb-2 text-sm text-stone-700 md:block hover:[&_a]:underline"
   >
     %%NAV%%
   </div>
   <div
     id="main-container"
-    class="flex grow flex-col items-center overflow-y-auto scroll-smooth px-3 py-1"
+    class="flex grow flex-col items-center overflow-y-auto scroll-smooth p-2"
   >
-    <div
-      id="main"
-      class="prose prose-stone prose-pre:not-prose w-full max-w-screen-md"
-    >
+    <div id="main" class="prose prose-stone w-full max-w-screen-md">
       %%MAIN%%
     </div>
   </div>
