@@ -87,14 +87,14 @@ async function handleMagic({ maxCost, assistant, input, messages }) {
     }
     if (tag === "final_script" || tag === "intermediate_script") {
       if (tag !== prevTag) {
-        message += "~~~magicscript\n";
+        message += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
       }
       script += content;
     } else if (
       prevTag === "final_script" ||
       prevTag === "intermediate_script"
     ) {
-      message += "\n~~~";
+      message += `${script.endsWith("\n") ? "" : "\n"}~~~`;
     }
     prevTag = tag;
     message += content;

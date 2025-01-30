@@ -5,6 +5,7 @@ import rehypeStringify from "rehype-stringify";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { toc } from "mdast-util-toc";
+import { visit, SKIP } from "unist-util-visit";
 import { visitParents } from "unist-util-visit-parents";
 import { promises as fs } from "fs";
 
@@ -27,6 +28,23 @@ function rehypeIndentNav() {
   };
 }
 
+function rehypeCode() {
+  return (tree) => {
+    visit(tree, "element", (node) => {
+      if (
+        node.tagName === "pre" &&
+        node.children.length === 1 &&
+        node.children[0].tagName === "code"
+      ) {
+        node.properties.className = [
+          "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2",
+        ];
+        return SKIP; //don't traverse children
+      }
+    });
+  };
+}
+
 async function docs(paths, folder) {
   const markdowns = await Promise.all(
     paths.map((path) => fs.readFile(new URL(path, folder), "utf8")),
@@ -40,6 +58,7 @@ async function docs(paths, folder) {
     .use(remarkParse)
     .use(remarkRehype)
     .use(rehypeSlug)
+    .use(rehypeCode)
     .use(rehypeHighlight)
     .use(rehypeStringify)
     .process(markdown);

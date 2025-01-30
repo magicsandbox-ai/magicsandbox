@@ -16,9 +16,11 @@ The Sandbox has the following high level restrictions and associated Sandbox fun
 
 ## Calling Magic Apps and Functions
 
-### requestApp(app, options?) => Promise<{style?: string, html?: string, script?: string, metadata: {app: string, finalCost: number}}>
+### requestApp
 
-Retrieves a Magic App's `style`, `html`, and `script`.
+Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
+
+`requestApp(app, options?) => Promise<{style?: string, html?: string, script?: string, metadata: {app: string, finalCost: number, status: "active" | "deprecated"}}>`
 
 **Arguments:**
 

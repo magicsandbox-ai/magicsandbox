@@ -11,6 +11,7 @@
 }
 
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
+/*
 pre code.hljs {
   display: block;
   overflow-x: auto;
@@ -23,6 +24,7 @@ code.hljs {
   background: #fff;
   color: #000;
 }
+*/
 .hljs-comment,
 .hljs-quote,
 .hljs-variable {

@@ -2,6 +2,8 @@
 
 Magic Apps create the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and one of `script`, `html`, or `style` are required. Let's walk through them:
 
+## Magic App keys
+
 ### script (string)
 
 String of JavaScript code which is executed in the user's browser inside the Sandbox. The user's input is saved in the global `input` variable in the Sandbox, so `script` has access to it.
@@ -14,7 +16,7 @@ String of HTML code which is appended to document.body in the Sandbox.
 
 String of CSS code which is added as a `<style>` tag in the Sandbox.
 
-## Shared Keys between Magic Apps and Magic Functions
+## Shared keys between Magic Apps and Magic Functions
 
 All of the remaining Magic App JSON keys are shared with Magic Functions, so we'll cover them together here:
 
