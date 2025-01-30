@@ -1,4 +1,5 @@
 /* this file is created by the @magicsandbox.ai/docs package. do not edit manually as it will be overwritten */
+import markdown from "./index.md";
 
 async function scrollToId() {
   const { id } = window.args.urlParams;
@@ -56,3 +57,16 @@ document
   .forEach((h) => {
     observer.observe(h);
   });
+
+document.getElementById("main").addEventListener("click", (e) => {
+  if (e.target.href) {
+    e.preventDefault();
+    requestOpenUrl(e.target.href);
+  }
+});
+
+function context() {
+  return markdown;
+}
+
+export { context };

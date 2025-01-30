@@ -2,4 +2,7 @@
   name: "Docs",
   version: "0.1.0",
   description: "Magic Sandbox documentation",
+  esbuildOptions: {
+    loader: { ".md": "text" },
+  },
 }

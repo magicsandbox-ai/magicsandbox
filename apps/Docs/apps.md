@@ -4,51 +4,65 @@ Magic Apps create the frontend interfaces you see in Magic Sandbox. Behind the s
 
 ## Magic App keys
 
-### script (string)
+### script
 
-String of JavaScript code which is executed in the user's browser inside the Sandbox. The user's input is saved in the global `input` variable in the Sandbox, so `script` has access to it.
+_(string)_
 
-### html (string)
+String of JavaScript which is executed in the Sandbox.
 
-String of HTML code which is appended to document.body in the Sandbox.
+### html
 
-### style (string)
+_(string)_
 
-String of CSS code which is added as a `<style>` tag in the Sandbox.
+String of HTML which is appended to `document.body` in the Sandbox.
+
+### style
+
+_(string)_
+
+String of CSS which is added as a `<style>` tag in the Sandbox.
 
 ## Shared keys between Magic Apps and Magic Functions
 
 All of the remaining Magic App JSON keys are shared with Magic Functions, so we'll cover them together here:
 
-### name (**required**) (string)
+### name
+
+_(**required**, string)_
 
 Magic App names must begin with a capital letter to distinguish them from Magic Functions, which must begin with a lowercase letter. Names can include alphanumeric characters and underscores and be at most 64 characters.
 
-### version (**required**) (string)
+### version
+
+_(**required**, string)_
 
 App or Function version. Follow [semantic versioning conventions](https://semver.org/).
 
-### type (string)
+### type
 
-Used to indicate that your App or Function has certain behavior. We expect to add more types over time, so please provide [feedback](todo).
+_(string)_
+
+Used to indicate that your App or Function has certain behavior. We expect to add more types over time.
 
 App types:
 
-- `assistant`: an [Assistant](todo). See [magicsandbox.Assistant](todo).
+- `assistant`: an [Assistant](#assistants).
 
-Function types:
+### description
 
-- `findApp`: a Function that takes user input and returns the name of an appropriate App. See [magicsandbox.findApp](todo). todo max cost, return array, exclude deprecated, assistants
-
-### description (string)
+_(string)_
 
 App or Function description. This is used to discover your App or Function, so while not required, you should fill this out.
 
-### minCost (number) (default 0.001)
+### minCost
+
+_(number, default 0.001)_
 
 Minimum cost in dollars required to call your App or Function. Must be between $0.001 and $1.00.
 
-### finalCost (number)
+### finalCost
+
+_(number)_
 
 The final cost charged to call your App or Function. Apps and Functions have different behavior when it comes to `finalCost`:
 

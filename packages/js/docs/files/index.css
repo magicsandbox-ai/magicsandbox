@@ -8,8 +8,52 @@
   body {
     @apply text-stone-700;
   }
+  h1 {
+    @apply border-b border-stone-500 pb-0.5 text-2xl font-bold;
+  }
+  h2 {
+    @apply border-b border-stone-300 pb-0.5 text-xl font-bold;
+  }
+  h3 {
+    @apply text-lg font-bold;
+  }
+  code:not(pre code) {
+    @apply text-sm font-semibold text-stone-900;
+  }
+  code:not(pre code)::before {
+    content: "`";
+  }
+  code:not(pre code)::after {
+    content: "`";
+  }
 }
 
+#main a {
+  @apply underline hover:font-medium;
+}
+#main ol {
+  @apply list-inside list-decimal;
+}
+#main ul {
+  @apply list-inside list-disc;
+}
+#main li {
+  @apply my-2;
+}
+#main > *:not(h1):not(h2):not(h3) {
+  @apply ml-4 mt-4;
+}
+#main > h1,
+#main > h2,
+#main > h3 {
+  @apply mt-[1.5em];
+}
+
+#nav a {
+  @apply hover:underline;
+}
+
+/* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
 /*
 pre code.hljs {
