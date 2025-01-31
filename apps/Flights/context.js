@@ -1,9 +1,9 @@
 function context() {
   return `
 
-Rather than hard filters, user preferences are expressed using penalties. Penalties are a more realistic model of user preferences. For example, if a user says "I want to leave after 6pm", they probably would at least consider a flight that leaves at 5:45pm.
+Rather than hard filters, user preferences are expressed using penalties. Penalties are a more realistic model of user preferences. For example, if a user says "I want to leave after 6pm", they probably would consider a flight that leaves at 5:45pm.
 
-The units for penalties are dollars. Flights are then ranked from lowest to highest by how much they cost, plus any penalties.
+The units for penalties are dollars. Flights are then ranked from lowest to highest by how much they cost plus any penalties.
 
 To add a penalty, call app.api.addPenalty(name, penaltyFunction):
 

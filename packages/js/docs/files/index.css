@@ -46,10 +46,10 @@
 #main > *:not(h1):not(h2):not(h3):not(h4) {
   @apply ml-4 mt-4;
 }
-#main > h1,
-#main > h2,
-#main > h3,
-#main > h4 {
+#main > h1:not(:first-child),
+#main > h2:not(:first-child),
+#main > h3:not(:first-child),
+#main > h4:not(:first-child) {
   @apply mt-[1.5em];
 }
 

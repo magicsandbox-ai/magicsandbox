@@ -385,7 +385,6 @@ function App() {
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
       delete _appObj?.esbuildOptions?.plugins; //not supported
-      _appObj.optimizedTreeShaking = true; //todo remove
       appObjRef.current = _appObj; //update for plugins
       await esbuildPromise;
       const { appObj, context } = await buildApp({

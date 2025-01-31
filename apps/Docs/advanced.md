@@ -171,4 +171,4 @@ todo app.messageHandler
 
 ## Questions or Feedback
 
-For additional questions or feedback, please create an issue on [GitHub](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue). We'd love to hear from you!
+For additional questions or feedback, please [create an issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue). We'd love to hear from you!

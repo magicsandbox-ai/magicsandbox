@@ -2,17 +2,17 @@
 
 ## magicsandbox.Dev
 
-The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It handles the build process for you, provides a live preview so you can test your App as you develop, and includes a button for easy publishing.
+The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
 
-With magicsandbox.Dev, you'll edit a `magic.json` file, which is your Magic App JSON. magicsandbox.Dev supports all of the keys documented in [Magic Apps](magic-apps), but it also allows additional keys to make development easier. magicsandbox.Dev also provides different default values for `html` and `style`.
+With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Magic Apps](magic-apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
 
-### magic.json keys
+### magic.json
 
 #### scriptFile
 
 _(string, default 'index.js')_
 
-Filename containing `script` code. scriptFile, along with htmlFile and styleFile,
+Main filename for `script` code. magicsandbox.Dev bundles your JavaScript files using esbuild using `scriptFile` as the entrypoint.
 
 #### html
 
@@ -20,21 +20,29 @@ _(string, default '<div id="root"></div>')_
 
 Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
 
-#### htmlFile (string) (default 'index.html')
+#### htmlFile
 
-Filename containing `html` code, defaults to `index.html`. Editing this file is usually more convenient than editing the `html` key in `magic.json` directly.
+_(string, default 'index.html')_
 
-#### style (string) (default '@tailwind base; @tailwind components; @tailwind utilities;')
+Filename containing `html` code.
+
+#### style
+
+_(string, default '@tailwind base; @tailwind components; @tailwind utilities;')_
 
 Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `style`, assuming you're using Tailwind if you don't specify `style` or have a `styleFile`.
 
-#### styleFile (string) (default 'index.css')
+#### styleFile
 
-Filename containing `style` code, defaults to `index.css`. Editing this file is usually more convenient than editing the `style` key in `magic.json` directly.
+_(string, default 'index.css')_
 
-#### tailwindConfig (object) (default below)
+Filename containing `style` code.
 
-Options to pass to [Tailwind](https://tailwindcss.com/docs/configuration) during the [build process](todo). Currently only Tailwind v3 is supported.
+#### tailwindConfig
+
+_(object, default below)_
+
+Options to pass to [Tailwind](https://v3.tailwindcss.com/docs/configuration). Currently only Tailwind v3 is supported.
 
 magicsandbox.Dev does not support configuring `content`. By default, all files ending in `.js`, `.jsx`, or `.html` are included. You can add an `excludeContent` key to exclude files:
 
@@ -138,7 +146,7 @@ Enable additional logging to debug the build.
 
 The CDN to use for the build. Supported values are `esm.sh` and `jsdelivr `.
 
-#### optimizedTreeShaking (boolean) (default false)
+#### optimizedTreeShaking (boolean) (default true)
 
 Whether to further minify the build by tree shaking unused imports, which requires two build passes. This is only supported for `cdn` `esm.sh`.
 
@@ -146,17 +154,19 @@ Whether to further minify the build by tree shaking unused imports, which requir
 
 Whether to update the App when publishing. magicsandbox.Dev will skip the build, as `script`, `html`, and `style` cannot be updated. See [Updating Magic Apps and Functions](#updating-magic-apps-and-functions) for details.
 
-### magicsandbox.Dev Advanced Details
+### magicsandbox.Dev advanced details
 
-This section covers advanced details about how magicsandbox.Dev works and can be skipped if you're just getting started.
+#### Why are my builds sometimes slow?
 
-fetch plugin: jsdelivr, version resolution, allow multiple versions
-bundle deps plugin: imports not hoisted or sealed, dynamic imports?
-tailwind browser
-request handler caveats? author, data? cache, assistant rejecting
-how to debug/sourcemaps
+magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.
 
-#### Peer Dependencies
+#### Debugging
+
+When using magicsandbox.Dev, your code runs in an iframe that's nested several layers deep. Because of this, it can be difficult to find your code in the Sources tab in Chrome's devtools.
+
+The easiest way to debug your code in Chrome is to add a `debugger` statement and run your code with devtools open, which will open your file in the Sources tab. Your files will all be prefixed with 'MagicApp', like 'MagicApp:index.js'.
+
+#### Peer dependencies
 
 magicsandbox.Dev handles peer dependencies differently than npm. Consider the following dependency graph:
 
@@ -188,7 +198,7 @@ root
   +-- dep3
 ```
 
-This is actually more convenient for peer dependencies like React when you want to ensure only a single version is used globally. However, it may not support more advanced use cases. Please [create an issue](todo) if you have any feedback.
+This is actually more convenient for peer dependencies like React when you want to ensure only a single version is used globally. However, it may not support more advanced use cases. Please [create an issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue) if you have any feedback.
 
 ## @magicsandbox.ai/dev
 
@@ -196,7 +206,7 @@ The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.a
 
 ## Custom Methods
 
-You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server.
+You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
 
 ### Custom Magic App
 

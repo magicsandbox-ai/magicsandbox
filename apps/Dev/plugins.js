@@ -244,7 +244,7 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
 
 async function bundleDeps(bundleDepsCode, esbuild, options, appObjRef) {
   let result = await buildDeps(bundleDepsCode, esbuild, options, appObjRef);
-  if (appObjRef.current.optimizedTreeShaking) {
+  if (appObjRef.current.optimizedTreeShaking !== false) {
     if (result.resolvedPaths) {
       result = await buildDeps(
         bundleDepsCode,
