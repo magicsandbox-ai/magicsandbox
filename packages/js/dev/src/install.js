@@ -10,37 +10,40 @@ async function install(magicPath, packages) {
 }
 
 async function installDependencies(magicPath, magicObj, packages) {
-  if (await fileExists(magicPath, "package.json")) {
-    throw new Error(
-      "Cannot include dependencies in magic.json if package.json exists",
+  try {
+    if (await fileExists(magicPath, "package.json")) {
+      throw new Error(
+        "Cannot include dependencies in magic.json if package.json exists",
+      );
+    }
+    await fsPromises.writeFile(
+      path.join(magicPath, "package.json"),
+      JSON.stringify(
+        {
+          ...magicObj,
+          private: true, //prevent accidental publishing to npm
+        },
+        undefined,
+        2,
+      ), //todo don't use all the keys?
+      "utf8",
     );
+    let command = "npm install";
+    if (packages) {
+      command += ` ${packages.join(" ")}`;
+    }
+    execSync(command, { cwd: magicPath });
+    let pjson = await fsPromises.readFile(
+      path.join(magicPath, "package.json"),
+      "utf8",
+    );
+    pjson = JSON.parse(pjson);
+    await updateMagicJson(magicPath, (obj) => {
+      obj.dependencies = pjson.dependencies;
+    });
+  } finally {
+    await fsPromises.unlink(path.join(magicPath, "package.json"));
   }
-  await fsPromises.writeFile(
-    path.join(magicPath, "package.json"),
-    JSON.stringify(
-      {
-        ...magicObj,
-        private: true, //prevent accidental publishing to npm
-      },
-      undefined,
-      2,
-    ), //todo don't use all the keys?
-    "utf8",
-  );
-  let command = "npm install";
-  if (packages) {
-    command += ` ${packages.join(" ")}`;
-  }
-  execSync(command, { cwd: magicPath });
-  let pjson = await fsPromises.readFile(
-    path.join(magicPath, "package.json"),
-    "utf8",
-  );
-  pjson = JSON.parse(pjson);
-  await updateMagicJson(magicPath, (obj) => {
-    obj.dependencies = pjson.dependencies;
-  });
-  await fsPromises.unlink(path.join(magicPath, "package.json"));
 }
 
 export { install, installDependencies };

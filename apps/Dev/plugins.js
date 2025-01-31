@@ -722,6 +722,15 @@ function createImportPlugin(filesRef, appObjRef, imports) {
       });
 
       build.onEnd((result) => {
+        if (buildMetadata.importQueue[0]?.args?.path === "bundleDepsCode.js") {
+          //this is kind of a hack, but we only want to update the dependencies when bundling bundleDepsCode.js in buildDeps
+          appObjRef.current.dependencies = Object.fromEntries(
+            buildMetadata.importQueue[0].children.map((child) => [
+              child.packageId,
+              `^${child.version}`,
+            ]),
+          );
+        }
         if (buildMetadata.cdn === "esm.sh") {
           result.resolvedPaths = buildMetadata.resolvedPaths;
         }

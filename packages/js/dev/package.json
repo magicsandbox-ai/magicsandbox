@@ -10,7 +10,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
-    "./buildApp": "./src/buildApp.js"
+    "./browser": "./src/browser.js"
   },
   "bin": {
     "magicsandbox": "./bin/magicsandbox.js"

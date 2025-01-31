@@ -11,7 +11,8 @@ import {
   buildApp,
   getDefaults,
   runProcessTailwind,
-} from "@magicsandbox.ai/dev/buildApp";
+  updateMagicJson,
+} from "@magicsandbox.ai/dev/browser";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
 import processTailwindBrowser from "@magicsandbox.ai/tailwind-browser";
@@ -401,6 +402,15 @@ function App() {
         readFile: (filename) => files[filename],
         processTailwind,
       });
+      if (appObjRef.current.dependencies) {
+        //dependencies updated by buildApp
+        setFiles({
+          ...files,
+          "magic.json": updateMagicJson(files["magic.json"], (obj) => {
+            obj.dependencies = appObjRef.current.dependencies;
+          }),
+        });
+      }
       contextRef.current = context;
       previewRef.current.update(sandboxId, appObj);
     } catch (error) {

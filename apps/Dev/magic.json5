@@ -23,6 +23,7 @@
   dependencies: {
     "@magicsandbox.ai/dev": "file:../../packages/js/dev",
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+    "@magicsandbox.ai/streaming": "file:../../packages/js/streaming",
     "@magicsandbox.ai/tailwind-browser": "file:../../packages/js/tailwind-browser",
     "@uiw/react-codemirror": "^4.22.2",
     "@codemirror/lang-javascript": "^6.1.2",
