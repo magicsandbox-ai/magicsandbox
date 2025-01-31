@@ -20,13 +20,11 @@ The Sandbox has the following high level restrictions and associated Sandbox fun
 
 Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
 
-`requestApp(app, options?) => Promise<{style?: string, html?: string, script?: string, metadata: {app: string, finalCost: number, status: "active" | "deprecated"}}>`
-
 **Arguments:**
 
-- `app` (**required**) (string): Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
-- `options` (object):
-  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's finalCost.
+- `app` _(**required**, string)_: Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
+- `options` _(object)_:
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's finalCost.
 
 **Returns:** a Promise that resolves to an App:
 
@@ -39,35 +37,30 @@ type App = {
 };
 ```
 
-### requestFunction(fn, args, options?) => Promise
+### requestFunction
 
 Executes a Magic Function and returns the result.
 
 **Arguments:**
 
-- `fn` (**required**) (string): Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
-- `args` (**required**) (any): Arguments to pass to the called Function.
-- `options` (object):
-  - `maxCost` (number) (default 0.001): Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00. Refer to [variable costs](todo) for more details.
-  - `stream` (boolean) (default false): Whether to stream the result.
+- `fn` _(**required**, string)_: Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
+- `args` _(**required**, any)_: Arguments to pass to the called Function.
+- `options` _(object)_:
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00. Refer to [variable costs](#variable-costs) for more details.
+  - `stream` _(boolean, default false)_: Whether to stream the result.
 
 **Returns:** a Promise that includes the result from the Function and metadata about the Function call. The type depends on the `stream` option.
 
-- `stream: false`: `Promise<{result: any, metadata: Metadata}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
-- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: Metadata}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk. See [magicsandbox.Chat](todo) for an example.
+- `stream: false`: `Promise<{result: any, metadata: FunctionMetadata}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
+- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: FunctionMetadata}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk. See [magicsandbox.Chat](todo) for an example.
 
-Metadata:
-
-- fn: string, resolved with version
-- finalCost: number
-- status: "active" | "deprecated"
-
-From your endpoint, you can call requestFunction by:
-
-- Making a POST request to magicsandbox.ai/endpoint-request-function
-- Authenticating using an [API key](todo)
-- Including in the body:
-  - `fn`, `args`, `options`: the arguments to requestFunction
+```typescript
+type FunctionMetadata = {
+  fn: string;
+  finalCost: number;
+  status: "active" | "deprecated";
+};
+```
 
 ## Storing and Retrieving Data
 

@@ -1,6 +1,6 @@
 # Magic Apps
 
-Magic Apps create the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and one of `script`, `html`, or `style` are required. Let's walk through them:
+Magic Apps create the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and at least one of `script`, `html`, or `style` are required. Let's walk through them:
 
 ## Magic App keys
 
@@ -52,7 +52,7 @@ App types:
 
 _(string)_
 
-App or Function description. This is used to discover your App or Function, so while not required, you should fill this out.
+App or Function description. This is used to discover your App or Function, so while not required, you should include it.
 
 ### minCost
 
@@ -66,27 +66,31 @@ _(number)_
 
 The final cost charged to call your App or Function. Apps and Functions have different behavior when it comes to `finalCost`:
 
-For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a minCost of $0.01 but immediately upon loading makes an expensive requestFunction call that costs $0.10. The user may not have the budget to make the requestFunction call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the budget to make the required requestFunction call.
+For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the budget to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the budget to make the required `requestFunction` call.
 
-For Functions, `finalCost` is not actually accepted as a key in the Magic App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
+For Functions, `finalCost` is not accepted as a key in the Magic App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
 
-### private (boolean) (default false)
+### private
 
-Set to true to make your App or Function private. Note: this just means your App or Function won't be published publicly [todo link to more info](todo). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
+_(boolean, default false)_
 
-### status (string) (default 'active')
+Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#public-app-and-function-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
+
+### status
+
+_(string, default 'active')_
 
 Controls the availability of your App or Function. Supported values:
 
-- `'active'` (default): App or Function is fully available.
-- `'deprecated'`: App or Function is available but users receive deprecation warnings.
-- `'inactive'`: Function cannot be called. Note that Apps cannot currently be inactive.
+- 'active' (default): App or Function is fully available.
+- 'deprecated': App or Function is available but users receive deprecation warnings.
+- 'inactive': Function cannot be called. Apps cannot currently be made inactive.
 
-## Making Your App Magical
+## Making your App magical
 
-Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it exposes information to the Assistant by creating two global variables:
+Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it works with the Assistant by creating two global variables:
 
-- `app.context`: (any) => string, an optionally async function that returns a string giving the Assistant context about your App. You can think of this like documentation, but it might not be just a hardcoded string - you may want to update it dynamically based on the current state of your App.
+- `app.context`: (any) => string, an optionally async function that returns a string giving the Assistant context about your App. You can think of this like your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 - `app.api`: { [key: string]: any }, an object that exposes your App's API to the Assistant.
 
 Let's look at a simple example:
@@ -114,13 +118,15 @@ function App() {
 
 createRoot(document.getElementById("root")).render(<App />);
 
-export { context, api }; //magicsandbox.Dev handles assigning these to the global app object for you during the build process
+export { context, api };
 ```
 
 Now here's what happens if a user asks the Assistant to 'make it say "Goodbye!"':
 
 1. The Assistant calls `app.context()` to get the context string.
-2. The Assistant generates the script `app.api.setText("Goodbye!");`.
+2. The Assistant reads the context string and generates the script `app.api.setText("Goodbye!");`.
 3. The Assistant executes the script in the Sandbox, updating the App to display "Goodbye!" as requested.
 
-Assistants are aware of how Magic Sandbox works and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context. Depending on your App, you may want to provide additional context. For example, `magicsandbox.Dev` includes the [publishing](#publishing) documentation in its context.
+When you export `context` and `api` from your App, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
+
+Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.

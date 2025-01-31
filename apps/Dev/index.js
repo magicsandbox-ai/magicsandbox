@@ -323,12 +323,12 @@ function App() {
       }
     }
     requestPutData("magicsandbox.Dev", app, newFiles); //todo handle database full
-    await build();
     if (!apps.includes(app)) {
       setApps([app, ...apps]);
       setSelectedApp(app);
       requestPutData("magicsandbox.Dev", "selectedApp", app);
     }
+    await build(appObj);
   }
 
   async function handleSelectApp(app) {
@@ -365,7 +365,8 @@ function App() {
 
   async function handlePublish() {
     try {
-      const appObj = await build({
+      const _appObj = JSON5.parse(files["magic.json"]);
+      const appObj = await build(_appObj, {
         minify: true,
         sourcemap: false,
       });
@@ -375,11 +376,14 @@ function App() {
     }
   }
 
-  async function build(esbuildOptions) {
+  async function build(_appObj, esbuildOptions) {
     try {
+      if (_appObj.update) {
+        console.log("Build skipped when update is true"); //todo show user
+        return _appObj;
+      }
       previewRef.current.reload();
       const sandboxId = previewRef.current.getSandboxId();
-      let _appObj = JSON5.parse(files["magic.json"]);
       delete _appObj?.esbuildOptions?.plugins; //not supported
       _appObj.optimizedTreeShaking = true; //todo remove
       appObjRef.current = _appObj; //update for plugins

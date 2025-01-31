@@ -17,6 +17,9 @@
   h3 {
     @apply text-lg font-bold;
   }
+  h4 {
+    @apply font-bold;
+  }
   code:not(pre code) {
     @apply text-sm font-semibold text-stone-900;
   }
@@ -38,14 +41,15 @@
   @apply list-inside list-disc;
 }
 #main li {
-  @apply my-2;
+  @apply my-2 ml-6;
 }
-#main > *:not(h1):not(h2):not(h3) {
+#main > *:not(h1):not(h2):not(h3):not(h4) {
   @apply ml-4 mt-4;
 }
 #main > h1,
 #main > h2,
-#main > h3 {
+#main > h3,
+#main > h4 {
   @apply mt-[1.5em];
 }
 

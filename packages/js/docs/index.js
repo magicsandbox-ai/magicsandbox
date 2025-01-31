@@ -11,7 +11,7 @@ import { promises as fs } from "fs";
 
 function remarkToc() {
   return function (tree) {
-    const result = toc(tree);
+    const result = toc(tree, { maxDepth: 3 });
     tree.children = [result.map];
   };
 }

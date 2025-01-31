@@ -4,15 +4,19 @@
 
 The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It handles the build process for you, provides a live preview so you can test your App as you develop, and includes a button for easy publishing.
 
-With magicsandbox.Dev, you'll edit a `magic.json` file, which is your Magic App JSON. magicsandbox.Dev supports all of the keys documented in [Magic Apps](magic-apps), but it also allows additional keys to make development easier. magicsandbox.Dev also provides different default values for `html` and `style`. These details are covered in the next section.
+With magicsandbox.Dev, you'll edit a `magic.json` file, which is your Magic App JSON. magicsandbox.Dev supports all of the keys documented in [Magic Apps](magic-apps), but it also allows additional keys to make development easier. magicsandbox.Dev also provides different default values for `html` and `style`.
 
-### magic.json
+### magic.json keys
 
-#### scriptFile (string) (default 'index.js')
+#### scriptFile
 
-Filename containing `script` code, defaults to `index.js`. Editing this file is usually more convenient than editing the `script` key in `magic.json` directly.
+_(string, default 'index.js')_
 
-#### html (string) (default '<div id="root"></div>')
+Filename containing `script` code. scriptFile, along with htmlFile and styleFile,
+
+#### html
+
+_(string, default '<div id="root"></div>')_
 
 Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
 
@@ -138,6 +142,10 @@ The CDN to use for the build. Supported values are `esm.sh` and `jsdelivr `.
 
 Whether to further minify the build by tree shaking unused imports, which requires two build passes. This is only supported for `cdn` `esm.sh`.
 
+#### update (boolean) (default false)
+
+Whether to update the App when publishing. magicsandbox.Dev will skip the build, as `script`, `html`, and `style` cannot be updated. See [Updating Magic Apps and Functions](#updating-magic-apps-and-functions) for details.
+
 ### magicsandbox.Dev Advanced Details
 
 This section covers advanced details about how magicsandbox.Dev works and can be skipped if you're just getting started.
@@ -188,15 +196,15 @@ The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.a
 
 ## Custom Methods
 
-You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server. magicsandbox.Dev specific keys like `scriptFile` are not supported.
+You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server.
 
 ### Custom Magic App
 
-Rather than using magicsandbox.Dev, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](todo).
+Rather than using magicsandbox.Dev, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](#requestPublish).
 
 ### Custom Local Development
 
-You can publish Magic Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
+You can publish Magic Apps and Functions locally by making a POST request to `magicsandbox.ai/publish`. Your request should include the following:
 
 - URL parameters:
   - `kind`: 'app' or 'function'
@@ -233,12 +241,13 @@ Updates have the following restrictions:
 - `script`, `html`, `style`: cannot be updated. Publish a new version instead.
 - Apps cannot be changed to Functions or vice versa.
 
-Note that you only need to provide the keys you're updating. In fact, this is required for Apps, as the server will throw an error if you include `script`, `html`, or `style` when republishing an App. For example, to update `description`, you can publish the following:
+You only need to provide the keys you're updating. In fact, this is required for Apps, as the server will throw an error if you include `script`, `html`, or `style` when republishing an App. For example, to update `description`, you can publish the following:
 
 ```javascript
 {
   name: "MyApp",
-  version: "1.0.0",
-  description: "This is my new description and improved description",
+  version: "1.0.1",
+  update: true, //if using magicsandbox.Dev or @magicsandbox.ai/dev
+  description: "This is my new and improved description",
 }
 ```

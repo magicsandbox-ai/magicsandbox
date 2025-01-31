@@ -26,8 +26,8 @@
     "dev:prod": "magicsandbox dev -d apps",
     "publish-function:prod": "magicsandbox publish -d functions",
     "publish:prod": "magicsandbox publish -d apps",
-    "docs": "node apps/Docs/build.mjs",
-    "about": "node apps/About/build.mjs",
+    "docs": "node apps/Docs/build.js",
+    "about": "node apps/About/build.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "jest": {
