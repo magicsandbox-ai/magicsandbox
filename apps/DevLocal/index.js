@@ -38,8 +38,7 @@ function App() {
         await previewApp();
       } catch (error) {
         console.error(error);
-        toastsRef.current.addToast("Failed to load preview", "error");
-        previewRef.current.error();
+        previewRef.current.error(error.message);
       }
     }
     init();
@@ -52,6 +51,9 @@ function App() {
         "x-token": tokenRef.current,
       },
     });
+    if (response.status >= 400) {
+      throw new Error(response.body.error);
+    }
     const appObj = response.body;
     previewRef.current.update(sandboxId, appObj);
     return appObj;
@@ -63,8 +65,7 @@ function App() {
       await previewApp();
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast("Failed to update preview", "error");
-      previewRef.current.error();
+      previewRef.current.error(error.message);
     }
   }
 
@@ -77,7 +78,7 @@ function App() {
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("Failed to publish", "error");
-      previewRef.current.error();
+      previewRef.current.error(error.message);
     }
   }
 

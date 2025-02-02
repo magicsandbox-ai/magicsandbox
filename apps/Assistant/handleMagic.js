@@ -44,9 +44,7 @@ async function handleMagic({ maxCost, assistant, input, messages }) {
       ({ context, selection } =
         await assistant.sandboxRef.current.postMessageAndWaitForResponse(
           sandboxId,
-          {
-            request: "context",
-          },
+          { request: "context" },
           10000,
         ));
     } catch {
@@ -66,13 +64,8 @@ async function handleMagic({ maxCost, assistant, input, messages }) {
   llmMessages.unshift({ role: "system", content: systemPrompt });
   const stream = await requestFunction(
     "magicsandbox.llm",
-    {
-      messages: llmMessages,
-    },
-    {
-      maxCost,
-      stream: true,
-    },
+    { messages: llmMessages },
+    { maxCost, stream: true },
   );
   let intermediateScript = false;
   let message = "";
@@ -109,12 +102,7 @@ async function handleMagic({ maxCost, assistant, input, messages }) {
     const { logs } =
       await assistant.sandboxRef.current.postMessageAndWaitForResponse(
         sandboxId,
-        {
-          request: "script",
-          data: {
-            script,
-          },
-        },
+        { request: "script", data: { script } },
         30000,
       );
     assistant.setMessages((messages) => {

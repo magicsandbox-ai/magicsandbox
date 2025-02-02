@@ -9,14 +9,10 @@ import { Sandbox } from "./Sandbox.js";
 import { requestHandler } from "./requestHandler.js";
 
 const Preview = forwardRef(function Preview(
-  {
-    className,
-    loadingIndicator = <p>Loading...</p>, // default simple text fallback
-    initState = "ready",
-  },
+  { className, loadingIndicator = <p>Loading...</p>, initState = "ready" },
   ref,
 ) {
-  const [state, setState] = useState(initState);
+  const [state, setState] = useState(initState); // "ready", "loading", or an error message
 
   const sandboxRef = useRef(null);
   const appObjRef = useRef(null);
@@ -57,10 +53,9 @@ const Preview = forwardRef(function Preview(
     sandboxRef.current.reload();
   }
 
-  function update(sandboxId, appObj) {
+  async function update(sandboxId, appObj, timeout) {
     appObjRef.current = appObj;
     sandboxRef.current.postMessage(sandboxId, {
-      script: appObj.script,
       html: appObj.html,
       style: appObj.style,
       args: {
@@ -70,11 +65,30 @@ const Preview = forwardRef(function Preview(
         ...appObj.args,
       },
     });
+    //todo could clean this up so it's all sent in one message
+    if (timeout) {
+      let logs = [];
+      try {
+        ({ logs } = await sandboxRef.current.postMessageAndWaitForResponse(
+          sandboxId,
+          { request: "script", data: { script: appObj.script } },
+          timeout,
+        ));
+      } catch (error) {
+        console.error(error);
+        //not worth throwing an error here and not showing the preview - just return empty logs
+      }
+      return { logs };
+    } else {
+      sandboxRef.current.postMessage(sandboxId, {
+        script: appObj.script,
+      });
+    }
     setState("ready");
   }
 
-  function error() {
-    setState("error");
+  function error(err) {
+    setState(err);
   }
 
   return (
@@ -97,8 +111,14 @@ const Preview = forwardRef(function Preview(
             justifyContent: "center",
           }}
         >
-          {state === "loading" && loadingIndicator}
-          {state === "error" && <p>Error updating preview.</p>}
+          {state === "loading" ? (
+            loadingIndicator
+          ) : (
+            <>
+              <p>Error loading preview:</p>
+              <p>{state}</p>
+            </>
+          )}
         </div>
       )}
     </div>

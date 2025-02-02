@@ -9,8 +9,10 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.js",
-    "./browser": "./src/browser.js"
+    ".": {
+      "browser": "./src/browser.js",
+      "default": "./src/index.js"
+    }
   },
   "bin": {
     "magicsandbox": "./bin/magicsandbox.js"

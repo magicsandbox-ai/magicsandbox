@@ -56,7 +56,7 @@ This section documents behavior specific to how `@magicsandbox.ai/dev` works and
 
 ### magic.json file
 
-This may be either a JSON or JSON5 file.
+Can be named either `magic.json` or `magic.json5`. JSON5 is supported either way.
 
 ### dependencies
 

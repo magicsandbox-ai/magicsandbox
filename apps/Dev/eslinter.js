@@ -2,7 +2,7 @@ import { esLint } from "@codemirror/lang-javascript";
 import { Linter } from "./node_modules/eslint/lib/linter/linter.js";
 import { linter } from "@codemirror/lint";
 import globals from "globals";
-import { globals as magicSandboxGlobals } from "@magicsandbox.ai/dev/browser";
+import { globals as magicSandboxGlobals } from "@magicsandbox.ai/dev";
 import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
 

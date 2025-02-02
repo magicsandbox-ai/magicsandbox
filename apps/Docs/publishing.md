@@ -156,6 +156,10 @@ Whether to update the App when publishing. magicsandbox.Dev will skip the build,
 
 ### magicsandbox.Dev advanced details
 
+#### JSON5
+
+The `magic.json` file can be written in JSON5.
+
 #### Why are my builds sometimes slow?
 
 magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.

@@ -12,7 +12,7 @@ import {
   getDefaults,
   runProcessTailwind,
   updateMagicJson,
-} from "@magicsandbox.ai/dev/browser";
+} from "@magicsandbox.ai/dev";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
 import processTailwindBrowser from "@magicsandbox.ai/tailwind-browser";
@@ -87,7 +87,7 @@ function App() {
   const previewPanelRef = useRef(null);
   const deletedFilesRef = useRef({});
   const appObjRef = useRef(null);
-  const contextRef = useRef(null);
+  const esbuildContextRef = useRef(null);
   const filesRef = useRef(files);
   const editorRef = useRef(null);
   const editorStateRef = useRef({});
@@ -96,6 +96,7 @@ function App() {
   const bundledDepsRef = useRef(null);
   const importPluginRef = useRef(null);
   const tailwindConfigRef = useRef(null);
+  const previewLogsRef = useRef(null);
 
   useEffect(() => {
     initData();
@@ -295,7 +296,10 @@ function App() {
         const { formatted, cursorOffset } = await prettier.formatWithCursor(
           files[selectedFilename],
           {
-            filepath: selectedFilename,
+            filepath:
+              selectedFilename === "magic.json"
+                ? "magic.json5"
+                : selectedFilename,
             plugins: [babelParser, estreeParser],
             cursorOffset: editorRef.current.view.state.selection.main.head,
           },
@@ -397,7 +401,7 @@ function App() {
           sourcemap: true,
           ...esbuildOptions,
         },
-        context: contextRef.current,
+        context: esbuildContextRef.current,
         fileExists: (filename) => filename in files,
         readFile: (filename) => files[filename],
         processTailwind,
@@ -411,8 +415,13 @@ function App() {
           }),
         });
       }
-      contextRef.current = context;
-      previewRef.current.update(sandboxId, appObj);
+      esbuildContextRef.current = context;
+      const { logs } = await previewRef.current.update(
+        sandboxId,
+        appObj,
+        10000,
+      );
+      previewLogsRef.current = logs;
     } catch (error) {
       //todo
       console.error(error);
