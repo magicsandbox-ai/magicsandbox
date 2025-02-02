@@ -1,116 +1,4 @@
-import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import sandboxDocs from "../Docs/sandbox.md";
-
-async function handleMagic({ maxCost, assistant, input, messages }) {
-  const sandboxId = assistant.sandboxRef.current.getSandboxId();
-  const prevMessage = messages[messages.length - 1];
-  let newMessages;
-  if (prevMessage?.role === "user") {
-    //we've already created a message with the logs, so append the user input
-    //we may not have input if the previous message had an intermediate_script, so handle that too
-    newMessages = [
-      ...messages.slice(0, -1),
-      {
-        role: "user",
-        content: input
-          ? `${prevMessage.content}\n${formatInput(input)}`
-          : prevMessage.content,
-        displayContent: input,
-      },
-    ];
-  } else {
-    if (!input) {
-      throw new Error("Invalid handleMagic call");
-    }
-    newMessages = [
-      ...messages,
-      {
-        role: "user",
-        content: formatInput(input),
-        displayContent: input,
-      },
-    ];
-  }
-  newMessages.push({
-    role: "assistant",
-    displayContent: "Working on it...",
-  });
-  assistant.setMessages(newMessages);
-  let context, selection;
-  if (!assistant.app) {
-    context = "This is a blank page you can use to run scripts as needed.";
-  } else {
-    try {
-      ({ context, selection } =
-        await assistant.sandboxRef.current.postMessageAndWaitForResponse(
-          sandboxId,
-          { request: "context" },
-          10000,
-        ));
-    } catch {
-      context = "App did not provide context";
-    }
-  }
-  const llmMessages = newMessages
-    .filter((message) => message.content)
-    .map((message) => ({
-      role: message.role,
-      content: message.content,
-    }));
-  llmMessages[llmMessages.length - 1].content += formatContext(
-    context,
-    selection,
-  );
-  llmMessages.unshift({ role: "system", content: systemPrompt });
-  const stream = await requestFunction(
-    "magicsandbox.llm",
-    { messages: llmMessages },
-    { maxCost, stream: true },
-  );
-  let intermediateScript = false;
-  let message = "";
-  let script = "";
-  let prevTag;
-  for await (const { content, tag } of tagStreamParser({
-    stream,
-    chunkProcessor: (chunk) => chunk.result,
-  })) {
-    if (tag === "intermediate_script") {
-      intermediateScript = true;
-    }
-    if (tag === "final_script" || tag === "intermediate_script") {
-      if (tag !== prevTag) {
-        message += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
-      }
-      script += content;
-    } else if (
-      prevTag === "final_script" ||
-      prevTag === "intermediate_script"
-    ) {
-      message += `${script.endsWith("\n") ? "" : "\n"}~~~`;
-    }
-    prevTag = tag;
-    message += content;
-    assistant.setMessages((messages) => {
-      return [
-        ...messages.slice(0, -1),
-        { role: "assistant", content: message, displayContent: message },
-      ];
-    });
-  }
-  if (script) {
-    const { logs } =
-      await assistant.sandboxRef.current.postMessageAndWaitForResponse(
-        sandboxId,
-        { request: "script", data: { script } },
-        30000,
-      );
-    assistant.setMessages((messages) => {
-      return [...messages, { role: "user", content: formatLogs(logs) }];
-    });
-  }
-  return { intermediateScript };
-}
 
 function formatInput(input) {
   return `<user_request>
@@ -150,7 +38,31 @@ ${context}
 </app_context>${selectionPrompt}`;
 }
 
-const systemPrompt = `You are a user's assistant on a platform called Magic Sandbox. The user is interacting with a web app and is asking for your help.
+const initSystemPrompt = `You are a user's assistant on a platform called Magic Sandbox...
+
+<example_user_message>
+<user_request>
+what's the weather today?
+</user_request>
+<suggested_apps>
+app1
+app2
+app3
+</suggested_apps>
+</example_user_message>
+
+<example_assistant_response>
+Let me open app1 so we can check today's weather
+<app>
+app1
+</app>
+</example_assistant_response>
+
+Only use an app if...
+
+`;
+
+const magicSystemPrompt = `You are a user's assistant on a platform called Magic Sandbox. The user is interacting with a web app and is asking for your help.
 
 In your response, you can:
 
@@ -214,4 +126,10 @@ Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of t
 ${sandboxDocs}
 `;
 
-export { handleMagic };
+export {
+  formatInput,
+  formatLogs,
+  formatContext,
+  initSystemPrompt,
+  magicSystemPrompt,
+};

@@ -423,9 +423,8 @@ function App() {
       );
       previewLogsRef.current = logs;
     } catch (error) {
-      //todo
       console.error(error);
-      previewRef.current.error();
+      previewRef.current.error(error.message);
     }
   }
 

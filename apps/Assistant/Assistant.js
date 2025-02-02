@@ -6,9 +6,15 @@ import {
   DownloadRisk,
   RateLimitRisk,
 } from "./Risks.js";
-import { handleMagic } from "./handleMagic.js";
 import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
 import { createDeferredPromise, formatAsDollars } from "@utils.js";
+import {
+  formatInput,
+  formatLogs,
+  formatContext,
+  systemPrompt,
+} from "./prompts.js";
+import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
 class Assistant {
   constructor({
@@ -107,19 +113,6 @@ class Assistant {
     this.setDisplayContent(`Error: ${message}`);
     this.toastsRef.current.addToast(message, type);
   }
-  async handleMagic({ input, messages }) {
-    try {
-      await this.updateBudget();
-      return await handleMagic({
-        maxCost: this.budget,
-        assistant: this,
-        input,
-        messages,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
   async handleApp({ input, app: _app, urlParams }) {
     try {
       await this.reload();
@@ -189,6 +182,121 @@ class Assistant {
       }
       handleAppResult(result);
       return {};
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+  async handleMagic({ input, messages }) {
+    try {
+      await this.updateBudget();
+      const sandboxId = this.sandboxRef.current.getSandboxId();
+      const prevMessage = messages[messages.length - 1];
+      let newMessages;
+      if (prevMessage?.role === "user") {
+        //we've already created a message with the logs, so append the user input
+        //we may not have input if the previous message had an intermediate_script, so handle that too
+        newMessages = [
+          ...messages.slice(0, -1),
+          {
+            role: "user",
+            content: input
+              ? `${prevMessage.content}\n${formatInput(input)}`
+              : prevMessage.content,
+            displayContent: input,
+          },
+        ];
+      } else {
+        if (!input) {
+          throw new Error("Invalid handleMagic call");
+        }
+        newMessages = [
+          ...messages,
+          {
+            role: "user",
+            content: formatInput(input),
+            displayContent: input,
+          },
+        ];
+      }
+      newMessages.push({
+        role: "assistant",
+        displayContent: "Working on it...",
+      });
+      this.setMessages(newMessages);
+      let context, selection;
+      if (!this.app) {
+        context = "This is a blank page you can use to run scripts as needed.";
+      } else {
+        try {
+          ({ context, selection } =
+            await this.sandboxRef.current.postMessageAndWaitForResponse(
+              sandboxId,
+              { request: "context" },
+              10000,
+            ));
+        } catch {
+          context = "App did not provide context";
+        }
+      }
+      const llmMessages = newMessages
+        .filter((message) => message.content)
+        .map((message) => ({
+          role: message.role,
+          content: message.content,
+        }));
+      llmMessages[llmMessages.length - 1].content += formatContext(
+        context,
+        selection,
+      );
+      llmMessages.unshift({ role: "system", content: systemPrompt });
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        { messages: llmMessages },
+        { maxCost: this.budget, stream: true },
+      );
+      let intermediateScript = false;
+      let message = "";
+      let script = "";
+      let prevTag;
+      for await (const { content, tag } of tagStreamParser({
+        stream,
+        chunkProcessor: (chunk) => chunk.result,
+      })) {
+        if (tag === "intermediate_script") {
+          intermediateScript = true;
+        }
+        if (tag === "final_script" || tag === "intermediate_script") {
+          if (tag !== prevTag) {
+            message += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
+          }
+          script += content;
+        } else if (
+          prevTag === "final_script" ||
+          prevTag === "intermediate_script"
+        ) {
+          message += `${script.endsWith("\n") ? "" : "\n"}~~~`;
+        }
+        prevTag = tag;
+        message += content;
+        this.setMessages((messages) => {
+          return [
+            ...messages.slice(0, -1),
+            { role: "assistant", content: message, displayContent: message },
+          ];
+        });
+      }
+      if (script) {
+        const { logs } =
+          await this.sandboxRef.current.postMessageAndWaitForResponse(
+            sandboxId,
+            { request: "script", data: { script } },
+            30000,
+          );
+        this.setMessages((messages) => {
+          return [...messages, { role: "user", content: formatLogs(logs) }];
+        });
+      }
+      return { intermediateScript };
     } catch (error) {
       this.handleError(error);
     }
