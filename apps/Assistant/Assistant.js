@@ -145,25 +145,31 @@ class Assistant {
       if (abortSignal.aborted) return;
       const { apps } = result;
       newMessages[newMessages.length - 2].content = formatInput(input, apps);
-      let message = "";
+      let messageContent = "";
+      let messageDisplayContent = "";
       let app = "";
       await this.handleChat({
         messages: newMessages,
         systemPrompt: inputSystemPrompt,
-        streamHandler: (content, tag) => {
+        streamHandler: (content, tag, originalContent) => {
+          messageContent += originalContent;
           if (tag === "app") {
             app += content;
-          } else if (tag === "message") {
-            message += content;
-            this.setMessages((messages) => [
-              ...messages.slice(0, -1),
-              { role: "assistant", content: message, displayContent: message },
-            ]);
+          } else {
+            messageDisplayContent += content;
           }
+          this.setMessages((messages) => [
+            ...messages.slice(0, -1),
+            {
+              role: "assistant",
+              content: messageContent,
+              displayContent: messageDisplayContent,
+            },
+          ]);
         },
       });
       if (app) {
-        await this.handleApp({ app });
+        await this.handleApp({ app: app.trim() });
       }
     } catch (error) {
       this.handleError(error);
@@ -190,12 +196,12 @@ class Assistant {
         },
         { maxCost: this.budget, stream: true },
       );
-      for await (const { content, tag } of tagStreamParser({
+      for await (const { content, tag, originalContent } of tagStreamParser({
         stream,
         chunkProcessor: (chunk) => chunk.result,
       })) {
         if (abortSignal.aborted) return;
-        streamHandler(content, tag);
+        streamHandler(content, tag, originalContent);
       }
     } finally {
       this.setChatLoading(false);

@@ -8,19 +8,20 @@
  * - maxTagLength (number) (default 100): The maximum expected length of a tag
  *
  * Returns:
- * - AsyncGenerator<{content: string, tag?: string}>
+ * - AsyncGenerator<{content: string, tag?: string, originalContent: string}>
  *   - content: A string of content from the stream
  *   - tag: The name of the top level tag enclosing the content, if any
+ *   - originalContent: content including tags so that the original string can be reconstructed
  *
  * Example: "hello world\<example>test\</example>goodbye"
  *
- * Yields the following. Note that content can be arbitrarily split across chunks:
- * - {content: 'hello '}
- * - {content: 'world'}
- * - {content: 'test', tag: 'example'}
- * - {content: 'goodbye'}
+ * Could yield the following. Note that there is no guarantee on the number of objects yielded or how content and originalContent are split across objects:
+ * - {content: 'hello ', originalContent: 'hello '}
+ * - {content: 'world', originalContent: 'world\<example>'}
+ * - {content: 'test', tag: 'example', originalContent: 'test\</example>'}
+ * - {content: 'goodbye', originalContent: 'goodbye'}
  *
- * Usage: for await (const {content, tag} of tagStreamParser({stream: ...})) {
+ * Usage: for await (const {content, tag, originalContent} of tagStreamParser({stream: ...})) {
  */
 async function* tagStreamParser({
   stream,
@@ -62,7 +63,11 @@ function processBuffer({ buffer, tag, bufferLength }) {
   while (buffer.length > bufferLength) {
     const match = buffer.match(/<.+?>/);
     if (match) {
-      results.push({ content: buffer.slice(0, match.index), tag });
+      results.push({
+        content: buffer.slice(0, match.index),
+        tag,
+        originalContent: buffer.slice(0, match.index + match[0].length),
+      });
       buffer = buffer.slice(match.index + match[0].length);
       if (match[0][1] === "/") {
         tag = undefined;
@@ -70,9 +75,12 @@ function processBuffer({ buffer, tag, bufferLength }) {
         tag = match[0].slice(1, -1);
       }
     } else {
+      const content =
+        bufferLength > 0 ? buffer.slice(0, -bufferLength) : buffer;
       results.push({
-        content: bufferLength > 0 ? buffer.slice(0, -bufferLength) : buffer,
+        content,
         tag,
+        originalContent: content,
       });
       buffer = bufferLength > 0 ? buffer.slice(-bufferLength) : "";
     }
