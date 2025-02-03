@@ -69,11 +69,11 @@ const Preview = forwardRef(function Preview(
     if (timeout) {
       let logs = [];
       try {
-        ({ logs } = await sandboxRef.current.postMessageAndWaitForResponse(
+        ({ logs } = await sandboxRef.current.executeScriptAndWaitForResponse({
           sandboxId,
-          { request: "script", data: { script: appObj.script } },
+          script: appObj.script,
           timeout,
-        ));
+        }));
       } catch (error) {
         console.error(error);
         //not worth throwing an error here and not showing the preview - just return empty logs

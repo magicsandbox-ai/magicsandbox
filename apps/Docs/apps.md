@@ -90,8 +90,8 @@ Controls the availability of your App or Function. Supported values:
 
 Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it works with the Assistant by creating two global variables:
 
-- `app.context`: (any) => string, an optionally async function that returns a string giving the Assistant context about your App. You can think of this like your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
-- `app.api`: { [key: string]: any }, an object that exposes your App's API to the Assistant.
+- `app.context` ((any) => string): an optionally async function that returns a string giving the Assistant context about your App. You can think of this like your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
+- `app.api` (object): an object that exposes your App's API to the Assistant.
 
 Let's look at a simple example:
 
@@ -110,9 +110,7 @@ const api = {
 
 function App() {
   const [text, setText] = useState("Hello, world!");
-
   api.setText = setText;
-
   return <div>{text}</div>;
 }
 
@@ -127,6 +125,44 @@ Now here's what happens if a user asks the Assistant to 'make it say "Goodbye!"'
 2. The Assistant reads the context string and generates the script `app.api.setText("Goodbye!");`.
 3. The Assistant executes the script in the Sandbox, updating the App to display "Goodbye!" as requested.
 
-When you export `context` and `api` from your App, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
+When you export `context` and `api` from your `script`, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
 
 Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.
+
+## Initializing your App
+
+In addition to `app.context` and `app.api`, you can also create an `app.init` function that's called when your App is first loaded. `app.init` is an optionally async function that's called with three arguments provided by the Assistant:
+
+- `input` (string): user input
+- `budget` (number): the budget for `requestApp` and `requestFunction` calls. If exceeded, the Assistant will ask for user approval before making the call.
+- `urlParams` (object): URL parameters
+
+`app.init` can optionally return a string. If it does, the string will be used as context for the Assistant to generate a script to dynamically initialize your App. See [magicsandbox.Dev](https://github.com/magicsandbox-ai/magicsandbox/blob/main/apps/Dev/index.js) for an example.
+
+Here's a simple example of using `app.init` to render a React app and pass input, budget, and urlParams as props:
+
+```javascript
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+
+function context() {
+  // ...
+}
+
+const api = {
+  // ...
+};
+
+function App({ input, budget, urlParams }) {
+  // do something with input, budget, and urlParams...
+}
+
+function init({ input, budget, urlParams }) {
+  createRoot(document.getElementById("root")).render(
+    <App input={input} budget={budget} urlParams={urlParams} />,
+  );
+  // optionally return context to the Assistant
+}
+
+export { context, api, init };
+```

@@ -9,7 +9,7 @@ import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 
-function App() {
+function App({ urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
@@ -52,6 +52,7 @@ function App() {
       // }
       settingsRef.current = {};
       assistantRef.current = new Assistant({
+        urlParams,
         sandboxRef,
         toastsRef,
         settingsRef,
@@ -61,11 +62,8 @@ function App() {
         setChatLoading,
         setState,
       });
-      const { app } = window.args.urlParams;
-      //calling handleApp in DevLocal creates an infinite loop, so only call it in top sandbox
-
-      const isTopSandbox = parent.parent.window === parent.window;
-      if (app && isTopSandbox) {
+      const { app } = urlParams;
+      if (app) {
         setConfirm({
           header: `Open App ${app}?`,
           message: `The link you opened includes a request to open this App`,
@@ -75,7 +73,6 @@ function App() {
               assistantRef.current.handleApp({
                 app,
                 input: "",
-                urlParams: window.args.urlParams,
               });
             }
           },
@@ -164,4 +161,10 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+function init({ urlParams }) {
+  createRoot(document.getElementById("root")).render(
+    <App urlParams={urlParams} />,
+  );
+}
+
+export { init };

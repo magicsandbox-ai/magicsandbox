@@ -19,6 +19,7 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
 class Assistant {
   constructor({
+    urlParams,
     sandboxRef,
     settingsRef,
     toastsRef,
@@ -28,6 +29,7 @@ class Assistant {
     setChatLoading,
     setState,
   }) {
+    this.urlParams = urlParams;
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
     this.toastsRef = toastsRef;
@@ -113,7 +115,7 @@ class Assistant {
   }
   handleError(error) {
     console.error(error);
-    let message = "Error: please try again";
+    let message = "please try again";
     let type = "error";
     if (error.name === "ToastError") {
       message = error.message;
@@ -122,7 +124,7 @@ class Assistant {
       message = error.message;
     }
     this.setDisplayContent(`Error: ${message}`);
-    this.toastsRef.current.addToast(message, type);
+    this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
   async handleInput({ input, messages }) {
     try {
@@ -133,7 +135,7 @@ class Assistant {
         { role: "assistant", displayContent: "Working on it..." },
       ];
       this.setMessages(newMessages);
-      const requestFunctionMaxCost = 0.001; //todo??
+      const requestFunctionMaxCost = 0.001; //todo subtract??
       const { result } = await requestFunction(
         "magicsandbox.findApp",
         {
@@ -169,7 +171,7 @@ class Assistant {
         },
       });
       if (app) {
-        await this.handleApp({ app: app.trim() });
+        await this.handleApp({ input, app: app.trim() });
       }
     } catch (error) {
       this.handleError(error);
@@ -207,64 +209,54 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ input, app: _app, urlParams }) {
+  async handleApp({ input, app }) {
     try {
-      this.reload(); //todo
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      await this.updateBudget();
-      let budget = this.budget;
-      let app;
-      if (!_app) {
-        this.setDisplayContent(`Working on it...`);
-        const requestFunctionMaxCost = 0.001;
-        const { result } = await requestFunction(
-          "magicsandbox.findApp",
-          {
-            input,
-            maxCost: this.budget, //this is an argument for findApp
-          },
-          { maxCost: requestFunctionMaxCost }, //this is an option for requestFunction
-        );
-        //const { inputEmbedding, apps, inputId }
-        const { apps } = result;
-        budget -= requestFunctionMaxCost;
-        this.financialRisk.approvedCost += requestFunctionMaxCost;
-        app = apps[0].app;
-        this.setDisplayContent(`Loading ${app}...`);
-      } else {
-        app = _app;
-        this.setDisplayContent(`Loading ${app}...`);
-      }
-      const handleAppResult = (result) => {
+      this.setDisplayContent(`Loading ${app}...`);
+      const handleAppResult = async (result) => {
         this.app = result.metadata.app;
-        budget = Math.max(budget - result.metadata.finalCost, 0);
-        this.sandboxRef.current.postMessage(sandboxId, {
-          args: {
-            input,
-            budget,
-            urlParams: urlParams || {},
-          },
-          ...result,
-        });
         this.setDisplayContent(`${result.metadata.app} loaded`);
+        this.sandboxRef.current.postMessage(sandboxId, result);
+        //call handleInput somehow if getInit returns context
+        try {
+          await this.sandboxRef.current.getInit(
+            sandboxId,
+            {
+              input,
+              budget: Math.max(this.budget - result.metadata.finalCost, 0),
+              urlParams: this.urlParams,
+            },
+            10000,
+          );
+        } catch {
+          //ignore
+        }
       };
       let result;
       try {
-        result = await requestApp(app, { maxCost: budget, updateUrl: true });
+        result = await requestApp(app, {
+          maxCost: this.budget,
+          updateUrl: true,
+        });
+        await handleAppResult(result);
       } catch (error) {
-        if (_app && error.data?.minCost) {
-          //if app was provided through bang or URL, but budget is lower than minCost, prompt user to approve
+        if (error.data?.minCost) {
+          //budget is lower than minCost, prompt user to approve
           this.setConfirm({
             header: `Open App ${app}?`,
             message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than your budget`,
             callback: async (response) => {
               this.setConfirm(null);
               if (response) {
-                result = await requestApp(app, {
-                  maxCost: error.data.minCost,
-                  updateUrl: true,
-                });
-                handleAppResult(result);
+                try {
+                  result = await requestApp(app, {
+                    maxCost: error.data.minCost,
+                    updateUrl: true,
+                  });
+                  await handleAppResult(result);
+                } catch (error) {
+                  this.handleError(error);
+                }
               } else {
                 this.setDisplayContent(`${app} not opened`);
               }
@@ -274,8 +266,6 @@ class Assistant {
           throw error;
         }
       }
-      handleAppResult(result);
-      return {};
     } catch (error) {
       this.handleError(error);
     }

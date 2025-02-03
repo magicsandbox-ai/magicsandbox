@@ -68,6 +68,8 @@ const Sandbox = forwardRef(function Sandbox(
       streamData,
       addListener,
       removeListener,
+      getInit,
+      getContext,
     };
   }, []);
 
@@ -215,6 +217,40 @@ const Sandbox = forwardRef(function Sandbox(
       window.removeEventListener("message", listener);
     });
     listenersRef.current.clear();
+  }
+
+  function executeScriptAndWaitForResponse({
+    sandboxId,
+    script,
+    args,
+    timeout,
+  }) {
+    return postMessageAndWaitForResponse(sandboxId, {
+      request: "script",
+      data: { script, args },
+      timeout,
+    });
+  }
+
+  async function getInit(sandboxId, args, timeout) {
+    const script = `return await window.app?.init?.(args);`;
+    const { result } = await executeScriptAndWaitForResponse({
+      sandboxId,
+      script,
+      args,
+      timeout,
+    });
+    return result;
+  }
+
+  async function getContext(sandboxId, timeout) {
+    const script = `return { context: await window.app?.context?.(), selection: window.getSelection().toString() };`;
+    const { result } = await executeScriptAndWaitForResponse({
+      sandboxId,
+      script,
+      timeout,
+    });
+    return result;
   }
 
   return (
