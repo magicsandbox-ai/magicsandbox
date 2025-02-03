@@ -7,11 +7,13 @@ import RiskConfirm from "./RiskConfirm.js";
 import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
+import Home from "./Home.js";
 
 function App() {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
+  const [state, setState] = useState("home");
   /*
   messages is an array of objects with keys:
   - role: "user" or "assistant"
@@ -19,6 +21,7 @@ function App() {
   - displayContent: the content to display in the UI. if not set, not shown in the UI
   */
   const [messages, setMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -55,9 +58,12 @@ function App() {
         setConfirm,
         setRisk,
         setMessages,
+        setChatLoading,
+        setState,
       });
       const { app } = window.args.urlParams;
       //calling handleApp in DevLocal creates an infinite loop, so only call it in top sandbox
+
       const isTopSandbox = parent.parent.window === parent.window;
       if (app && isTopSandbox) {
         setConfirm({
@@ -124,16 +130,34 @@ function App() {
   }
   return (
     <div className="flex h-screen w-full flex-col">
-      <Sandbox ref={sandboxRef} className="w-full grow" />
-      <BottomNavBar
-        {...{
-          setModal,
-          settingsRef,
-          toastsRef,
-          assistantRef,
-          messages,
-        }}
+      {state === "home" && (
+        <Home
+          {...{
+            setModal,
+            settingsRef,
+            toastsRef,
+            assistantRef,
+            messages,
+            chatLoading,
+          }}
+        />
+      )}
+      <Sandbox
+        ref={sandboxRef}
+        className={`w-full ${state === "home" ? "hidden" : "grow"}`}
       />
+      {state !== "home" && (
+        <BottomNavBar
+          {...{
+            setModal,
+            settingsRef,
+            toastsRef,
+            assistantRef,
+            messages,
+            chatLoading,
+          }}
+        />
+      )}
       {modalComponent}
       <Toasts className="top-2" ref={toastsRef} />
     </div>

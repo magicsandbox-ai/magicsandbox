@@ -203,11 +203,11 @@ class DataLossRisk extends Risk {
   constructor(args) {
     super(args);
     this.handleRequests = new Set(["putData", "deleteData"]);
+    this.lastAppBackups = {};
   }
   init() {
     this.pendingWrites = new Set();
     this.userApprovedWrites = new Set();
-    this.lastAppBackups = {};
   }
   handleBatch(batch) {
     try {

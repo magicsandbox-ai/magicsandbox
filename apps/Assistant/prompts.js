@@ -38,7 +38,7 @@ ${context}
 </app_context>${selectionPrompt}`;
 }
 
-const initSystemPrompt = `You are a user's assistant on a platform called Magic Sandbox...
+const inputSystemPrompt = `You are a user's assistant on a platform called Magic Sandbox...
 
 <example_user_message>
 <user_request>
@@ -130,6 +130,6 @@ export {
   formatInput,
   formatLogs,
   formatContext,
-  initSystemPrompt,
+  inputSystemPrompt,
   magicSystemPrompt,
 };

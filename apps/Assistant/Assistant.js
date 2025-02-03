@@ -12,7 +12,8 @@ import {
   formatInput,
   formatLogs,
   formatContext,
-  systemPrompt,
+  inputSystemPrompt,
+  magicSystemPrompt,
 } from "./prompts.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
@@ -24,6 +25,8 @@ class Assistant {
     setConfirm,
     setRisk,
     setMessages,
+    setChatLoading,
+    setState,
   }) {
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
@@ -31,11 +34,14 @@ class Assistant {
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
     this.setMessages = setMessages;
-    this.budget = null; //mutated by updateBudget and FinancialRisk
+    this._setChatLoading = setChatLoading;
+    this.setState = setState;
+    this.abortController = new AbortController();
+    this.budget = null;
     this.app = null;
     this.requestTimeoutId = null;
     this.requestQueue = [];
-    this.isProcessing = false;
+    this.requestProcessing = false;
     this.risks = [];
     //these add themselves to `this.risks`
     this.financialRisk = new FinancialRisk({ assistant: this });
@@ -45,9 +51,14 @@ class Assistant {
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
+  setChatLoading(chatLoading) {
+    this.chatLoading = chatLoading;
+    this._setChatLoading(chatLoading);
+  }
   setDisplayContent(newDisplayContent) {
     this.setMessages((messages) => {
       const message = messages[messages.length - 1];
+
       if (message?.role !== "assistant") {
         return [
           ...messages,
@@ -77,7 +88,7 @@ class Assistant {
       "usageData",
     );
     const now = Date.now();
-    let avgDaysBetweenUsage = 0.2;
+    let avgDaysBetweenUsage = 0.1;
     if (usageData) {
       const daysSinceLastUsage = (now - usageData.ts) / (1000 * 60 * 60 * 24);
       const alpha = 0.05;
@@ -113,9 +124,86 @@ class Assistant {
     this.setDisplayContent(`Error: ${message}`);
     this.toastsRef.current.addToast(message, type);
   }
+  async handleInput({ input, messages }) {
+    try {
+      const abortSignal = this.abortController.signal;
+      const newMessages = [
+        ...messages,
+        { role: "user", displayContent: input },
+        { role: "assistant", displayContent: "Working on it..." },
+      ];
+      this.setMessages(newMessages);
+      const requestFunctionMaxCost = 0.001; //todo??
+      const { result } = await requestFunction(
+        "magicsandbox.findApp",
+        {
+          input,
+          maxCost: this.budget, //this is an argument for findApp
+        },
+        { maxCost: requestFunctionMaxCost }, //this is an option for requestFunction
+      );
+      if (abortSignal.aborted) return;
+      const { apps } = result;
+      newMessages[newMessages.length - 2].content = formatInput(input, apps);
+      let message = "";
+      let app = "";
+      await this.handleChat({
+        messages: newMessages,
+        systemPrompt: inputSystemPrompt,
+        streamHandler: (content, tag) => {
+          if (tag === "app") {
+            app += content;
+          } else if (tag === "message") {
+            message += content;
+            this.setMessages((messages) => [
+              ...messages.slice(0, -1),
+              { role: "assistant", content: message, displayContent: message },
+            ]);
+          }
+        },
+      });
+      if (app) {
+        await this.handleApp({ app });
+      }
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+  async handleChat({ messages, systemPrompt, streamHandler }) {
+    try {
+      const abortSignal = this.abortController.signal;
+      this.setChatLoading(true);
+      await this.updateBudget();
+      if (abortSignal.aborted) return;
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages
+              .filter((message) => message.content)
+              .map((message) => ({
+                role: message.role,
+                content: message.content,
+              })),
+          ],
+        },
+        { maxCost: this.budget, stream: true },
+      );
+      for await (const { content, tag } of tagStreamParser({
+        stream,
+        chunkProcessor: (chunk) => chunk.result,
+      })) {
+        if (abortSignal.aborted) return;
+        streamHandler(content, tag);
+      }
+    } finally {
+      this.setChatLoading(false);
+    }
+  }
   async handleApp({ input, app: _app, urlParams }) {
     try {
-      await this.reload();
+      this.reload(); //todo
       const sandboxId = this.sandboxRef.current.getSandboxId();
       await this.updateBudget();
       let budget = this.budget;
@@ -188,8 +276,11 @@ class Assistant {
   }
   async handleMagic({ input, messages }) {
     try {
-      await this.updateBudget();
       const sandboxId = this.sandboxRef.current.getSandboxId();
+      const abortSignal = this.abortController.signal;
+      this.setChatLoading(true);
+      await this.updateBudget();
+      if (abortSignal.aborted) return;
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (prevMessage?.role === "user") {
@@ -238,6 +329,7 @@ class Assistant {
           context = "App did not provide context";
         }
       }
+      if (abortSignal.aborted) return;
       const llmMessages = newMessages
         .filter((message) => message.content)
         .map((message) => ({
@@ -248,7 +340,7 @@ class Assistant {
         context,
         selection,
       );
-      llmMessages.unshift({ role: "system", content: systemPrompt });
+      llmMessages.unshift({ role: "system", content: magicSystemPrompt });
       const stream = await requestFunction(
         "magicsandbox.llm",
         { messages: llmMessages },
@@ -262,6 +354,7 @@ class Assistant {
         stream,
         chunkProcessor: (chunk) => chunk.result,
       })) {
+        if (abortSignal.aborted) return;
         if (tag === "intermediate_script") {
           intermediateScript = true;
         }
@@ -292,6 +385,7 @@ class Assistant {
             { request: "script", data: { script } },
             30000,
           );
+        if (abortSignal.aborted) return;
         this.setMessages((messages) => {
           return [...messages, { role: "user", content: formatLogs(logs) }];
         });
@@ -299,11 +393,14 @@ class Assistant {
       return { intermediateScript };
     } catch (error) {
       this.handleError(error);
+    } finally {
+      this.setChatLoading(false);
     }
   }
   handleThumbsUp() {
     this.handleScore(1);
   }
+
   handleThumbsDown() {
     this.handleScore(-1);
   }
@@ -331,8 +428,9 @@ class Assistant {
     }, 50);
   }
   async processRequestBatch() {
-    if (this.isProcessing || this.requestQueue.length === 0) return;
-    this.isProcessing = true;
+    if (this.requestProcessing || this.requestQueue.length === 0) return;
+    const abortSignal = this.abortController.signal;
+    this.requestProcessing = true;
     let batch = [...this.requestQueue];
     this.requestQueue = [];
     try {
@@ -360,7 +458,7 @@ class Assistant {
         approved = await this.handleApprove(
           riskResponses.filter((r) => r.message),
         );
-        if (this.abortPromise) return;
+        if (abortSignal.aborted) return;
         askedUser = true;
         if (!approved) {
           this.handleScore(-0.1);
@@ -373,7 +471,9 @@ class Assistant {
           ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
         ),
       );
-      if (this.abortPromise) return;
+      //careful with async callbacks - may have to pass in abortSignal
+      //for now DataLossRisk is okay since it only updates lastAppBackups after awaiting
+      if (abortSignal.aborted) return;
       await Promise.all(
         batch.map(async (event) => {
           const { id, msg } = event.data;
@@ -389,7 +489,7 @@ class Assistant {
             }
             try {
               const response = await requestSandbox(request, data);
-              if (this.abortPromise) return;
+              if (abortSignal.aborted) return;
               let finalResponse = response;
               if (response?.[Symbol.asyncIterator]) {
                 finalResponse = this.sandboxRef.current.streamData(response);
@@ -399,10 +499,10 @@ class Assistant {
                 response: finalResponse,
               });
               if (request === "app" || request === "function") {
-                await this.handleMetadata(response, id);
+                await this.handleMetadata(response, id, abortSignal);
               }
             } catch (error) {
-              if (this.abortPromise) return;
+              if (abortSignal.aborted) return;
               this.sandboxRef.current.postMessage(event.sandboxId, {
                 id,
                 error: { message: error.message, data: error.data },
@@ -422,16 +522,15 @@ class Assistant {
         });
       }
     } finally {
-      this.isProcessing = false;
+      this.requestProcessing = false;
       if (!this.requestTimeoutId) {
         this.requestTimeoutId = window.setTimeout(() => {
           this.processRequestBatch();
         }, 50);
       }
-      this.abortPromise?.resolve();
     }
   }
-  async handleApprove(riskResponses) {
+  handleApprove(riskResponses) {
     this.handleApprovePromise = createDeferredPromise();
     const callback = (response) => {
       //arrow function ensures `this` refers to Assistant
@@ -444,11 +543,11 @@ class Assistant {
     });
     return this.handleApprovePromise;
   }
-  async handleMetadata(response, id) {
+  async handleMetadata(response, id, abortSignal) {
     let metadata;
     if (response?.[Symbol.asyncIterator]) {
       for await (const chunk of response) {
-        if (this.abortPromise) return;
+        if (abortSignal.aborted) return;
         if (chunk.metadata) {
           metadata = chunk.metadata;
         }
@@ -458,19 +557,18 @@ class Assistant {
     }
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
-  async reload() {
+  reload() {
+    this.abortController.abort();
+    this.abortController = new AbortController();
     this.sandboxRef.current.reload();
-    this.requestQueue = [];
     this.handleApprovePromise?.resolve(false);
-    this.setRisk(null);
     this.setConfirm(null);
+    this.setRisk(null);
     this.setMessages([]);
-    if (this.isProcessing) {
-      this.abortPromise = createDeferredPromise();
-      await this.abortPromise;
-      this.abortPromise = null;
-    }
+    this.setChatLoading(false);
+    this.setState("home");
     this.app = null;
+    this.requestQueue = [];
     this.risks.forEach((risk) => risk.init());
   }
 }
