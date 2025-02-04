@@ -21,6 +21,8 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 class Assistant {
   constructor({
     urlParams,
+    userBalance,
+    userBalanceRemainingDays,
     sandboxRef,
     settingsRef,
     toastsRef,
@@ -31,6 +33,8 @@ class Assistant {
     setState,
   }) {
     this.urlParams = urlParams;
+    this.userBalance = userBalance;
+    this.userBalanceRemainingDays = userBalanceRemainingDays;
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
     this.toastsRef = toastsRef;
@@ -77,9 +81,8 @@ class Assistant {
     });
   }
   async updateBudget() {
-    const { balance, balanceDays } = window.args;
-    if (!balanceDays || balance < 0.05) {
-      this.budget = Math.min(balance, 0.005);
+    if (!this.userBalanceRemainingDays || this.userBalance < 0.05) {
+      this.budget = Math.min(this.userBalance, 0.005);
       return;
     }
     const usageData = await requestGetData(
@@ -99,8 +102,9 @@ class Assistant {
     }
     this.budget = Math.max(
       Math.min(
-        balance / (balanceDays / avgDaysBetweenUsage),
-        balance / 5,
+        this.userBalance /
+          (this.userBalanceRemainingDays / avgDaysBetweenUsage),
+        this.userBalance / 5,
         0.2, //todo allow configuring
       ),
       0.005,
@@ -191,19 +195,19 @@ class Assistant {
       this.setChatLoading(true);
       await this.updateBudget();
       if (abortSignal.aborted) return;
+      messages = [
+        { role: "system", content: systemPrompt },
+        ...messages
+          .filter((message) => message.content)
+          .map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+      ];
+      console.log(messages);
       const stream = await requestFunction(
         "magicsandbox.llm",
-        {
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages
-              .filter((message) => message.content)
-              .map((message) => ({
-                role: message.role,
-                content: message.content,
-              })),
-          ],
-        },
+        { messages },
         { maxCost: this.budget, stream: true },
       );
       for await (const { content, tag, originalContent } of tagStreamParser({
@@ -615,8 +619,11 @@ class Assistant {
     } else {
       metadata = response.metadata;
     }
+    this.userBalance = metadata.userBalance;
+    this.userBalanceRemainingDays = metadata.userBalanceRemainingDays;
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
+
   reload() {
     this.abortController.abort();
     this.abortController = new AbortController();

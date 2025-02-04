@@ -33,7 +33,15 @@ type App = {
   style?: string;
   html?: string;
   script?: string;
-  metadata: { app: string; finalCost: number; status: "active" | "deprecated" };
+  metadata: AppMetadata;
+};
+
+type AppMetadata = {
+  app: string;
+  finalCost: number;
+  status: "active" | "deprecated";
+  userBalance: number;
+  userBalanceRemainingDays: number;
 };
 ```
 
@@ -59,6 +67,8 @@ type FunctionMetadata = {
   fn: string;
   finalCost: number;
   status: "active" | "deprecated";
+  userBalance: number;
+  userBalanceRemainingDays: number;
 };
 ```
 

@@ -9,7 +9,7 @@ import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 
-function App({ urlParams }) {
+function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
@@ -54,6 +54,8 @@ function App({ urlParams }) {
       settingsRef.current = {};
       assistantRef.current = new Assistant({
         urlParams,
+        userBalance,
+        userBalanceRemainingDays,
         sandboxRef,
         toastsRef,
         settingsRef,
@@ -162,9 +164,13 @@ function App({ urlParams }) {
   );
 }
 
-function init({ urlParams }) {
+function init({ urlParams, userBalance, userBalanceRemainingDays }) {
   createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} />,
+    <App
+      urlParams={urlParams}
+      userBalance={userBalance}
+      userBalanceRemainingDays={userBalanceRemainingDays}
+    />,
   );
 }
 
