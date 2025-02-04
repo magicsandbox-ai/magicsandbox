@@ -56,6 +56,8 @@ Executes a Magic Function and returns the result.
 - `options` _(object)_:
   - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00. Refer to [variable costs](#variable-costs) for more details.
   - `stream` _(boolean, default false)_: Whether to stream the result.
+  - `includeUserInfo` _(object)_: An object with keys indicating additional user info to pass to the Function:
+    - `userId` _(boolean, default false)_: Whether to include the user ID.
 
 **Returns:** a Promise that includes the result from the Function and metadata about the Function call. The type depends on the `stream` option.
 
