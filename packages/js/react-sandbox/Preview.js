@@ -67,7 +67,7 @@ const Preview = forwardRef(function Preview(
     });
     //todo could clean this up so it's all sent in one message
     if (timeout) {
-      let logs = [];
+      let logs;
       try {
         ({ logs } = await sandboxRef.current.executeScriptAndWaitForResponse({
           sandboxId,
@@ -76,7 +76,7 @@ const Preview = forwardRef(function Preview(
         }));
       } catch (error) {
         console.error(error);
-        //not worth throwing an error here and not showing the preview - just return empty logs
+        logs = ["[Uncaught Error] Error: script timed out"];
       }
       return { logs };
     } else {

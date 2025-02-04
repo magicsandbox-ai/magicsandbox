@@ -37,7 +37,7 @@ class Assistant {
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
     this.setMessages = setMessages;
-    this._setChatLoading = setChatLoading;
+    this.setChatLoading = setChatLoading;
     this.setState = setState;
     this.abortController = new AbortController();
     this.budget = null;
@@ -53,10 +53,6 @@ class Assistant {
     this.dataLossRisk = new DataLossRisk({ assistant: this });
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
-  }
-  setChatLoading(chatLoading) {
-    this.chatLoading = chatLoading;
-    this._setChatLoading(chatLoading);
   }
   setDisplayContent(newDisplayContent) {
     this.setMessages((messages) => {
@@ -231,8 +227,6 @@ class Assistant {
         this.setDisplayContent(`${result.metadata.app} loaded`);
         this.setState("app");
         this.sandboxRef.current.postMessage(sandboxId, result);
-        //call handleInput somehow if getInit returns context
-        //or a different function - but need messages
         try {
           const context = await this.sandboxRef.current.getInit(
             sandboxId,
@@ -265,6 +259,7 @@ class Assistant {
         if (abortSignal.aborted) return;
         await handleAppResult(result);
       } catch (error) {
+        if (abortSignal.aborted) return;
         if (error.data?.minCost) {
           //budget is lower than minCost, prompt user to approve
           this.setConfirm({
@@ -298,6 +293,8 @@ class Assistant {
   }
   async handleInit({ messages, context, app }) {
     try {
+      //add the context for the llm call, but it's never saved with setMessages
+      //so future llm calls will not have it (which is what we want)
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (prevMessage?.role === "user") {
@@ -379,7 +376,8 @@ class Assistant {
               script,
               timeout: 30000,
             }));
-        } catch {
+        } catch (error) {
+          console.error(error);
           logs = ["[Uncaught Error] Error: script timed out"];
         }
         if (abortSignal.aborted) return;
@@ -445,18 +443,14 @@ class Assistant {
         //ignore
       }
       if (abortSignal.aborted) return;
-      const llmMessages = newMessages
-        .filter((message) => message.content)
-        .map((message) => ({
-          role: message.role,
-          content: message.content,
-        }));
-      llmMessages[llmMessages.length - 1].content += formatContext(
+      //add the context for the llm call, but it's never saved with setMessages
+      //so future llm calls will not have it (which is what we want)
+      newMessages[newMessages.length - 2].content += formatContext(
         contextResult?.context || "App did not provide context",
         contextResult?.selection,
       );
       await this.handleScript({
-        messages: llmMessages,
+        messages: newMessages,
         systemPrompt: magicSystemPrompt,
       });
     } catch (error) {
