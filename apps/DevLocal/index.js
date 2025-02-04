@@ -16,7 +16,7 @@ function DocsLink({ children }) {
   );
 }
 
-function App() {
+function App({ urlParams }) {
   const [state, setState] = useState("");
   const [widthClass, setWidthClass] = useState("w-full");
 
@@ -28,7 +28,7 @@ function App() {
   useEffect(() => {
     async function init() {
       try {
-        const { port, token } = window.args.urlParams;
+        const { port, token } = urlParams;
         if (!port || !token) {
           setState("error");
           return;
@@ -153,4 +153,10 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+function init({ urlParams }) {
+  createRoot(document.getElementById("root")).render(
+    <App urlParams={urlParams} />,
+  );
+}
+
+export { init };

@@ -64,7 +64,9 @@ export default {
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
-#### args ({ input: string, budget: number })
+#### initArgs ({ input: string, budget: number, urlParams: object })
+
+Arguments to pass to `app.init` during development.
 
 #### cacheRequests (boolean) (default true)
 

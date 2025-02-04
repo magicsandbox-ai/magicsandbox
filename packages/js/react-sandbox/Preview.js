@@ -58,14 +58,7 @@ const Preview = forwardRef(function Preview(
     sandboxRef.current.postMessage(sandboxId, {
       html: appObj.html,
       style: appObj.style,
-      args: {
-        input: "",
-        budget: 0.005,
-        urlParams: window.args.urlParams,
-        ...appObj.args,
-      },
     });
-    //todo could clean this up so it's all sent in one message
     if (timeout) {
       let logs;
       try {
@@ -84,6 +77,18 @@ const Preview = forwardRef(function Preview(
         script: appObj.script,
       });
     }
+    sandboxRef.current
+      .getInit(
+        sandboxId,
+        {
+          input: "",
+          budget: 0.005,
+          urlParams: {},
+          ...appObj.args,
+        },
+        1000,
+      )
+      .catch(() => {}); //ignore
     setState("ready");
   }
 

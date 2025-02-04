@@ -1,8 +1,8 @@
 /* this file is created by the @magicsandbox.ai/docs package. do not edit manually as it will be overwritten */
 import markdown from "./index.md";
 
-async function scrollToId() {
-  const { id } = window.args.urlParams;
+async function init({ urlParams }) {
+  const { id } = urlParams;
   if (id) {
     const anchor = document.getElementById(id);
     if (anchor) {
@@ -10,8 +10,6 @@ async function scrollToId() {
     }
   }
 }
-
-scrollToId();
 
 const navLinks = Object.fromEntries(
   Array.from(document.querySelectorAll("#nav a")).map((a) => [
@@ -69,4 +67,4 @@ function context() {
   return markdown;
 }
 
-export { context };
+export { context, init };
