@@ -80,10 +80,13 @@ class Assistant {
       ];
     });
   }
-  async updateBudget() {
+  async updateBudget(update = true) {
     if (!this.userBalanceRemainingDays || this.userBalance < 0.05) {
-      this.budget = Math.min(this.userBalance, 0.005);
-      return;
+      const budget = Math.min(this.userBalance, 0.005);
+      if (update) {
+        this.budget = budget;
+      }
+      return budget;
     }
     const usageData = await requestGetData(
       "magicsandbox.Assistant",
@@ -100,7 +103,7 @@ class Assistant {
         1,
       );
     }
-    this.budget = Math.max(
+    const budget = Math.max(
       Math.min(
         this.userBalance /
           (this.userBalanceRemainingDays / avgDaysBetweenUsage),
@@ -109,10 +112,14 @@ class Assistant {
       ),
       0.005,
     );
+    if (update) {
+      this.budget = budget;
+    }
     requestPutData("magicsandbox.Assistant", "usageData", {
       avgDaysBetweenUsage,
       ts: now,
     }).catch(console.error);
+    return budget;
   }
   handleError(error) {
     console.error(error);
@@ -136,17 +143,17 @@ class Assistant {
         { role: "assistant", displayContent: "Working on it..." },
       ];
       this.setMessages(newMessages);
-      const requestFunctionMaxCost = 0.001; //todo subtract??
-      const { result } = await requestFunction(
-        "magicsandbox.findApp",
-        {
+      let apps;
+      if (messages.length === 0) {
+        await this.updateBudget();
+        if (abortSignal.aborted) return;
+        const { result } = await requestFunction("magicsandbox.findApp", {
           input,
-          maxCost: this.budget, //this is an argument for findApp
-        },
-        { maxCost: requestFunctionMaxCost }, //this is an option for requestFunction
-      );
-      if (abortSignal.aborted) return;
-      const { apps } = result;
+          maxCost: this.budget,
+        });
+        if (abortSignal.aborted) return;
+        apps = result.apps;
+      }
       newMessages[newMessages.length - 2].content = formatInput(input, apps);
       let messageContent = "";
       let messageDisplayContent = "";
@@ -193,7 +200,7 @@ class Assistant {
     try {
       const abortSignal = this.abortController.signal;
       this.setChatLoading(true);
-      await this.updateBudget();
+      const budget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
       messages = [
         { role: "system", content: systemPrompt },
@@ -208,7 +215,7 @@ class Assistant {
       const stream = await requestFunction(
         "magicsandbox.llm",
         { messages },
-        { maxCost: this.budget, stream: true },
+        { maxCost: budget, stream: true },
       );
       for await (const { content, tag, originalContent } of tagStreamParser({
         stream,
@@ -254,6 +261,10 @@ class Assistant {
           //ignore
         }
       };
+      if (this.budget === null) {
+        await this.updateBudget();
+        if (abortSignal.aborted) return;
+      }
       let result;
       try {
         result = await requestApp(app, {
@@ -634,6 +645,7 @@ class Assistant {
     this.setMessages([]);
     this.setChatLoading(false);
     this.setState("home");
+    this.budget = null;
     this.app = null;
     this.requestQueue = [];
     this.risks.forEach((risk) => risk.init());

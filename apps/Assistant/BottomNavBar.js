@@ -72,10 +72,10 @@ function BottomNavBar({
   const displayMessages = messages.filter((message) => message.displayContent);
 
   let placeholder;
-  if (displayMessages.length > 0) {
+  if (collapsed && displayMessages.length > 0) {
     placeholder = displayMessages[displayMessages.length - 1].displayContent;
   } else {
-    placeholder = "Ask your Assistant anything.";
+    placeholder = "Chat with your Assistant";
   }
 
   function handleMaximize() {
@@ -92,7 +92,7 @@ function BottomNavBar({
   return (
     <div className="flex items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
       <div className="flex-1" /> {/* spacer */}
-      <div className="flex h-11 w-1/2 max-w-screen-lg flex-initial items-center">
+      <div className="flex h-11 w-full max-w-screen-lg flex-initial items-center">
         <div className="relative h-full w-full">
           <div
             className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border border-stone-500 bg-white py-1 outline-1 ${
@@ -116,7 +116,7 @@ function BottomNavBar({
                 <div className="max-h-[80vh]">
                   <ChatDisplay messages={displayMessages} />
                 </div>
-                {messages[messages.length - 1].promptToContinue && (
+                {messages[messages.length - 1]?.promptToContinue && (
                   <button
                     onClick={() => {
                       handleInput();
@@ -143,7 +143,7 @@ function BottomNavBar({
           </div>
         </div>
       </div>
-      <div className="flex flex-1 items-center justify-start gap-2">
+      <div className="mr-2 flex flex-1 items-center justify-start gap-2">
         <button onClick={handleSubmit}>
           {chatLoading ? (
             <Loader className="animate-spin" />

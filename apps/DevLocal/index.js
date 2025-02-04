@@ -44,7 +44,7 @@ function App({ urlParams }) {
     init();
   }, []);
 
-  async function previewApp() {
+  async function previewApp(update = true) {
     const sandboxId = previewRef.current.getSandboxId();
     const response = await requestFetch(`http://localhost:${portRef.current}`, {
       headers: {
@@ -55,7 +55,9 @@ function App({ urlParams }) {
       throw new Error(response.body.error);
     }
     const appObj = response.body;
-    previewRef.current.update(sandboxId, appObj);
+    if (update) {
+      previewRef.current.update(sandboxId, appObj);
+    }
     return appObj;
   }
 
@@ -72,9 +74,11 @@ function App({ urlParams }) {
   async function handlePublish() {
     try {
       previewRef.current.reload();
-      const appObj = await previewApp();
+      const sandboxId = previewRef.current.getSandboxId();
+      const appObj = await previewApp(false);
       await requestPublish(appObj);
       toastsRef.current.addToast("Successfully published!", "success");
+      previewRef.current.update(sandboxId, appObj);
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("Failed to publish", "error");
@@ -89,7 +93,9 @@ function App({ urlParams }) {
     } else if (platform === "mobile") {
       setWidthClass("w-[360px]");
     } else if (platform === "tablet") {
-      setWidthClass("w-[768px]");
+      //768 is the most common tablet width, but need to add 2 pixels for border
+      //otherwise tailwind md breakpoint of 768 is not triggered
+      setWidthClass("w-[770px]");
     } else {
       throw new Error(`Invalid platform: ${platform}`);
     }

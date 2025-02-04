@@ -3,10 +3,13 @@
   version: "0.1.0",
   type: "assistant",
   esbuildOptions: {
+    minify: false, //todo
+    sourcemap: true, //todo
     //the dependencies for components are in node_modules
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths
     nodePaths: ["./node_modules"],
+    loader: { ".js": "jsx", ".md": "text" },
   },
   dependencies: {
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",

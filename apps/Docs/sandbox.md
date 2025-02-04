@@ -24,7 +24,7 @@ Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
 
 - `app` _(**required**, string)_: Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's finalCost.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
 
 **Returns:** a Promise that resolves to an App:
 
@@ -54,15 +54,15 @@ Executes a Magic Function and returns the result.
 - `fn` _(**required**, string)_: Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `args` _(**required**, any)_: Arguments to pass to the called Function.
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00. Refer to [variable costs](#variable-costs) for more details.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00.
   - `stream` _(boolean, default false)_: Whether to stream the result.
   - `includeUserInfo` _(object)_: An object with keys indicating additional user info to pass to the Function:
     - `userId` _(boolean, default false)_: Whether to include the user ID.
 
-**Returns:** a Promise that includes the result from the Function and metadata about the Function call. The type depends on the `stream` option.
+**Returns:** a Promise that includes the Function result and metadata. The type depends on the `stream` option.
 
 - `stream: false`: `Promise<{result: any, metadata: FunctionMetadata}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
-- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: FunctionMetadata}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk. See [magicsandbox.Chat](todo) for an example.
+- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: FunctionMetadata}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk.
 
 ```typescript
 type FunctionMetadata = {
@@ -78,38 +78,71 @@ type FunctionMetadata = {
 
 Magic Sandbox provides Sandbox functions for storing and retrieving key/value pairs. Each Magic App has its own isolated storage, ensuring that keys used by one App don't interfere with keys used by another.
 
-All of the data Sandbox functions require an `app` argument, which specifies which App to use for storage, in the form of 'author.app'. Most Apps should just use their own name as the `app` argument. Put and delete requests that specify an `app` that has not been called with requestApp will cause an error.
+You can use another App's storage by passing `app` in `options`, though these requests are subject to user approval. Furthermore, put and delete requests that specify an `app` that has not been called with `requestApp` will throw an error.
 
-Each Magic App can store up to 10 MB of data. There is no concept of App version used for storage, so author1.app1@1.0.0 and author1.app1@1.0.1 store data in the same location. If you need separate storage for App versions, you'll have to use the key/value pairs yourself to accomplish that.
+Each Magic App can store up to 10 MB of data. There is no concept of App version used for storage, so author1.app1@1.0.0 and author1.app1@1.0.1 store data in the same location.
 
-### requestPutData (app: string, key: string, val: any, options?) => true
+### requestPutData
 
-Store a key/value pair using App's storage.
+Store a key/value pair.
 
-- `val` may not be `null`.
-- `val` will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+**Arguments:**
 
-**Options:**
+- `key` _(**required**, string)_: Key to store
+- `val` _(**required**, any)_: Value to store. May not be `null` and will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+- `options` _(object)_:
+  - `app` _(string)_: App to use for storage
+  - `evictionPolicy` _(string)_: Controls behavior if the put would cause the app to exceed its storage limit. Supported values:
+    - `undefined` _(default)_: Does not evict any key/value pairs and returns a 'Database size limit exceeded' error.
+    - `'fifo'`: Evict the oldest key/value pairs as needed to make room for the new key/value pair.
 
-- `evictionPolicy` (string): Controls behavior if the put would cause the app to exceed its storage limit. Supported values:
-  - `undefined` (default): Does not evict any key/value pairs and returns a 'Database size limit exceeded' error.
-  - `'fifo'`: Evict the oldest key/value pairs as needed to make room for the new key/value pair.
+**Returns:** a Promise that resolves to true
 
-### requestDeleteData (app: string, key: string) => true
+### requestDeleteData
 
-Delete a key/value pair using app's storage.
+Delete a key/value pair.
 
-### requestGetData (app: string, key: string) => val: any
+**Arguments:**
 
-Retrieve a key/value pair using app's storage.
+- `key` _(**required**, string)_: Key to delete
+- `options` _(object)_:
+  - `app` _(string)_: App to use for storage
 
-### requestGetAllData (app: string) => { [key: string]: any }
+**Returns:** a Promise that resolves to true
 
-Retrieve all key/value pairs using app's storage.
+### requestGetData
 
-### requestGetAllKeysData (app: string) => string[]
+Retrieve a key/value pair.
 
-Retrieve all keys using app's storage.
+**Arguments:**
+
+- `key` _(**required**, string)_: Key to retrieve
+- `options` _(object)_:
+  - `app` _(string)_: App to use for storage
+
+**Returns:** a Promise that resolves to the previously stored value or `undefined`
+
+### requestGetAllData
+
+Retrieve all key/value pairs.
+
+**Arguments:**
+
+- `options` _(object)_:
+  - `app` _(string)_: App to use for storage
+
+**Returns:** a Promise that resolves an object mapping keys to values
+
+### requestGetAllKeysData
+
+Retrieve all keys.
+
+**Arguments:**
+
+- `options` _(object)_:
+  - `app` _(string)_: App to use for storage
+
+**Returns:** a Promise that resolves an array of keys
 
 ## Other Sandbox Functions
 
