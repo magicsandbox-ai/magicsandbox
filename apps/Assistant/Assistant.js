@@ -175,6 +175,10 @@ class Assistant {
       });
       if (abortSignal.aborted) return;
       if (app) {
+        this.setMessages((messages) => {
+          //this is a hack to prevent handleApp from overwriting the current assistant message when it calls setDisplayContent
+          return [...messages, { role: "assistant" }];
+        });
         await this.handleApp({
           input,
           app: app.trim(),
@@ -239,9 +243,14 @@ class Assistant {
             },
             10000,
           );
+          if (abortSignal.aborted) return;
           if (input && context) {
             //if loaded from a url, there's no input and we don't want to handleInit
-            await this.handleInit({ messages, context });
+            await this.handleInit({
+              messages,
+              context,
+              app: result.metadata.app,
+            });
           }
         } catch {
           //ignore
@@ -253,6 +262,7 @@ class Assistant {
           maxCost: this.budget,
           updateUrl: true,
         });
+        if (abortSignal.aborted) return;
         await handleAppResult(result);
       } catch (error) {
         if (error.data?.minCost) {
@@ -268,6 +278,7 @@ class Assistant {
                     maxCost: error.data.minCost,
                     updateUrl: true,
                   });
+                  if (abortSignal.aborted) return;
                   await handleAppResult(result);
                 } catch (error) {
                   this.handleError(error);
@@ -285,7 +296,7 @@ class Assistant {
       this.handleError(error);
     }
   }
-  async handleInit({ messages, context }) {
+  async handleInit({ messages, context, app }) {
     try {
       const prevMessage = messages[messages.length - 1];
       let newMessages;
@@ -301,10 +312,13 @@ class Assistant {
       } else {
         newMessages = [
           ...messages,
-          { role: "user", content: formatContext(context) },
+          { role: "user", content: formatContext(context) }, //todo how to remove this for later calls?
         ];
       }
-      //todo assistant displaycontent
+      newMessages.push({
+        role: "assistant",
+        displayContent: `Initializing ${app}...`,
+      });
       await this.handleScript({
         messages: newMessages,
         systemPrompt: initSystemPrompt,
@@ -388,9 +402,6 @@ class Assistant {
     try {
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const abortSignal = this.abortController.signal;
-      this.setChatLoading(true);
-      await this.updateBudget();
-      if (abortSignal.aborted) return;
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (prevMessage?.role === "user") {
@@ -424,20 +435,14 @@ class Assistant {
         displayContent: "Working on it...",
       });
       this.setMessages(newMessages);
-      let context, selection;
-      if (!this.app) {
-        context = "This is a blank page you can use to run scripts as needed.";
-      } else {
-        try {
-          ({ context, selection } =
-            await this.sandboxRef.current.postMessageAndWaitForResponse(
-              sandboxId,
-              { request: "context" },
-              10000,
-            ));
-        } catch {
-          context = "App did not provide context";
-        }
+      let contextResult;
+      try {
+        contextResult = await this.sandboxRef.current.getContext(
+          sandboxId,
+          10000,
+        );
+      } catch {
+        //ignore
       }
       if (abortSignal.aborted) return;
       const llmMessages = newMessages
@@ -447,14 +452,8 @@ class Assistant {
           content: message.content,
         }));
       llmMessages[llmMessages.length - 1].content += formatContext(
-        context,
-        selection,
-      );
-      llmMessages.unshift({ role: "system", content: magicSystemPrompt });
-      const stream = await requestFunction(
-        "magicsandbox.llm",
-        { messages: llmMessages },
-        { maxCost: this.budget, stream: true },
+        contextResult?.context || "App did not provide context",
+        contextResult?.selection,
       );
       await this.handleScript({
         messages: llmMessages,
@@ -462,8 +461,6 @@ class Assistant {
       });
     } catch (error) {
       this.handleError(error);
-    } finally {
-      this.setChatLoading(false);
     }
   }
   handleThumbsUp() {

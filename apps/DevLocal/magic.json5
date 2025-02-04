@@ -1,6 +1,7 @@
 {
   name: "DevLocal",
   version: "0.1.0",
+  private: true, //should only be launched by magicsandbox.ai/dev package
   esbuildOptions: {
     minify: false, //todo
     sourcemap: true, //todo

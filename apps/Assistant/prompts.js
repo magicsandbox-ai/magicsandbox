@@ -1,9 +1,15 @@
 import sandboxDocs from "../Docs/sandbox.md";
 
-function formatInput(input) {
+function formatInput(input, apps) {
+  let suggestedApps = "";
+  if (apps) {
+    suggestedApps = `\n<suggested_apps>
+${apps.map((app) => `${app.author}.${app.name}: ${app.description}`).join("\n")}
+</suggested_apps>`;
+  }
   return `<user_request>
 ${input}
-</user_request>`;
+</user_request>${suggestedApps}`;
 }
 
 function formatLogs(logs) {
