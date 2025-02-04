@@ -13,6 +13,7 @@ import {
   formatLogs,
   formatContext,
   inputSystemPrompt,
+  initSystemPrompt,
   magicSystemPrompt,
 } from "./prompts.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
@@ -150,6 +151,7 @@ class Assistant {
       let messageContent = "";
       let messageDisplayContent = "";
       let app = "";
+      let finalMessages;
       await this.handleChat({
         messages: newMessages,
         systemPrompt: inputSystemPrompt,
@@ -160,18 +162,24 @@ class Assistant {
           } else {
             messageDisplayContent += content;
           }
-          this.setMessages((messages) => [
-            ...messages.slice(0, -1),
+          finalMessages = [
+            ...newMessages.slice(0, -1),
             {
               role: "assistant",
               content: messageContent,
               displayContent: messageDisplayContent,
             },
-          ]);
+          ];
+          this.setMessages(finalMessages);
         },
       });
+      if (abortSignal.aborted) return;
       if (app) {
-        await this.handleApp({ input, app: app.trim() });
+        await this.handleApp({
+          input,
+          app: app.trim(),
+          messages: finalMessages,
+        });
       }
     } catch (error) {
       this.handleError(error);
@@ -209,17 +217,20 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ input, app }) {
+  async handleApp({ input, app, messages }) {
     try {
+      const abortSignal = this.abortController.signal;
       const sandboxId = this.sandboxRef.current.getSandboxId();
       this.setDisplayContent(`Loading ${app}...`);
       const handleAppResult = async (result) => {
         this.app = result.metadata.app;
         this.setDisplayContent(`${result.metadata.app} loaded`);
+        this.setState("app");
         this.sandboxRef.current.postMessage(sandboxId, result);
         //call handleInput somehow if getInit returns context
+        //or a different function - but need messages
         try {
-          await this.sandboxRef.current.getInit(
+          const context = await this.sandboxRef.current.getInit(
             sandboxId,
             {
               input,
@@ -228,6 +239,10 @@ class Assistant {
             },
             10000,
           );
+          if (input && context) {
+            //if loaded from a url, there's no input and we don't want to handleInit
+            await this.handleInit({ messages, context });
+          }
         } catch {
           //ignore
         }
@@ -265,6 +280,105 @@ class Assistant {
         } else {
           throw error;
         }
+      }
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+  async handleInit({ messages, context }) {
+    try {
+      const prevMessage = messages[messages.length - 1];
+      let newMessages;
+      if (prevMessage?.role === "user") {
+        newMessages = [
+          ...messages.slice(0, -1),
+          {
+            role: "user",
+            content: `${prevMessage.content}\n${formatContext(context)}`,
+            displayContent: prevMessage.displayContent,
+          },
+        ];
+      } else {
+        newMessages = [
+          ...messages,
+          { role: "user", content: formatContext(context) },
+        ];
+      }
+      //todo assistant displaycontent
+      await this.handleScript({
+        messages: newMessages,
+        systemPrompt: initSystemPrompt,
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+  async handleScript({ messages, systemPrompt }) {
+    try {
+      const sandboxId = this.sandboxRef.current.getSandboxId();
+      const abortSignal = this.abortController.signal;
+      let messageContent = "";
+      let messageDisplayContent = "";
+      let script = "";
+      let intermediateScript = false;
+      let prevTag;
+      await this.handleChat({
+        messages,
+        systemPrompt,
+        streamHandler: (content, tag, originalContent) => {
+          messageContent += originalContent;
+          if (tag === "intermediate_script") {
+            intermediateScript = true;
+          }
+          if (tag === "final_script" || tag === "intermediate_script") {
+            if (tag !== prevTag) {
+              messageDisplayContent += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
+            }
+            script += content;
+          } else if (
+            prevTag === "final_script" ||
+            prevTag === "intermediate_script"
+          ) {
+            messageDisplayContent += `${script.endsWith("\n") ? "" : "\n"}~~~`;
+          }
+          prevTag = tag;
+          messageDisplayContent += content;
+          this.setMessages((messages) => {
+            return [
+              ...messages.slice(0, -1),
+              {
+                role: "assistant",
+                content: messageContent,
+                displayContent: messageDisplayContent,
+              },
+            ];
+          });
+        },
+      });
+      if (abortSignal.aborted) return;
+      if (script) {
+        let logs;
+        try {
+          ({ logs } =
+            await this.sandboxRef.current.executeScriptAndWaitForResponse({
+              sandboxId,
+              script,
+              timeout: 30000,
+            }));
+        } catch {
+          logs = ["[Uncaught Error] Error: script timed out"];
+        }
+        if (abortSignal.aborted) return;
+        this.setMessages((messages) => {
+          return [
+            ...messages,
+            {
+              role: "user",
+              content: formatLogs(logs),
+              promptToContinue: intermediateScript,
+            },
+          ];
+        });
       }
     } catch (error) {
       this.handleError(error);
@@ -342,51 +456,10 @@ class Assistant {
         { messages: llmMessages },
         { maxCost: this.budget, stream: true },
       );
-      let intermediateScript = false;
-      let message = "";
-      let script = "";
-      let prevTag;
-      for await (const { content, tag } of tagStreamParser({
-        stream,
-        chunkProcessor: (chunk) => chunk.result,
-      })) {
-        if (abortSignal.aborted) return;
-        if (tag === "intermediate_script") {
-          intermediateScript = true;
-        }
-        if (tag === "final_script" || tag === "intermediate_script") {
-          if (tag !== prevTag) {
-            message += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
-          }
-          script += content;
-        } else if (
-          prevTag === "final_script" ||
-          prevTag === "intermediate_script"
-        ) {
-          message += `${script.endsWith("\n") ? "" : "\n"}~~~`;
-        }
-        prevTag = tag;
-        message += content;
-        this.setMessages((messages) => {
-          return [
-            ...messages.slice(0, -1),
-            { role: "assistant", content: message, displayContent: message },
-          ];
-        });
-      }
-      if (script) {
-        const { logs } =
-          await this.sandboxRef.current.postMessageAndWaitForResponse(
-            sandboxId,
-            { request: "script", data: { script } },
-            30000,
-          );
-        if (abortSignal.aborted) return;
-        this.setMessages((messages) => {
-          return [...messages, { role: "user", content: formatLogs(logs) }];
-        });
-      }
-      return { intermediateScript };
+      await this.handleScript({
+        messages: llmMessages,
+        systemPrompt: magicSystemPrompt,
+      });
     } catch (error) {
       this.handleError(error);
     } finally {

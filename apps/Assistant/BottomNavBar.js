@@ -18,8 +18,6 @@ function BottomNavBar({
 }) {
   const [input, setInput] = useState("");
   const [collapsed, setCollapsed] = useState(true);
-  const [live, setLive] = useState(true);
-  const [intermediateScript, setIntermediateScript] = useState(null);
 
   const maximizeButtonRef = useRef(null);
   const shouldFocusMaximizeButtonRef = useRef(false);
@@ -53,14 +51,10 @@ function BottomNavBar({
     if (!settingsRef.current || chatLoading) return;
     try {
       setCollapsed(false);
-      const { intermediateScript } = await assistantRef.current.handleMagic({
+      await assistantRef.current.handleMagic({
         input,
         messages,
       });
-      if (intermediateScript) {
-        setIntermediateScript(intermediateScript);
-      }
-      setLive(true);
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("An unexpected error occurred", "error");
@@ -122,11 +116,10 @@ function BottomNavBar({
                 <div className="max-h-[80vh]">
                   <ChatDisplay messages={displayMessages} />
                 </div>
-                {intermediateScript && (
+                {messages[messages.length - 1].promptToContinue && (
                   <button
                     onClick={() => {
                       handleInput();
-                      setIntermediateScript(null);
                     }}
                   >
                     Allow Assistant to continue?
@@ -158,16 +151,12 @@ function BottomNavBar({
             <CircleArrowUp />
           )}
         </button>
-        {live && (
-          <button onClick={handleThumbsUp}>
-            <ThumbsUp />
-          </button>
-        )}
-        {live && (
-          <button onClick={handleThumbsDown}>
-            <ThumbsDown />
-          </button>
-        )}
+        <button onClick={handleThumbsUp}>
+          <ThumbsUp />
+        </button>
+        <button onClick={handleThumbsDown}>
+          <ThumbsDown />
+        </button>
         {/* <button className="ml-auto mr-4" onClick={handleSettings}>
           <Settings />
         </button> */}

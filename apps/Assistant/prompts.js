@@ -29,11 +29,11 @@ ${formattedLogs}
 function formatContext(context, selection) {
   let selectionPrompt = "";
   if (selection && selection.length < 1000) {
-    selectionPrompt = `\n\n<user_highlighted_text>
+    selectionPrompt = `\n<user_highlighted_text>
 ${selection}
 </user_highlighted_text>`;
   }
-  return `\n<app_context>
+  return `<app_context>
 ${context}
 </app_context>${selectionPrompt}`;
 }
@@ -71,8 +71,52 @@ Follow these guidelines when responding:
 
 After launching an app, you'll receive additional context on how you can use the app to fulfill the user's request.`;
 
-const magicSystemPrompt = `You are a user's assistant on a platform called Magic Sandbox. The user is interacting with a web app and is asking for your help.
+const initSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox. An app has just been launched and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
 
+To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
+
+<example_assistant_message>
+This text will be displayed to the user in a chat interface.
+<final_script>
+console.log('This code will be executed in the app');
+</final_script>
+Additional text to display to the user if needed.
+</example_assistant_message>
+
+Your scripts run in an async function, so you can use top level \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
+
+Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. The actual request from the user will be included in <user_request> tags:
+
+<example_user_message>
+<logs>
+[log] This is an example of a console.log message.
+[error] This is an example of a console.error message.
+[Uncaught Error] Error: This is an example of an uncaught error message.
+    at <anonymous>:1:1
+</logs>
+<user_request>
+This is an example of a user request.
+</user_request>
+</example_user_message>
+
+You can use <intermediate_script> tags if you need multiple scripts to fulfill the <user_request>. The general pattern is to run an <intermediate_script> to gather additional context, then run a <final_script> to fulfill the <user_request>. After each <intermediate_script>, the user will be prompted to allow you to continue. Only use <intermediate_script> tags if you can't fulfill the <user_request> with a single script.
+
+Before using <intermediate_script> tags, explain to the user your plan and why you first need to gather additional context. For example, let's say the user asked you to help them create a weather app, you launched a code editor app, and the <app_context> instructed you to search for a relevant Function to use to provide backend data:
+
+<example_assistant_message>
+To help you create a weather app, first I'll need to search for a relevant Function to use to provide backend data.
+<intermediate_script>
+// search for a Function as instructed by <app_context>...
+</intermediate_script>
+</example_assistant_message>
+
+The Magic Sandbox platform is made up of Apps (frontend) and Functions (backend). Both Apps and Functions follow the naming convention author.name@version. For Apps, the first letter of the name must be uppercase, e.g. magicsandbox.ExampleApp@0.1.0. For Functions, the first letter of the name must be lowercase, e.g. magicsandbox.exampleFunction@0.1.0. Apps and Functions can also be referred to using just author.name, which will resolve to the latest published version.
+
+Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of the Sandbox are documented below:
+
+${sandboxDocs}`;
+
+const magicSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox. The user is interacting with an app and is asking for your help.
 
 In your response, you can:
 
@@ -133,13 +177,13 @@ The Magic Sandbox platform is made up of Apps (frontend) and Functions (backend)
 
 Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of the Sandbox are documented below:
 
-${sandboxDocs}
-`;
+${sandboxDocs}`;
 
 export {
   formatInput,
   formatLogs,
   formatContext,
   inputSystemPrompt,
+  initSystemPrompt,
   magicSystemPrompt,
 };

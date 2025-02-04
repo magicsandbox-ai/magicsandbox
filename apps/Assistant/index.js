@@ -19,6 +19,7 @@ function App({ urlParams }) {
   - role: "user" or "assistant"
   - content: the content to use in the API. if not set, excluded from API call
   - displayContent: the content to display in the UI. if not set, not shown in the UI
+  - promptToContinue: whether to prompt the user to allow the assistant to continue executing additional scripts
   */
   const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
