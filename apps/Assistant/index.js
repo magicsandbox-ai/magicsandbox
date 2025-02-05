@@ -23,6 +23,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   */
   const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [apps, setApps] = useState([]);
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -81,6 +82,10 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
           },
         });
       }
+      const apps = await requestGetData("apps", {
+        app: "magicsandbox.Assistant",
+      });
+      setApps(apps || []);
     }
     if (!settingsRef.current) {
       init().catch((error) => {
@@ -139,9 +144,12 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
             assistantRef,
             messages,
             chatLoading,
+            apps,
+            setApps,
           }}
         />
       )}
+
       <Sandbox
         ref={sandboxRef}
         className={`w-full ${state === "home" ? "hidden" : "grow"}`}
@@ -155,6 +163,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
             assistantRef,
             messages,
             chatLoading,
+            setApps,
           }}
         />
       )}

@@ -1,16 +1,12 @@
 import pytest
-import torch
 from pydantic import BaseModel
-from fastapi import Response
-import msgpack
 import os
 os.environ['EMBEDDING_MODEL'] = 'sentence-transformers/all-mpnet-base-v2'
 # need to pass S3_ENDPOINT_BUCKET, GEMINI_API_KEY as env vars
-from .main import AppData, FindAppUpdateItem, FindAppArgs, Rating
+from .main import AppData, FindAppUpdateItem, FindAppArgs
 
 '''
 note: the order of these tests matters (which is probably not a good practice)
-test maxCost
 '''
 
 @pytest.fixture(scope="module")
@@ -30,9 +26,11 @@ def test_insert(app_data):
         kind='app',
         type=None,
         minCost=0.001,
+        finalCost=0.001,
         status='active',
     )])
     assert 'magicsandbox.FindAppPyTest@0.1.0' in app_data.app_embeddings['apps_to_ix']
+
 
 def test_update(app_data):
     app_data.update_app_data([FindAppUpdateItem(
@@ -46,7 +44,8 @@ def test_update(app_data):
         description='This is an updated description',
         kind='app',
         type=None,
-        minCost=0.001,
+        minCost=0.002,
+        finalCost=0.002,
         status='active',
     )])
 
@@ -63,22 +62,16 @@ def test_new_version(app_data):
         kind='app',
         type=None,
         minCost=0.001,
+        finalCost=0.001,
         status='active',
     )])
-    old_embedding = app_data.app_embeddings['embeddings'][app_data.app_embeddings['apps_to_ix']['magicsandbox.FindAppPyTest@0.1.0']]
-    new_embedding = app_data.app_embeddings['embeddings'][app_data.app_embeddings['apps_to_ix']['magicsandbox.FindAppPyTest@0.1.1']]
-    assert torch.allclose(old_embedding, new_embedding)
+    assert 'magicsandbox.FindAppPyTest@0.1.0' in app_data.app_embeddings['apps_to_ix']
 
 class AppResult(BaseModel):
-    app: str
-    embedding: list[float]
-    score: float
+    id: str
+    description: str
     minCost: float
-
-class FindAppResponse(BaseModel):
-    inputEmbedding: list[float]
-    apps: list[AppResult]
-    inputId: str
+    finalCost: float
 
 @pytest.mark.asyncio(loop_scope="module")
 async def test_find(app_data):
@@ -88,35 +81,13 @@ async def test_find(app_data):
         apps=['magicsandbox.FindAppPyTest@0.1.1']
     )
     response = await app_data.find_app(args)
-    assert isinstance(response, Response)
-    result = msgpack.unpackb(response.body)
-    validated_response = FindAppResponse(**result)
-    assert len(validated_response.inputEmbedding) > 0
-    assert any(app.app == 'magicsandbox.FindAppPyTest@0.1.1' for app in validated_response.apps)
-
-@pytest.mark.asyncio(loop_scope="module")
-async def test_rating(app_data):
-    # first search to get an inputId
-    args = FindAppArgs(
-        input='help me build a todo list app',
-    )
-    response = await app_data.find_app(args)
-    result = msgpack.unpackb(response.body)
-    input_id = result['inputId']
-    app = result['apps'][0]['app']
-    old_embedding = app_data.app_embeddings['embeddings'][app_data.app_embeddings['apps_to_ix'][app]].clone()
-    app_data.rate_app(Rating(
-        inputId=input_id,
-        app=app,
-        rating=1.0
-    ))
-    assert input_id not in app_data.input_ids
-    new_embedding = app_data.app_embeddings['embeddings'][app_data.app_embeddings['apps_to_ix'][app]]
-    assert new_embedding.norm() > old_embedding.norm()
-    # could test that new embedding is closer to input embedding
+    assert isinstance(response, list)
+    validated_responses = [AppResult(**app) for app in response]
+    assert not any(app.id == 'magicsandbox.FindAppPyTest@0.1.0' for app in validated_responses) #minCost too high, should not be included
+    assert any(app.id == 'magicsandbox.FindAppPyTest@0.1.1' for app in validated_responses)
 
 @pytest.mark.asyncio(loop_scope="module")
 async def test_sync(app_data):
-    await app_data.sync_app_data()
-    app_data.init_app_embeddings()
+    await app_data.sync_app_data() //persist embeddings
+    app_data.init_app_embeddings() //read embeddings
     assert len(app_data.app_embeddings['apps']) > 0

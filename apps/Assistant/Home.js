@@ -9,6 +9,7 @@ function Home({
   assistantRef,
   messages,
   chatLoading,
+  apps,
 }) {
   const [input, setInput] = useState("");
 
@@ -24,7 +25,9 @@ function Home({
   }
 
   if (messages.length === 0) {
-    return <InitHome {...{ input, setInput, handleInput, chatLoading }} />;
+    return (
+      <InitHome {...{ input, setInput, handleInput, chatLoading, apps }} />
+    );
   } else {
     return (
       <Chat {...{ messages, input, setInput, handleInput, chatLoading }} />
@@ -32,20 +35,16 @@ function Home({
   }
 }
 
-function InitHome({ input, setInput, handleInput, chatLoading }) {
+function InitHome({ input, setInput, handleInput, chatLoading, apps }) {
   return (
-    <div className="flex h-full w-full max-w-screen-lg flex-col self-center">
-      <div className="flex h-1/2 flex-none flex-col justify-end pb-12">
+    <div className="h-full w-full max-w-screen-lg self-center">
+      <div className="flex h-1/2 flex-none flex-col justify-end pb-6">
         <p className="mb-6 text-center text-2xl font-bold md:text-3xl">
           What can I help you with?
         </p>
         <Input {...{ input, setInput, handleInput, chatLoading }} />
       </div>
-      <div className="grow overflow-y-auto md:flex">
-        <AppList title="Favorite Apps" apps={10} />
-        <AppList title="Recent Apps" apps={25} />
-        <AppList title="Published Apps" apps={3} />
-      </div>
+      <AppList apps={apps} />
     </div>
   );
 }
@@ -78,23 +77,62 @@ function Input({ input, setInput, handleInput, chatLoading }) {
   );
 }
 
-function AppList({ title, apps }) {
-  /*
-  - id, description, icon for deprecated
-  - expand to see minCost, finalCost, deprecated explained
-  - expand to edit and pin a version? link to homepage?
-  */
-  apps = Array.from(new Array(apps), (_, i) => {
-    return { authorName: `author${i}.App${i}` }; //fake data for now
-  });
+function AppList({ apps }) {
+  const [state, setState] = useState("Favorited");
+
+  const states = ["Favorited", "Recent", "Published", "Blocked"];
+  const displayApps = apps.filter((app) => app[state.toLowerCase()]);
+
   return (
-    <div className="flex grow flex-col items-center gap-2 overflow-y-auto">
-      <p className="text-lg font-bold">{title}</p>
-      {apps.map((app) => (
-        <div key={app.authorName}>{app.authorName}</div>
-      ))}
+    <div className="flex flex-col items-center gap-6">
+      <div className="flex gap-6">
+        {states.map((s) => (
+          <AppListButton
+            key={s}
+            active={s === state}
+            onClick={() => setState(s)}
+          >
+            {s}
+          </AppListButton>
+        ))}
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-lg font-medium">{`${state} Apps`}</p>
+        {displayApps.length > 0 ? (
+          displayApps.map((app) => <AppCard key={app.id} app={app} />)
+        ) : (
+          <p>Nothing to see here yet!</p>
+        )}
+      </div>
     </div>
   );
+}
+
+function AppListButton({ active, onClick, children }) {
+  return (
+    <button
+      className={`w-20 rounded-md py-px hover:bg-stone-300 ${
+        active
+          ? "border-2 border-stone-700 bg-stone-200 font-medium"
+          : "border border-stone-500 bg-stone-100"
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+/*
+- id, description, icon for deprecated
+- expand to see minCost, finalCost, deprecated explained
+- expand to edit and pin a version? link to homepage?
+- buttons to (un)favorite, (un)block - pass down setApps
+- add bang?
+*/
+
+function AppCard({ app }) {
+  return <div>{app.id.split("@")[0]}</div>;
 }
 
 export default Home;

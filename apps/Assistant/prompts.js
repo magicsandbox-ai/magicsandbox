@@ -4,7 +4,7 @@ function formatInput(input, apps) {
   let suggestedApps = "";
   if (apps) {
     suggestedApps = `\n<suggested_apps>
-${apps.map((app) => `${app.author}.${app.name}: ${app.description}`).join("\n")}
+${apps.map((app) => `${app.id.split("@")[0]}: ${app.description}`).join("\n")}
 </suggested_apps>`;
   }
   return `<user_request>

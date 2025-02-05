@@ -130,9 +130,10 @@ class Assistant {
     if (error.name === "ToastError") {
       message = error.message;
       type = error.type;
-    } else if (error.name === "RequestSandboxError") {
-      message = error.message;
     }
+    // } else if (error.name === "RequestSandboxError") {
+    //   message = error.message;
+    // }
     this.setDisplayContent(`Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
@@ -149,12 +150,11 @@ class Assistant {
       if (messages.length === 0) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
-        const { result } = await requestFunction("magicsandbox.findApp", {
+        apps = await requestFunction("magicsandbox.findApp", {
           input,
           maxCost: this.budget,
         });
         if (abortSignal.aborted) return;
-        apps = result.apps;
       }
       newMessages[newMessages.length - 2].content = formatInput(input, apps);
       let messageContent = "";
