@@ -1,4 +1,5 @@
 {
+  author: "magicsandbox",
   name: "Dev",
   version: "0.1.0",
   description: "Develop a Magic Sandbox app or function in the browser",
@@ -46,9 +47,5 @@
     semver: "^7.6.3",
     util: "^0.12.5", //for eslint
     "@codemirror/merge": "^6.8.0",
-  },
-  writeData: {
-    enabled: true,
-    requestAppMaxCost: 0.001,
   },
 }

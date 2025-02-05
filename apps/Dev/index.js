@@ -130,14 +130,14 @@ function App() {
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
     let initApps, initSelectedApp, initFiles;
     try {
-      initApps = await requestGetAllKeysData("magicsandbox.Dev");
+      initApps = await requestGetAllKeysData();
       initApps = initApps.filter((key) => key !== "selectedApp");
       if (initApps.length === 0) {
         throw new Error(); //fall back to examples
       }
-      initSelectedApp = await requestGetData("magicsandbox.Dev", "selectedApp");
+      initSelectedApp = await requestGetData("selectedApp");
       initSelectedApp = initSelectedApp || initApps[0];
-      initFiles = await requestGetData("magicsandbox.Dev", initSelectedApp);
+      initFiles = await requestGetData(initSelectedApp);
       if (!initFiles) {
         initApps.push(exampleApp);
         initSelectedApp = exampleApp;
@@ -327,11 +327,11 @@ function App() {
         console.error(`Prettier error: ${error}`);
       }
     }
-    requestPutData("magicsandbox.Dev", app, newFiles); //todo handle database full
+    requestPutData(app, newFiles); //todo handle database full
     if (!apps.includes(app)) {
       setApps([app, ...apps]);
       setSelectedApp(app);
-      requestPutData("magicsandbox.Dev", "selectedApp", app);
+      requestPutData("selectedApp", app);
     }
     await build(appObj);
   }
@@ -342,11 +342,11 @@ function App() {
       if (appsFilesMapRef.current[app]) {
         newFiles = appsFilesMapRef.current[app];
       } else {
-        newFiles = await requestGetData("magicsandbox.Dev", app);
+        newFiles = await requestGetData(app);
       }
       setFiles(newFiles);
       setSelectedApp(app);
-      requestPutData("magicsandbox.Dev", "selectedApp", app);
+      requestPutData("selectedApp", app);
       handleSelectFilename("magic.json", app);
       deletedFilesRef.current = {};
     } catch (error) {
@@ -357,14 +357,14 @@ function App() {
   async function deleteApp(app) {
     const newApps = apps.filter((a) => a !== app);
     if (newApps.length === 0) {
-      await requestDeleteData("magicsandbox.Dev", app);
+      await requestDeleteData(app);
       const { initSelectedApp } = initData(); //get default example
       handleSelectApp(initSelectedApp);
       setApps([initSelectedApp]);
     } else {
       setApps(newApps);
       handleSelectApp(newApps[0]);
-      requestDeleteData("magicsandbox.Dev", app);
+      requestDeleteData(app);
     }
   }
 

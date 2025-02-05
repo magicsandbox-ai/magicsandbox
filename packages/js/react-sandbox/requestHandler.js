@@ -4,15 +4,15 @@ const maximumMaxCost = 1;
 /**
  * Validates the request and adds default values by mutating `data`
  */
-function validateAndDefaultRequest(request, data, assistant) {
+function validateAndDefaultRequest(request, data, assistant, app) {
   const requiredKeys = {
     app: ["app"],
     function: ["fn", "args"],
-    putData: ["app", "key", "val"],
-    deleteData: ["app", "key"],
-    getData: ["app", "key"],
-    getAllData: ["app"],
-    getAllKeysData: ["app"],
+    putData: ["key", "val"],
+    deleteData: ["key"],
+    getData: ["key"],
+    getAllData: [],
+    getAllKeysData: [],
     fetch: ["resource"],
     openUrl: ["url"],
     publish: ["magicObj"],
@@ -49,6 +49,24 @@ function validateAndDefaultRequest(request, data, assistant) {
     if (data.options.maxCost > maximumMaxCost) {
       return `maxCost must be less than or equal to ${maximumMaxCost}`;
     }
+    if (assistant && app) {
+      data.options.app = app;
+    }
+  } else if (
+    assistant &&
+    app &&
+    [
+      "putData",
+      "deleteData",
+      "getData",
+      "getAllData",
+      "getAllKeysData",
+    ].includes(request)
+  ) {
+    data.options = {
+      ...data.options,
+      app: data.options?.app || app,
+    };
   } else if (request === "fetch") {
     data.options = {
       ...data.options,
@@ -111,53 +129,57 @@ async function requestHandler({
         });
         return;
       }
-    } else if (request === "putData" || request === "deleteData") {
-      if (!appObjRef.current?.writeData?.enabled) {
-        //don't write, store in requestDataRef
-        //todo serialize, disallow null, what else to match behavior?
-        if (request === "putData") {
-          requestDataRef.current.db[data.app] =
-            requestDataRef.current.db[data.app] || {};
-          requestDataRef.current.db[data.app][data.key] = data.val;
-        } else if (request === "deleteData") {
-          delete requestDataRef.current.db[data.app]?.[data.key];
+    } else if (
+      [
+        "putData",
+        "deleteData",
+        "getData",
+        "getAllData",
+        "getAllKeysData",
+      ].includes(request)
+    ) {
+      const app =
+        data.options?.app ||
+        `${appObjRef.current.author}.${appObjRef.current.name}`;
+      if (request === "putData") {
+        if (data.val === null) {
+          sandboxRef.current.postMessage(sandboxId, {
+            id,
+            error: { message: "Cannot put null data" },
+          });
+          return;
         }
+        //todo enforce size limit? use msgpack? support evictionPolicy?
+        requestDataRef.current[app] = requestDataRef.current[app] || {};
+        requestDataRef.current[app][data.key] = structuredClone(data.val);
         sandboxRef.current.postMessage(sandboxId, { id, response: true });
         return;
-      } else if (!requestDataRef.current.requestedApp) {
-        //requestApp must be called before we can write to database
-        try {
-          await requestApp(data.app, {
-            maxCost: appObjRef.current?.writeData?.requestAppMaxCost,
-          });
-        } catch (error) {
-          console.error("requestApp error", error);
-          //probably requestSandbox will fail but perhaps author has called requestApp themselves, so don't throw
-        } finally {
-          requestDataRef.current.requestedApp = true;
-        }
-        //fall through to requestSandbox
-      }
-    } else if (
-      request === "getData" ||
-      request === "getAllData" ||
-      request === "getAllKeysData"
-    ) {
-      //for reads, we return data in requestDataRef if found
-      if (request === "getData") {
-        response = requestDataRef.current.db[data.app]?.[data.key];
-      } else if (request === "getAllData") {
-        response = requestDataRef.current.db[data.app];
-      } else if (request === "getAllKeysData") {
-        response = requestDataRef.current.db[data.app];
-        if (response !== undefined) {
-          response = Object.keys(response);
-        }
-      }
-      if (response !== undefined) {
-        //found, return
-        sandboxRef.current.postMessage(sandboxId, { id, response });
+      } else if (request === "deleteData") {
+        delete requestDataRef.current[app]?.[data.key];
+        sandboxRef.current.postMessage(sandboxId, { id, response: true });
         return;
+      } else if (request === "getData") {
+        response = requestDataRef.current[app]?.[data.key];
+        if (response !== undefined) {
+          sandboxRef.current.postMessage(sandboxId, { id, response });
+          return;
+        }
+        //otherwise, fall through to requestSandbox
+      } else if (request === "getAllData") {
+        response = requestDataRef.current[app];
+        if (response !== undefined) {
+          sandboxRef.current.postMessage(sandboxId, { id, response });
+          return;
+        }
+      } else if (request === "getAllKeysData") {
+        response = requestDataRef.current[app];
+        if (response !== undefined) {
+          sandboxRef.current.postMessage(sandboxId, {
+            id,
+            response: Object.keys(response),
+          });
+          return;
+        }
       }
     }
     let error;

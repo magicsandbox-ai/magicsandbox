@@ -187,7 +187,7 @@ class PrivacyRisk extends Risk {
     }
   }
   handleRequest(_, data) {
-    this.pendingReads.add(data.app.split("@")[0]);
+    this.pendingReads.add(data.options.app.split("@")[0]);
   }
   handleApprove(approved, askedUser, untrustedReads) {
     if (approved && askedUser) {
@@ -241,7 +241,7 @@ class DataLossRisk extends Risk {
     }
   }
   handleRequest(_, data) {
-    this.pendingWrites.add(data.app.split("@")[0]);
+    this.pendingWrites.add(data.options.app.split("@")[0]);
   }
   async handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
     if (approved) {
@@ -355,7 +355,8 @@ async function manageBackups(apps, toastsRef) {
     toastsRef.current.addToast("Assistant failed to backup data", "error");
   }
   try {
-    const backups = await requestGetAllKeysData("magicsandbox.Assistant", {
+    const backups = await requestGetAllKeysData({
+      app: "magicsandbox.Assistant",
       backup: true,
     });
     const appBackups = Object.fromEntries(apps.map((app) => [app, []]));
@@ -400,24 +401,21 @@ async function manageBackups(apps, toastsRef) {
     });
     await Promise.all(
       backupsToTake.map(async (app) => {
-        const data = await requestGetAllData(app);
+        const data = await requestGetAllData({ app });
         if (data) {
-          await requestPutData(
-            "magicsandbox.Assistant",
-            `${app}@${Date.now()}`,
-            data,
-            {
-              evictionPolicy: "fifo",
-              backup: true,
-            },
-          );
+          await requestPutData(`${app}@${Date.now()}`, data, {
+            app: "magicsandbox.Assistant",
+            evictionPolicy: "fifo",
+            backup: true,
+          });
         }
       }),
     );
     for (const key of backupsToDelete) {
-      requestDeleteData("magicsandbox.Assistant", key, { backup: true }).catch(
-        errorHandler,
-      );
+      requestDeleteData(key, {
+        app: "magicsandbox.Assistant",
+        backup: true,
+      }).catch(errorHandler);
     }
   } catch (error) {
     errorHandler(error);

@@ -72,16 +72,11 @@ Arguments to pass to `app.init` during development.
 
 Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development. Set to false to disable.
 
-#### writeData (object) (default { enabled: false, requestAppMaxCost: 0 })
+#### author (string)
 
-Whether to write data to the database when calling `requestPutData` or `requestDeleteData`. If not enabled, data will be maintained in memory, so it can be retrieved by later calls to `requestGetData` but will be lost when the server restarts.
+To read from the database using e.g. `requestGetData`, magicsandbox.Dev needs to know the App to use for storage in the form 'author.name', so you must set the `author` key. Alternatively, you can set `options.app` when calling `requestGetData`.
 
-Magic Sandbox requires that an App was successfully called with `requestApp` before writing to the database. Therefore, to enable writing data:
-
-- A version of your App must have been published successfully.
-- You must set `writeData.enabled` to true and `writeData.requestAppMaxCost` to a number that's greater than your App's minCost.
-
-After you do so, magicsandbox.Dev will call `requestApp` once and begin writing to the database.
+Note that magicsandbox.Dev only maintains writes made with `requestPutData` or `requestDeleteData` in memory, not saved to the database. They can be retrieved by later calls to `requestGetData` but will be lost upon refresh. magicsandbox.Dev does not currently enforce the 10 MB database size limit.
 
 #### dependencies (object)
 

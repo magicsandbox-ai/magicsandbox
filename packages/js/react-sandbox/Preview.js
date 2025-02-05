@@ -18,7 +18,7 @@ const Preview = forwardRef(function Preview(
   const appObjRef = useRef(null);
   const requestAppRef = useRef({});
   const requestFunctionRef = useRef({});
-  const requestDataRef = useRef({ requestedApp: false, db: {} });
+  const requestDataRef = useRef({});
 
   useEffect(() => {
     function _requestHandler(event) {

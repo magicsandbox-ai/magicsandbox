@@ -88,12 +88,12 @@ class Assistant {
       }
       return budget;
     }
-    const usageData = await requestGetData(
-      "magicsandbox.Assistant",
-      "usageData",
-    );
+    const usageData = await requestGetData("usageData", {
+      app: "magicsandbox.Assistant",
+    });
     const now = Date.now();
     let avgDaysBetweenUsage = 0.1;
+
     if (usageData) {
       const daysSinceLastUsage = (now - usageData.ts) / (1000 * 60 * 60 * 24);
       const alpha = 0.05;
@@ -115,12 +115,14 @@ class Assistant {
     if (update) {
       this.budget = budget;
     }
-    requestPutData("magicsandbox.Assistant", "usageData", {
-      avgDaysBetweenUsage,
-      ts: now,
-    }).catch(console.error);
+    requestPutData(
+      "usageData",
+      { avgDaysBetweenUsage, ts: now },
+      { app: "magicsandbox.Assistant" },
+    ).catch(console.error);
     return budget;
   }
+
   handleError(error) {
     console.error(error);
     let message = "please try again";
@@ -512,7 +514,12 @@ class Assistant {
       for (const event of batch) {
         const { id, msg } = event.data;
         let { request, data } = msg;
-        const validation = validateAndDefaultRequest(request, data, true);
+        const validation = validateAndDefaultRequest(
+          request,
+          data,
+          true,
+          this.app,
+        );
         if (validation) {
           this.sandboxRef.current.postMessage(event.sandboxId, {
             id,
@@ -559,9 +566,6 @@ class Assistant {
               error: { message: error || "User denied the request" },
             });
           } else {
-            if (request === "function") {
-              data.options.app = this.app;
-            }
             try {
               const response = await requestSandbox(request, data);
               if (abortSignal.aborted) return;

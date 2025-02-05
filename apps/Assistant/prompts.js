@@ -165,7 +165,7 @@ Before using <intermediate_script> tags, explain to the user your plan and why y
 <example_assistant_message>
 To help you migrate your data from magicsandbox.ExampleApp, first I'll need to look at how the data is structured.
 <intermediate_script>
-app.assistant.exampleAppData = await requestGetAllData('magicsandbox.ExampleApp');
+app.assistant.exampleAppData = await requestGetAllData({ app: 'magicsandbox.ExampleApp' });
 console.log(JSON.stringify(app.assistant.exampleAppData, null, 2));
 </intermediate_script>
 </example_assistant_message>

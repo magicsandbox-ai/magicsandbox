@@ -22,7 +22,6 @@ function AssistantSettings({ assistantRef, setModal, addToast }) {
         settings.map(({ key, value }) => [key, value]),
       );
       await requestPutData(
-        "magicsandbox.Assistant",
         "settings",
         Object.fromEntries(
           Object.entries(newSettings).map(([key, value]) => [
@@ -30,6 +29,7 @@ function AssistantSettings({ assistantRef, setModal, addToast }) {
             value instanceof Set ? Array.from(value) : value, //need to serialize sets
           ]),
         ),
+        { app: "magicsandbox.Assistant" },
       );
       assistantRef.current.settingsRef.current = {
         ...assistantRef.current.settingsRef.current,

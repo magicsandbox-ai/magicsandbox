@@ -52,6 +52,8 @@ todo expectations on magic. what context assistant is expected to have vs. what 
 
 todo initialized with userBalance and userBalanceRemainingDays
 
+todo providing app for data functions. when assistants use them, they must provide options.app
+
 ## Handling Sandbox Requests
 
 When the App Sandbox calls a Sandbox function like requestFetch, it uses postMessage to send a message to its parent, the Assistant Sandbox, that looks like this:
@@ -143,14 +145,13 @@ Like any other Magic App, Assistants can use the data Sandbox functions to store
 ```javascript
 //take backup of all of author.App's data
 requestPutData(
-  "magicsandbox.Assistant", //app
   "author.App", //key
-  await requestGetAllData("author.App"), //val
-  { evictionPolicy: "fifo", backup: true }, //options
+  await requestGetAllData({ app: "author.App" }), //val
+  { app: "magicsandbox.Assistant", evictionPolicy: "fifo", backup: true }, //options
 );
 
 //retrieve backup
-requestGetData("magicsandbox.Assistant", "author.App", { backup: true });
+requestGetData("author.App", { app: "magicsandbox.Assistant", backup: true });
 ```
 
 Assistants should not allow Apps access to this backup storage.

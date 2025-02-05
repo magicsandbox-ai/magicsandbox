@@ -32,16 +32,16 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   useEffect(() => {
     async function init() {
       // try {
-      //   const savedSettings = await requestGetData(
-      //     "magicsandbox.Assistant",
-      //     "settings",
-      //   );
+      //   const savedSettings = await requestGetData("settings", {
+      //     app: "magicsandbox.Assistant",
+      //   });
       //   if (savedSettings) {
       //     settingsRef.current = savedSettings;
       //   }
       // } catch (error) {
       //   console.error(error);
       //   toastsRef.current.addToast(
+
       //     "Failed to load Assistant settings. Using default settings",
       //     "error",
       //   );
