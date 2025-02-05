@@ -4,7 +4,7 @@
 
 The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
 
-With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Magic Apps](magic-apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
+With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Magic Apps](#magic-apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
 
 ### magic.json
 
@@ -122,7 +122,7 @@ Version ranges to use for all imports, enabling you to override the dependencies
 
 #### esbuildOptions (object) (default below)
 
-Options to pass to [esbuild](https://esbuild.github.io/api/#build) during the [build process](todo).
+Options to pass to [esbuild](https://esbuild.github.io/api/#build).
 
 The default values below can be overridden, except for `entryPoints`, `write`, and `plugins`:
 
@@ -212,7 +212,7 @@ The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.a
 
 ## Custom Methods
 
-You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](magic-apps) and [Magic Functions](magic-functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
+You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](#magic-apps) and [Magic Functions](#magic-functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
 
 ### Custom Magic App
 

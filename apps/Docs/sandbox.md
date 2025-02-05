@@ -24,7 +24,7 @@ Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
 
 - `app` _(**required**, string)_: Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's minCost. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
 
 **Returns:** a Promise that resolves to an App:
 
@@ -54,7 +54,7 @@ Executes a Magic Function and returns the result.
 - `fn` _(**required**, string)_: Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `args` _(**required**, any)_: Arguments to pass to the called Function.
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's minCost. Cannot exceed $1.00.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00.
   - `stream` _(boolean, default false)_: Whether to stream the result.
   - `includeUserInfo` _(object)_: An object with keys indicating additional user info to pass to the Function:
     - `userId` _(boolean, default false)_: Whether to include the user ID.
@@ -80,7 +80,7 @@ Magic Sandbox provides Sandbox functions for storing and retrieving key/value pa
 
 You can use another App's storage by passing `app` in `options`, though these requests are subject to user approval. Furthermore, put and delete requests that specify an `app` that has not been called with `requestApp` will throw an error.
 
-Each Magic App can store up to 10 MB of data. There is no concept of App version used for storage, so author1.app1@1.0.0 and author1.app1@1.0.1 store data in the same location.
+Each Magic App can store up to 10 MB of data. There is no concept of App version used for storage, so author.App@1.0.0 and author.App@1.0.1 store data in the same location.
 
 ### requestPutData
 
@@ -93,8 +93,8 @@ Store a key/value pair.
 - `options` _(object)_:
   - `app` _(string)_: App to use for storage
   - `evictionPolicy` _(string)_: Controls behavior if the put would cause the app to exceed its storage limit. Supported values:
-    - `undefined` _(default)_: Does not evict any key/value pairs and returns a 'Database size limit exceeded' error.
-    - `'fifo'`: Evict the oldest key/value pairs as needed to make room for the new key/value pair.
+    - undefined _(default)_: Does not evict any key/value pairs and returns a 'Database size limit exceeded' error.
+    - 'fifo': Evict the oldest key/value pairs as needed to make room for the new key/value pair.
 
 **Returns:** a Promise that resolves to true
 
@@ -131,7 +131,7 @@ Retrieve all key/value pairs.
 - `options` _(object)_:
   - `app` _(string)_: App to use for storage
 
-**Returns:** a Promise that resolves an object mapping keys to values
+**Returns:** a Promise that resolves to an object mapping keys to values
 
 ### requestGetAllKeysData
 
@@ -142,24 +142,27 @@ Retrieve all keys.
 - `options` _(object)_:
   - `app` _(string)_: App to use for storage
 
-**Returns:** a Promise that resolves an array of keys
+**Returns:** a Promise that resolves to an array of keys
 
 ## Other Sandbox Functions
 
-### requestFetch (resource, options?) => Promise<SerializedResponse>
+### requestFetch
 
 Make a fetch request.
 
-**Arguments:** see the [fetch docs](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
+**Arguments:**
 
-Only the following fetch `options` are supported: `body`, `headers`, `integrity`, `method`, `priority`, `redirect`.
+- `resource`
+- `options`
 
-Additionally, `options` accepts an additional `responseType` option used to parse the response body:
+See the [fetch docs](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API). Only the following `options` are supported: `body`, `headers`, `integrity`, `method`, `priority`, and `redirect`.
 
-- `auto` (default): Parse as json or string according to the Content-Type header. If the Content-Type header is not present, returns an arrayBuffer.
-- `json`: Parse the response as JSON
-- `string`: Decode the response as a UTF-8 string
-- `bytes`: Return the raw bytes as an ArrayBuffer
+Additionally, `options` accepts a `responseType` option used to parse the response body:
+
+- 'auto' (default): Parse as json or string according to the Content-Type header. If the Content-Type header is not present, returns an arrayBuffer.
+- 'json': Parse the response as JSON
+- 'string': Decode the response as a UTF-8 string
+- 'bytes': Return the raw bytes as an ArrayBuffer
 
 **Returns:** a Promise that resolves to a SerializedResponse, since the Response object itself cannot be serialized and passed into the Sandbox.
 
@@ -171,55 +174,55 @@ type SerializedResponse = {
 };
 ```
 
-### requestOpenUrl (url) => Promise<true>
+### requestOpenUrl
 
-Open a URL in a new tab. Traditional links don't work in the Sandbox, so use `requestOpenUrl` instead.
-
-Don't do this:
+Open a URL in a new tab. Traditional links can't be opened in the Sandbox, so use `requestOpenUrl` instead.
 
 ```html
+<!-- don't do this -->
 <a href="https://example.com">Click me</a>
-```
 
-Do this instead:
-
-```html
+<!-- do this instead -->
 <a onclick="requestOpenUrl('https://example.com')">Click me</a>
 ```
 
-**Arguments**:
+**Arguments:**
 
-- `url` (**required**) (string): URL to open
+- `url` _(**required**, string)_: URL to open
 
 **Returns:** a Promise that resolves to true
 
-### requestPublish (magicObj) => Promise<true>
+### requestPublish
 
 Publish a Magic Function or Magic App.
 
-todo
+**Arguments:**
 
-### requestDownload (filename: string, content: BlobPart }) => Promise<true>
+- `magicJson` _(**required**, object)_: See [Magic Apps](#magic-apps) and [Magic Functions](#magic-functions) for details.
+
+**Returns:** a Promise that resolves to true
+
+### requestDownload
 
 Download a file.
 
 **Arguments:**
 
-- `filename` (**required**) (string): filename to use for the downloaded file
-- `content` (**required**) (BlobPart): content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types.
+- `filename` _(**required**, string)_: filename to use for the downloaded file
+- `content` _(**required**, BlobPart)_: content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types.
 
 **Returns:** a Promise that resolves to true
 
-### requestSandbox (request: string, args: any) => Promise<any>
+### requestSandbox
 
 A convenience function to call other Sandbox functions.
 
-**Arguments:** an object with the following keys:
+**Arguments:**
 
-- `request` (**required**) (string): the Sandbox function to call. 'app' calls requestApp, 'function' calls requestFunction, 'putData' calls requestPutData, etc.
-- `args` (any): the arguments to pass to the Sandbox function
+- `request` _(**required**, string)_: the Sandbox function to call. 'app' calls requestApp, 'function' calls requestFunction, 'putData' calls requestPutData, etc.
+- `args` _(any)_: the arguments to pass to the Sandbox function
 
-**Returns:** the result from the Sandbox function
+**Returns:** a Promise that resolves to the result from the Sandbox function
 
 ## Error Handling
 
@@ -227,5 +230,5 @@ If a Sandbox function throws an error, it will have the following properties:
 
 - `name` (string): "RequestSandboxError"
 - `message` (string): a message describing the error
-- `data?` (any): an optional object containing additional error data
+- `data?` (object): an optional object containing additional error data
   - `minCost?` (number): provided if calling requestApp or requestFunction with a maxCost that is less than the App or Function's minCost

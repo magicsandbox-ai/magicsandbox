@@ -56,6 +56,9 @@
 #nav a {
   @apply hover:underline;
 }
+.text-shadow {
+  text-shadow: 0px 0px 1px black;
+}
 
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */

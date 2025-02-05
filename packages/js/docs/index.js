@@ -45,6 +45,18 @@ function rehypeCode() {
   };
 }
 
+function rehypeLinks() {
+  return (tree) => {
+    visit(tree, "element", (node) => {
+      if (node.tagName === "a" && node.properties.href.startsWith("#")) {
+        node.properties.href =
+          "https://magicsandbox.ai/?app=magicsandbox.Docs&id=" +
+          node.properties.href.slice(1); //remove leading #
+      }
+    });
+  };
+}
+
 async function docs(paths, folder) {
   const markdowns = await Promise.all(
     paths.map((path) => fs.readFile(new URL(path, folder), "utf8")),
@@ -60,6 +72,7 @@ async function docs(paths, folder) {
     .use(rehypeSlug)
     .use(rehypeCode)
     .use(rehypeHighlight)
+    .use(rehypeLinks)
     .use(rehypeStringify)
     .process(markdown);
   const nav = await unified()
@@ -67,6 +80,7 @@ async function docs(paths, folder) {
     .use(remarkToc)
     .use(remarkRehype)
     .use(rehypeIndentNav)
+    .use(rehypeLinks)
     .use(rehypeStringify)
     .process(markdown);
   html = html.replace("%%MAIN%%", main);
