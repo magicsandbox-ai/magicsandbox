@@ -59,8 +59,8 @@ const Preview = forwardRef(function Preview(
       html: appObj.html,
       style: appObj.style,
     });
+    let logs;
     if (timeout) {
-      let logs;
       try {
         ({ logs } = await sandboxRef.current.executeScriptAndWaitForResponse({
           sandboxId,
@@ -71,7 +71,6 @@ const Preview = forwardRef(function Preview(
         console.error(error);
         logs = ["[Uncaught Error] Error: script timed out"];
       }
-      return { logs };
     } else {
       sandboxRef.current.postMessage(sandboxId, {
         script: appObj.script,
@@ -90,6 +89,7 @@ const Preview = forwardRef(function Preview(
       )
       .catch(() => {}); //ignore
     setState("ready");
+    return { logs };
   }
 
   function error(err) {

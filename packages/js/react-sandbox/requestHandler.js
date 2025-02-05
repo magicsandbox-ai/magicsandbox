@@ -54,7 +54,6 @@ function validateAndDefaultRequest(request, data, assistant, app) {
     }
   } else if (
     assistant &&
-    app &&
     [
       "putData",
       "deleteData",
@@ -138,8 +137,12 @@ async function requestHandler({
         "getAllKeysData",
       ].includes(request)
     ) {
+      if (!data.options.app && appObjRef.current.author) {
+        //in case we don't find data with e.g. getData, set options.app for the call to requestSandbox
+        data.options.app = `${appObjRef.current.author}.${appObjRef.current.name}`;
+      }
       const app =
-        data.options?.app ||
+        data.options.app ||
         `${appObjRef.current.author}.${appObjRef.current.name}`;
       if (request === "putData") {
         if (data.val === null) {

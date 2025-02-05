@@ -210,27 +210,30 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
         if (bundledDepsRef.current) {
           try {
             const bundledText = bundledDepsRef.current;
-            const text = result.outputFiles[0].text;
-            const sourceMapStart =
-              text.lastIndexOf("//# sourceMappingURL=") + 50; //50 chars removes //# sourceMappingURL=data...base64,
-            const decodedSourceMap = JSON.parse(
-              atob(text.slice(sourceMapStart)),
-            );
-            let bundledLineCount = countLines(bundledText) + 1; //add 1 because we add one extra line break when concatenating
-            const newSourceMap = {
-              //https://tc39.es/source-map/#index-map
-              version: 3,
-              sections: [
-                {
-                  offset: { line: bundledLineCount, column: 0 },
-                  map: { ...decodedSourceMap },
-                },
-              ],
-            };
-            const newText = text.slice(0, sourceMapStart);
-            const encodedSourceMap = btoa(JSON.stringify(newSourceMap));
+            let text = result.outputFiles[0].text;
+            let sourceMapStart = text.lastIndexOf("//# sourceMappingURL=");
+            if (sourceMapStart !== -1) {
+              sourceMapStart += 50; //50 chars removes //# sourceMappingURL=data...base64,
+              const decodedSourceMap = JSON.parse(
+                atob(text.slice(sourceMapStart)),
+              );
+              let bundledLineCount = countLines(bundledText) + 1; //add 1 because we add one extra line break when concatenating
+              const newSourceMap = {
+                //https://tc39.es/source-map/#index-map
+                version: 3,
+                sections: [
+                  {
+                    offset: { line: bundledLineCount, column: 0 },
+                    map: { ...decodedSourceMap },
+                  },
+                ],
+              };
+              const newText = text.slice(0, sourceMapStart);
+              const encodedSourceMap = btoa(JSON.stringify(newSourceMap));
+              text = `${newText}${encodedSourceMap}`;
+            }
             result.outputFiles[0] = {
-              text: `${bundledText}\n${newText}${encodedSourceMap}`,
+              text: `${bundledText}\n${text}`,
             };
           } catch (e) {
             console.log("Error updating sourcemap", e);

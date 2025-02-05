@@ -371,17 +371,14 @@ function App() {
   async function handlePublish() {
     try {
       const _appObj = JSON5.parse(files["magic.json"]);
-      const appObj = await build(_appObj, {
-        minify: true,
-        sourcemap: false,
-      });
-      requestPublish(appObj);
+      await build(_appObj, true);
     } catch (error) {
       console.error(error);
+      previewRef.current.error(error.message);
     }
   }
 
-  async function build(_appObj, esbuildOptions) {
+  async function build(_appObj, publish) {
     try {
       if (_appObj.update) {
         console.log("Build skipped when update is true"); //todo show user
@@ -399,7 +396,7 @@ function App() {
           plugins: [bundleDepsPluginRef.current, importPluginRef.current],
           minify: false,
           sourcemap: true,
-          ...esbuildOptions,
+          ...(publish ? { minify: true, sourcemap: false } : {}),
         },
         context: esbuildContextRef.current,
         fileExists: (filename) => filename in files,
@@ -416,6 +413,10 @@ function App() {
         });
       }
       esbuildContextRef.current = context;
+      if (publish) {
+        delete appObj.esbuildOptions; //plugins can't be serialized and cause an error
+        await requestPublish(appObj);
+      }
       const { logs } = await previewRef.current.update(
         sandboxId,
         appObj,
@@ -436,7 +437,9 @@ function App() {
     } else if (platform === "mobile") {
       targetWidth = 360;
     } else if (platform === "tablet") {
-      targetWidth = 768;
+      //768 is the most common tablet width, but need to add some wiggle room because resize is not exact
+      //otherwise tailwind md breakpoint of 768 is not triggered
+      targetWidth = 770;
     } else {
       throw new Error(`Invalid platform: ${platform}`);
     }

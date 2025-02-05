@@ -68,6 +68,7 @@ const Sandbox = forwardRef(function Sandbox(
       streamData,
       addListener,
       removeListener,
+      executeScriptAndWaitForResponse,
       getInit,
       getContext,
     };
@@ -219,17 +220,20 @@ const Sandbox = forwardRef(function Sandbox(
     listenersRef.current.clear();
   }
 
-  function executeScriptAndWaitForResponse({
+  async function executeScriptAndWaitForResponse({
     sandboxId,
     script,
     args,
     timeout,
   }) {
-    return postMessageAndWaitForResponse(sandboxId, {
-      request: "script",
-      data: { script, args },
+    return await postMessageAndWaitForResponse(
+      sandboxId,
+      {
+        request: "script",
+        data: { script, args },
+      },
       timeout,
-    });
+    );
   }
 
   async function getInit(sandboxId, args, timeout) {
