@@ -80,10 +80,16 @@ function createLengthPrefixParser() {
     },
     flush(controller) {
       try {
-        if (this.__state !== "finalObject" && this.__readRemaining > 0) {
+        if (
+          !(
+            this.__state === "finalObject" ||
+            (this.__state === "length" && this.__readRemaining === 4)
+          )
+        ) {
           controller.error("Unexpected end of stream");
           return;
         }
+
         if (this.__state === "finalObject") {
           controller.enqueue({
             state: this.__state,

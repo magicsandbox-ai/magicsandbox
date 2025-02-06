@@ -1,6 +1,6 @@
 import { concatUint8Array } from "./utils.js";
 
-function createLengthPrefixTransform({ finalObject }) {
+function createLengthPrefixTransform({ finalObject } = {}) {
   let prevChunk = null;
   return new TransformStream({
     transform(chunk, controller) {
@@ -41,4 +41,4 @@ function lengthPrefix(chunk) {
   return arr;
 }
 
-export { createLengthPrefixTransform };
+export { createLengthPrefixTransform, lengthPrefix };

@@ -41,6 +41,16 @@ async function collectLengthPrefixStream(stream) {
 
 describe("lengthPrefix", () => {
   test("works", async () => {
+    const chunks = ["hello ", "world"];
+    const stream = createStream(chunks.map(encode));
+    const resultStream = stream
+      .pipeThrough(createLengthPrefixTransform())
+      .pipeThrough(createLengthPrefixParser());
+    const { string } = await collectLengthPrefixStream(resultStream);
+    expect(string).toBe("hello world");
+  });
+
+  test("finalObject works", async () => {
     const chunks = ["hello ", "world", { __command: { finalCost: 100 } }];
     const stream = createStream(chunks.map(encode));
     const resultStream = stream
