@@ -63,7 +63,7 @@ You do this using a command object, which is an object with two keys: `result` a
 
 ```typescript
 type CommandObject = {
-  result: any; //will be sent to the user
+  result?: any; //will be sent to the user
   __command: {
     //interpreted by the server
     finalCost;

@@ -2,7 +2,7 @@
   author: "magicsandbox",
   name: "Dev",
   version: "0.1.0",
-  description: "Develop a Magic Sandbox app or function in the browser",
+  description: "Develop a Magic Sandbox app in the browser",
   esbuildOptions: {
     alias: {
       path: "path-browserify", //for eslint

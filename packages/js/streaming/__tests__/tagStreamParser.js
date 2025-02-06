@@ -1,27 +1,14 @@
 import { describe, expect, test } from "@jest/globals";
-import { tagStreamParser, tagParser } from "../tagStreamParser";
+import { tagStreamParser, tagParser } from "../index.js";
+import { createStream, collectStream } from "./testUtils.js";
 
 /*
 npm run test -- packages/js/streaming
 */
 
-async function* createMockStream(chunks) {
-  for (const chunk of chunks) {
-    yield chunk;
-  }
-}
-
-async function collectResults(generator) {
-  const results = [];
-  for await (const item of generator) {
-    results.push(item);
-  }
-  return results;
-}
-
 describe("tagStreamParser", () => {
   test("works", async () => {
-    const stream = createMockStream([
+    const stream = createStream([
       { result: "hello " },
       { result: "world" },
       { result: "<" },
@@ -35,7 +22,7 @@ describe("tagStreamParser", () => {
       { result: "bye" },
       { metadata: { finalCost: 100 } },
     ]);
-    const results = await collectResults(
+    const results = await collectStream(
       tagStreamParser({ stream, chunkProcessor: (chunk) => chunk.result }),
     );
     expect(results).toEqual([

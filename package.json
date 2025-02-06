@@ -35,6 +35,9 @@
     "moduleNameMapper": {
       "^@components/(.*)$": "<rootDir>/components/$1",
       "^@utils.js$": "<rootDir>/utils.js"
-    }
+    },
+    "testPathIgnorePatterns": [
+      "testUtils.js"
+    ]
   }
 }
