@@ -82,7 +82,7 @@ class Assistant {
   }
   async updateBudget(update = true) {
     if (!this.userBalanceRemainingDays || this.userBalance < 0.05) {
-      const budget = Math.min(this.userBalance, 0.005);
+      const budget = Math.min(this.userBalance || 0.005, 0.005);
       if (update) {
         this.budget = budget;
       }
@@ -150,10 +150,10 @@ class Assistant {
       if (messages.length === 0) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
-        apps = await requestFunction("magicsandbox.findApp", {
+        ({ result: apps } = await requestFunction("magicsandbox.findApp", {
           input,
           maxCost: this.budget,
-        });
+        }));
         if (abortSignal.aborted) return;
       }
       newMessages[newMessages.length - 2].content = formatInput(input, apps);
@@ -166,7 +166,7 @@ class Assistant {
         systemPrompt: inputSystemPrompt,
         streamHandler: (content, tag, originalContent) => {
           messageContent += originalContent;
-          if (tag === "app") {
+          if (tag === "launch_app") {
             app += content;
           } else {
             messageDisplayContent += content;
@@ -482,18 +482,19 @@ class Assistant {
     this.handleScore(-1);
   }
   async handleScore(score) {
-    try {
-      await requestFunction(
-        "magicsandbox.findApp",
-        {
-          score, //todo
-          app: this.app,
-        },
-        { app: "magicsandbox.Assistant" },
-      );
-    } catch (error) {
-      console.error(error);
-    }
+    console.log(score);
+    // try {
+    //   await requestFunction(
+    //     "magicsandbox.findApp",
+    //     {
+    //       score, //todo
+    //       app: this.app,
+    //     },
+    //     { app: "magicsandbox.Assistant" },
+    //   );
+    // } catch (error) {
+    //   console.error(error);
+    // }
   }
   handleRequest(event) {
     window.clearTimeout(this.requestTimeoutId);
