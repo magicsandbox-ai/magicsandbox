@@ -30,7 +30,7 @@ class Assistant {
     setRisk,
     setMessages,
     setChatLoading,
-    setState,
+    setApp,
   }) {
     this.urlParams = urlParams;
     this.userBalance = userBalance;
@@ -42,10 +42,10 @@ class Assistant {
     this.setRisk = setRisk;
     this.setMessages = setMessages;
     this.setChatLoading = setChatLoading;
-    this.setState = setState;
+    this._setApp = setApp;
+    this.app = null;
     this.abortController = new AbortController();
     this.budget = null;
-    this.app = null;
     this.requestTimeoutId = null;
     this.requestQueue = [];
     this.requestProcessing = false;
@@ -58,10 +58,13 @@ class Assistant {
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
+  setApp(app) {
+    this._setApp(app);
+    this.app = app;
+  }
   setDisplayContent(newDisplayContent) {
     this.setMessages((messages) => {
       const message = messages[messages.length - 1];
-
       if (message?.role !== "assistant") {
         return [
           ...messages,
@@ -75,7 +78,9 @@ class Assistant {
         ...messages.slice(0, -1),
         {
           ...message,
-          displayContent: newDisplayContent,
+          displayContent: message.displayContent
+            ? `${message.displayContent}\n\n${newDisplayContent}`
+            : newDisplayContent,
         },
       ];
     });
@@ -137,6 +142,90 @@ class Assistant {
     this.setDisplayContent(`Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
+  async _handleInput({ input, messages }) {
+    try {
+      const abortSignal = this.abortController.signal;
+      this.setChatLoading(true);
+      const prevMessage = messages[messages.length - 1];
+      let newMessages;
+      if (input) {
+        if (prevMessage?.role === "user") {
+          // we already created a user message with the logs
+          newMessages = [
+            ...messages.slice(0, -1),
+            {
+              role: "user",
+              tags: [
+                ...prevMessage.tags,
+                { tag: "user_request", content: input },
+              ],
+            },
+          ];
+        } else {
+          newMessages = [
+            ...messages,
+            {
+              role: "user",
+              tags: [{ tag: "user_request", content: input }],
+            },
+          ];
+        }
+      } else {
+        newMessages = [...messages];
+      }
+      this.setMessages([
+        ...newMessages,
+        {
+          role: "assistant",
+          tags: [{ content: "Working on it..." }],
+        },
+      ]);
+      //get context, systemPrompt
+      const llmBudget = await this.updateBudget(false);
+      if (abortSignal.aborted) return;
+      const llmMessages = [
+        { role: "system", content: systemPrompt },
+        ...newMessages.map((message) => ({
+          role: message.role,
+          content: this.formatMessage(message), //need to exclude app_context and user highlight except for final message
+        })),
+      ];
+      console.log(messages);
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        { messages: llmMessages },
+        { maxCost: llmBudget, stream: true },
+      );
+      const llmMessage = {
+        role: "assistant",
+        tags: [],
+      };
+      for await (const { tag, content } of tagStreamParser({
+        stream,
+        chunkProcessor: (chunk) => chunk.result,
+      })) {
+        if (abortSignal.aborted) return;
+        llmMessage.tags.push({ tag, content });
+        this.setMessages([...newMessages, llmMessage]);
+      }
+      //check for launch_app
+      //check for intermediate_script or final_script
+    } catch (error) {
+      this.handleError(error);
+    } finally {
+      this.setChatLoading(false);
+    }
+  }
+  formatMessage(message) {
+    return message.tags
+      .map(({ tag, content }) => {
+        if (tag) {
+          return `<${tag}>${content}</${tag}>`;
+        }
+        return content;
+      })
+      .join("");
+  }
   async handleInput({ input, messages }) {
     try {
       const abortSignal = this.abortController.signal;
@@ -184,10 +273,6 @@ class Assistant {
       });
       if (abortSignal.aborted) return;
       if (app) {
-        this.setMessages((messages) => {
-          //this is a hack to prevent handleApp from overwriting the current assistant message when it calls setDisplayContent
-          return [...messages, { role: "assistant" }];
-        });
         await this.handleApp({
           input,
           app: app.trim(),
@@ -235,10 +320,16 @@ class Assistant {
       const abortSignal = this.abortController.signal;
       const sandboxId = this.sandboxRef.current.getSandboxId();
       this.setDisplayContent(`Loading ${app}...`);
-      const handleAppResult = async (result) => {
-        this.app = result.metadata.app;
+      if (!messages) {
+        // loading from a url
+        // setDisplayContent will cause ChatDisplay to briefly appear while the app loads
+        // so we call setApp now to avoid the flash
+        // we still need to call setApp in handleAppResult to get the resolved app version
+        this.setApp(app);
+      }
+      async function handleAppResult(result) {
         this.setDisplayContent(`${result.metadata.app} loaded`);
-        this.setState("app");
+        this.setApp(result.metadata.app);
         this.sandboxRef.current.postMessage(sandboxId, result);
         try {
           const context = await this.sandboxRef.current.getInit(
@@ -252,7 +343,7 @@ class Assistant {
           );
           if (abortSignal.aborted) return;
           if (input && context) {
-            //if loaded from a url, there's no input and we don't want to handleInit
+            //if loaded from a url, there's no input and the init context is irrelevant
             await this.handleInit({
               messages,
               context,
@@ -262,7 +353,7 @@ class Assistant {
         } catch {
           //ignore
         }
-      };
+      }
       if (this.budget === null) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
@@ -326,7 +417,7 @@ class Assistant {
       } else {
         newMessages = [
           ...messages,
-          { role: "user", content: formatContext(context) }, //todo how to remove this for later calls?
+          { role: "user", content: formatContext(context) },
         ];
       }
       newMessages.push({
@@ -462,10 +553,10 @@ class Assistant {
       if (abortSignal.aborted) return;
       //add the context for the llm call, but it's never saved with setMessages
       //so future llm calls will not have it (which is what we want)
-      newMessages[newMessages.length - 2].content += formatContext(
+      newMessages[newMessages.length - 2].content += `\n${formatContext(
         contextResult?.context || "App did not provide context",
         contextResult?.selection,
-      );
+      )}`;
       await this.handleScript({
         messages: newMessages,
         systemPrompt: magicSystemPrompt,
@@ -649,9 +740,8 @@ class Assistant {
     this.setRisk(null);
     this.setMessages([]);
     this.setChatLoading(false);
-    this.setState("home");
+    this.setApp(null);
     this.budget = null;
-    this.app = null;
     this.requestQueue = [];
     this.risks.forEach((risk) => risk.init());
   }

@@ -16,19 +16,18 @@ function formatLogs(logs) {
   let formattedLogs = "";
   let length = 0;
   for (const log of logs) {
-    if (length + log.length > 10000) {
-      formattedLogs += `${log.slice(0, 10000 - length)}...\n...`;
+    if (length + log.length >= 10000) {
+      formattedLogs += `\n${log.slice(0, 10000 - length)}...\n...`;
       break;
     } else if (log.length > 1000) {
-      formattedLogs += `${log.slice(0, 1000)}...\n`;
+      formattedLogs += `\n${log.slice(0, 1000)}...`;
       length += 1000;
     } else {
-      formattedLogs += `${log}\n`;
+      formattedLogs += `\n${log}`;
       length += log.length;
     }
   }
-  return `<logs>
-${formattedLogs}
+  return `<logs>${formattedLogs}
 </logs>`;
 }
 
@@ -46,7 +45,7 @@ ${context}
 
 const inputSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox.
 
-The user's initial message will include both the user's request and a list of suggested apps that you can choose to launch. The suggested apps are of the form \`author.name: description\`:
+The user's initial message will include both the user's request and a list of suggested apps that you can choose to launch. The suggested apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, use the author.Name format.
 
 <example_user_message>
 <user_request>
@@ -58,7 +57,7 @@ magicsandbox.Search: search the web
 </suggested_apps>
 </example_user_message>
 
-In your response, you can launch one of the suggested apps by enclosing its name in the form \`author.name\` in <launch_app> tags. Anything outside of <launch_app> tags will be displayed to the user:
+In your response, you can launch one of the suggested apps by enclosing its name in the form \`author.Name\` in <launch_app> tags. Anything outside of <launch_app> tags will be displayed to the user:
 
 <example_assistant_response>
 Let me open magicsandbox.Weather so we can check today's weather.

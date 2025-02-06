@@ -9,12 +9,12 @@ import {
 import { ChatInput, ChatDisplay, assistantMessageStyle } from "./Chat.js";
 
 function BottomNavBar({
-  //setModal,
   settingsRef,
   toastsRef,
   assistantRef,
   messages,
   chatLoading,
+  app,
 }) {
   const [input, setInput] = useState("");
   const [collapsed, setCollapsed] = useState(true);
@@ -34,10 +34,6 @@ function BottomNavBar({
       setCollapsed(true);
     }
   }
-
-  // function handleSettings() {
-  //   setModal("settings");
-  // }
 
   async function handleSubmit() {
     if (input === "") return;
@@ -114,17 +110,11 @@ function BottomNavBar({
                   {maximizeComponent}
                 </div>
                 <div className="max-h-[80vh]">
-                  <ChatDisplay messages={displayMessages} />
+                  <ChatDisplay
+                    messages={messages}
+                    assistantRef={assistantRef}
+                  />
                 </div>
-                {messages[messages.length - 1]?.promptToContinue && (
-                  <button
-                    onClick={() => {
-                      handleInput();
-                    }}
-                  >
-                    Allow Assistant to continue?
-                  </button>
-                )}
                 <hr className="mx-2 border-stone-300" />
               </>
             )}
@@ -157,9 +147,6 @@ function BottomNavBar({
         <button onClick={handleThumbsDown}>
           <ThumbsDown />
         </button>
-        {/* <button className="ml-auto mr-4" onClick={handleSettings}>
-          <Settings />
-        </button> */}
       </div>
     </div>
   );

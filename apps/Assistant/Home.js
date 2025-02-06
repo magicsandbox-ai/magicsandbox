@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChatInput, ChatDisplay } from "./Chat.js";
+import { ChatInput } from "./Chat.js";
 import { CircleArrowUp, Loader } from "lucide-react";
 
 function Home({
@@ -9,7 +9,7 @@ function Home({
   assistantRef,
   messages,
   chatLoading,
-  apps,
+  appData,
 }) {
   const [input, setInput] = useState("");
 
@@ -24,18 +24,6 @@ function Home({
     }
   }
 
-  if (messages.length === 0) {
-    return (
-      <InitHome {...{ input, setInput, handleInput, chatLoading, apps }} />
-    );
-  } else {
-    return (
-      <Chat {...{ messages, input, setInput, handleInput, chatLoading }} />
-    );
-  }
-}
-
-function InitHome({ input, setInput, handleInput, chatLoading, apps }) {
   return (
     <div className="h-full w-full max-w-screen-lg self-center">
       <div className="flex h-1/2 flex-none flex-col justify-end pb-6">
@@ -44,18 +32,7 @@ function InitHome({ input, setInput, handleInput, chatLoading, apps }) {
         </p>
         <Input {...{ input, setInput, handleInput, chatLoading }} />
       </div>
-      <AppList apps={apps} />
-    </div>
-  );
-}
-
-function Chat({ messages, input, setInput, handleInput, chatLoading }) {
-  return (
-    <div className="flex h-full w-full max-w-screen-lg flex-col self-center">
-      <div className="grow">
-        <ChatDisplay messages={messages} />
-      </div>
-      <Input {...{ input, setInput, handleInput, chatLoading }} />
+      <AppList appData={appData} />
     </div>
   );
 }
@@ -77,11 +54,11 @@ function Input({ input, setInput, handleInput, chatLoading }) {
   );
 }
 
-function AppList({ apps }) {
+function AppList({ appData }) {
   const [state, setState] = useState("Favorited");
 
   const states = ["Favorited", "Recent", "Published", "Blocked"];
-  const displayApps = apps.filter((app) => app[state.toLowerCase()]);
+  const displayApps = appData.filter((app) => app[state.toLowerCase()]);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -127,7 +104,7 @@ function AppListButton({ active, onClick, children }) {
 - id, description, icon for deprecated
 - expand to see minCost, finalCost, deprecated explained
 - expand to edit and pin a version? link to homepage?
-- buttons to (un)favorite, (un)block - pass down setApps
+- buttons to (un)favorite, (un)block - pass down setAppData
 - add bang?
 */
 

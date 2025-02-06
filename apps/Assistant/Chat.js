@@ -100,7 +100,7 @@ const rehypeSanitizeOptions = {
   },
 };
 
-function ChatDisplay({ messages }) {
+function ChatDisplay({ messages, assistantRef }) {
   const ref = useRef(null);
 
   function replaceSingleLineBreaks(text) {
@@ -120,9 +120,11 @@ function ChatDisplay({ messages }) {
     scrollToBottom = true;
   }
 
+  const displayMessages = messages.filter((message) => message.displayContent);
+
   return (
     <div ref={ref} className="flex h-full flex-col gap-2 overflow-y-auto">
-      {messages.map((message, i) => (
+      {displayMessages.map((message, i) => (
         <Markdown
           className={
             message.role === "user" ? userMessageStyle : assistantMessageStyle
@@ -131,7 +133,7 @@ function ChatDisplay({ messages }) {
           rehypePlugins={rehypePlugins}
           rehypeSanitizeOptions={rehypeSanitizeOptions}
           onComplete={
-            scrollToBottom && i === messages.length - 1
+            scrollToBottom && i === displayMessages.length - 1
               ? () => {
                   ref.current.scrollTop = ref.current.scrollHeight;
                 }
@@ -143,6 +145,18 @@ function ChatDisplay({ messages }) {
             : message.displayContent}
         </Markdown>
       ))}
+      {messages[messages.length - 1]?.promptToContinue && (
+        <button
+          onClick={() => {
+            assistantRef.current.handleInput({
+              input: "",
+              messages,
+            });
+          }}
+        >
+          Allow Assistant to continue?
+        </button>
+      )}
     </div>
   );
 }

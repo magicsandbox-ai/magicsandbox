@@ -8,22 +8,23 @@ import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
+import { ChatDisplay } from "./Chat.js";
 
 function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
-  const [state, setState] = useState("home");
   /*
   messages is an array of objects with keys:
   - role: "user" or "assistant"
-  - content: the content to use in the API. if not set, excluded from API call
-  - displayContent: the content to display in the UI. if not set, not shown in the UI
-  - promptToContinue: whether to prompt the user to allow the assistant to continue executing additional scripts
+  - tags: an array of objects [{tag?: string, content: string}] representing a message
+    - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
+    - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   */
   const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [apps, setApps] = useState([]);
+  const [app, setApp] = useState(null);
+  const [appData, setAppData] = useState([]);
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -64,7 +65,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
         setRisk,
         setMessages,
         setChatLoading,
-        setState,
+        setApp,
       });
       const { app } = urlParams;
       if (app) {
@@ -74,18 +75,15 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
           callback: (response) => {
             setConfirm(null);
             if (response) {
-              assistantRef.current.handleApp({
-                app,
-                input: "",
-              });
+              assistantRef.current.handleApp({ app });
             }
           },
         });
       }
-      const apps = await requestGetData("apps", {
+      const appData = await requestGetData("appData", {
         app: "magicsandbox.Assistant",
       });
-      setApps(apps || []);
+      setAppData(appData || []);
     }
     if (!settingsRef.current) {
       init().catch((error) => {
@@ -135,7 +133,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   }
   return (
     <div className="flex h-screen w-full flex-col">
-      {state === "home" && (
+      {messages.length === 0 && app === null && (
         <Home
           {...{
             setModal,
@@ -144,26 +142,30 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
             assistantRef,
             messages,
             chatLoading,
-            apps,
-            setApps,
+            appData,
+            setAppData,
           }}
         />
       )}
-
+      {messages.length > 0 && app === null && (
+        <div className="my-4 max-w-screen-lg grow self-center">
+          <ChatDisplay messages={messages} assistantRef={assistantRef} />
+        </div>
+      )}
       <Sandbox
         ref={sandboxRef}
-        className={`w-full ${state === "home" ? "hidden" : "grow"}`}
+        className={`w-full ${app ? "grow" : "hidden"}`}
       />
-      {state !== "home" && (
+      {(messages.length > 0 || app) && (
         <BottomNavBar
           {...{
-            setModal,
             settingsRef,
             toastsRef,
             assistantRef,
             messages,
             chatLoading,
-            setApps,
+            app,
+            setAppData,
           }}
         />
       )}
