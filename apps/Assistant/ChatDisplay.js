@@ -41,7 +41,12 @@ function ChatDisplay({
           />
         ))}
         {handleContinue && (
-          <button onClick={handleContinue}>Allow Assistant to continue?</button>
+          <button
+            className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 text-lg font-bold hover:bg-stone-200"
+            onClick={handleContinue}
+          >
+            Allow Assistant to continue?
+          </button>
         )}
       </div>
     </div>

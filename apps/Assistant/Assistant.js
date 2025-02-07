@@ -225,18 +225,11 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      async function* mockStream() {
-        for (let i = 0; i < 100; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          yield { result: "hello " };
-        }
-      }
-      const stream = mockStream();
-      // const stream = await requestFunction(
-      //   "magicsandbox.llm",
-      //   { messages: llmMessages },
-      //   { maxCost: llmBudget, stream: true },
-      // );
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        { messages: llmMessages },
+        { maxCost: llmBudget, stream: true },
+      );
       const llmMessage = {
         role: "assistant",
         tags: [],

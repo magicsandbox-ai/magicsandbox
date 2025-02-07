@@ -9,82 +9,6 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
-const sampleMessages = [
-  {
-    role: "user",
-    tags: [
-      {
-        tag: "user_request",
-        content: "can you write me a function in JS to compute a factorial?",
-      },
-    ],
-  },
-  {
-    role: "assistant",
-    tags: [
-      {
-        content: `I can help with that! Here's a simple function in JavaScript to compute a factorial:
-
-~~~javascript
-function factorial(n) {
-    if (n < 0) {
-        return 'Factorial is not defined for negative numbers';
-    }
-    return n === 0 ? 1 : n * factorial(n - 1);
-}
-~~~
-
-If you need a more complex implementation or want to test it, I can open the magicsandbox.Dev app for you to work on it. Would you like me to do that?`,
-      },
-    ],
-  },
-  {
-    role: "user",
-    tags: [
-      {
-        tag: "user_request",
-        content:
-          "what is it called when you call in a function inside of itself like that?",
-      },
-    ],
-  },
-  {
-    role: "assistant",
-    tags: [
-      {
-        content: `When a function calls itself within its own definition, it is referred to as "recursion." In your factorial function example, the function factorial is calling itself to compute the factorial of the number. If you have any more questions about recursion or need further assistance, feel free to ask!`,
-      },
-    ],
-  },
-  {
-    role: "user",
-    tags: [
-      {
-        tag: "user_request",
-        content: `what does this part of the code do?
-
-n === 0 ? 1 : n * factorial(n - 1)`,
-      },
-    ],
-  },
-  {
-    role: "assistant",
-    tags: [
-      {
-        content: `This part of the code uses a ternary operator, which is a shorthand for an if-else statement. Here's what it does:
-
-n === 0 ? 1: This checks if n is equal to 0. If it is, the expression evaluates to 1.
-: n * factorial(n - 1): If n is not equal to 0, the expression proceeds to this part, which multiplies n by the result of calling the factorial function with the argument n - 1.
-So, the whole line can be understood as follows:
-
-If n is 0, return 1 (the base case of the factorial).
-If n is greater than 0, return the product of n and the factorial of n - 1, thus continuing the recursion until it reaches the base case.
-This effectively calculates the factorial of n recursively. If you need any further clarification or have more questions, feel free to ask!`,
-      },
-    ],
-  },
-];
-
 function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -97,9 +21,9 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   */
-  const [messages, setMessages] = useState(sampleMessages);
+  const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [app, setApp] = useState(true);
+  const [app, setApp] = useState(null);
   const [appData, setAppData] = useState([]);
 
   const sandboxRef = useRef(null);

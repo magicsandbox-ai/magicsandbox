@@ -29,17 +29,14 @@ describe("tagStreamParser", () => {
       {
         content: "hello world",
         tag: undefined,
-        originalContent: "hello world<example>",
       },
       {
         content: "test",
         tag: "example",
-        originalContent: "test</example>",
       },
       {
         content: "goodbye",
         tag: undefined,
-        originalContent: "goodbye",
       },
     ]);
   });
