@@ -9,9 +9,9 @@ import {
 import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
 import { createDeferredPromise, formatAsDollars } from "@utils.js";
 import {
-  formatInput,
+  formatMessage,
+  formatSuggestedApps,
   formatLogs,
-  formatContext,
   inputSystemPrompt,
   initSystemPrompt,
   magicSystemPrompt,
@@ -62,27 +62,9 @@ class Assistant {
     this._setApp(app);
     this.app = app;
   }
-  setDisplayContent(newDisplayContent) {
+  setDisplayMessage(message) {
     this.setMessages((messages) => {
-      const message = messages[messages.length - 1];
-      if (message?.role !== "assistant") {
-        return [
-          ...messages,
-          {
-            role: "assistant",
-            displayContent: newDisplayContent,
-          },
-        ];
-      }
-      return [
-        ...messages.slice(0, -1),
-        {
-          ...message,
-          displayContent: message.displayContent
-            ? `${message.displayContent}\n\n${newDisplayContent}`
-            : newDisplayContent,
-        },
-      ];
+      return [...messages, { role: "display", tags: [{ content: message }] }];
     });
   }
   async updateBudget(update = true) {
@@ -98,7 +80,6 @@ class Assistant {
     });
     const now = Date.now();
     let avgDaysBetweenUsage = 0.1;
-
     if (usageData) {
       const daysSinceLastUsage = (now - usageData.ts) / (1000 * 60 * 60 * 24);
       const alpha = 0.05;
@@ -127,7 +108,6 @@ class Assistant {
     ).catch(console.error);
     return budget;
   }
-
   handleError(error) {
     console.error(error);
     let message = "please try again";
@@ -136,14 +116,12 @@ class Assistant {
       message = error.message;
       type = error.type;
     }
-    // } else if (error.name === "RequestSandboxError") {
-    //   message = error.message;
-    // }
-    this.setDisplayContent(`Error: ${message}`);
+    this.setDisplayMessage(`Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
-  async _handleInput({ input, messages }) {
+  async handleInput({ input, messages, initContext }) {
     try {
+      const sandboxId = this.sandboxRef.current.getSandboxId();
       const abortSignal = this.abortController.signal;
       this.setChatLoading(true);
       const prevMessage = messages[messages.length - 1];
@@ -157,7 +135,7 @@ class Assistant {
               role: "user",
               tags: [
                 ...prevMessage.tags,
-                { tag: "user_request", content: input },
+                { tag: "user_request", content: `\n${input}\n` },
               ],
             },
           ];
@@ -166,31 +144,91 @@ class Assistant {
             ...messages,
             {
               role: "user",
-              tags: [{ tag: "user_request", content: input }],
+              tags: [{ tag: "user_request", content: `\n${input}\n` }],
             },
           ];
         }
+      } else if (initContext) {
+        newMessages = [
+          ...messages,
+          {
+            role: "user",
+            tags: [{ tag: "app_context", content: `\n${initContext}\n` }],
+          },
+        ];
       } else {
+        //continuing after an intermediate_script, already created user message with logs
         newMessages = [...messages];
       }
+
       this.setMessages([
         ...newMessages,
         {
-          role: "assistant",
-          tags: [{ content: "Working on it..." }],
+          role: "display", //this message gets overwritten below by the llm response
+          tags: [
+            {
+              content: initContext
+                ? `Initializing ${this.app}...`
+                : "Working on it...",
+            },
+          ],
         },
       ]);
-      //get context, systemPrompt
+      const userMessage = newMessages[newMessages.length - 2];
+      if (messages.length === 0) {
+        await this.updateBudget();
+        if (abortSignal.aborted) return;
+        const { result } = await requestFunction("magicsandbox.findApp", {
+          input,
+          maxCost: this.budget,
+        });
+        if (abortSignal.aborted) return;
+        userMessage.tags.push({
+          tag: "suggested_apps",
+          content: formatSuggestedApps(result),
+        });
+      } else if (this.app) {
+        let context, selection;
+        try {
+          ({ context, selection } = await this.sandboxRef.current.getContext(
+            sandboxId,
+            10000,
+          ));
+        } catch {
+          //ignore
+        }
+        if (abortSignal.aborted) return;
+        userMessage.tags.push({
+          tag: "app_context",
+          content: `\n${context || "App did not provide context"}\n`,
+        });
+        if (selection?.length < 1000) {
+          userMessage.tags.push({
+            tag: "user_highlighted_text",
+            content: `\n${selection}\n`,
+          });
+        }
+      }
+      let systemPrompt;
+      if (!this.app) {
+        systemPrompt = inputSystemPrompt;
+      } else if (initContext) {
+        systemPrompt = initSystemPrompt;
+      } else {
+        systemPrompt = magicSystemPrompt;
+      }
       const llmBudget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
       const llmMessages = [
         { role: "system", content: systemPrompt },
-        ...newMessages.map((message) => ({
-          role: message.role,
-          content: this.formatMessage(message), //need to exclude app_context and user highlight except for final message
-        })),
+        ...newMessages
+          .filter((message) => message.role !== "display")
+          .map((message, i, filteredMessages) => ({
+            role: message.role,
+            content: formatMessage(message, i === filteredMessages.length - 1),
+          })),
       ];
-      console.log(messages);
+      console.log(llmMessages);
       const stream = await requestFunction(
         "magicsandbox.llm",
         { messages: llmMessages },
@@ -208,109 +246,46 @@ class Assistant {
         llmMessage.tags.push({ tag, content });
         this.setMessages([...newMessages, llmMessage]);
       }
-      //check for launch_app
-      //check for intermediate_script or final_script
-    } catch (error) {
-      this.handleError(error);
-    } finally {
-      this.setChatLoading(false);
-    }
-  }
-  formatMessage(message) {
-    return message.tags
-      .map(({ tag, content }) => {
-        if (tag) {
-          return `<${tag}>${content}</${tag}>`;
-        }
-        return content;
-      })
-      .join("");
-  }
-  async handleInput({ input, messages }) {
-    try {
-      const abortSignal = this.abortController.signal;
-      const newMessages = [
-        ...messages,
-        { role: "user", displayContent: input },
-        { role: "assistant", displayContent: "Working on it..." },
-      ];
-      this.setMessages(newMessages);
-      let apps;
-      if (messages.length === 0) {
-        await this.updateBudget();
-        if (abortSignal.aborted) return;
-        ({ result: apps } = await requestFunction("magicsandbox.findApp", {
-          input,
-          maxCost: this.budget,
-        }));
-        if (abortSignal.aborted) return;
-      }
-      newMessages[newMessages.length - 2].content = formatInput(input, apps);
-      let messageContent = "";
-      let messageDisplayContent = "";
-      let app = "";
-      let finalMessages;
-      await this.handleChat({
-        messages: newMessages,
-        systemPrompt: inputSystemPrompt,
-        streamHandler: (content, tag, originalContent) => {
-          messageContent += originalContent;
-          if (tag === "launch_app") {
-            app += content;
-          } else {
-            messageDisplayContent += content;
+      for (const tag of llmMessage.tags) {
+        if (tag.tag === "launch_app") {
+          await this.handleApp({
+            input,
+            app: tag.content.trim(),
+            messages: llmMessages,
+          });
+          break;
+        } else if (
+          tag.tag === "intermediate_script" ||
+          tag.tag === "final_script"
+        ) {
+          let logs;
+          try {
+            ({ logs } =
+              await this.sandboxRef.current.executeScriptAndWaitForResponse({
+                sandboxId,
+                script: tag.content,
+                timeout: 30000,
+              }));
+          } catch (error) {
+            console.error(error);
+            logs = ["[Uncaught Error] Error: script timed out"];
           }
-          finalMessages = [
-            ...newMessages.slice(0, -1),
-            {
-              role: "assistant",
-              content: messageContent,
-              displayContent: messageDisplayContent,
-            },
-          ];
-          this.setMessages(finalMessages);
-        },
-      });
-      if (abortSignal.aborted) return;
-      if (app) {
-        await this.handleApp({
-          input,
-          app: app.trim(),
-          messages: finalMessages,
-        });
+          if (abortSignal.aborted) return;
+          this.setMessages((messages) => {
+            return [
+              ...messages,
+              {
+                role: "user",
+                tags: [{ tag: "logs", content: formatLogs(logs) }],
+                promptToContinue: tag.tag === "intermediate_script",
+              },
+            ];
+          });
+          break;
+        }
       }
     } catch (error) {
       this.handleError(error);
-    }
-  }
-  async handleChat({ messages, systemPrompt, streamHandler }) {
-    try {
-      const abortSignal = this.abortController.signal;
-      this.setChatLoading(true);
-      const budget = await this.updateBudget(false);
-      if (abortSignal.aborted) return;
-      messages = [
-        { role: "system", content: systemPrompt },
-        ...messages
-          .filter((message) => message.content)
-          .map((message) => ({
-            role: message.role,
-            content: message.content,
-          })),
-      ];
-      console.log(messages);
-      const stream = await requestFunction(
-        "magicsandbox.llm",
-        { messages },
-        { maxCost: budget, stream: true },
-      );
-      for await (const { content, tag, originalContent } of tagStreamParser({
-        stream,
-        chunkProcessor: (chunk) => chunk.result,
-      })) {
-        if (abortSignal.aborted) return;
-        streamHandler(content, tag, originalContent);
-      }
     } finally {
       this.setChatLoading(false);
     }
@@ -319,48 +294,49 @@ class Assistant {
     try {
       const abortSignal = this.abortController.signal;
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      this.setDisplayContent(`Loading ${app}...`);
+      this.setDisplayMessage(`Loading ${app}...`);
       if (!messages) {
         // loading from a url
-        // setDisplayContent will cause ChatDisplay to briefly appear while the app loads
+        // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
         // so we call setApp now to avoid the flash
         // we still need to call setApp in handleAppResult to get the resolved app version
         this.setApp(app);
       }
-      async function handleAppResult(result) {
-        this.setDisplayContent(`${result.metadata.app} loaded`);
+      const handleAppResult = async (result) => {
+        this.setDisplayMessage(`${result.metadata.app} loaded`);
         this.setApp(result.metadata.app);
         this.sandboxRef.current.postMessage(sandboxId, result);
-        try {
-          const context = await this.sandboxRef.current.getInit(
-            sandboxId,
-            {
-              input,
-              budget: Math.max(this.budget - result.metadata.finalCost, 0),
-              urlParams: this.urlParams,
-            },
-            10000,
-          );
+        if (input) {
+          //if loaded from a url, there's no input and the init context is irrelevant
+          let initContext;
+          try {
+            initContext = await this.sandboxRef.current.getInit(
+              sandboxId,
+              {
+                input,
+                budget: Math.max(this.budget - result.metadata.finalCost, 0),
+                urlParams: this.urlParams,
+              },
+              10000,
+            );
+          } catch {
+            //ignore
+          }
           if (abortSignal.aborted) return;
-          if (input && context) {
-            //if loaded from a url, there's no input and the init context is irrelevant
-            await this.handleInit({
+          if (initContext) {
+            this.handleInput({
               messages,
-              context,
-              app: result.metadata.app,
+              initContext,
             });
           }
-        } catch {
-          //ignore
         }
-      }
+      };
       if (this.budget === null) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
       }
-      let result;
       try {
-        result = await requestApp(app, {
+        const result = await requestApp(app, {
           maxCost: this.budget,
           updateUrl: true,
         });
@@ -377,7 +353,7 @@ class Assistant {
               this.setConfirm(null);
               if (response) {
                 try {
-                  result = await requestApp(app, {
+                  const result = await requestApp(app, {
                     maxCost: error.data.minCost,
                     updateUrl: true,
                   });
@@ -387,7 +363,7 @@ class Assistant {
                   this.handleError(error);
                 }
               } else {
-                this.setDisplayContent(`${app} not opened`);
+                this.setDisplayMessage(`${app} not opened`);
               }
             },
           });
@@ -395,172 +371,6 @@ class Assistant {
           throw error;
         }
       }
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-  async handleInit({ messages, context, app }) {
-    try {
-      //add the context for the llm call, but it's never saved with setMessages
-      //so future llm calls will not have it (which is what we want)
-      const prevMessage = messages[messages.length - 1];
-      let newMessages;
-      if (prevMessage?.role === "user") {
-        newMessages = [
-          ...messages.slice(0, -1),
-          {
-            role: "user",
-            content: `${prevMessage.content}\n${formatContext(context)}`,
-            displayContent: prevMessage.displayContent,
-          },
-        ];
-      } else {
-        newMessages = [
-          ...messages,
-          { role: "user", content: formatContext(context) },
-        ];
-      }
-      newMessages.push({
-        role: "assistant",
-        displayContent: `Initializing ${app}...`,
-      });
-      await this.handleScript({
-        messages: newMessages,
-        systemPrompt: initSystemPrompt,
-      });
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-  async handleScript({ messages, systemPrompt }) {
-    try {
-      const sandboxId = this.sandboxRef.current.getSandboxId();
-      const abortSignal = this.abortController.signal;
-      let messageContent = "";
-      let messageDisplayContent = "";
-      let script = "";
-      let intermediateScript = false;
-      let prevTag;
-      await this.handleChat({
-        messages,
-        systemPrompt,
-        streamHandler: (content, tag, originalContent) => {
-          messageContent += originalContent;
-          if (tag === "intermediate_script") {
-            intermediateScript = true;
-          }
-          if (tag === "final_script" || tag === "intermediate_script") {
-            if (tag !== prevTag) {
-              messageDisplayContent += `~~~magicscript${content.startsWith("\n") ? "" : "\n"}`;
-            }
-            script += content;
-          } else if (
-            prevTag === "final_script" ||
-            prevTag === "intermediate_script"
-          ) {
-            messageDisplayContent += `${script.endsWith("\n") ? "" : "\n"}~~~`;
-          }
-          prevTag = tag;
-          messageDisplayContent += content;
-          this.setMessages((messages) => {
-            return [
-              ...messages.slice(0, -1),
-              {
-                role: "assistant",
-                content: messageContent,
-                displayContent: messageDisplayContent,
-              },
-            ];
-          });
-        },
-      });
-      if (abortSignal.aborted) return;
-      if (script) {
-        let logs;
-        try {
-          ({ logs } =
-            await this.sandboxRef.current.executeScriptAndWaitForResponse({
-              sandboxId,
-              script,
-              timeout: 30000,
-            }));
-        } catch (error) {
-          console.error(error);
-          logs = ["[Uncaught Error] Error: script timed out"];
-        }
-        if (abortSignal.aborted) return;
-        this.setMessages((messages) => {
-          return [
-            ...messages,
-            {
-              role: "user",
-              content: formatLogs(logs),
-              promptToContinue: intermediateScript,
-            },
-          ];
-        });
-      }
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-  async handleMagic({ input, messages }) {
-    try {
-      const sandboxId = this.sandboxRef.current.getSandboxId();
-      const abortSignal = this.abortController.signal;
-      const prevMessage = messages[messages.length - 1];
-      let newMessages;
-      if (prevMessage?.role === "user") {
-        //we've already created a message with the logs, so append the user input
-        //we may not have input if the previous message had an intermediate_script, so handle that too
-        newMessages = [
-          ...messages.slice(0, -1),
-          {
-            role: "user",
-            content: input
-              ? `${prevMessage.content}\n${formatInput(input)}`
-              : prevMessage.content,
-            displayContent: input,
-          },
-        ];
-      } else {
-        if (!input) {
-          throw new Error("Invalid handleMagic call");
-        }
-        newMessages = [
-          ...messages,
-          {
-            role: "user",
-            content: formatInput(input),
-            displayContent: input,
-          },
-        ];
-      }
-      newMessages.push({
-        role: "assistant",
-        displayContent: "Working on it...",
-      });
-      this.setMessages(newMessages);
-      let contextResult;
-      try {
-        contextResult = await this.sandboxRef.current.getContext(
-          sandboxId,
-          10000,
-        );
-      } catch {
-        //ignore
-      }
-      if (abortSignal.aborted) return;
-      //add the context for the llm call, but it's never saved with setMessages
-      //so future llm calls will not have it (which is what we want)
-      newMessages[newMessages.length - 2].content += `\n${formatContext(
-        contextResult?.context || "App did not provide context",
-        contextResult?.selection,
-      )}`;
-      await this.handleScript({
-        messages: newMessages,
-        systemPrompt: magicSystemPrompt,
-      });
     } catch (error) {
       this.handleError(error);
     }

@@ -16,10 +16,11 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [modal, setModal] = useState("");
   /*
   messages is an array of objects with keys:
-  - role: "user" or "assistant"
+  - role: "user", "assistant", or "display"
   - tags: an array of objects [{tag?: string, content: string}] representing a message
     - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
+  - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   */
   const [messages, setMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);

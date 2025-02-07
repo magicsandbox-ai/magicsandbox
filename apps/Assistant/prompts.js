@@ -1,46 +1,41 @@
 import sandboxDocs from "../Docs/sandbox.md";
 
-function formatInput(input, apps) {
-  let suggestedApps = "";
-  if (apps) {
-    suggestedApps = `\n<suggested_apps>
-${apps.map((app) => `${app.id.split("@")[0]}: ${app.description}`).join("\n")}
-</suggested_apps>`;
-  }
-  return `<user_request>
-${input}
-</user_request>${suggestedApps}`;
+function formatMessage(message, isFinalMessage) {
+  return message.tags
+    .filter(
+      ({ tag }) =>
+        isFinalMessage ||
+        (tag !== "app_context" && tag !== "user_highlighted_text"),
+    )
+    .map(({ tag, content }) => {
+      if (tag) {
+        return `<${tag}>${content}</${tag}>`;
+      }
+      return content;
+    })
+    .join("");
+}
+
+function formatSuggestedApps(apps) {
+  const content = apps
+    .map((app) => `${app.id.split("@")[0]}: ${app.description}`)
+    .join("\n");
+  return `\n${content}\n`;
 }
 
 function formatLogs(logs) {
   let formattedLogs = "";
-  let length = 0;
   for (const log of logs) {
-    if (length + log.length >= 10000) {
-      formattedLogs += `\n${log.slice(0, 10000 - length)}...\n...`;
+    if (formattedLogs.length + log.length >= 10000) {
+      formattedLogs += `\n${log.slice(0, 10000 - formattedLogs.length)}...\n...`;
       break;
     } else if (log.length > 1000) {
       formattedLogs += `\n${log.slice(0, 1000)}...`;
-      length += 1000;
     } else {
       formattedLogs += `\n${log}`;
-      length += log.length;
     }
   }
-  return `<logs>${formattedLogs}
-</logs>`;
-}
-
-function formatContext(context, selection) {
-  let selectionPrompt = "";
-  if (selection && selection.length < 1000) {
-    selectionPrompt = `\n<user_highlighted_text>
-${selection}
-</user_highlighted_text>`;
-  }
-  return `<app_context>
-${context}
-</app_context>${selectionPrompt}`;
+  return `${formattedLogs}\n`;
 }
 
 const inputSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox.
@@ -178,6 +173,8 @@ The <app_context> may detail the app's API, which you can access in your script 
 
 The <user_highlighted_text> may not be relevant, so you should give precedence to the <user_request> and the <app_context>. If the <user_request> is vague (e.g. "help me understand this"), you should focus on the <user_highlighted_text> when responding.
 
+Note: for brevity, earlier user messages in the conversation have any <app_context> and <user_highlighted_text> tags removed.
+
 The Magic Sandbox platform is made up of Apps (frontend) and Functions (backend). Both Apps and Functions follow the naming convention author.name@version. For Apps, the first letter of the name must be uppercase, e.g. magicsandbox.ExampleApp@0.1.0. For Functions, the first letter of the name must be lowercase, e.g. magicsandbox.exampleFunction@0.1.0. Apps and Functions can also be referred to using just author.name, which will resolve to the latest published version.
 
 Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of the Sandbox are documented below:
@@ -185,9 +182,9 @@ Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of t
 ${sandboxDocs}`;
 
 export {
-  formatInput,
+  formatMessage,
+  formatSuggestedApps,
   formatLogs,
-  formatContext,
   inputSystemPrompt,
   initSystemPrompt,
   magicSystemPrompt,
