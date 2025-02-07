@@ -454,18 +454,17 @@ class Assistant {
       //careful with async callbacks - may have to pass in abortSignal
       //for now DataLossRisk is okay since it only updates lastAppBackups after awaiting
       if (abortSignal.aborted) return;
-      await Promise.all(
-        batch.map(async (event) => {
-          const { id, msg } = event.data;
-          const { request, data } = msg;
-          if (!approved) {
-            this.sandboxRef.current.postMessage(event.sandboxId, {
-              id,
-              error: { message: error || "User denied the request" },
-            });
-          } else {
-            try {
-              const response = await requestSandbox(request, data);
+      for (const event of batch) {
+        const { id, msg } = event.data;
+        const { request, data } = msg;
+        if (!approved) {
+          this.sandboxRef.current.postMessage(event.sandboxId, {
+            id,
+            error: { message: error || "User denied the request" },
+          });
+        } else {
+          requestSandbox(request, data)
+            .then((response) => {
               if (abortSignal.aborted) return;
               let finalResponse = response;
               if (response?.[Symbol.asyncIterator]) {
@@ -476,18 +475,20 @@ class Assistant {
                 response: finalResponse,
               });
               if (request === "app" || request === "function") {
-                await this.handleMetadata(response, id, abortSignal);
+                this.handleMetadata(response, id, abortSignal).catch(
+                  console.error,
+                );
               }
-            } catch (error) {
+            })
+            .catch((error) => {
               if (abortSignal.aborted) return;
               this.sandboxRef.current.postMessage(event.sandboxId, {
                 id,
                 error: { message: error.message, data: error.data },
               });
-            }
-          }
-        }),
-      );
+            });
+        }
+      }
     } catch (error) {
       console.error(error);
       this.toastsRef.current.addToast("An unexpected error occurred", "error");
