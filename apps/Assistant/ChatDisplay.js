@@ -4,7 +4,12 @@ import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
 
-function ChatDisplay({ messages, handleContinue }) {
+function ChatDisplay({
+  outerClassName = "",
+  innerClassName = "",
+  messages,
+  handleContinue,
+}) {
   const ref = useRef(null);
 
   let scrollToBottom = false;
@@ -20,23 +25,25 @@ function ChatDisplay({ messages, handleContinue }) {
   }
 
   return (
-    <div ref={ref} className="flex h-full flex-col gap-2 overflow-y-auto">
-      {messages.map((message, i) => (
-        <Message
-          key={i}
-          message={message}
-          onComplete={
-            scrollToBottom && i === messages.length - 1
-              ? () => {
-                  ref.current.scrollTop = ref.current.scrollHeight;
-                }
-              : undefined
-          }
-        />
-      ))}
-      {handleContinue && (
-        <button onClick={handleContinue}>Allow Assistant to continue?</button>
-      )}
+    <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>
+      <div className={`flex flex-col gap-4 ${innerClassName}`}>
+        {messages.map((message, i) => (
+          <Message
+            key={i}
+            message={message}
+            onComplete={
+              scrollToBottom && i === messages.length - 1
+                ? () => {
+                    ref.current.scrollTop = ref.current.scrollHeight;
+                  }
+                : undefined
+            }
+          />
+        ))}
+        {handleContinue && (
+          <button onClick={handleContinue}>Allow Assistant to continue?</button>
+        )}
+      </div>
     </div>
   );
 }
@@ -68,27 +75,26 @@ function formatMessage(message) {
   return message.tags
     .filter((tag) => messageTagsToInclude.has(tag.tag))
     .map(formatTag)
-    .join("\n\n");
+    .join("");
 }
 
 function formatTag({ tag, content }) {
-  content = content.trim();
   if (tag === "intermediate_script" || tag === "final_script") {
-    return `~~~magicscript\n${content}\n~~~`;
+    return `~~~magicscript\n${content.trim()}\n~~~`;
   } else if (tag === "user_request") {
     //improve markdown formatting by replacing single line breaks with double line breaks
-    return content.replace(/([^\n])\n(?!\n)/g, "$1\n\n");
+    return content.trim().replace(/([^\n])\n(?!\n)/g, "$1\n\n");
   }
   return content;
 }
 
-const messageStyle = "prose prose-sm prose-stone mx-2 ";
+const messageStyle = "prose prose-stone mx-2 ";
 const assistantMessageStyle = messageStyle + "max-w-full";
 const userMessageStyle =
   messageStyle +
   "self-end bg-stone-100 border border-stone-500 max-w-[80%] rounded-lg px-2 py-1";
 const preStyle =
-  "not-prose text-xs bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
+  "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
 
 function rehypeCode() {
   return (tree) => {
@@ -133,4 +139,4 @@ const rehypeSanitizeOptions = {
   },
 };
 
-export { ChatDisplay, assistantMessageStyle, userMessageStyle };
+export { ChatDisplay, assistantMessageStyle, userMessageStyle, formatMessage };

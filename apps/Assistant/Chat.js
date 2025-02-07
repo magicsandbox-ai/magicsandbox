@@ -7,7 +7,11 @@ import {
   Maximize2,
 } from "lucide-react";
 import ChatInput from "./ChatInput.js";
-import { ChatDisplay, assistantMessageStyle } from "./ChatDisplay.js";
+import {
+  ChatDisplay,
+  assistantMessageStyle,
+  formatMessage,
+} from "./ChatDisplay.js";
 
 function Chat({
   settingsRef,
@@ -36,16 +40,11 @@ function Chat({
     }
   }
 
-  async function handleSubmit() {
-    if (input === "") return;
-    setInput("");
-    await handleInput(input);
-  }
-
   async function handleInput(input) {
     //don't let user submit while loading
     //todo let user stop loading?
-    if (!settingsRef.current || chatLoading) return;
+    if (input === "" || !settingsRef.current || chatLoading) return;
+    setInput("");
     try {
       if (app) {
         setCollapsed(false);
@@ -73,11 +72,14 @@ function Chat({
     shouldFocusMaximizeButtonRef.current = true;
   }
 
-  const maximizeComponent = (
-    <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
-      <Maximize2 />
-    </button>
-  );
+  let maximizeComponent = null;
+  if (app) {
+    maximizeComponent = (
+      <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
+        <Maximize2 />
+      </button>
+    );
+  }
 
   let handleContinue;
   if (messages[messages.length - 1]?.promptToContinue) {
@@ -89,74 +91,93 @@ function Chat({
   }
 
   let placeholder;
-  if (collapsed && displayMessages.length > 0) {
-    placeholder = displayMessages[displayMessages.length - 1].displayContent;
+  if (collapsed && app && messages.length > 0) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "user") {
+        placeholder = formatMessage(messages[i]).trim();
+        break;
+      }
+    }
+    placeholder = placeholder || "Chat with your Assistant";
   } else {
     placeholder = "Chat with your Assistant";
   }
 
   return (
-    <div className="flex items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
-      <div className="flex-1" /> {/* spacer */}
-      <div className="flex h-11 w-full max-w-screen-lg flex-initial items-center">
-        <div className="relative h-full w-full">
-          <div
-            className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border border-stone-500 bg-white py-1 outline-1 ${
-              collapsed
-                ? "focus-within:outline focus-within:outline-stone-500"
-                : "py-2"
-            }`}
-            onKeyDown={handleEscape}
-            tabIndex={-1}
-          >
-            {!collapsed && (
-              <>
-                <div className="flex">
-                  <p className={assistantMessageStyle + " grow"}>
-                    {messages.length === 0 ? "What can I help you with?" : ""}
-                  </p>
-                  {maximizeComponent}
-                </div>
-                <div className="max-h-[80vh]">
+    <>
+      {!app && (
+        <ChatDisplay
+          outerClassName="my-4 flex flex-1 flex-col items-center"
+          innerClassName="w-full max-w-screen-lg"
+          messages={messages}
+          handleContinue={handleContinue}
+        />
+      )}
+      <div className="flex flex-none items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
+        <div className="flex-1" /> {/* spacer */}
+        <div className="flex h-12 w-full max-w-screen-lg flex-initial items-center">
+          <div className="relative h-full w-full">
+            <div
+              className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border border-stone-500 bg-white py-1 outline-1 ${
+                collapsed
+                  ? "focus-within:outline focus-within:outline-stone-500"
+                  : "py-2"
+              }`}
+              onKeyDown={handleEscape}
+              tabIndex={-1}
+            >
+              {!collapsed && (
+                <>
+                  <div className="flex">
+                    <p className={assistantMessageStyle + " grow"}>
+                      {messages.length === 0 ? "What can I help you with?" : ""}
+                    </p>
+                    {maximizeComponent}
+                  </div>
                   <ChatDisplay
+                    outerClassName="max-h-[80vh]"
                     messages={messages}
                     handleContinue={handleContinue}
                   />
-                </div>
-                <hr className="mx-2 border-stone-300" />
-              </>
-            )}
-            <div className="flex items-center">
-              <ChatInput
-                className={`mx-1 max-h-[124px] grow resize-none px-1 text-sm ${
-                  collapsed ? "outline-0" : ""
-                }`}
-                input={input}
-                setInput={setInput}
-                handleInput={handleSubmit}
-                placeholder={placeholder}
-              />
-              {collapsed && maximizeComponent}
+                  <hr className="mx-2 border-stone-300" />
+                </>
+              )}
+              <div className="flex items-center">
+                <ChatInput
+                  className={`mx-1 max-h-[148px] grow resize-none px-1 ${
+                    collapsed ? "outline-0" : ""
+                  }`}
+                  input={input}
+                  setInput={setInput}
+                  handleInput={handleInput}
+                  placeholder={placeholder}
+                />
+                {collapsed && maximizeComponent}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div className="mr-2 flex flex-1 items-center justify-start gap-2">
-        <button onClick={handleSubmit}>
-          {chatLoading ? (
-            <Loader className="animate-spin" />
-          ) : (
-            <CircleArrowUp />
+        <div className="mr-2 flex flex-1 items-center justify-start gap-2">
+          <button onClick={handleInput}>
+            {chatLoading ? (
+              <Loader className="animate-spin" />
+            ) : (
+              <CircleArrowUp />
+            )}
+          </button>
+          {app && (
+            <>
+              <button onClick={handleThumbsUp}>
+                <ThumbsUp />
+              </button>
+              <button onClick={handleThumbsDown}>
+                <ThumbsDown />
+              </button>
+            </>
           )}
-        </button>
-        <button onClick={handleThumbsUp}>
-          <ThumbsUp />
-        </button>
-        <button onClick={handleThumbsDown}>
-          <ThumbsDown />
-        </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

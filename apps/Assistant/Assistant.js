@@ -64,7 +64,10 @@ class Assistant {
   }
   setDisplayMessage(message) {
     this.setMessages((messages) => {
-      return [...messages, { role: "display", tags: [{ content: message }] }];
+      return [
+        ...messages,
+        { role: "display", tags: [{ content: `\n\n${message}` }] },
+      ];
     });
   }
   async updateBudget(update = true) {
@@ -160,21 +163,14 @@ class Assistant {
         //continuing after an intermediate_script, already created user message with logs
         newMessages = [...messages];
       }
-
       this.setMessages([
         ...newMessages,
         {
           role: "display", //this message gets overwritten below by the llm response
-          tags: [
-            {
-              content: initContext
-                ? `Initializing ${this.app}...`
-                : "Working on it...",
-            },
-          ],
+          tags: [{ content: "Working on it..." }],
         },
       ]);
-      const userMessage = newMessages[newMessages.length - 2];
+      const userMessage = newMessages[newMessages.length - 1];
       if (messages.length === 0) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
@@ -229,11 +225,18 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      const stream = await requestFunction(
-        "magicsandbox.llm",
-        { messages: llmMessages },
-        { maxCost: llmBudget, stream: true },
-      );
+      async function* mockStream() {
+        for (let i = 0; i < 100; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          yield { result: "hello " };
+        }
+      }
+      const stream = mockStream();
+      // const stream = await requestFunction(
+      //   "magicsandbox.llm",
+      //   { messages: llmMessages },
+      //   { maxCost: llmBudget, stream: true },
+      // );
       const llmMessage = {
         role: "assistant",
         tags: [],
