@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChatInput } from "./Chat.js";
+import ChatInput from "./ChatInput.js";
 import { CircleArrowUp, Loader } from "lucide-react";
 
 function Home({
@@ -30,26 +30,24 @@ function Home({
         <p className="mb-6 text-center text-2xl font-bold md:text-3xl">
           What can I help you with?
         </p>
-        <Input {...{ input, setInput, handleInput, chatLoading }} />
+        <div className="mx-1 flex rounded-xl border border-stone-500 py-1 outline-1 focus-within:outline focus-within:outline-stone-500">
+          <ChatInput
+            className="mx-2 max-h-[148px] grow resize-none outline-0"
+            input={input}
+            setInput={setInput}
+            handleInput={handleInput}
+            placeholder="Chat with your Assistant"
+          />
+          <button className="mr-1" onClick={handleInput}>
+            {chatLoading ? (
+              <Loader className="animate-spin" />
+            ) : (
+              <CircleArrowUp />
+            )}
+          </button>
+        </div>
       </div>
       <AppList appData={appData} />
-    </div>
-  );
-}
-
-function Input({ input, setInput, handleInput, chatLoading }) {
-  return (
-    <div className="mx-1 flex rounded-xl border border-stone-500 py-1 outline-1 focus-within:outline focus-within:outline-stone-500">
-      <ChatInput
-        className="mx-2 max-h-[148px] grow resize-none outline-0"
-        input={input}
-        setInput={setInput}
-        handleInput={handleInput}
-        placeholder="Chat with your Assistant"
-      />
-      <button className="mr-1" onClick={handleInput}>
-        {chatLoading ? <Loader className="animate-spin" /> : <CircleArrowUp />}
-      </button>
     </div>
   );
 }

@@ -1,164 +1,167 @@
-import React, { useRef, useEffect } from "react";
-import Markdown from "@components/Markdown.js";
-import rehypeHighlight from "rehype-highlight";
-import { visit, SKIP } from "unist-util-visit";
-import { defaultSchema } from "rehype-sanitize";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  CircleArrowUp,
+  Loader,
+  Maximize2,
+} from "lucide-react";
+import ChatInput from "./ChatInput.js";
+import { ChatDisplay, assistantMessageStyle } from "./ChatDisplay.js";
 
-function ChatInput({
-  className,
-  input,
-  setInput,
-  handleInput,
-  placeholder,
-  focus = true,
+function Chat({
+  settingsRef,
+  toastsRef,
+  assistantRef,
+  messages,
+  chatLoading,
+  app,
 }) {
-  const ref = useRef(null);
+  const [input, setInput] = useState("");
+  const [collapsed, setCollapsed] = useState(true);
+
+  const maximizeButtonRef = useRef(null);
+  const shouldFocusMaximizeButtonRef = useRef(false);
 
   useEffect(() => {
-    if (focus) {
-      ref.current.focus();
+    if (shouldFocusMaximizeButtonRef.current) {
+      maximizeButtonRef.current.focus();
+      shouldFocusMaximizeButtonRef.current = false;
     }
-  }, []);
+  }, [collapsed]);
 
-  useEffect(() => {
-    ref.current.style.height = "auto"; //allow to shrink if needed
-    ref.current.style.height = `${ref.current.scrollHeight + 4}px`; //add 4 because scrollHeight does not include border //todo configurable
-  }, [input]);
-
-  function handleChange(e) {
-    setInput(e.target.value);
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); //this is needed to prevent creating a newline after setInput('')
-      handleInput(input);
+  function handleEscape(e) {
+    if (e.key === "Escape") {
+      setCollapsed(true);
     }
   }
 
-  return (
-    <textarea
-      ref={ref}
-      className={className}
-      value={input}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      rows={1}
-      placeholder={placeholder}
-    />
-  );
-}
+  async function handleSubmit() {
+    if (input === "") return;
+    setInput("");
+    await handleInput(input);
+  }
 
-const messageStyle = "prose prose-sm prose-stone mx-2 ";
-const assistantMessageStyle = messageStyle + "max-w-full";
-const userMessageStyle =
-  messageStyle +
-  "self-end bg-stone-100 border border-stone-500 max-w-[80%] rounded-lg px-2 py-1";
-const preStyle =
-  "not-prose text-xs bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
-
-function rehypeCode() {
-  return (tree) => {
-    visit(tree, "element", (node) => {
-      if (
-        node.tagName === "pre" &&
-        node.children.length === 1 &&
-        node.children[0].tagName === "code"
-      ) {
-        const code = node.children[0];
-        if (code.properties.className?.includes("language-magicscript")) {
-          code.properties.className = ["language-javascript"]; //fix class name for highlighting
-          const pre = { ...node }; //clone node since we mutate it below
-          pre.properties.className = [preStyle];
-          //now make code block collapsible
-          const summary = {
-            type: "element",
-            tagName: "summary",
-            children: [{ type: "text", value: "Executing Script..." }],
-          };
-          node.tagName = "details";
-          node.properties = {};
-          node.children = [summary, pre];
-        } else {
-          //not collapsible, just style pre
-          node.properties.className = [preStyle];
-        }
-        return SKIP; //don't traverse children
+  async function handleInput(input) {
+    //don't let user submit while loading
+    //todo let user stop loading?
+    if (!settingsRef.current || chatLoading) return;
+    try {
+      if (app) {
+        setCollapsed(false);
       }
-    });
-  };
-}
-
-const rehypePlugins = [rehypeCode, rehypeHighlight];
-
-const rehypeSanitizeOptions = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span || []), ["className", /^hljs-./]],
-    pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
-  },
-};
-
-function ChatDisplay({ messages, assistantRef }) {
-  const ref = useRef(null);
-
-  function replaceSingleLineBreaks(text) {
-    //improve markdown formatting by replacing single line breaks with double line breaks
-    return text.replace(/([^\n])\n(?!\n)/g, "$1\n\n");
+      await assistantRef.current.handleInput({
+        input,
+        messages,
+      });
+    } catch (error) {
+      console.error(error);
+      toastsRef.current.addToast("An unexpected error occurred", "error");
+    }
   }
 
-  let scrollToBottom = false;
-  if (!ref.current) {
-    //messages are not open, we want to scroll to bottom when they are opened
-    scrollToBottom = true;
-  } else if (
-    ref.current.scrollHeight - ref.current.clientHeight <=
-    ref.current.scrollTop + 1
-  ) {
-    //already at the bottom so scroll to bottom once new message is added
-    scrollToBottom = true;
+  function handleThumbsUp() {
+    assistantRef.current.handleThumbsUp();
   }
+
+  function handleThumbsDown() {
+    assistantRef.current.handleThumbsDown();
+  }
+
+  function handleMaximize() {
+    setCollapsed(!collapsed);
+    shouldFocusMaximizeButtonRef.current = true;
+  }
+
+  const maximizeComponent = (
+    <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
+      <Maximize2 />
+    </button>
+  );
 
   const displayMessages = messages.filter((message) => message.displayContent);
 
+  let handleContinue;
+  if (messages[messages.length - 1]?.promptToContinue) {
+    handleContinue = () => {
+      assistantRef.current.handleInput({
+        messages,
+      });
+    };
+  }
+
+  let placeholder;
+  if (collapsed && displayMessages.length > 0) {
+    placeholder = displayMessages[displayMessages.length - 1].displayContent;
+  } else {
+    placeholder = "Chat with your Assistant";
+  }
+
   return (
-    <div ref={ref} className="flex h-full flex-col gap-2 overflow-y-auto">
-      {displayMessages.map((message, i) => (
-        <Markdown
-          className={
-            message.role === "user" ? userMessageStyle : assistantMessageStyle
-          }
-          key={i}
-          rehypePlugins={rehypePlugins}
-          rehypeSanitizeOptions={rehypeSanitizeOptions}
-          onComplete={
-            scrollToBottom && i === displayMessages.length - 1
-              ? () => {
-                  ref.current.scrollTop = ref.current.scrollHeight;
-                }
-              : undefined
-          }
-        >
-          {message.role === "user"
-            ? replaceSingleLineBreaks(message.displayContent)
-            : message.displayContent}
-        </Markdown>
-      ))}
-      {messages[messages.length - 1]?.promptToContinue && (
-        <button
-          onClick={() => {
-            assistantRef.current.handleInput({
-              input: "",
-              messages,
-            });
-          }}
-        >
-          Allow Assistant to continue?
+    <div className="flex items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
+      <div className="flex-1" /> {/* spacer */}
+      <div className="flex h-11 w-full max-w-screen-lg flex-initial items-center">
+        <div className="relative h-full w-full">
+          <div
+            className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border border-stone-500 bg-white py-1 outline-1 ${
+              collapsed
+                ? "focus-within:outline focus-within:outline-stone-500"
+                : "py-2"
+            }`}
+            onKeyDown={handleEscape}
+            tabIndex={-1}
+          >
+            {!collapsed && (
+              <>
+                <div className="flex">
+                  <p className={assistantMessageStyle + " grow"}>
+                    {displayMessages.length === 0
+                      ? "What can I help you with?"
+                      : ""}
+                  </p>
+                  {maximizeComponent}
+                </div>
+                <div className="max-h-[80vh]">
+                  <ChatDisplay
+                    messages={displayMessages}
+                    handleContinue={handleContinue}
+                  />
+                </div>
+                <hr className="mx-2 border-stone-300" />
+              </>
+            )}
+            <div className="flex items-center">
+              <ChatInput
+                className={`mx-1 max-h-[124px] grow resize-none px-1 text-sm ${
+                  collapsed ? "outline-0" : ""
+                }`}
+                input={input}
+                setInput={setInput}
+                handleInput={handleSubmit}
+                placeholder={placeholder}
+              />
+              {collapsed && maximizeComponent}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mr-2 flex flex-1 items-center justify-start gap-2">
+        <button onClick={handleSubmit}>
+          {chatLoading ? (
+            <Loader className="animate-spin" />
+          ) : (
+            <CircleArrowUp />
+          )}
         </button>
-      )}
+        <button onClick={handleThumbsUp}>
+          <ThumbsUp />
+        </button>
+        <button onClick={handleThumbsDown}>
+          <ThumbsDown />
+        </button>
+      </div>
     </div>
   );
 }
 
-export { ChatInput, ChatDisplay, assistantMessageStyle, userMessageStyle };
+export default Chat;

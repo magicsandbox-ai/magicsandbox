@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
-import BottomNavBar from "./BottomNavBar.js";
 import AssistantConfirm from "./AssistantConfirm.js";
 import RiskConfirm from "./RiskConfirm.js";
 import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
-import { ChatDisplay } from "./Chat.js";
+import Chat from "./Chat.js";
 
 function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [confirm, setConfirm] = useState(null);
@@ -134,7 +133,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   }
   return (
     <div className="flex h-screen w-full flex-col">
-      {messages.length === 0 && app === null && (
+      {messages.length === 0 && !app && (
         <Home
           {...{
             setModal,
@@ -148,17 +147,12 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
           }}
         />
       )}
-      {messages.length > 0 && app === null && (
-        <div className="my-4 max-w-screen-lg grow self-center">
-          <ChatDisplay messages={messages} assistantRef={assistantRef} />
-        </div>
-      )}
       <Sandbox
         ref={sandboxRef}
         className={`w-full ${app ? "grow" : "hidden"}`}
       />
       {(messages.length > 0 || app) && (
-        <BottomNavBar
+        <Chat
           {...{
             settingsRef,
             toastsRef,
