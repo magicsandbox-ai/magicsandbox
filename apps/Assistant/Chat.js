@@ -79,8 +79,6 @@ function Chat({
     </button>
   );
 
-  const displayMessages = messages.filter((message) => message.displayContent);
-
   let handleContinue;
   if (messages[messages.length - 1]?.promptToContinue) {
     handleContinue = () => {
@@ -115,15 +113,13 @@ function Chat({
               <>
                 <div className="flex">
                   <p className={assistantMessageStyle + " grow"}>
-                    {displayMessages.length === 0
-                      ? "What can I help you with?"
-                      : ""}
+                    {messages.length === 0 ? "What can I help you with?" : ""}
                   </p>
                   {maximizeComponent}
                 </div>
                 <div className="max-h-[80vh]">
                   <ChatDisplay
-                    messages={displayMessages}
+                    messages={messages}
                     handleContinue={handleContinue}
                   />
                 </div>

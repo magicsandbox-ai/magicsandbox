@@ -1,8 +1,86 @@
-import React, { useRef } from "react";
+import React, { useRef, memo } from "react";
 import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
+
+function ChatDisplay({ messages, handleContinue }) {
+  const ref = useRef(null);
+
+  let scrollToBottom = false;
+  if (!ref.current) {
+    //messages are not open, we want to scroll to bottom when they are opened
+    scrollToBottom = true;
+  } else if (
+    ref.current.scrollHeight - ref.current.clientHeight <=
+    ref.current.scrollTop + 1
+  ) {
+    //already at the bottom so scroll to bottom once new message is added
+    scrollToBottom = true;
+  }
+
+  return (
+    <div ref={ref} className="flex h-full flex-col gap-2 overflow-y-auto">
+      {messages.map((message, i) => (
+        <Message
+          key={i}
+          message={message}
+          onComplete={
+            scrollToBottom && i === messages.length - 1
+              ? () => {
+                  ref.current.scrollTop = ref.current.scrollHeight;
+                }
+              : undefined
+          }
+        />
+      ))}
+      {handleContinue && (
+        <button onClick={handleContinue}>Allow Assistant to continue?</button>
+      )}
+    </div>
+  );
+}
+
+const Message = memo(function Message({ message, onComplete }) {
+  const formattedMessage = formatMessage(message);
+  if (!formattedMessage) return null;
+  return (
+    <Markdown
+      className={
+        message.role === "user" ? userMessageStyle : assistantMessageStyle
+      }
+      rehypePlugins={rehypePlugins}
+      rehypeSanitizeOptions={rehypeSanitizeOptions}
+      onComplete={onComplete}
+    >
+      {formattedMessage}
+    </Markdown>
+  );
+});
+
+function formatMessage(message) {
+  const tagsToInclude = {
+    user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
+    assistant: new Set([undefined, "intermediate_script", "final_script"]), //exclude launch_app
+    display: new Set([undefined]),
+  };
+  const messageTagsToInclude = tagsToInclude[message.role];
+  return message.tags
+    .filter((tag) => messageTagsToInclude.has(tag.tag))
+    .map(formatTag)
+    .join("\n\n");
+}
+
+function formatTag({ tag, content }) {
+  content = content.trim();
+  if (tag === "intermediate_script" || tag === "final_script") {
+    return `~~~magicscript\n${content}\n~~~`;
+  } else if (tag === "user_request") {
+    //improve markdown formatting by replacing single line breaks with double line breaks
+    return content.replace(/([^\n])\n(?!\n)/g, "$1\n\n");
+  }
+  return content;
+}
 
 const messageStyle = "prose prose-sm prose-stone mx-2 ";
 const assistantMessageStyle = messageStyle + "max-w-full";
@@ -54,55 +132,5 @@ const rehypeSanitizeOptions = {
     pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
   },
 };
-
-function ChatDisplay({ messages, handleContinue }) {
-  const ref = useRef(null);
-
-  function replaceSingleLineBreaks(text) {
-    //improve markdown formatting by replacing single line breaks with double line breaks
-    return text.replace(/([^\n])\n(?!\n)/g, "$1\n\n");
-  }
-
-  let scrollToBottom = false;
-  if (!ref.current) {
-    //messages are not open, we want to scroll to bottom when they are opened
-    scrollToBottom = true;
-  } else if (
-    ref.current.scrollHeight - ref.current.clientHeight <=
-    ref.current.scrollTop + 1
-  ) {
-    //already at the bottom so scroll to bottom once new message is added
-    scrollToBottom = true;
-  }
-
-  return (
-    <div ref={ref} className="flex h-full flex-col gap-2 overflow-y-auto">
-      {messages.map((message, i) => (
-        <Markdown
-          className={
-            message.role === "user" ? userMessageStyle : assistantMessageStyle
-          }
-          key={i}
-          rehypePlugins={rehypePlugins}
-          rehypeSanitizeOptions={rehypeSanitizeOptions}
-          onComplete={
-            scrollToBottom && i === messages.length - 1
-              ? () => {
-                  ref.current.scrollTop = ref.current.scrollHeight;
-                }
-              : undefined
-          }
-        >
-          {message.role === "user"
-            ? replaceSingleLineBreaks(message.content)
-            : message.content}
-        </Markdown>
-      ))}
-      {handleContinue && (
-        <button onClick={handleContinue}>Allow Assistant to continue?</button>
-      )}
-    </div>
-  );
-}
 
 export { ChatDisplay, assistantMessageStyle, userMessageStyle };
