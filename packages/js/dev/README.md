@@ -1,4 +1,6 @@
-@magicsandbox.ai/dev helps you develop and publish Magic Apps and Functions locally.
+# @magicsandbox.ai/dev
+
+@magicsandbox.ai/dev helps you develop and publish [Magic Sandbox](https://magicsandbox.ai) Apps and Functions locally.
 
 ## Getting Started
 
@@ -52,7 +54,7 @@ package.json
 
 ## Documentation
 
-This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file. Refer to the [Magic Sandbox docs](todo) for details on `magic.json` and Magic Sandbox in general.
+This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file. Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?app=magicsandbox.Docs) for details on `magic.json` and Magic Sandbox in general.
 
 ### magic.json file
 

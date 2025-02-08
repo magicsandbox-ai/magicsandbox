@@ -2,7 +2,7 @@
 
 Magic Functions are server-side functions that can be called by Magic Apps or other Magic Functions. Unlike Magic Apps, which run on the frontend (the user's browser), Magic Functions run on the backend.
 
-Like Magic Apps, Magic Functions are also just JSON objects. See [shared keys](#shared-keys-between-magic-apps-and-magic-functions) for the keys you can include.
+Like Magic Apps, Magic Functions are also just JSON objects. See [shared keys](#shared-keys-between-apps-and-functions) for the keys you can include.
 
 Magic Sandbox currently only supports Magic Functions that you host on your own server. `name`, `version`, and `endpoint` are required keys for Magic Functions.
 

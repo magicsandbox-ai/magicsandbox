@@ -9,7 +9,12 @@
   "license": "MIT",
   "type": "module",
   "main": "./index.js",
+  "browser": "./browser.js",
+  "bin": {
+    "magicsandbox-docs": "./bin/magicsandbox-docs.js"
+  },
   "dependencies": {
+    "@magicsandbox.ai/dev": "file:packages/js/dev",
     "mdast-util-toc": "^7.1.0",
     "rehype-highlight": "^7.0.1",
     "rehype-slug": "^6.0.0",

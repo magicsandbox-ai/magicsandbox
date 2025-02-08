@@ -22,7 +22,7 @@ _(string)_
 
 String of CSS which is added as a `<style>` tag in the Sandbox.
 
-## Shared keys between Magic Apps and Magic Functions
+## Shared keys between Apps and Functions
 
 All of the remaining Magic App JSON keys are shared with Magic Functions, so we'll cover them together here:
 

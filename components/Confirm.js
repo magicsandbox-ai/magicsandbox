@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useRef } from "react";
 import ModalOverlay from "./ModalOverlay.js";
 
 function InnerConfirm({ onClose, header, message, buttons, customContent }) {
+  const mountTimeRef = useRef(Date.now());
+
   function handleClick(onClick, closeOnClick = true) {
+    //ignore super fast clicks to prevent Apps from tricking users into confirming something
+    if (Date.now() - mountTimeRef.current < 300) return;
     if (onClick) {
       onClick();
     }
@@ -10,6 +14,7 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
       onClose();
     }
   }
+
   return (
     <div className="flex flex-col gap-4 break-words p-4">
       {header && <h2 className="text-lg font-bold">{header}</h2>}
