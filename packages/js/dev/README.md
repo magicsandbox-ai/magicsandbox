@@ -94,6 +94,10 @@ into:
 
 todo
 
+### prebuild
+
+Script to run before building the App. The script will run in your current working directory, not the App folder.
+
 ## Globals
 
 This package exports a `globals` object that can be used with your linter. See [here](https://github.com/magicsandbox-ai/magicsandbox/blob/main/eslint.config.mjs) for an example.

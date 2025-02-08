@@ -7,6 +7,7 @@ import { processTailwind } from "@magicsandbox.ai/esbuild-plugin-tailwind";
 import { pathToFileURL } from "url";
 import { isEqual } from "es-toolkit";
 import { installDependencies } from "./install.js";
+import { execSync } from "child_process";
 
 async function buildAppLocal({
   magicPath,
@@ -25,15 +26,20 @@ async function buildAppLocal({
     return { appObj: magicObj };
   }
   log(new Date() - now, "readMagicJson");
+  if (magicObj.prebuild) {
+    console.log("Running prebuild...");
+    execSync(magicObj.prebuild);
+    log(new Date() - now, "prebuild");
+  }
   if (
     magicObj.dependencies &&
     !isEqual(magicObj.dependencies, contextRef.current.dependencies)
   ) {
     console.log("Installing dependencies...");
     await installDependencies(magicPath, magicObj);
+    log(new Date() - now, "installDependencies");
   }
   contextRef.current.dependencies = magicObj.dependencies;
-  log(new Date() - now, "installDependencies");
   const _fileExists = (filename) => fileExists(magicPath, filename);
   const _readFile = (filename) => readFile(magicPath, filename);
   let tailwindPath;

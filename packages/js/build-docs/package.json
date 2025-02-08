@@ -1,5 +1,5 @@
 {
-  "name": "@magicsandbox.ai/docs",
+  "name": "@magicsandbox.ai/build-docs",
   "version": "0.1.0",
   "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
   "repository": {
@@ -9,10 +9,6 @@
   "license": "MIT",
   "type": "module",
   "main": "./index.js",
-  "browser": "./browser.js",
-  "bin": {
-    "magicsandbox-docs": "./bin/magicsandbox-docs.js"
-  },
   "dependencies": {
     "@magicsandbox.ai/dev": "file:packages/js/dev",
     "mdast-util-toc": "^7.1.0",

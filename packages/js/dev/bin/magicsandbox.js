@@ -72,6 +72,27 @@ program
     await install(handlePath(appPath, options.dir), packages);
   });
 
+program
+  .command("docs")
+  .description("Build a Magic App from a documentation Markdown file")
+  .argument("<path>", "Path to App directory (relative to --dir if specified)")
+  .option("-d, --dir <directory>", "Base directory", process.cwd())
+  .action(async (appPath, options) => {
+    try {
+      const buildDocs = await import("@magicsandbox.ai/build-docs");
+      await buildDocs.buildDocs(handlePath(appPath, options.dir));
+    } catch (error) {
+      if (error.code === "ERR_MODULE_NOT_FOUND") {
+        console.error(
+          "To use the docs command, install @magicsandbox.ai/build-docs:",
+        );
+        console.error(`npm install "@magicsandbox.ai/build-docs"`);
+        process.exit(1);
+      }
+      throw error;
+    }
+  });
+
 program.parse();
 
 function handlePath(appPath, dir) {

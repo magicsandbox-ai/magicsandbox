@@ -5,6 +5,7 @@
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@magicsandbox.ai/build-docs": "file:packages/js/build-docs",
     "@magicsandbox.ai/dev": "file:packages/js/dev",
     "dotenv": "^16.4.7",
     "esbuild": "0.23.0",
