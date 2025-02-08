@@ -10,6 +10,10 @@ import { visitParents } from "unist-util-visit-parents";
 import { promises as fs } from "fs";
 import { updateMagicJson } from "@magicsandbox.ai/dev";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function remarkToc() {
   return function (tree) {
@@ -88,7 +92,7 @@ async function handleMagicJson(folder) {
   },
 }`;
       await fs.writeFile(
-        new URL("./magic.json5", folder),
+        path.join(folder, "magic.json5"),
         defaultMagicJson,
         "utf8",
       );
@@ -101,12 +105,14 @@ async function handleMagicJson(folder) {
 async function handleMarkdown(folder) {
   let markdown;
   try {
-    markdown = await fs.readFile(new URL("./index.md", folder), "utf8");
+    markdown = await fs.readFile(path.join(folder, "index.md"), "utf8");
   } catch (error) {
     if (error.code === "ENOENT") {
-      markdown =
-        "This file was automatically generated. Edit your documentation here!";
-      await fs.writeFile(new URL("./index.md", folder), markdown, "utf8");
+      markdown = `# Sample Documentation
+      
+This file was automatically generated. Edit your documentation here!
+`;
+      await fs.writeFile(path.join(folder, "index.md"), markdown, "utf8");
     } else {
       throw error;
     }
@@ -117,7 +123,7 @@ async function handleMarkdown(folder) {
 async function handleHtml(folder) {
   const [markdown, html] = await Promise.all([
     handleMarkdown(folder),
-    fs.readFile(new URL("./files/index.html", import.meta.url), "utf8"),
+    fs.readFile(path.join(__dirname, "files", "index.html"), "utf8"),
   ]);
   const [main, nav] = await Promise.all([
     unified()
@@ -140,20 +146,25 @@ async function handleHtml(folder) {
   ]);
   let finalHtml = html.replace("%%MAIN%%", main);
   finalHtml = finalHtml.replace("%%NAV%%", nav);
-  await fs.writeFile(new URL("./dist/index.html", folder), finalHtml, "utf8");
+  await fs.writeFile(
+    path.join(folder, "dist", "index.html"),
+    finalHtml,
+    "utf8",
+  );
 }
 
 async function buildDocs(folder) {
+  await fs.mkdir(path.join(folder, "dist"), { recursive: true });
   await Promise.all([
     handleMagicJson(folder),
     handleHtml(folder),
     fs.copyFile(
-      new URL("./files/index.js", import.meta.url),
-      new URL("./dist/index.js", folder),
+      path.join(__dirname, "files", "index.js"),
+      path.join(folder, "dist", "index.js"),
     ),
     fs.copyFile(
-      new URL("./files/index.css", import.meta.url),
-      new URL("./dist/index.css", folder),
+      path.join(__dirname, "files", "index.css"),
+      path.join(folder, "dist", "index.css"),
     ),
   ]);
 }
