@@ -5,4 +5,5 @@ packages/js/tailwind-browser/dist/index.js
 **/__pycache__/
 .cursorrules
 apps/Docs/dist/*
+apps/Docs/index.md
 apps/About/dist/*

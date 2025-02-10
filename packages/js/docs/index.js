@@ -1,5 +1,5 @@
 import { remark } from "remark";
-import { visit } from "unist-util-visit";
+import { visit, SKIP } from "unist-util-visit";
 
 function remarkGetHeadings(headings) {
   return function (tree) {
@@ -17,7 +17,11 @@ function remarkGetHeadings(headings) {
         }
       }
       if (currentDepth) {
-        filteredNodes.push(node);
+        filteredNodes.push({
+          ...node,
+          position: undefined, //remove position information to enable auto formatting
+        });
+        return SKIP; //don't traverse children if we added the node
       }
     });
     tree.children = filteredNodes;

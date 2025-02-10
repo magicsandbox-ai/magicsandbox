@@ -66,15 +66,16 @@ function rehypeLinks() {
 async function handleMagicJson(folder) {
   try {
     await updateMagicJson(folder, (obj) => {
-      obj.scriptFile = "dist/index.js";
-      obj.htmlFile = "dist/index.html";
-      obj.styleFile = "dist/index.css";
-      obj.prebuild = `npx magicsandbox docs ${path.basename(folder)}`;
+      obj.scriptFile = obj.scriptFile || "dist/index.js";
+      obj.htmlFile = obj.htmlFile || "dist/index.html";
+      obj.styleFile = obj.styleFile || "dist/index.css";
+      obj.prebuild =
+        obj.prebuild || "npx magicsandbox docs ${path.basename(folder)}";
       obj.esbuildOptions = {
         ...obj.esbuildOptions,
         loader: {
-          ...obj.esbuildOptions?.loader,
           ".md": "text",
+          ...obj.esbuildOptions?.loader,
         },
       };
     });

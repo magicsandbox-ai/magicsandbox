@@ -1,5 +1,5 @@
 /* this file is created by the @magicsandbox.ai/build-docs package. do not edit manually as it will be overwritten */
-import markdown from "./index.md";
+import markdown from "../index.md";
 
 const navLinks = Object.fromEntries(
   Array.from(document.querySelectorAll("#nav a")).map((a) => {

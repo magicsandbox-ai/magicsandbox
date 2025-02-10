@@ -2,4 +2,13 @@
   name: "Docs",
   version: "0.1.0",
   description: "Magic Sandbox documentation",
+  prebuild: "node apps/Docs/prebuild.js",
+  scriptFile: "dist/index.js",
+  htmlFile: "dist/index.html",
+  styleFile: "dist/index.css",
+  esbuildOptions: {
+    loader: {
+      ".md": "text"
+    }
+  },
 }
