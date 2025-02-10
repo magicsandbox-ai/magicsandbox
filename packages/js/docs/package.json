@@ -1,0 +1,16 @@
+{
+  "name": "@magicsandbox.ai/docs",
+  "version": "0.1.0",
+  "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.js",
+  "dependencies": {
+    "remark": "^15.0.1",
+    "unist-util-visit": "^5.0.0"
+  }
+}
