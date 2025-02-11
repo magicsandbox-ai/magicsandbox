@@ -1,4 +1,7 @@
-import sandboxDocs from "../Docs/sandbox.md";
+import docs from "@magicsandbox.ai/docs/docs.md";
+import { getHeadings } from "@magicsandbox.ai/docs";
+
+const sandboxDocs = getHeadings(docs, ["Sandbox"]);
 
 function formatMessage(message, isFinalMessage) {
   return message.tags
@@ -26,9 +29,10 @@ function formatSuggestedApps(apps) {
 function formatLogs(logs) {
   let formattedLogs = "";
   for (const log of logs) {
-    if (formattedLogs.length + log.length >= 10000) {
-      formattedLogs += `\n${log.slice(0, 10000 - formattedLogs.length)}...\n...`;
-      break;
+    if (log.startsWith("[full]")) {
+      formattedLogs += `\n${log}`;
+    } else if (formattedLogs.length + log.length >= 10000) {
+      formattedLogs += `\n${log.slice(0, 10000 - formattedLogs.length)}...`;
     } else if (log.length > 1000) {
       formattedLogs += `\n${log.slice(0, 1000)}...`;
     } else {
@@ -71,6 +75,8 @@ Follow these guidelines when responding:
 
 After launching an app, you'll receive additional context on how you can use the app to fulfill the user's request.`;
 
+// todo fix duplication
+
 const initSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox. An app has just been launched and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
 
 To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
@@ -85,7 +91,7 @@ Additional text to display to the user if needed.
 
 Your scripts run in an async function, so you can use top level \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
 
-Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. The actual request from the user will be included in <user_request> tags:
+Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. If you need to log something without truncation, you can use a special \`console.full\` method. The actual request from the user will be included in <user_request> tags:
 
 <example_user_message>
 <logs>
@@ -138,7 +144,7 @@ Additional text to display to the user if needed.
 
 Your scripts run in an async function, so you can use top level \`await\` as needed. By default, any variables you create are not available in the global scope. If you need to share variables between messages, assign them to the global object \`app.assistant\`.
 
-Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. The actual request from the user will be included in <user_request> tags:
+Any logs or errors from your script will be included in the user's next message in <logs> tags. Anything you log will be coerced to a string, so you should convert objects to an appropriate string representation before logging them. Logs may be truncated with "..." if they're too long. If you need to log something without truncation, you can use a special \`console.full\` method. The actual request from the user will be included in <user_request> tags:
 
 <example_user_message>
 <logs>

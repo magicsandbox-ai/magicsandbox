@@ -20,8 +20,13 @@ import prettier from "prettier/standalone";
 import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
 import { Loader } from "lucide-react";
+import { prompt } from "./prompt.js";
 import { context as _context } from "./context.js";
-import { tagParser } from "@magicsandbox.ai/streaming";
+import {
+  updateFiles as _updateFiles,
+  additionalContext as _additionalContext,
+  advancedDocs as _advancedDocs,
+} from "./api.js";
 
 async function initEsbuild() {
   const esbuildWasmResponse = await requestFetch(
@@ -557,32 +562,28 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const privateApi = {};
 
-function context() {
-  return _context(
-    privateApi.files,
-    privateApi.selectedFilename,
-    window.getSelection().toString(),
-    privateApi.scriptFile,
+function init({ input, budget, urlParams }) {
+  createRoot(document.getElementById("root")).render(
+    <App input={input} budget={budget} urlParams={urlParams} />,
   );
+  return prompt();
 }
 
-const privateApi = {};
+function context() {
+  return _context(privateApi);
+}
 
 const api = {
   updateFiles: (updateString) => {
-    const updatedFiles = tagParser(updateString); //todo find/replace
-    privateApi.setFiles({ ...privateApi.files, ...updatedFiles });
-    //merges are the original files (kind of poorly named), so we want to keep any outstanding original files rather than overwrite them
-    privateApi.setMerges({
-      ...Object.fromEntries(
-        Object.entries(privateApi.files).filter(
-          ([filename]) => filename in updatedFiles,
-        ),
-      ),
-      ...privateApi.merges,
-    });
+    _updateFiles(privateApi, updateString);
+  },
+  additionalContext: ({ files, code }) => {
+    _additionalContext(privateApi, { files, code });
+  },
+  advancedDocs: () => {
+    _advancedDocs();
   },
 };
 
@@ -594,4 +595,4 @@ function messageHandler(event) {
   }
 }
 
-export { context, api, messageHandler };
+export { init, context, api, messageHandler };

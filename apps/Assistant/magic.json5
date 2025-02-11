@@ -13,6 +13,7 @@
     loader: { ".js": "jsx", ".md": "text" },
   },
   dependencies: {
+    "@magicsandbox.ai/docs": "file:../../packages/js/docs",
     "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
     "@magicsandbox.ai/streaming": "file:../../packages/js/streaming",
     react: "^18.3.1",

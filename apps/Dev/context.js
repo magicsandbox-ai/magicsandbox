@@ -1,5 +1,6 @@
 import { parse } from "./parser.js";
 import * as eslintScope from "eslint-scope";
+import { prompt } from "./prompt.js";
 
 function analyze(content) {
   /*
@@ -45,26 +46,14 @@ tests:
 - unnamed default export
 
 todos:
-- what file is currently selected
-- if non-js file, don't put js before it
-- prompt: docs. use search/replace if files are large
-- how to get docs for dependencies and Functions
 - re-exporting/barrel modules/ExportAllDeclaration/ExportNamespaceSpecifier
 */
 
 class Context {
-  constructor(rawFiles, selectedFilename, selection, scriptFile) {
+  constructor(rawFiles, selectedFiles, selectedCode) {
     this.rawFiles = rawFiles;
-    if (
-      this.selectedFilename.endsWith(".js") ||
-      this.selectedFilename.endsWith(".jsx")
-    ) {
-      this.selectedFilename = selectedFilename;
-      this.selection = selection;
-    } else {
-      this.selectedFilename = scriptFile;
-      this.selection = null;
-    }
+    this.selectedFiles = new Set(selectedFiles);
+    this.selectedCode = selectedCode;
     this.maxLength = 25000; //todo make configurable
     this.length = 0;
     this.files = {};
@@ -75,27 +64,17 @@ class Context {
   get() {
     this.init();
     if (this.length <= this.maxLength) {
-      return this.format((file) => file.content);
+      return this.format(false);
     }
     this.process();
     this.summarize();
-    return this.format((file) => file.get());
+    return this.format(true);
   }
 
   init() {
     Object.entries(this.rawFiles).forEach(([filename, content]) => {
       this.length += content.length;
-      if (this.selectedFilename === filename) {
-        this.files[filename] = new File(
-          this,
-          filename,
-          content,
-          true,
-          this.selection,
-        );
-      } else {
-        this.files[filename] = new File(this, filename, content, false, null);
-      }
+      this.files[filename] = new File(this, filename, content);
     });
   }
 
@@ -128,8 +107,9 @@ class Context {
   summarize() {
     const items = [
       this.files["magic.json"],
+      ...this.files.filter((file) => !file.js && file.selected),
       ...this.processedNodes.filter((node) => node.depth === 0),
-      ...this.files.filter((file) => !file.js),
+      ...this.files.filter((file) => !file.js && !file.selected),
       ...this.processedNodes.filter((node) => node.depth === 1),
       ...this.processedNodes.filter((node) => node.depth === 2),
     ];
@@ -142,33 +122,32 @@ class Context {
     }
   }
 
-  format(method) {
+  format(summarizedContext) {
+    let method = (file) => file.content;
+    if (summarizedContext) {
+      method = (file) => file.get();
+    }
     const fileStrings = [];
     this.files.forEach((file) => {
-      const fileString = method(file);
-      if (fileString) {
-        fileStrings.push(`<${file.filename}>
-${fileString}
+      fileStrings.push(`<${file.filename}>
+${method(file)}
 </${file.filename}>`);
-      }
     });
-    return `The user is editing the below files:
-<files>
+    const context = `<files>
 ${fileStrings.join("\n")}
-</files>
-
-${restofPrompt}`;
+</files>`;
+    return prompt({ context, summarizedContext });
   }
 }
 
 class File {
-  constructor(context, filename, content, selected, selection) {
+  constructor(context, filename, content) {
     this.context = context;
     this.filename = filename;
     this.js = this.filename.endsWith(".js") || this.filename.endsWith(".jsx");
     this.content = content;
-    this.selected = selected;
-    this.selection = selection;
+    this.selected = this.context.selectedFiles.has(filename);
+    this.selectionRanges = [];
     this.nodes = [];
     this.definitions = {};
     this.depth = null;
@@ -176,30 +155,29 @@ class File {
     this.summary = [];
   }
 
+  findSelectionRanges() {
+    if (this.selected) return [[0, this.content.length]];
+    const ranges = [];
+    for (const selection of this.context.selectedCode) {
+      for (const index of indexOfAll(this.content, selection)) {
+        ranges.push([index, index + selection.length]);
+      }
+    }
+    return ranges;
+  }
+
   parse() {
     if (!this.js) {
       this.context.length += this.content.length;
       return;
     }
-    let selectionStart, selectionEnd;
-    if (this.selection && this.selection.length < this.content.length) {
-      selectionStart = this.content.indexOf(this.selection);
-      selectionEnd = selectionStart + this.selection.length;
-    } else if (this.selection) {
-      selectionStart = 0;
-      selectionEnd = this.content.length;
-    }
+    this.selectionRanges = this.findSelectionRanges();
     try {
       const { ast, scopeManager } = analyze(this.content);
       this.ast = ast;
       this.scopeManager = scopeManager;
       this.ast.body.forEach((astNode, index) => {
-        let selected = false;
-        if (selectionStart && selectionEnd) {
-          selected =
-            astNode.start < selectionEnd && astNode.end > selectionStart;
-        }
-        const node = new Node(this.context, this, astNode, selected, index);
+        const node = new Node(this.context, this, astNode, index);
         this.nodes.push(node);
         if (astNode.type === "ExportNamedDeclaration") {
           astNode.specifiers.forEach((specifier) => {
@@ -298,18 +276,21 @@ class File {
     if (this.summary.length > 0) {
       return this.summary.join("\n");
     }
+    return "...";
   }
 }
 
 class Node {
-  constructor(context, file, astNode, selected, index) {
+  constructor(context, file, astNode, index) {
     this.context = context;
     this.file = file;
     this.astNode = astNode;
-    this.selected = selected;
     this.index = index;
     this.depth = null;
-    if (selected) {
+    this.selected = this.file.selectionRanges.some(
+      ([start, end]) => this.astNode.start < end && this.astNode.end > start,
+    );
+    if (this.selected) {
       this.depth = 0;
       this.context.nodes.push(this);
     }
@@ -389,23 +370,45 @@ ${body.join("\n")}
   }
 }
 
-function context(rawFiles, selectedFilename, selection, scriptFile) {
-  return new Context(rawFiles, selectedFilename, selection, scriptFile).get();
+function context(privateApi, { files = [], code = [] } = {}) {
+  let selectedFiles;
+  if (files.length > 0) {
+    selectedFiles = files;
+  } else {
+    selectedFiles = [privateApi.selectedFilename];
+    if (
+      !(
+        privateApi.selectedFilename.endsWith(".js") ||
+        privateApi.selectedFilename.endsWith(".jsx")
+      )
+    ) {
+      //if we don't select at least one JS file, we won't get any JS context, so add scriptFile
+      selectedFiles.push(privateApi.scriptFile);
+    }
+  }
+  let selectedCode;
+  if (code.length > 0) {
+    selectedCode = code;
+  } else {
+    selectedCode = [window.getSelection().toString()];
+  }
+  return new Context(privateApi.files, selectedFiles, selectedCode).get();
 }
 
-const restofPrompt = `API:
-
-- app.api.updateFiles(updateString)
-- app.api.download(): download files to the user's computer
-
-Usage:
-
-
-
-Instructions:
-
-- If the user is asking a question about the code, answer it and don't run any scripts.
-- Otherwise, use the API to complete the user's request.
-`;
-
 export { context, Context };
+
+function indexOfAll(str, search) {
+  if (!str) return []; //empty string matches every index
+  try {
+    const indices = [];
+    let index = str.indexOf(search);
+    while (index !== -1) {
+      indices.push(index);
+      index = str.indexOf(search, index + 1);
+    }
+    return indices;
+  } catch (e) {
+    console.error(e); //todo
+    return [];
+  }
+}
