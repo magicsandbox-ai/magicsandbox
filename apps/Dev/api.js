@@ -22,6 +22,13 @@ function updateFiles(privateApi, updateString) {
       //we need to look specifically for <find> rather than use tagParser because the file might be HTML or JSX and the tags are false positives
       newFiles[filename] = fileUpdateString;
     } else {
+      if (!(filename in newFiles)) {
+        console.warn(
+          "File not found. Can only use <find> and <replace> tags for existing files:",
+          filename,
+        );
+        continue;
+      }
       let find;
       let invalidFileUpdateString = false;
       for (const { tag, content } of tagParser(fileUpdateString)) {
@@ -38,7 +45,15 @@ function updateFiles(privateApi, updateString) {
           find = content;
         } else if (tag === "replace") {
           if (find) {
-            newFiles[filename] = newFiles[filename].replace(find, content);
+            const newContent = newFiles[filename].replace(
+              find.trim(),
+              content.trim(),
+            );
+            if (newContent === newFiles[filename]) {
+              console.warn("Could not find text to replace:", find);
+            } else {
+              newFiles[filename] = newContent;
+            }
             find = null;
           } else {
             console.warn("<replace> tag without <find> tag:", content);

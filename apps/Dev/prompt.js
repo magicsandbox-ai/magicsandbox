@@ -57,6 +57,20 @@ ${context}
 
 ### app.api.updateFiles(updateString: string)
 
+Update the App's files. Follow these instructions when generating the \`updateString\`:
+
+- magicsandbox.Dev supports special triple backtick syntax. Wrap \`updateString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it.
+- Use top level tags to identify which file to update. Anything outside of a top level tag is ignored. If the file doesn't exist, it will be created. You can update multiple files in the same call.
+- Within the top level file tag, you can use \`<find>\` and \`<replace>\` tags to update a portion of the file.
+  - The content of the \`<find>\` tag must *exactly* match the existing file content, character for character, including whitespace and comments.
+  - Only the first match in the file will be replaced. Include enough in the \`<find>\` tag to ensure it uniquely identifies the text you want to replace.
+  - You can include multiple \`<find>\` and \`<replace>\` blocks within the same top level file tag.
+  - You can't use \`<find>\` and \`<replace>\` tags when creating new files.
+- If you don't use \`<find>\` and \`<replace>\` tags, the entire file will be replaced (or a new file will be created) with the content inside of the top level file tag.
+  - Include the *entire* file content. Do not include comments like "... existing code ..." or "... rest of file ...".
+
+Here's an example of updating \`index.js\` using \`<find>\` and \`<replace>\` tags:
+
 ~~~javascript
 app.api.updateFiles(\`\`\`<index.js>
 <find>
