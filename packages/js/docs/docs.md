@@ -99,84 +99,73 @@ Controls the availability of your App or Function. Supported values:
 
 ## Making your App magical
 
-Those are all the keys in a Magic App - pretty simple! At its core, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it works with the Assistant by creating two global variables:
+As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it works with the Assistant by exposing a global `app` object that includes:
 
-- `app.context` ((any) => string): an optionally async function that returns a string giving the Assistant context about your App. You can think of this like your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
+- `app.init` ((urlParams) => string?): an optionally async function called when the App is first loaded with URL parameters as an argument. It can optionally return a context string that's used by the Assistant to dynamically initialize the App.
+- `app.context` ((any) => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App.
 - `app.api` (object): an object that exposes your App's API to the Assistant.
 
-Let's look at a simple example:
+You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
+
+Let's look at a simple example App we'll call magicsandbox.HelloWorld and walk through its lifecycle:
 
 ```javascript
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 
+function init({ urlParams }) {
+  createRoot(document.getElementById("root")).render(
+    <App urlParams={urlParams} />,
+  );
+  return context(); // optional
+}
+
 function context() {
-  return `API:
-  - app.api.setText: (text: string) => void, updates the displayed text`;
+  return `# magicsandbox.HelloWorld
+
+This is a simple hello world app that displays text.
+
+## Context
+
+The current text is: ${api.text}
+
+## API
+
+### app.api.setText(text: string)
+
+Updates the displayed text.`;
 }
 
 const api = {
+  text: null,
   setText: null,
 };
 
-function App() {
+function App({ urlParams }) {
+  // note: in this simple example, we're not using urlParams
   const [text, setText] = useState("Hello, world!");
+  api.text = text;
   api.setText = setText;
   return <div>{text}</div>;
 }
 
-createRoot(document.getElementById("root")).render(<App />);
-
-export { context, api };
+export { init, context, api };
 ```
 
-Now here's what happens if a user asks the Assistant to 'make it say "Goodbye!"':
+1. The user says "open a hello world app but make it say 'Good morning!'".
+2. The Assistant launches magicsandbox.HelloWorld, triggering a call to `app.init()`.
+3. `app.init` renders the App and returns a context string.
+4. The Assistant reads the context string and executes the script `app.api.setText("Good morning!");`. Note: if `app.init` didn't return anything, this step would be skipped.
+5. Later, the user says "what does it say?", triggering a call to `app.context()`.
+6. `app.context` returns a context string.
+7. The Assistant reads the context string and replies to the user with "It says 'Good morning!'".
+8. Later, the user says "now make it say 'Goodbye!'", triggering a call to `app.context()`.
+9. `app.context` returns a context string.
+10. The Assistant reads the context string and executes the script `app.api.setText("Goodbye!");`.
 
-1. The Assistant calls `app.context()` to get the context string.
-2. The Assistant reads the context string and generates the script `app.api.setText("Goodbye!");`.
-3. The Assistant executes the script in the Sandbox, updating the App to display "Goodbye!" as requested.
-
-When you export `context` and `api` from your `script`, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
+When you export `init`, `context`, and `api` from your `script`, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
 
 Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.
-
-## Initializing your App
-
-In addition to `app.context` and `app.api`, you can also create an `app.init` function that's called when your App is first loaded. `app.init` is an optionally async function that's called with three arguments provided by the Assistant:
-
-- `input` (string): user input
-- `budget` (number): the budget for `requestApp` and `requestFunction` calls. If exceeded, the Assistant will ask for user approval before making the call.
-- `urlParams` (object): URL parameters
-
-`app.init` can optionally return a string. If it does, the string will be used as context for the Assistant to generate a script to dynamically initialize your App. See [magicsandbox.Dev](https://github.com/magicsandbox-ai/magicsandbox/blob/main/apps/Dev/index.js) for an example.
-
-Here's a simple example of using `app.init` to render a React app and pass input, budget, and urlParams as props:
-
-```javascript
-import React, { useState } from "react";
-import { createRoot } from "react-dom/client";
-
-function context() {
-  // ...
-}
-
-const api = {
-  // ...
-};
-
-function App({ input, budget, urlParams }) {
-  // do something with input, budget, and urlParams...
-}
-
-function init({ input, budget, urlParams }) {
-  createRoot(document.getElementById("root")).render(
-    <App input={input} budget={budget} urlParams={urlParams} />,
-  );
-  // optionally return context to the Assistant
-}
-
-export { context, api, init };
-```
 
 # Magic Functions
 

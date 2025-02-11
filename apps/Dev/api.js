@@ -75,7 +75,9 @@ function additionalContext(privateApi, { files, code }) {
 }
 
 function advancedDocs() {
-  console.full(getHeadings(docs, ["Advanced"])); //todo
+  console.full(
+    getHeadings(docs, ["Magic Apps", "Publishing", "Advanced Topics"]),
+  );
 }
 
 export { updateFiles, additionalContext, advancedDocs };

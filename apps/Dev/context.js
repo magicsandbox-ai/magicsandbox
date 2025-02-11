@@ -391,7 +391,7 @@ function context(privateApi, { files = [], code = [] } = {}) {
   return new Context(privateApi.files, selectedFiles, selectedCode).get();
 }
 
-export { context, Context };
+export { context };
 
 function indexOfAll(str, search) {
   if (!str) return []; //empty string matches every index

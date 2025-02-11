@@ -54,4 +54,10 @@ gamma
 zeta
 `);
   });
+
+  test("throws if some headings are not found", async () => {
+    await expect(
+      getHeadings(docs, ["Section 1", "Subsection 3.2"]),
+    ).rejects.toThrow();
+  });
 });

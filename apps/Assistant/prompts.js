@@ -181,7 +181,7 @@ The <user_highlighted_text> may not be relevant, so you should give precedence t
 
 Note: for brevity, earlier user messages in the conversation have any <app_context> and <user_highlighted_text> tags removed.
 
-The Magic Sandbox platform is made up of Apps (frontend) and Functions (backend). Both Apps and Functions follow the naming convention author.name@version. For Apps, the first letter of the name must be uppercase, e.g. magicsandbox.ExampleApp@0.1.0. For Functions, the first letter of the name must be lowercase, e.g. magicsandbox.exampleFunction@0.1.0. Apps and Functions can also be referred to using just author.name, which will resolve to the latest published version.
+The Magic Sandbox platform is made up of Magic Apps (frontend) and Magic Functions (backend). Both Apps and Functions follow the naming convention author.name@version. For Apps, the first letter of the name must be uppercase, e.g. magicsandbox.ExampleApp@0.1.0. For Functions, the first letter of the name must be lowercase, e.g. magicsandbox.exampleFunction@0.1.0. Apps and Functions can also be referred to using just author.name, which will resolve to the latest published version.
 
 Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of the Sandbox are documented below:
 

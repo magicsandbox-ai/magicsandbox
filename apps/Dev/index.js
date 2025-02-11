@@ -12,6 +12,7 @@ import {
   getDefaults,
   runProcessTailwind,
   updateMagicJson,
+  exampleAppFiles,
 } from "@magicsandbox.ai/dev";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
@@ -54,27 +55,6 @@ const debounce = (callback, wait) => {
       }, wait);
     }
   };
-};
-
-const exampleFiles = {
-  "magic.json": `{
-  name: 'HelloWorld',
-  version: '0.1.0',
-  description: '',
-}`,
-  "index.js": `import React from "react";
-import { createRoot } from "react-dom/client";
-
-function App() {
-  return (
-    <div className="flex h-screen items-center justify-center">
-      Hello, world!
-    </div>
-  );
-}
-
-createRoot(document.getElementById("root")).render(<App />);
-  `,
 };
 
 function App() {
@@ -131,7 +111,7 @@ function App() {
   }, []);
 
   async function initData() {
-    const exampleObj = JSON5.parse(exampleFiles["magic.json"]);
+    const exampleObj = JSON5.parse(exampleAppFiles["magic.json"]);
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
     let initApps, initSelectedApp, initFiles;
     try {
@@ -146,18 +126,18 @@ function App() {
       if (!initFiles) {
         initApps.push(exampleApp);
         initSelectedApp = exampleApp;
-        initFiles = exampleFiles;
+        initFiles = exampleAppFiles;
       }
     } catch {
       initApps = [exampleApp];
       initSelectedApp = exampleApp;
-      initFiles = exampleFiles;
+      initFiles = exampleAppFiles;
     }
     setApps(initApps);
     setSelectedApp(initSelectedApp);
     setFiles(initFiles);
     //need this in case user deletes all other functions
-    appsFilesMapRef.current = { exampleApp: exampleFiles }; //todo save more in here in case no indexeddb?
+    appsFilesMapRef.current = { exampleApp: exampleAppFiles }; //todo save more in here in case no indexeddb?
     return { initApps, initSelectedApp, initFiles };
   }
 
@@ -568,7 +548,11 @@ function init({ input, budget, urlParams }) {
   createRoot(document.getElementById("root")).render(
     <App input={input} budget={budget} urlParams={urlParams} />,
   );
-  return prompt();
+  const context = _context({
+    files: exampleAppFiles,
+    selectedFilename: "index.js",
+  });
+  return prompt({ init: true, context });
 }
 
 function context() {

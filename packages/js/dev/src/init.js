@@ -1,42 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-
-const APP_TEMPLATE = {
-  "magic.json5": `{
-  name: '',
-  version: '0.1.0',
-  description: '',
-  dependencies: {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
-  }
-}`,
-  "index.js": `import React from "react";
-import { createRoot } from "react-dom/client";
-
-function App() {
-  return (
-    <div className="flex h-screen items-center justify-center">
-      Hello, world!
-    </div>
-  );
-}
-
-createRoot(document.getElementById("root")).render(<App />);
-  `,
-  "index.html": `<div id="root"></div>`,
-  "index.css": `@tailwind base; @tailwind components; @tailwind utilities;`,
-};
-
-const FUNCTION_TEMPLATE = {
-  "magic.json5": `{
-  name: '',
-  version: '0.1.0',
-  description: '',
-  documentation: '',
-  endpoint: 'https://example.com'
-}`,
-};
+import { exampleAppFiles, exampleFunctionFiles } from "./exampleFiles.js";
 
 async function findNearestPackageJson(startPath) {
   let currentPath = startPath;
@@ -95,7 +59,7 @@ async function init(magicPath, isFunction = false) {
       }
     }
     await fs.mkdir(magicPath, { recursive: true });
-    const template = isFunction ? FUNCTION_TEMPLATE : APP_TEMPLATE;
+    const template = isFunction ? exampleFunctionFiles : exampleAppFiles;
     for (const [filename, content] of Object.entries(template)) {
       const filePath = magicPath + "/" + filename;
       let fileContent = content;

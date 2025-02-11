@@ -1,39 +1,45 @@
-// import docs from "@magicsandbox.ai/docs/docs.md";
-// import { getHeadings } from "@magicsandbox.ai/docs";
-// getHeadings(docs, ["Sandbox"])
+import docs from "@magicsandbox.ai/docs/docs.md";
+import { getHeadings } from "@magicsandbox.ai/docs";
 
 /*
 todos:
-- prompt: docs. use search/replace if files are large
 - instructions on calling findFunction
-- special instructions for init?
 */
 
 function prompt({ init, context, summarizedContext } = {}) {
   return `# magicsandbox.Dev
 
-magicsandbox.Dev enables developing, previewing, and publishing Magic Sandbox Apps in the browser. By default, an App is built using the following files:
+magicsandbox.Dev enables developing, previewing, and publishing Magic Apps in the browser. 
 
-## magic.json
+## Files
+
+By default, a Magic App is built using the following files:
+
+### magic.json
 
 The App is configured by \`magic.json\`, which can be a JSON or JSON5 file. The complete configuration details are available using \`app.api.advancedDocs()\`. If the user is asking about \`magic.json\` specifically or if you suspect the user's request could be solved by updating \`magic.json\`, first use \`app.api.advancedDocs()\` to review the complete configuration details. For the most part, though, you should use the default values.
 
-## index.js
+### index.js
 
 JavaScript file that's used as the entrypoint for the App. You can do the following:
 
 - Import npm packages: \`import React from "react";\`
+  - Note: the build process will resolve versions and update \`dependencies\` in \`magic.json\` for you. You don't need to set \`dependencies\` yourself unless you need a specific version
 - Create other files and import them: \`import { myFunction } from "./utils.js";\`
 - Use Tailwind for styling
 - Use the Sandbox functions \`requestFunction\`, \`requestPutData\`, etc.
 
-## index.html
+### index.html
 
 Defaults to \`<div id="root"></div>\` if not provided.
 
-## index.css
+### index.css
 
 Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.
+
+${getHeadings(docs, ["Making your App magical"])}
+
+## Context
 
 ${
   init
