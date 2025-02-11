@@ -62,10 +62,12 @@ function processBuffer({ buffer, tag, bufferLength }) {
   while (buffer.length > bufferLength) {
     const match = buffer.match(/<.+?>/);
     if (match) {
-      results.push({
-        content: buffer.slice(0, match.index),
-        tag,
-      });
+      if (match.index > 0) {
+        results.push({
+          content: buffer.slice(0, match.index),
+          tag,
+        });
+      }
       buffer = buffer.slice(match.index + match[0].length);
       if (match[0][1] === "/") {
         tag = undefined;
@@ -90,26 +92,19 @@ function processBuffer({ buffer, tag, bufferLength }) {
  *
  * Arguments: a string
  *
- * Returns: {[tag?: string]: string}
+ * Returns: {content: string, tag?: string}[]
  *
  * Example: "hello world\<example>test\</example>goodbye"
  *
- * Returns: {
- *   undefined: "hello worldgoodbye",
- *   example: "test"
- * }
+ * Returns: [{content: "hello world"}, {content: "test", tag: "example"}, {content: "goodbye"}]
  */
 function tagParser(string) {
-  const result = {};
   const { results } = processBuffer({
     buffer: string,
     tag: undefined,
     bufferLength: 0,
   });
-  for (const { content, tag } of results) {
-    result[tag] = result[tag] ? result[tag] + content : content;
-  }
-  return result;
+  return results;
 }
 
 export { tagStreamParser, tagParser };

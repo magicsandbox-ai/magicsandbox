@@ -371,9 +371,10 @@ ${body.join("\n")}
 }
 
 function context(privateApi, { files = [], code = [] } = {}) {
-  let selectedFiles;
-  if (files.length > 0) {
+  let selectedFiles, selectedCode;
+  if (files.length > 0 || code.length > 0) {
     selectedFiles = files;
+    selectedCode = code;
   } else {
     selectedFiles = [privateApi.selectedFilename];
     if (
@@ -385,11 +386,6 @@ function context(privateApi, { files = [], code = [] } = {}) {
       //if we don't select at least one JS file, we won't get any JS context, so add scriptFile
       selectedFiles.push(privateApi.scriptFile);
     }
-  }
-  let selectedCode;
-  if (code.length > 0) {
-    selectedCode = code;
-  } else {
     selectedCode = [window.getSelection().toString()];
   }
   return new Context(privateApi.files, selectedFiles, selectedCode).get();
