@@ -6,8 +6,9 @@ todos:
 - instructions on calling findFunction
 */
 
-function prompt({ init, context, summarizedContext } = {}) {
-  return `# magicsandbox.Dev
+function prompt({ context, summarizedContext } = {}) {
+  const sections = [];
+  sections.push(`# magicsandbox.Dev
 
 magicsandbox.Dev enables developing, previewing, and publishing Magic Apps in the browser. 
 
@@ -17,14 +18,13 @@ By default, a Magic App is built using the following files:
 
 ### magic.json
 
-The App is configured by \`magic.json\`, which can be a JSON or JSON5 file. The complete configuration details are available using \`app.api.advancedDocs()\`. If the user is asking about \`magic.json\` specifically or if you suspect the user's request could be solved by updating \`magic.json\`, first use \`app.api.advancedDocs()\` to review the complete configuration details. For the most part, though, you should use the default values.
+The App is configured by \`magic.json\`, which can be a JSON or JSON5 file.
 
 ### index.js
 
 JavaScript file that's used as the entrypoint for the App. You can do the following:
 
 - Import npm packages: \`import React from "react";\`
-  - Note: the build process will resolve versions and update \`dependencies\` in \`magic.json\` for you. You don't need to set \`dependencies\` yourself unless you need a specific version
 - Create other files and import them: \`import { myFunction } from "./utils.js";\`
 - Use Tailwind for styling
 - Use the Sandbox functions \`requestFunction\`, \`requestPutData\`, etc.
@@ -35,32 +35,68 @@ Defaults to \`<div id="root"></div>\` if not provided.
 
 ### index.css
 
-Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.
+Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.`);
 
-${getHeadings(docs, ["Making your App magical"])}
-
-## Context
-
-${
-  init
-    ? `Below are sample files you can use as a template to create an App. Update \`magic.json\` and set relevant values for \`name\` and \`description\` based on the user's request. Unless the user requested otherwise or you feel it's inappropriate for the user's request, use \`index.js\` to create a React app and use Tailwind for styling. If using React and Tailwind, you likely don't need to update \`index.html\` or \`index.css\`.`
-    : `The user is editing the below files. Respect the existing code conventions and libraries used when updating the files.${
-        summarizedContext
-          ? ` For brevity, files may be excluded (indicated by "...") or summarized. When summarized, individual blocks of code may be truncated (indicated by "...").`
-          : ""
-      }`
+  sections.push(getHeadings(docs, ["Making your App magical"]));
+  sections.push(contextPrompt({ context, summarizedContext }));
+  sections.push(apiPrompt({ context, summarizedContext }));
+  sections.push(instructionsPrompt({ context, summarizedContext }));
+  return sections.map((section) => section.trim()).join("\n\n");
 }
 
+function contextPrompt({ context, summarizedContext }) {
+  if (context) {
+    return `## Context
+
+The user is editing the below files.${
+      summarizedContext
+        ? ` For brevity, files may be excluded (indicated by "...") or summarized. When summarized, individual blocks of code may be truncated (indicated by "...").`
+        : ""
+    }
+
 ${context}
+`;
+  } else {
+    return "";
+  }
+}
 
-## API
+function apiPrompt({ context, summarizedContext }) {
+  const api = [];
 
-### app.api.updateFiles(updateString: string)
+  api.push(`### app.api.createApp(name: string, description: string, createString: string)
+
+Create a new App.
+
+Arguments:
+
+- \`name\`: the name of the App.
+- \`description\`: a description of the App.
+- \`createString\`: a string used to create the App's files.
+
+Follow these instructions when generating the \`createString\`:
+
+- magicsandbox.Dev supports special triple backtick syntax. Wrap \`createString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it.
+- Use top level tags to identify which file to create. Anything outside of a top level tag is ignored. You can create multiple files in the same createString.
+- Within the top level file tag, include the *entire* file content. Do not include comments like "... existing code ..." or "... rest of file ...".
+- You don't need to create a \`magic.json\` file. It will be created for you.
+
+Here's an example of creating an App with an \`index.js\` file. For brevity, the \`index.js\` file is truncated. When you create an App, include the entire file content:
+
+~~~javascript
+app.api.createApp("HelloWorld", "A simple hello world app", \`\`\`<index.js>
+import React from "react";
+// rest of index.js file...
+\`\`\`);
+~~~`);
+
+  if (context) {
+    api.push(`### app.api.updateFiles(updateString: string)
 
 Update the App's files. Follow these instructions when generating the \`updateString\`:
 
 - magicsandbox.Dev supports special triple backtick syntax. Wrap \`updateString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it.
-- Use top level tags to identify which file to update. Anything outside of a top level tag is ignored. If the file doesn't exist, it will be created. You can update multiple files in the same call.
+- Use top level tags to identify which file to update. Anything outside of a top level tag is ignored. If the file doesn't exist, it will be created. You can update multiple files in the same updateString.
 - Within the top level file tag, you can use \`<find>\` and \`<replace>\` tags to update a portion of the file.
   - The content of the \`<find>\` tag must *exactly* match the existing file content, character for character, including whitespace and comments.
   - Only the first match in the file will be replaced. Include enough in the \`<find>\` tag to ensure it uniquely identifies the text you want to replace.
@@ -89,41 +125,66 @@ app.api.updateFiles(\`\`\`<index.js>
 </replace>
 </index.js>
 \`\`\`);
-~~~
-${
-  summarizedContext
-    ? `
-### app.api.additionalContext({ files: string[], code: string[] })
+~~~`);
+  }
+
+  if (summarizedContext) {
+    api.push(`### app.api.additionalContext({ files: string[], code: string[] })
 
 Logs additional context that you can reference in your next message.
 
 Arguments:
 
 - \`files\`: an array of file names to include in the context. For example: \`["utils.js"]\`
-- \`code\`: an array of code snippets to search for and include in the context. For example, to see everywhere a config object is referenced: \`["config"]\`
-`
-    : ""
-}
-### app.api.advancedDocs()
+- \`code\`: an array of code snippets to search for and include in the context. For example, to see everywhere a config object is referenced: \`["config"]\``);
+  }
+
+  api.push(`### app.api.advancedDocs()
 
 Logs advanced documentation that you can reference in your next message. The advanced documentation includes additional information on:
 
 - The Magic Sandbox platform
 - \`magic.json\` configuration
-- magicsandbox.Dev's build process
-- Updating already published Apps
+- magicsandbox.Dev's build and publishing process`);
 
-## Instructions
+  return `## API
 
-- If the user is asking a question about the code that you can answer, answer it and don't run any scripts.
-- Only use \`app.api.updateFiles\` if it's clear the user is expecting you to update the files. If the user is just asking a question, answer it and ask the user if they want you to update the files.${
-    summarizedContext
-      ? `
-- Use \`app.api.additionalContext\` if the user is asking a question about the code that you can't answer because the relevant file or snippet is not included in the context.`
-      : ""
+${api.join("\n\n")}`;
+}
+
+function instructionsPrompt({ context, summarizedContext }) {
+  let instructions;
+  if (!context) {
+    //called from init
+    instructions = [
+      "- Use `app.api.createApp` to create a new App.",
+      "- Set relevant values for `name` and `description` based on the user's request.",
+      "- Use `createString` to create `index.js`, `index.html`, or `index.css` files as needed.",
+      "- Unless the user requested otherwise or you feel it's inappropriate for the user's request, use `index.js` to create a React app and use Tailwind for styling. Use the magicsandbox.HelloWorld example as a template. If using React and Tailwind, you likely don't need to create `index.html` or `index.css`.",
+    ];
+  } else {
+    instructions = [
+      "- If the user is asking a question about the code that you can answer, just answer it and don't run any scripts.",
+      "- Only use `app.api.updateFiles` if it's clear the user is expecting you to update the files. Respect the existing code conventions and libraries used when updating the files.",
+    ];
+    if (summarizedContext) {
+      instructions.push(
+        "- Use `app.api.additionalContext` if the relevant file or snippet required to handle the user request is not included in the context.",
+      );
+    }
+    instructions.push(
+      "- Use `app.api.advancedDocs` if the user request requires more information about Magic Sandbox, `magic.json`, or magicsandbox.Dev than you have available.",
+    );
+    instructions.push(
+      "- For the most part, the default values in `magic.json` are appropriate. If the user is asking about `magic.json` specifically or if you suspect the user's request could be solved by updating `magic.json`, first use `app.api.advancedDocs()` to review the complete documentation.",
+    );
+    instructions.push(
+      "- The build process will resolve versions and update `dependencies` in `magic.json` for you. You don't need to set `dependencies` yourself unless you need a specific version.",
+    );
   }
-- Use \`app.api.advancedDocs\` if the user asks a question related to Magic Sandbox, \`magic.json\`, magicsandbox.Dev, or updating already published Apps that you can't answer with the information you have available.
-`;
+  return `## Instructions
+
+${instructions.join("\n")}`;
 }
 
 export { prompt };

@@ -24,6 +24,7 @@ import { Loader } from "lucide-react";
 import { prompt } from "./prompt.js";
 import { context as _context } from "./context.js";
 import {
+  createApp as _createApp,
   updateFiles as _updateFiles,
   additionalContext as _additionalContext,
   advancedDocs as _advancedDocs,
@@ -76,7 +77,6 @@ function App() {
   const filesRef = useRef(files);
   const editorRef = useRef(null);
   const editorStateRef = useRef({});
-  const appsFilesMapRef = useRef(null);
   const bundleDepsPluginRef = useRef(null);
   const bundledDepsRef = useRef(null);
   const importPluginRef = useRef(null);
@@ -110,25 +110,31 @@ function App() {
     importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
 
-  async function initData() {
+  async function initData(handleDelete) {
     const exampleObj = JSON5.parse(exampleAppFiles["magic.json"]);
     const exampleApp = `${exampleObj.name}@${exampleObj.version}`;
     let initApps, initSelectedApp, initFiles;
-    try {
-      initApps = await requestGetAllKeysData();
-      initApps = initApps.filter((key) => key !== "selectedApp");
-      if (initApps.length === 0) {
-        throw new Error(); //fall back to examples
-      }
-      initSelectedApp = await requestGetData("selectedApp");
-      initSelectedApp = initSelectedApp || initApps[0];
-      initFiles = await requestGetData(initSelectedApp);
-      if (!initFiles) {
-        initApps.push(exampleApp);
+    if (!handleDelete) {
+      try {
+        initApps = await requestGetAllKeysData();
+        initApps = initApps.filter((key) => key !== "selectedApp");
+        if (initApps.length === 0) {
+          throw new Error(); //fall back to examples
+        }
+        initSelectedApp = await requestGetData("selectedApp");
+        initSelectedApp = initSelectedApp || initApps[0];
+        initFiles = await requestGetData(initSelectedApp);
+        if (!initFiles) {
+          initApps.push(exampleApp);
+          initSelectedApp = exampleApp;
+          initFiles = exampleAppFiles;
+        }
+      } catch {
+        initApps = [exampleApp];
         initSelectedApp = exampleApp;
         initFiles = exampleAppFiles;
       }
-    } catch {
+    } else {
       initApps = [exampleApp];
       initSelectedApp = exampleApp;
       initFiles = exampleAppFiles;
@@ -136,9 +142,8 @@ function App() {
     setApps(initApps);
     setSelectedApp(initSelectedApp);
     setFiles(initFiles);
-    //need this in case user deletes all other functions
-    appsFilesMapRef.current = { exampleApp: exampleAppFiles }; //todo save more in here in case no indexeddb?
-    return { initApps, initSelectedApp, initFiles };
+    setMerges({});
+    setSelectedFilename("magic.json");
   }
 
   async function callProcessTailwind() {
@@ -202,8 +207,8 @@ function App() {
           extension: filenameSplit[filenameSplit.length - 1],
         };
       });
-    //tailwind caches and skips if content hasn't changed, but it's not picking up changes in style.css (probably due to fs not working in browser)
-    //so this is a hack to change content every time to force rerun and always pick up changes in style.css
+    //tailwind caches and skips if content hasn't changed, but it's not picking up changes in index.css (probably due to fs not working in browser)
+    //so this is a hack to change content every time to force rerun and always pick up changes in index.css
     if (config.content.length > 0) {
       config.content[0].raw += Date.now();
     }
@@ -259,8 +264,6 @@ function App() {
     if (event.ctrlKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       await handleSave();
-    } else if (event.ctrlKey && event.key === "Enter") {
-      document.getElementById("magic-input").focus();
     }
   }
 
@@ -275,7 +278,6 @@ function App() {
       selectedFilename.endsWith(".js") ||
       selectedFilename.endsWith(".jsx") ||
       selectedFilename.endsWith(".json")
-      //todo add typescript?
     ) {
       try {
         const { formatted, cursorOffset } = await prettier.formatWithCursor(
@@ -323,14 +325,10 @@ function App() {
 
   async function handleSelectApp(app) {
     try {
-      let newFiles;
-      if (appsFilesMapRef.current[app]) {
-        newFiles = appsFilesMapRef.current[app];
-      } else {
-        newFiles = await requestGetData(app);
-      }
+      const newFiles = await requestGetData(app);
       setFiles(newFiles);
       setSelectedApp(app);
+      setMerges({});
       requestPutData("selectedApp", app);
       handleSelectFilename("magic.json", app);
       deletedFilesRef.current = {};
@@ -342,15 +340,12 @@ function App() {
   async function deleteApp(app) {
     const newApps = apps.filter((a) => a !== app);
     if (newApps.length === 0) {
-      await requestDeleteData(app);
-      const { initSelectedApp } = initData(); //get default example
-      handleSelectApp(initSelectedApp);
-      setApps([initSelectedApp]);
+      await initData(true); //get example app
     } else {
       setApps(newApps);
       handleSelectApp(newApps[0]);
-      requestDeleteData(app);
     }
+    await requestDeleteData(app);
   }
 
   async function handlePublish() {
@@ -431,10 +426,14 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
+  privateApi.setApps = setApps;
+  privateApi.setSelectedApp = setSelectedApp;
   privateApi.files = files;
   privateApi.setFiles = setFiles;
-  privateApi.selectedFilename = selectedFilename;
   privateApi.setMerges = setMerges;
+  privateApi.selectedFilename = selectedFilename;
+  privateApi.setSelectedFilename = setSelectedFilename;
+  privateApi.build = build;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -548,11 +547,7 @@ function init({ input, budget, urlParams }) {
   createRoot(document.getElementById("root")).render(
     <App input={input} budget={budget} urlParams={urlParams} />,
   );
-  const context = _context({
-    files: exampleAppFiles,
-    selectedFilename: "index.js",
-  });
-  return prompt({ init: true, context });
+  return prompt();
 }
 
 function context() {
@@ -560,6 +555,9 @@ function context() {
 }
 
 const api = {
+  createApp: (name, description, createString) => {
+    _createApp(privateApi, name, description, createString);
+  },
   updateFiles: (updateString) => {
     _updateFiles(privateApi, updateString);
   },

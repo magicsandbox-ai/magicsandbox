@@ -2,6 +2,41 @@ import { tagParser } from "@magicsandbox.ai/streaming";
 import { context } from "./context.js";
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
+import JSON5 from "json5";
+
+function createApp(privateApi, name, description, createString) {
+  const version = "0.1.0";
+  const app = `${name}@${version}`;
+  const files = {
+    "magic.json": `{
+      name: "${name}",
+      version: "${version}",
+      description: "${description}"
+    }`,
+  };
+  let invalidCreateString = false;
+  for (const { tag, content } of tagParser(createString)) {
+    if (tag === undefined) {
+      if (content.trim() !== "") {
+        invalidCreateString = true;
+      }
+      continue;
+    }
+    files[tag] = content;
+  }
+  if (invalidCreateString) {
+    console.warn("Anything in the createString outside of a tag is ignored");
+  }
+  //todo this is kind of a mess - need to clean up state management (and refs)
+  privateApi.setApps((apps) => [...apps, app]);
+  privateApi.setSelectedApp(app);
+  privateApi.setFiles(files);
+  privateApi.setMerges({});
+  privateApi.setSelectedFilename("magic.json");
+  requestPutData(app, files);
+  requestPutData("selectedApp", app);
+  privateApi.build(JSON5.parse(files["magic.json"]));
+}
 
 function updateFiles(privateApi, updateString) {
   const newFiles = { ...privateApi.files };
@@ -91,8 +126,13 @@ function additionalContext(privateApi, { files, code }) {
 
 function advancedDocs() {
   console.full(
-    getHeadings(docs, ["Magic Apps", "Publishing", "Advanced Topics"]),
+    getHeadings(docs, [
+      "Magic Apps",
+      "Magic Functions",
+      "Publishing",
+      "Advanced Topics",
+    ]),
   );
 }
 
-export { updateFiles, additionalContext, advancedDocs };
+export { createApp, updateFiles, additionalContext, advancedDocs };
