@@ -25,7 +25,7 @@ function createApp(privateApi, name, description, createString) {
     files[tag] = content;
   }
   if (invalidCreateString) {
-    console.warn("Anything in the createString outside of a tag is ignored");
+    assistant.warn("Anything in the createString outside of a tag is ignored");
   }
   //todo this is kind of a mess - need to clean up state management (and refs)
   privateApi.setApps((apps) => {
@@ -64,7 +64,7 @@ function updateFiles(privateApi, updateString) {
       newFiles[filename] = fileUpdateString;
     } else {
       if (!(filename in newFiles)) {
-        console.warn(
+        assistant.warn(
           "File not found. Can only use <find> and <replace> tags for existing files:",
           filename,
         );
@@ -81,7 +81,7 @@ function updateFiles(privateApi, updateString) {
         }
         if (tag === "find") {
           if (find) {
-            console.warn("Consecutive <find> tag:", content);
+            assistant.warn("Consecutive <find> tag:", content);
           }
           find = content;
         } else if (tag === "replace") {
@@ -91,28 +91,28 @@ function updateFiles(privateApi, updateString) {
               content.trim(),
             );
             if (newContent === newFiles[filename]) {
-              console.warn("Could not find text to replace:", find);
+              assistant.warn("Could not find text to replace:", find);
             } else {
               newFiles[filename] = newContent;
             }
             find = null;
           } else {
-            console.warn("<replace> tag without <find> tag:", content);
+            assistant.warn("<replace> tag without <find> tag:", content);
           }
         }
       }
       if (find) {
-        console.warn("<find> tag without <replace> tag:", find);
+        assistant.warn("<find> tag without <replace> tag:", find);
       }
       if (invalidFileUpdateString) {
-        console.warn(
+        assistant.warn(
           "When using <find> and <replace> tags, anything outside of a tag is ignored",
         );
       }
     }
   }
   if (invalidUpdateString) {
-    console.warn("Anything in the updateString outside of a tag is ignored");
+    assistant.warn("Anything in the updateString outside of a tag is ignored");
   }
   privateApi.setFiles(newFiles);
   //merges are the original files (kind of poorly named), so we want to keep any outstanding original files rather than overwrite them
@@ -127,11 +127,11 @@ function updateFiles(privateApi, updateString) {
 }
 
 function additionalContext(privateApi, { files, code }) {
-  console.full(context(privateApi, { files, code }));
+  assistant.full(context(privateApi, { files, code }));
 }
 
 function advancedDocs() {
-  console.full(
+  assistant.full(
     getHeadings(docs, [
       "Magic Apps",
       "Magic Functions",

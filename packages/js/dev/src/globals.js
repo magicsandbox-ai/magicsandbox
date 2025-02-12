@@ -1,4 +1,5 @@
 export const globals = {
+  assistant: false,
   requestApp: false,
   requestFunction: false,
   requestPutData: false,

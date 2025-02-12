@@ -76,7 +76,7 @@ Arguments:
 
 Follow these instructions when generating the \`createString\`:
 
-- magicsandbox.Dev supports special triple backtick syntax. Wrap \`createString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it.
+- magicsandbox.Dev supports special triple backtick syntax. Wrap \`createString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it. You don't need to escape the triple backticks themselves.
 - Use top level tags to identify which file to create. Anything outside of a top level tag is ignored. You can create multiple files in the same createString.
 - Within the top level file tag, include the *entire* file content. Do not include comments like "... existing code ..." or "... rest of file ...".
 - You don't need to create a \`magic.json\` file. It will be created for you.
@@ -87,6 +87,7 @@ Here's an example of creating an App with an \`index.js\` file. For brevity, the
 app.api.createApp("HelloWorld", "A simple hello world app", \`\`\`<index.js>
 import React from "react";
 // rest of index.js file...
+</index.js>
 \`\`\`);
 ~~~`);
 
@@ -95,7 +96,7 @@ import React from "react";
 
 Update the App's files. Follow these instructions when generating the \`updateString\`:
 
-- magicsandbox.Dev supports special triple backtick syntax. Wrap \`updateString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it.
+- magicsandbox.Dev supports special triple backtick syntax. Wrap \`updateString\` in triple backticks so you don't need to worry about escaping any backticks or quotes inside of it. You don't need to escape the triple backticks themselves.
 - Use top level tags to identify which file to update. Anything outside of a top level tag is ignored. If the file doesn't exist, it will be created. You can update multiple files in the same updateString.
 - Within the top level file tag, you can use \`<find>\` and \`<replace>\` tags to update a portion of the file.
   - The content of the \`<find>\` tag must *exactly* match the existing file content, character for character, including whitespace and comments.
@@ -159,13 +160,15 @@ function instructionsPrompt({ context, summarizedContext }) {
     instructions = [
       "- Use `app.api.createApp` to create a new App.",
       "- Set relevant values for `name` and `description` based on the user's request.",
-      "- Use `createString` to create `index.js`, `index.html`, or `index.css` files as needed.",
+      "- Use `createString` to create `index.js`, `index.html`, or `index.css` files as needed. Make sure to use the triple backtick syntax and the top level file tags.",
       "- Unless the user requested otherwise or you feel it's inappropriate for the user's request, use `index.js` to create a React app and use Tailwind for styling. Use the magicsandbox.HelloWorld example as a template. If using React and Tailwind, you likely don't need to create `index.html` or `index.css`.",
     ];
   } else {
     instructions = [
       "- If the user is asking a question about the code that you can answer, just answer it and don't run any scripts.",
       "- Only use `app.api.updateFiles` if it's clear the user is expecting you to update the files. Respect the existing code conventions and libraries used when updating the files.",
+      "  - When using `app.api.updateFiles`, make sure to use the triple backtick syntax and the top level file tags.",
+      "  - Consider whether using <find> and <replace> tags or updating the entire file is more appropriate, and ensure you're using the correct `updateString` syntax.",
     ];
     if (summarizedContext) {
       instructions.push(
