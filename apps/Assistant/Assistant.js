@@ -176,11 +176,25 @@ class Assistant {
       if (messages.length === 0) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
-        const { result } = await requestFunction("magicsandbox.findApp", {
-          input,
-          maxCost: this.budget,
-        });
-        if (abortSignal.aborted) return;
+        // const { result } = await requestFunction("magicsandbox.findApp", {
+        //   input,
+        //   maxCost: this.budget,
+        // });
+        // if (abortSignal.aborted) return;
+        const result = [
+          {
+            id: "magicsandbox.Dev",
+            description: "Develop, preview, and publish a Magic Sandbox App",
+          },
+          {
+            id: "magicsandbox.Docs",
+            description: "Magic Sandbox documentation",
+          },
+          {
+            id: "magicsandbox.Notes",
+            description: "Take notes, to-do lists, and more",
+          },
+        ];
         userMessage.tags.push({
           tag: "suggested_apps",
           content: formatSuggestedApps(result),
