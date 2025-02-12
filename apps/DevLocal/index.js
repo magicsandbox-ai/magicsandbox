@@ -179,6 +179,7 @@ async function context() {
 }
 
 async function messageHandler(event) {
+  if (privateApi.previewRef === null) return; //this is the app.init call which we don't want to intercept
   //this executes the script in the Sandbox such that the Assistant doesn't know DevLocal is in between them
   //but to do so, it relies on implementation details in sandbox.js
   //which is not ideal, but not sure how to improve it
@@ -190,6 +191,7 @@ async function messageHandler(event) {
     const { script, args } = event.data.msg.data;
     //remove id so that this function handles the message, not the default handler
     //this must be synchronous before any awaits in this function
+    const id = event.data.id;
     delete event.data.id;
     const sandbox = privateApi.previewRef.current.sandboxRef.current;
     const sandboxId = sandbox.getSandboxId();
@@ -199,7 +201,7 @@ async function messageHandler(event) {
       args,
       timeout: 30000,
     });
-    event.source.postMessage({ id: event.data.id, response }, "*");
+    event.source.postMessage({ id, response }, "*");
   }
 }
 

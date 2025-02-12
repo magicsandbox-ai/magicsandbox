@@ -28,7 +28,13 @@ function createApp(privateApi, name, description, createString) {
     console.warn("Anything in the createString outside of a tag is ignored");
   }
   //todo this is kind of a mess - need to clean up state management (and refs)
-  privateApi.setApps((apps) => [...apps, app]);
+  privateApi.setApps((apps) => {
+    const newApps = [...apps];
+    if (!newApps.includes(app)) {
+      newApps.push(app);
+    }
+    return newApps;
+  });
   privateApi.setSelectedApp(app);
   privateApi.setFiles(files);
   privateApi.setMerges({});

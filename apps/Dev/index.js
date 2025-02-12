@@ -84,7 +84,7 @@ function App() {
   const bundledDepsRef = useRef(null);
   const importPluginRef = useRef(null);
   const tailwindConfigRef = useRef(null);
-  const previewLogsRef = useRef(null);
+  // const previewLogsRef = useRef(null);
 
   useEffect(() => {
     initData();
@@ -388,24 +388,29 @@ function App() {
       });
       if (appObjRef.current.dependencies) {
         //dependencies updated by buildApp
-        setFiles({
+        setFiles((files) => ({
           ...files,
           "magic.json": updateMagicJson(files["magic.json"], (obj) => {
             obj.dependencies = appObjRef.current.dependencies;
           }),
-        });
+        }));
       }
       esbuildContextRef.current = context;
       if (publish) {
         delete appObj.esbuildOptions; //plugins can't be serialized and cause an error
         await requestPublish(appObj);
       }
-      const { logs } = await previewRef.current.update(
-        sandboxId,
-        appObj,
-        10000,
-      );
-      previewLogsRef.current = logs;
+      await previewRef.current.update(sandboxId, appObj);
+      /*
+      todo this doesn't work because the Async Function with use strict cannot create the global app variable
+      either fix it, or remove the extra logic from Preview.js
+      */
+      // const { logs } = await previewRef.current.update(
+      //   sandboxId,
+      //   appObj,
+      //   10000,
+      // );
+      // previewLogsRef.current = logs;
     } catch (error) {
       console.error(error);
       previewRef.current.error(error.message);
@@ -575,7 +580,7 @@ const api = {
 function messageHandler(event) {
   if (event.data.msg?.data?.script) {
     event.data.msg.data.script = event.data.msg.data.script.replace(
-      /```(.*?)```/g,
+      /```([\s\S]*?)```/g,
       (_, p1) => {
         return JSON.stringify(p1); //handle escaping inside triple backticks
       },

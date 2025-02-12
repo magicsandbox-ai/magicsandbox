@@ -29,7 +29,7 @@ export default function FilePicker({
         className="mt-0.5 flex shrink-0 gap-1 overflow-x-auto text-xs"
         style={{ scrollbarWidth: "thin" }}
       >
-        <div className="flex rounded-md border">
+        <div className="flex cursor-pointer rounded-md border">
           <select
             style={{ fieldSizing: "content" }}
             value={selectedApp}
