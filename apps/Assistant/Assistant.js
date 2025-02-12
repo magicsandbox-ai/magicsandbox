@@ -30,6 +30,7 @@ class Assistant {
     setRisk,
     setMessages,
     setChatLoading,
+    setCollapsed,
     setApp,
   }) {
     this.urlParams = urlParams;
@@ -42,6 +43,7 @@ class Assistant {
     this.setRisk = setRisk;
     this.setMessages = setMessages;
     this.setChatLoading = setChatLoading;
+    this.setCollapsed = setCollapsed;
     this._setApp = setApp;
     this.app = null;
     this.abortController = new AbortController();
@@ -183,7 +185,7 @@ class Assistant {
           tag: "suggested_apps",
           content: formatSuggestedApps(result),
         });
-      } else if (this.app) {
+      } else if (!initContext && this.app) {
         let context, selection;
         try {
           ({ context, selection } = await this.sandboxRef.current.getContext(
@@ -198,7 +200,7 @@ class Assistant {
           tag: "app_context",
           content: `\n${context || "App did not provide context"}\n`,
         });
-        if (selection?.length < 1000) {
+        if (selection && selection.length < 1000) {
           userMessage.tags.push({
             tag: "user_highlighted_text",
             content: `\n${selection}\n`,
@@ -239,7 +241,12 @@ class Assistant {
         chunkProcessor: (chunk) => chunk.result,
       })) {
         if (abortSignal.aborted) return;
-        llmMessage.tags.push({ tag, content });
+        const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
+        if (lastTag && lastTag.tag === tag) {
+          lastTag.content += content;
+        } else {
+          llmMessage.tags.push({ tag, content });
+        }
         this.setMessages([...newMessages, llmMessage]);
       }
       for (const tag of llmMessage.tags) {
@@ -247,7 +254,7 @@ class Assistant {
           await this.handleApp({
             input,
             app: tag.content.trim(),
-            messages: llmMessages,
+            messages: [...newMessages, llmMessage],
           });
           break;
         } else if (
@@ -302,29 +309,29 @@ class Assistant {
         this.setDisplayMessage(`${result.metadata.app} loaded`);
         this.setApp(result.metadata.app);
         this.sandboxRef.current.postMessage(sandboxId, result);
-        if (input) {
-          //if loaded from a url, there's no input and the init context is irrelevant
-          let initContext;
-          try {
-            initContext = await this.sandboxRef.current.getInit(
-              sandboxId,
-              {
-                input,
-                budget: Math.max(this.budget - result.metadata.finalCost, 0),
-                urlParams: this.urlParams,
-              },
-              10000,
-            );
-          } catch {
-            //ignore
-          }
-          if (abortSignal.aborted) return;
-          if (initContext) {
-            this.handleInput({
-              messages,
-              initContext,
-            });
-          }
+        let initContext;
+        try {
+          initContext = await this.sandboxRef.current.getInit(
+            sandboxId,
+            {
+              input,
+              budget: Math.max(this.budget - result.metadata.finalCost, 0),
+              urlParams: this.urlParams,
+            },
+            10000,
+          );
+        } catch {
+          //ignore
+        }
+        if (abortSignal.aborted) return;
+        //if loaded from a url, there's no input and the init context is irrelevant
+        if (input && initContext) {
+          //by default, chat is collapsed after launching an app. but open it since assistant is going to send another message
+          this.setCollapsed(false);
+          this.handleInput({
+            messages,
+            initContext,
+          });
         }
       };
       if (this.budget === null) {

@@ -73,6 +73,35 @@ describe("tagStreamParser", () => {
       },
     ]);
   });
+
+  test("ignores nested tags", async () => {
+    const stream = createStream([
+      { result: "<" },
+      { result: "example1" },
+      { result: ">" },
+      { result: "test1" },
+      { result: "<" },
+      { result: "example2" },
+      { result: ">" },
+      { result: "test2" },
+      { result: "</" },
+      { result: "example2" },
+      { result: ">" },
+      { result: "</" },
+      { result: "example1" },
+      { result: ">" },
+      { metadata: { finalCost: 100 } },
+    ]);
+    const results = await collectStream(
+      tagStreamParser({ stream, chunkProcessor: (chunk) => chunk.result }),
+    );
+    expect(results).toEqual([
+      {
+        content: "test1<example2>test2</example2>",
+        tag: "example1",
+      },
+    ]);
+  });
 });
 
 describe("tagParser", () => {
@@ -94,6 +123,15 @@ describe("tagParser", () => {
       { content: "test1", tag: "example1" },
       { content: "test2", tag: "example2" },
       { content: "test3", tag: "example1" },
+    ]);
+  });
+
+  test("ignores nested tags", () => {
+    const input = `let me run a script <script>return <div>hello world</div></script>`;
+    const result = tagParser(input);
+    expect(result).toEqual([
+      { content: "let me run a script ", tag: undefined },
+      { content: "return <div>hello world</div>", tag: "script" },
     ]);
   });
 });

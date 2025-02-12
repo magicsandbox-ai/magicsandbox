@@ -60,7 +60,8 @@ async function* tagStreamParser({
 function processBuffer({ buffer, tag, bufferLength }) {
   const results = [];
   while (buffer.length > bufferLength) {
-    const match = buffer.match(/<.+?>/);
+    const regex = tag ? new RegExp(`<\\/${tag}>`) : /<[a-zA-Z_][\w.-]*>/;
+    const match = buffer.match(regex);
     if (match) {
       if (match.index > 0) {
         results.push({

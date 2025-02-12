@@ -41,6 +41,7 @@ const Preview = forwardRef(function Preview(
       reload,
       update,
       error,
+      sandboxRef,
     };
   }, []);
 

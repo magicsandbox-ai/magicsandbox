@@ -50,7 +50,7 @@ todos:
 */
 
 class Context {
-  constructor(rawFiles, selectedFiles, selectedCode) {
+  constructor(rawFiles = {}, selectedFiles = [], selectedCode = []) {
     this.rawFiles = rawFiles;
     this.selectedFiles = new Set(selectedFiles);
     this.selectedCode = selectedCode;
@@ -128,7 +128,7 @@ class Context {
       method = (file) => file.get();
     }
     const fileStrings = [];
-    this.files.forEach((file) => {
+    Object.values(this.files).forEach((file) => {
       fileStrings.push(`<${file.filename}>
 ${method(file)}
 </${file.filename}>`);

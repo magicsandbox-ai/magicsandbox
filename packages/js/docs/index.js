@@ -40,8 +40,8 @@ function remarkGetHeadings(headings) {
   };
 }
 
-async function getHeadings(docs, headings) {
-  const file = await remark().use(remarkGetHeadings, headings).process(docs);
+function getHeadings(docs, headings) {
+  const file = remark().use(remarkGetHeadings, headings).processSync(docs);
   return file.value;
 }
 

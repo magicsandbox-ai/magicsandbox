@@ -120,6 +120,8 @@ function App({ urlParams }) {
     );
   }
 
+  privateApi.previewRef = previewRef;
+
   return (
     <div className="flex h-screen flex-col items-center text-stone-700">
       <div className="flex w-full items-center justify-center gap-12 border-b border-stone-500 px-2 py-0.5">
@@ -165,4 +167,40 @@ function init({ urlParams }) {
   );
 }
 
-export { init };
+const privateApi = {
+  previewRef: null,
+};
+
+async function context() {
+  //get context from Sandbox and return it
+  const sandbox = privateApi.previewRef.current.sandboxRef.current;
+  const sandboxId = sandbox.getSandboxId();
+  return await sandbox.getContext(sandboxId, 10000);
+}
+
+async function messageHandler(event) {
+  //this executes the script in the Sandbox such that the Assistant doesn't know DevLocal is in between them
+  //but to do so, it relies on implementation details in sandbox.js
+  //which is not ideal, but not sure how to improve it
+  if (
+    event.data.id &&
+    event.data.msg?.request === "script" &&
+    event.data.msg.data?.script
+  ) {
+    const { script, args } = event.data.msg.data;
+    //remove id so that this function handles the message, not the default handler
+    //this must be synchronous before any awaits in this function
+    delete event.data.id;
+    const sandbox = privateApi.previewRef.current.sandboxRef.current;
+    const sandboxId = sandbox.getSandboxId();
+    const response = await sandbox.executeScriptAndWaitForResponse({
+      sandboxId,
+      script,
+      args,
+      timeout: 30000,
+    });
+    event.source.postMessage({ id: event.data.id, response }, "*");
+  }
+}
+
+export { init, context, messageHandler };

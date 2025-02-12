@@ -55,7 +55,7 @@ function Home({
 function AppList({ appData }) {
   const [state, setState] = useState("Favorited");
 
-  const states = ["Favorited", "Recent", "Published", "Blocked"];
+  const states = ["Favorited", "Recent", "Published"];
   const displayApps = appData.filter((app) => app[state.toLowerCase()]);
 
   return (

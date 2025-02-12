@@ -14,6 +14,8 @@ import {
 } from "./ChatDisplay.js";
 
 function Chat({
+  collapsed,
+  setCollapsed,
   settingsRef,
   toastsRef,
   assistantRef,
@@ -22,7 +24,6 @@ function Chat({
   app,
 }) {
   const [input, setInput] = useState("");
-  const [collapsed, setCollapsed] = useState(true);
 
   const maximizeButtonRef = useRef(null);
   const shouldFocusMaximizeButtonRef = useRef(false);

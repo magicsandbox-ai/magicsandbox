@@ -35,8 +35,8 @@ zeta
 console.log(getHeadings(docs, ["Section 1", "Subsection 3.1"]));
 
 describe("getHeadings", () => {
-  test("works", async () => {
-    const result = await getHeadings(docs, ["Section 1", "Subsection 3.1"]);
+  test("works", () => {
+    const result = getHeadings(docs, ["Section 1", "Subsection 3.1"]);
     expect(result).toBe(`## Section 1
 
 alpha
@@ -56,8 +56,6 @@ zeta
   });
 
   test("throws if some headings are not found", async () => {
-    await expect(
-      getHeadings(docs, ["Section 1", "Subsection 3.2"]),
-    ).rejects.toThrow();
+    expect(() => getHeadings(docs, ["Section 1", "Subsection 3.2"])).toThrow();
   });
 });

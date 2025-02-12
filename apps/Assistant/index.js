@@ -22,6 +22,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   */
   const [messages, setMessages] = useState([]);
+  const [collapsed, setCollapsed] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
   const [app, setApp] = useState(null);
   const [appData, setAppData] = useState([]);
@@ -65,6 +66,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
         setRisk,
         setMessages,
         setChatLoading,
+        setCollapsed,
         setApp,
       });
       const { app } = urlParams;
@@ -154,6 +156,8 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
       {(messages.length > 0 || app) && (
         <Chat
           {...{
+            collapsed,
+            setCollapsed,
             settingsRef,
             toastsRef,
             assistantRef,

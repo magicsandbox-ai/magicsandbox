@@ -58,6 +58,9 @@ const debounce = (callback, wait) => {
   };
 };
 
+exampleAppFiles["magic.json"] = exampleAppFiles["magic.json5"];
+delete exampleAppFiles["magic.json5"];
+
 function App() {
   const [apps, setApps] = useState([]);
   const [selectedApp, setSelectedApp] = useState("");
@@ -570,10 +573,13 @@ const api = {
 };
 
 function messageHandler(event) {
-  if (event.data.script) {
-    event.data.script = event.data.script.replace(/```(.*?)```/g, (_, p1) => {
-      return JSON.stringify(p1); //handle escaping inside triple backticks
-    });
+  if (event.data.msg?.data?.script) {
+    event.data.msg.data.script = event.data.msg.data.script.replace(
+      /```(.*?)```/g,
+      (_, p1) => {
+        return JSON.stringify(p1); //handle escaping inside triple backticks
+      },
+    );
   }
 }
 
