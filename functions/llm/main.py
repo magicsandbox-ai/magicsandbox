@@ -7,6 +7,9 @@ from litellm import acompletion
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LlmArgs(BaseModel):
     model: str | None = None
@@ -251,5 +254,7 @@ async def openai_transform(stream, model, expected_cost):
         yield chunk.choices[0].delta.content or ''
     final_cost = get_cost(model, chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
     if final_cost > expected_cost:
-        print(f'Warning: final cost {final_cost} is greater than expected cost {expected_cost}')
+        logger.warning(
+            f'Final cost exceeds expected cost: final={final_cost:.6f} expected={expected_cost:.6f} model={model}'
+        )
     yield json.dumps({'__command': {'finalCost': final_cost}})
