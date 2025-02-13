@@ -315,7 +315,7 @@ class RateLimitRisk extends Risk {
     if (this.lastTs) {
       this.requests = Math.max(
         0,
-        this.requests - (Date.now() - this.lastTs) / 200,
+        this.requests - (Date.now() - this.lastTs) / 20,
       );
     }
     this.lastTs = Date.now();

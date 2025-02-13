@@ -49,6 +49,9 @@ const Markdown = memo(function Markdown({
             Fragment: prod.Fragment,
             jsx: prod.jsx,
             jsxs: prod.jsxs,
+            components: {
+              pre: Pre,
+            },
           });
         const file = await processor.process(children);
         setContent(file.result);
@@ -68,5 +71,32 @@ const Markdown = memo(function Markdown({
 
   return <div className={className}>{Content}</div>;
 });
+
+function Pre({ children, ...props }) {
+  const [copied, setCopied] = useState(false);
+  const ref = useRef();
+
+  const handleCopy = () => {
+    const code = ref.current.innerText.trim();
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="group/code relative">
+      <button
+        onClick={handleCopy}
+        className="absolute right-2 top-2 rounded border border-stone-500 px-2 py-1 text-sm font-bold opacity-0 transition-opacity duration-200 hover:bg-stone-200 group-hover/code:opacity-100"
+      >
+        {copied ? "Copied!" : "Copy"}
+      </button>
+      <pre ref={ref} {...props}>
+        {children}
+      </pre>
+    </div>
+  );
+}
 
 export default Markdown;

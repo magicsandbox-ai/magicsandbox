@@ -37,7 +37,7 @@ let nextId = 1;
 const getId = () => nextId++;
 
 const Sandbox = forwardRef(function Sandbox(
-  { className, sandbox, onLoad, url, style },
+  { className, sandbox, allow, onLoad, url, style },
   ref,
 ) {
   const frameRef = useRef(null);
@@ -262,6 +262,7 @@ const Sandbox = forwardRef(function Sandbox(
       ref={frameRef}
       className={className}
       sandbox={sandbox}
+      allow={allow || "clipboard-write *"}
       style={style}
     />
   );

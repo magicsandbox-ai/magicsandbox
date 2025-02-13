@@ -172,26 +172,33 @@ function App() {
 
   async function processTailwind(config, css, _skipBuild = false) {
     //config is magic.json tailwindConfig, but if tailwind.config.js exists, use that instead
+    let tailwindConfigFilename, tailwindConfigFile;
     if (filesRef.current["tailwind.config.js"]) {
+      tailwindConfigFilename = "tailwind.config.js";
+      tailwindConfigFile = filesRef.current["tailwind.config.js"];
+    } else if (filesRef.current["tailwind.config.mjs"]) {
+      tailwindConfigFilename = "tailwind.config.mjs";
+      tailwindConfigFile = filesRef.current["tailwind.config.mjs"];
+    }
+    if (tailwindConfigFile) {
       try {
         //if skipBuild is true, skip the build, or if file hasn't changed, skip the build
         const skipBuild =
-          _skipBuild ||
-          filesRef.current["tailwind.config.js"] === tailwindConfigRef.current;
+          _skipBuild || tailwindConfigFile === tailwindConfigRef.current;
         if (!skipBuild) {
           const configResult = await esbuild.build({
-            entryPoints: ["tailwind.config.js"],
+            entryPoints: [tailwindConfigFilename],
             write: false,
             plugins: [importPluginRef.current],
             bundle: true,
             globalName: "__tailwindConfig",
           });
           eval?.(configResult.outputFiles[0].text); //indirect eval
-          tailwindConfigRef.current = filesRef.current["tailwind.config.js"];
+          tailwindConfigRef.current = tailwindConfigFile;
         }
         config = window.__tailwindConfig?.default || {};
       } catch (error) {
-        console.error(`Error building tailwind.config.js`, error); //todo toast
+        console.error(`Error building ${tailwindConfigFilename}`, error); //todo toast
       }
     }
     const excludeContent = new Set(config.excludeContent || []);

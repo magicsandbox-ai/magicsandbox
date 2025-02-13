@@ -442,7 +442,7 @@ class Assistant {
         if (validation) {
           this.sandboxRef.current.postMessage(event.sandboxId, {
             id,
-            error: { validation },
+            error: { message: validation },
           });
           event.error = true;
         }
@@ -452,7 +452,7 @@ class Assistant {
       const riskResponses = this.risks.map((risk) => risk.handleBatch(batch));
       let approved,
         askedUser = false;
-      const error = riskResponses.find((response) => response.error);
+      const { error } = riskResponses.find((response) => response.error) || {};
       if (error) {
         approved = false;
       } else if (riskResponses.some((response) => response.message)) {

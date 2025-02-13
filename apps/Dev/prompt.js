@@ -161,14 +161,18 @@ function instructionsPrompt({ context, summarizedContext }) {
       "- Use `app.api.createApp` to create a new App.",
       "- Set relevant values for `name` and `description` based on the user's request.",
       "- Use `createString` to create `index.js`, `index.html`, or `index.css` files as needed. Make sure to use the triple backtick syntax and the top level file tags.",
-      "- Unless the user requested otherwise or you feel it's inappropriate for the user's request, use `index.js` to create a React app and use Tailwind for styling. Use the magicsandbox.HelloWorld example as a template. If using React and Tailwind, you likely don't need to create `index.html` or `index.css`.",
+      "- Unless the user requested otherwise or you feel it's inappropriate for the user's request, use `index.js` to create a React app and use Tailwind for styling. Use the magicsandbox.HelloWorld example as a template. If using React and Tailwind, you likely can use the default values and don't need to create `index.html` or `index.css`.",
+      "- Apply styling to make the app take up the full screen and look modern and clean.",
+      "- Use the data sandbox functions `requestPutData`, `requestGetData`, etc. to persist user data when appropriate.",
+      "- If the user requests a complex app, implement enough basic functionality to make the app useful. Then, after running your script, suggest some additional features the user may want to add.",
     ];
   } else {
     instructions = [
-      "- If the user is asking a question about the code that you can answer, just answer it and don't run any scripts.",
-      "- Only use `app.api.updateFiles` if it's clear the user is expecting you to update the files. Respect the existing code conventions and libraries used when updating the files.",
-      "  - When using `app.api.updateFiles`, make sure to use the triple backtick syntax and the top level file tags.",
-      "  - Consider whether using <find> and <replace> tags or updating the entire file is more appropriate, and ensure you're using the correct `updateString` syntax.",
+      "- If the user is asking a question about how the code works, just answer it. If they're asking you to make a change, use `app.api.updateFiles`.",
+      "- When using `app.api.updateFiles`:",
+      "  - Respect the user's existing libraries and code conventions.",
+      "  - Make sure to use the triple backtick syntax and the top level file tags.",
+      "  - Use <find> and <replace> tags to make small changes to large files. Otherwise, update the entire file. Ensure you're using the correct `updateString` syntax either way.",
     ];
     if (summarizedContext) {
       instructions.push(
