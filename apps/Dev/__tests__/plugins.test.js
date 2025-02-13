@@ -3,6 +3,8 @@ import {
   transformImports,
   transformToBundleDeps,
   getImports,
+  normalizePath,
+  parseNormalizedPath,
 } from "../plugins.js";
 
 /*
@@ -116,5 +118,50 @@ const expectedGetImports = {
 describe("getImports", () => {
   test("should generate the correct output", () => {
     expect(getImports(getImportsFile)).toEqual(expectedGetImports);
+  });
+});
+
+function normalizeAndParsePath(path) {
+  const normalizedPath = normalizePath(
+    path,
+    {
+      //buildMetadata
+      filesRef: {
+        current: {},
+      },
+      cdn: "esm.sh",
+    },
+    {
+      //parent
+      url: null,
+    },
+  );
+  return parseNormalizedPath(normalizedPath);
+}
+
+describe("normalizePath and parseNormalizedPath", () => {
+  test("work", () => {
+    expect(normalizeAndParsePath("/react@19.0.0/es2022/react.mjs")).toEqual({
+      scope: undefined,
+      package: "react",
+      version: "19.0.0",
+      file: undefined, //see comment in normalizePath
+    });
+    expect(normalizeAndParsePath("/scheduler@^0.25.0?target=es2022")).toEqual({
+      scope: undefined,
+      package: "scheduler",
+      version: "^0.25.0",
+      file: undefined,
+    });
+    expect(
+      normalizeAndParsePath(
+        "/highlight.js@~11.11.0/lib/languages/1c?target=es2022",
+      ),
+    ).toEqual({
+      scope: undefined,
+      package: "highlight.js",
+      version: "~11.11.0",
+      file: "lib/languages/1c",
+    });
   });
 });

@@ -821,7 +821,7 @@ function normalizePath(path, buildMetadata, parent) {
     // /react@19.0.0/es2022/react.mjs
     const match = path.match(
       //  scope          package version    target     file
-      /^\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))(\/[^/]+\/)(.+)$/,
+      /^\/(?:@([^/]+)\/)?([^@]+)(?:@([^/]+))\/es[^/]+\/(.+)$/,
     );
     if (match) {
       return combinePathParts({
@@ -829,7 +829,8 @@ function normalizePath(path, buildMetadata, parent) {
         package: match[2],
         version: match[3],
         //if package is 'react' and file is 'react.mjs', ignore the file
-        file: match[5] === `${match[2]}.mjs` ? undefined : match[5],
+        //otherwise this won't resolve to the same URL as a bare import of 'react'
+        file: match[4] === `${match[2]}.mjs` ? undefined : match[4],
       });
     }
     // /@scope/package@version/file?target
@@ -931,4 +932,6 @@ export {
   transformImports,
   transformToBundleDeps,
   getImports,
+  normalizePath,
+  parseNormalizedPath,
 };
