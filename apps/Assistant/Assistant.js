@@ -75,7 +75,7 @@ class Assistant {
     });
   }
   async updateBudget(update = true) {
-    const { userBalance, userBalanceRemainingDays } = this.user;
+    const { userBalance, userBalanceRemainingDays } = this.user || {};
     if (!userBalanceRemainingDays || userBalance < 0.05) {
       const budget = Math.min(userBalance || 0.005, 0.005);
       if (update) {
@@ -330,7 +330,7 @@ class Assistant {
           description: result.metadata.description,
           minCost: result.metadata.minCost,
           status: result.metadata.status,
-          lastTs: Date.now(),
+          recent: Date.now(),
         };
         this.setApp(appData);
         this.setAppData((currentAppData) => ({
@@ -438,7 +438,7 @@ class Assistant {
           request,
           data,
           true,
-          this.app,
+          this.app.id,
         );
         if (validation) {
           this.sandboxRef.current.postMessage(event.sandboxId, {
@@ -568,7 +568,7 @@ class Assistant {
       description: magicObj.description,
       minCost: magicObj.minCost,
       status: magicObj.status,
-      published: true,
+      published: Date.now(),
     };
     this.setApp(appData);
     this.setAppData((currentAppData) => ({
@@ -576,26 +576,32 @@ class Assistant {
       [app]: appData,
     }));
   }
-  handleFavorite() {
+  handleFavorite(app) {
+    const favorited = app.favorited ? null : Date.now();
+    const blocked = favorited ? null : app.blocked;
     const appData = {
-      ...this.appDataRef.current[this.app.app],
-      favorited: !this.app.favorited,
+      ...this.appDataRef.current[app.app],
+      favorited,
+      blocked,
     };
     this.setApp(appData);
     this.setAppData((currentAppData) => ({
       ...currentAppData,
-      [this.app.app]: appData,
+      [app.app]: appData,
     }));
   }
-  handleBlock() {
+  handleBlock(app) {
+    const blocked = app.blocked ? null : Date.now();
+    const favorited = blocked ? null : app.favorited;
     const appData = {
-      ...this.appDataRef.current[this.app.app],
-      blocked: !this.app.blocked,
+      ...this.appDataRef.current[app.app],
+      favorited,
+      blocked,
     };
     this.setApp(appData);
     this.setAppData((currentAppData) => ({
       ...currentAppData,
-      [this.app.app]: appData,
+      [app.app]: appData,
     }));
   }
   reload() {

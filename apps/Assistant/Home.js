@@ -11,6 +11,7 @@ function Home({
   messages,
   chatLoading,
   appData,
+  setAppData,
 }) {
   const [input, setInput] = useState("");
 
@@ -48,7 +49,7 @@ function Home({
           </button>
         </div>
       </div>
-      <AppList appData={appData} />
+      <AppList appData={appData} setAppData={setAppData} />
     </div>
   );
 }

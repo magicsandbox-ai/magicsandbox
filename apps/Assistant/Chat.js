@@ -154,10 +154,10 @@ function Chat({
           </button>
           {app && (
             <>
-              <button onClick={() => assistantRef.current.handleFavorite()}>
+              <button onClick={() => assistantRef.current.handleFavorite(app)}>
                 <Star className={app.favorited ? "fill-yellow-500" : ""} />
               </button>
-              <button onClick={() => assistantRef.current.handleBlock()}>
+              <button onClick={() => assistantRef.current.handleBlock(app)}>
                 <Ban className={app.blocked ? "text-red-500" : ""} />
               </button>
             </>

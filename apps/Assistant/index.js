@@ -9,6 +9,36 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
+const sampleAppData = {
+  "magicsandbox.Assistant": {
+    id: "magicsandbox.Assistant@1.0.0",
+    app: "magicsandbox.Assistant",
+    description: "The Assistant",
+    favorited: 10000,
+    recent: 10000,
+    published: 10000,
+    blocked: 10000,
+  },
+  "magicsandbox.Dev": {
+    id: "magicsandbox.Dev@1.0.0",
+    app: "magicsandbox.Dev",
+    description: "The Dev",
+    favorited: 10000,
+    recent: 10000,
+    published: 10000,
+    blocked: 10000,
+  },
+  "magicsandbox.Docs": {
+    id: "magicsandbox.Docs@1.0.0",
+    app: "magicsandbox.Docs",
+    description: "The Docs",
+    favorited: 10000,
+    recent: 10000,
+    published: 10000,
+    blocked: 10000,
+  },
+};
+
 function App({ urlParams, user }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -26,8 +56,8 @@ function App({ urlParams, user }) {
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the full screen chat
-  const [app, setApp] = useState(null); // type App {id, app, description, minCost, status, favorited, published, blocked, lastTs}} //todo add versions somehow?
-  const [appData, setAppData] = useState([]); // {[app: string]: App}
+  const [app, setApp] = useState(null); // type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  const [appData, setAppData] = useState(sampleAppData); // {[app: string]: App}
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -86,10 +116,10 @@ function App({ urlParams, user }) {
           },
         });
       }
-      const appData = await requestGetData("appData", {
-        app: "magicsandbox.Assistant",
-      });
-      setAppData(appData || {});
+      // const appData = await requestGetData("appData", {
+      //   app: "magicsandbox.Assistant",
+      // });
+      // setAppData(appData || {});
     }
     if (!settingsRef.current) {
       init().catch((error) => {
@@ -156,6 +186,7 @@ function App({ urlParams, user }) {
             messages,
             chatLoading,
             appData,
+            setAppData,
           }}
         />
       )}
