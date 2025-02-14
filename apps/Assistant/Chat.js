@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  ThumbsUp,
-  ThumbsDown,
-  CircleArrowUp,
-  Loader,
-  Maximize2,
-} from "lucide-react";
+import { Star, Ban, CircleArrowUp, Loader, Maximize2 } from "lucide-react";
 import ChatInput from "./ChatInput.js";
 import {
   ChatDisplay,
@@ -58,14 +52,6 @@ function Chat({
       console.error(error);
       toastsRef.current.addToast("An unexpected error occurred", "error");
     }
-  }
-
-  function handleThumbsUp() {
-    assistantRef.current.handleThumbsUp();
-  }
-
-  function handleThumbsDown() {
-    assistantRef.current.handleThumbsDown();
   }
 
   function handleMaximize() {
@@ -168,11 +154,11 @@ function Chat({
           </button>
           {app && (
             <>
-              <button onClick={handleThumbsUp}>
-                <ThumbsUp />
+              <button onClick={() => assistantRef.current.handleFavorite()}>
+                <Star className={app.favorited ? "fill-yellow-500" : ""} />
               </button>
-              <button onClick={handleThumbsDown}>
-                <ThumbsDown />
+              <button onClick={() => assistantRef.current.handleBlock()}>
+                <Ban className={app.blocked ? "text-red-500" : ""} />
               </button>
             </>
           )}

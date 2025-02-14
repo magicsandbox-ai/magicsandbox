@@ -32,6 +32,7 @@ class Assistant {
     setChatLoading,
     setCollapsed,
     setApp,
+    setAppData,
   }) {
     this.urlParams = urlParams;
     this.userBalance = userBalance;
@@ -45,6 +46,7 @@ class Assistant {
     this.setChatLoading = setChatLoading;
     this.setCollapsed = setCollapsed;
     this._setApp = setApp;
+    this.setAppData = setAppData;
     this.app = null;
     this.abortController = new AbortController();
     this.budget = null;
@@ -264,7 +266,7 @@ class Assistant {
         this.setMessages([...newMessages, llmMessage]);
       }
       for (const tag of llmMessage.tags) {
-        if (tag.tag === "launch_app") {
+        if (!this.app && tag.tag === "launch_app") {
           await this.handleApp({
             input,
             app: tag.content.trim(),
@@ -392,28 +394,6 @@ class Assistant {
       this.handleError(error);
     }
   }
-  handleThumbsUp() {
-    this.handleScore(1);
-  }
-
-  handleThumbsDown() {
-    this.handleScore(-1);
-  }
-  async handleScore(score) {
-    console.log(score);
-    // try {
-    //   await requestFunction(
-    //     "magicsandbox.findApp",
-    //     {
-    //       score, //todo
-    //       app: this.app,
-    //     },
-    //     { app: "magicsandbox.Assistant" },
-    //   );
-    // } catch (error) {
-    //   console.error(error);
-    // }
-  }
   handleRequest(event) {
     window.clearTimeout(this.requestTimeoutId);
     event.sandboxId = this.sandboxRef.current.getSandboxId();
@@ -461,9 +441,6 @@ class Assistant {
         );
         if (abortSignal.aborted) return;
         askedUser = true;
-        if (!approved) {
-          this.handleScore(-0.1);
-        }
       } else {
         approved = true;
       }
@@ -558,7 +535,12 @@ class Assistant {
     this.userBalanceRemainingDays = metadata.userBalanceRemainingDays;
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
-
+  handleFavorite() {
+    console.log("handleFavorite");
+  }
+  handleBlock() {
+    console.log("handleBlock");
+  }
   reload() {
     this.abortController.abort();
     this.abortController = new AbortController();

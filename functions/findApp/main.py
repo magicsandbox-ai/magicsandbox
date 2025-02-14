@@ -13,6 +13,9 @@ import traceback
 import boto3
 import msgpack
 from .prompts import get_app_descriptions_from_input_prompt
+import logging
+
+logger = logging.getLogger(__name__)
 
 '''
 adjust this to enable functions as well
@@ -65,8 +68,8 @@ class AppData:
             await asyncio.sleep(3600)
             try:
                 await self.sync_app_data()
-            except Exception as e:
-                traceback.print_exc()
+            except Exception:
+                logger.exception("Error syncing app data")
 
     def init_app_data(self):
         if self.init_data is not None: # skip request when testing

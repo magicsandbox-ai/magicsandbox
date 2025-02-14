@@ -55,8 +55,14 @@ function Home({
 function AppList({ appData }) {
   const [state, setState] = useState("Favorited");
 
-  const states = ["Favorited", "Recent", "Published"];
-  const displayApps = appData.filter((app) => app[state.toLowerCase()]);
+  const states = ["Favorited", "Recent", "Published", "Blocked"];
+  let filter;
+  if (state === "Recent") {
+    filter = () => true;
+  } else {
+    filter = (app) => app[state.toLowerCase()];
+  }
+  const displayApps = appData.filter(filter);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -102,7 +108,7 @@ function AppListButton({ active, onClick, children }) {
 - id, description, icon for deprecated
 - expand to see minCost, finalCost, deprecated explained
 - expand to edit and pin a version? link to homepage?
-- buttons to (un)favorite, (un)block - pass down setAppData
+- buttons to (un)favorite, (un)block
 - add bang?
 */
 

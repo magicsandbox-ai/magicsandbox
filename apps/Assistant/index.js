@@ -68,6 +68,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
         setChatLoading,
         setCollapsed,
         setApp,
+        setAppData,
       });
       const { app } = urlParams;
       if (app) {
@@ -145,7 +146,6 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
             messages,
             chatLoading,
             appData,
-            setAppData,
           }}
         />
       )}
@@ -164,7 +164,6 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
             messages,
             chatLoading,
             app,
-            setAppData,
           }}
         />
       )}
