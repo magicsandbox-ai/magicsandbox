@@ -74,6 +74,14 @@ function validateAndDefaultRequest(request, data, assistant, app) {
       responseType: data.options?.responseType || "auto",
     };
   }
+  if (
+    assistant &&
+    (request === "app" || request === "function") &&
+    !data.options.includeMetadata.includes("finalCost")
+  ) {
+    //assistants need to know the final cost
+    data.options.includeMetadata.push("finalCost");
+  }
 }
 
 async function requestHandler({

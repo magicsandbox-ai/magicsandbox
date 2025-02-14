@@ -322,8 +322,8 @@ class Assistant {
         this.setApp(app);
       }
       const handleAppResult = async (result) => {
-        this.setDisplayMessage(`${result.metadata.app} loaded`);
-        this.setApp(result.metadata.app);
+        this.setDisplayMessage(`${result.metadata.id} loaded`);
+        this.setApp(result.metadata.id);
         this.sandboxRef.current.postMessage(sandboxId, result);
         let initContext;
         try {
@@ -354,11 +354,13 @@ class Assistant {
         await this.updateBudget();
         if (abortSignal.aborted) return;
       }
+      const requestAppOptions = {
+        maxCost: this.budget,
+        includeMetadata: ["id", "minCost", "finalCost", "status"],
+        updateUrl: true,
+      };
       try {
-        const result = await requestApp(app, {
-          maxCost: this.budget,
-          updateUrl: true,
-        });
+        const result = await requestApp(app, requestAppOptions);
         if (abortSignal.aborted) return;
         await handleAppResult(result);
       } catch (error) {
@@ -373,8 +375,8 @@ class Assistant {
               if (response) {
                 try {
                   const result = await requestApp(app, {
+                    ...requestAppOptions,
                     maxCost: error.data.minCost,
-                    updateUrl: true,
                   });
                   if (abortSignal.aborted) return;
                   await handleAppResult(result);
