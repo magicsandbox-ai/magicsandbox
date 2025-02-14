@@ -35,6 +35,7 @@ function validateAndDefaultRequest(request, data, assistant, app) {
   if (request === "app") {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
+      includeMetadata: data.options?.includeMetadata || [],
       updateUrl: data.options?.updateUrl || false,
     };
     if (data.options.maxCost > maximumMaxCost) {
@@ -44,7 +45,8 @@ function validateAndDefaultRequest(request, data, assistant, app) {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
       stream: data.options?.stream || false,
-      includeUserInfo: data.options?.includeUserInfo || {},
+      includeMetadata: data.options?.includeMetadata || [],
+      includeUserInfo: data.options?.includeUserInfo || [],
     };
     if (data.options.maxCost > maximumMaxCost) {
       return `maxCost must be less than or equal to ${maximumMaxCost}`;

@@ -85,7 +85,7 @@ For Functions, `finalCost` is not accepted as a key in the Magic App JSON, but i
 
 _(boolean, default false)_
 
-Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#public-app-and-function-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
+Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#public-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
 
 ### status
 
@@ -187,8 +187,8 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 - Includes headers:
   - `Content-Type: application/json`
   - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`.
-- Includes the body `{ fn, args, options, userInfo, app }`, where:
-  - `fn` is the fully resolved Function name, author.name@version
+- Includes the body `{ id, args, options, userInfo, app }`, where:
+  - `id` is the fully resolved Function name, author.name@version
   - `args`, `options` were the arguments to [requestFunction](#requestFunction)
   - `userInfo` (UserInfo) is an object with keys populated based on the arguments in `options.includeUserInfo`
   - `app` is the name of the App that is calling the Function. This is provided by the user's Assistant and is not verified by Magic Sandbox.
@@ -540,6 +540,7 @@ Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
 - `app` _(**required**, string)_: Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `options` _(object)_:
   - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
+  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys.
 
 **Returns:** a Promise that resolves to an App:
 
@@ -548,17 +549,11 @@ type App = {
   style?: string;
   html?: string;
   script?: string;
-  metadata: AppMetadata;
-};
-
-type AppMetadata = {
-  app: string;
-  finalCost: number;
-  status: "active" | "deprecated";
-  userBalance: number;
-  userBalanceRemainingDays: number;
+  metadata: object;
 };
 ```
+
+`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
 
 ### requestFunction
 
@@ -571,23 +566,16 @@ Executes a Magic Function and returns the result.
 - `options` _(object)_:
   - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00.
   - `stream` _(boolean, default false)_: Whether to stream the result.
-  - `includeUserInfo` _(object)_: An object with keys indicating additional user info to pass to the Function:
-    - `userId` _(boolean, default false)_: Whether to include the user ID.
+  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys.
+  - `includeUserInfo` _(string[], default [])_: Array of user info keys to include. Supported values:
+    - 'userId': Include the user ID
 
 **Returns:** a Promise that includes the Function result and metadata. The type depends on the `stream` option.
 
-- `stream: false`: `Promise<{result: any, metadata: FunctionMetadata}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
-- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: FunctionMetadata}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk.
+- `stream: false`: `Promise<{result: any, metadata: object}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
+- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk.
 
-```typescript
-type FunctionMetadata = {
-  fn: string;
-  finalCost: number;
-  status: "active" | "deprecated";
-  userBalance: number;
-  userBalanceRemainingDays: number;
-};
-```
+`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
 
 ## Storing and Retrieving Data
 
@@ -1055,24 +1043,12 @@ function main(args, options) {
 }
 ```
 
-## Public App and Function Metadata
+## App and Function Metadata
 
-todo add details on publishing full list to S3 periodically
-
-todo `private` does not appear here
-
-### Subscribing to Updates
-
-If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions. This enables you to create metaFunctions like [magicsandbox.findApp](todo), which takes user input and finds an App that best matches it.
-
-- The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`.
-- Includes headers:
-  - `Content-Type: application/json`
-  - `Authorization: Bearer <hashedKey>`, see [endpoint](todo).
-- Includes a `MagicMetadata` body
+Below are the metadata keys that are available for Apps and Functions:
 
 ```typescript
-type MagicMetadata = {
+type Metadata = {
   id: string; //author.name@version
   author: string;
   name: string;
@@ -1091,6 +1067,22 @@ type MagicMetadata = {
   stream: boolean;
 };
 ```
+
+### Public Metadata
+
+todo add details on publishing full list to S3 periodically
+
+todo `private` does not appear here
+
+### Subscribing to Updates
+
+If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions. This enables you to create metaFunctions like [magicsandbox.findApp](todo), which takes user input and finds an App that best matches it.
+
+- The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`.
+- Includes headers:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <hashedKey>`, see [endpoint](todo).
+- Includes a `Metadata` body
 
 todo app.messageHandler
 
