@@ -9,7 +9,7 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
-function App({ urlParams, userBalance, userBalanceRemainingDays }) {
+function App({ urlParams, user }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
@@ -24,13 +24,16 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   const [messages, setMessages] = useState([]);
   const [collapsed, setCollapsed] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
-  const [app, setApp] = useState(null);
-  const [appData, setAppData] = useState([]);
+  //app can be null, false, or an App, so be careful with boolean checks
+  //false is a signal to indicate an app is loading, so don't show a flash of the full screen chat
+  const [app, setApp] = useState(null); // type App {id, app, description, minCost, status, favorited, published, blocked, lastTs}} //todo add versions somehow?
+  const [appData, setAppData] = useState([]); // {[app: string]: App}
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
   const settingsRef = useRef(null);
   const assistantRef = useRef(null);
+  const appDataRef = useRef({});
 
   useEffect(() => {
     async function init() {
@@ -57,11 +60,11 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
       settingsRef.current = {};
       assistantRef.current = new Assistant({
         urlParams,
-        userBalance,
-        userBalanceRemainingDays,
+        user,
         sandboxRef,
         toastsRef,
         settingsRef,
+        appDataRef,
         setConfirm,
         setRisk,
         setMessages,
@@ -86,7 +89,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
       const appData = await requestGetData("appData", {
         app: "magicsandbox.Assistant",
       });
-      setAppData(appData || []);
+      setAppData(appData || {});
     }
     if (!settingsRef.current) {
       init().catch((error) => {
@@ -120,6 +123,13 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
     return () => window.removeEventListener("message", handleReload);
   }, []);
 
+  useEffect(() => {
+    appDataRef.current = appData;
+    requestPutData("appData", appData, { app: "magicsandbox.Assistant" }).catch(
+      console.error,
+    );
+  }, [appData]);
+
   let modalComponent;
   if (confirm) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
@@ -136,7 +146,7 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   }
   return (
     <div className="flex h-screen w-full flex-col">
-      {messages.length === 0 && !app && (
+      {messages.length === 0 && app === null && (
         <Home
           {...{
             setModal,
@@ -151,9 +161,9 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
       )}
       <Sandbox
         ref={sandboxRef}
-        className={`w-full ${app ? "grow" : "hidden"}`}
+        className={`w-full ${app !== null ? "grow" : "hidden"}`}
       />
-      {(messages.length > 0 || app) && (
+      {(messages.length > 0 || app !== null) && (
         <Chat
           {...{
             collapsed,
@@ -173,13 +183,9 @@ function App({ urlParams, userBalance, userBalanceRemainingDays }) {
   );
 }
 
-function init({ urlParams, userBalance, userBalanceRemainingDays }) {
+function init({ urlParams, user }) {
   createRoot(document.getElementById("root")).render(
-    <App
-      urlParams={urlParams}
-      userBalance={userBalance}
-      userBalanceRemainingDays={userBalanceRemainingDays}
-    />,
+    <App urlParams={urlParams} user={user} />,
   );
 }
 

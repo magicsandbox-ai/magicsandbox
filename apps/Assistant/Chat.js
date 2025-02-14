@@ -41,7 +41,7 @@ function Chat({
     if (input === "" || !settingsRef.current || chatLoading) return;
     setInput("");
     try {
-      if (app) {
+      if (app !== null) {
         setCollapsed(false);
       }
       await assistantRef.current.handleInput({
@@ -60,7 +60,7 @@ function Chat({
   }
 
   let maximizeComponent = null;
-  if (app) {
+  if (app !== null) {
     maximizeComponent = (
       <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
         <Maximize2 />
@@ -78,7 +78,7 @@ function Chat({
   }
 
   let placeholder;
-  if (collapsed && app && messages.length > 0) {
+  if (collapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role !== "user") {
         placeholder = formatMessage(messages[i]).trim();
@@ -92,7 +92,7 @@ function Chat({
 
   return (
     <>
-      {!app && (
+      {app === null && (
         <ChatDisplay
           outerClassName="my-4 flex flex-1 flex-col items-center"
           innerClassName="w-full max-w-screen-lg"

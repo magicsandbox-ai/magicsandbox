@@ -68,7 +68,7 @@ class FinancialRisk extends Risk {
         this.handleApprove(approved, askedUser, pendingRequests);
       };
       if (this.pendingCost + this.approvedCost > this.assistant.budget) {
-        const app = this.assistant.app.split("@")[0];
+        const app = this.assistant.app.app;
         const pendingSpend = formatAsDollars(this.pendingCost);
         const approvedSpend = formatAsDollars(this.approvedCost);
         const totalSpend = formatAsDollars(
@@ -132,7 +132,7 @@ class PublishRisk extends Risk {
           error: "May only publish one Magic App or Function at a time",
         };
       } else if (this.publishRequests.length === 1) {
-        const app = this.assistant.app.split("@")[0];
+        const app = this.assistant.app.app;
         const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
         return {
           message: `${app} is requesting to publish a Magic App or Function`,
@@ -165,7 +165,7 @@ class PrivacyRisk extends Risk {
   handleBatch(batch) {
     try {
       this._handleBatch(batch);
-      const app = this.assistant.app.split("@")[0];
+      const app = this.assistant.app.app;
       const untrustedReads = Array.from(this.pendingReads).filter(
         (read) => isCrossAuthor(read, app) && !this.userApprovedReads.has(read),
       );
@@ -212,7 +212,7 @@ class DataLossRisk extends Risk {
   handleBatch(batch) {
     try {
       this._handleBatch(batch);
-      const app = this.assistant.app.split("@")[0];
+      const app = this.assistant.app.app;
       const pendingWrites = Array.from(this.pendingWrites);
       const untrustedWrites = pendingWrites.filter(
         (write) =>
@@ -278,7 +278,7 @@ class DownloadRisk extends Risk {
     try {
       this._handleBatch(batch);
       if (this.downloadRequests.length > 0) {
-        const app = this.assistant.app.split("@")[0];
+        const app = this.assistant.app.app;
         const n = this.downloadRequests.length;
         const plural = n > 1 ? "s" : "";
         return {

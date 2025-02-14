@@ -21,10 +21,10 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 class Assistant {
   constructor({
     urlParams,
-    userBalance,
-    userBalanceRemainingDays,
+    user,
     sandboxRef,
     settingsRef,
+    appDataRef,
     toastsRef,
     setConfirm,
     setRisk,
@@ -35,10 +35,10 @@ class Assistant {
     setAppData,
   }) {
     this.urlParams = urlParams;
-    this.userBalance = userBalance;
-    this.userBalanceRemainingDays = userBalanceRemainingDays;
+    this.user = user;
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
+    this.appDataRef = appDataRef;
     this.toastsRef = toastsRef;
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
@@ -75,8 +75,9 @@ class Assistant {
     });
   }
   async updateBudget(update = true) {
-    if (!this.userBalanceRemainingDays || this.userBalance < 0.05) {
-      const budget = Math.min(this.userBalance || 0.005, 0.005);
+    const { userBalance, userBalanceRemainingDays } = this.user;
+    if (!userBalanceRemainingDays || userBalance < 0.05) {
+      const budget = Math.min(userBalance || 0.005, 0.005);
       if (update) {
         this.budget = budget;
       }
@@ -98,9 +99,8 @@ class Assistant {
     }
     const budget = Math.max(
       Math.min(
-        this.userBalance /
-          (this.userBalanceRemainingDays / avgDaysBetweenUsage),
-        this.userBalance / 5,
+        userBalance / (userBalanceRemainingDays / avgDaysBetweenUsage),
+        userBalance / 5,
         0.2, //todo allow configuring
       ),
       0.005,
@@ -317,13 +317,26 @@ class Assistant {
       if (!messages) {
         // loading from a url
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
-        // so we call setApp now to avoid the flash
-        // we still need to call setApp in handleAppResult to get the resolved app version
-        this.setApp(app);
+        // so we call setApp now with the special value of false (rather than null) to avoid the flash
+        this.setApp(false);
       }
       const handleAppResult = async (result) => {
         this.setDisplayMessage(`${result.metadata.id} loaded`);
-        this.setApp(result.metadata.id);
+        const app = result.metadata.id.split("@")[0];
+        const appData = {
+          ...this.appDataRef.current[app],
+          id: result.metadata.id,
+          app,
+          description: result.metadata.description,
+          minCost: result.metadata.minCost,
+          status: result.metadata.status,
+          lastTs: Date.now(),
+        };
+        this.setApp(appData);
+        this.setAppData((currentAppData) => ({
+          ...currentAppData,
+          [app]: appData,
+        }));
         this.sandboxRef.current.postMessage(sandboxId, result);
         let initContext;
         try {
@@ -356,7 +369,13 @@ class Assistant {
       }
       const requestAppOptions = {
         maxCost: this.budget,
-        includeMetadata: ["id", "minCost", "finalCost", "status"],
+        includeMetadata: [
+          "id",
+          "description",
+          "minCost",
+          "finalCost",
+          "status",
+        ],
         updateUrl: true,
       };
       try {
@@ -478,6 +497,8 @@ class Assistant {
                 this.handleMetadata(response, id, abortSignal).catch(
                   console.error,
                 );
+              } else if (request === "publish") {
+                this.handlePublish(data.magicObj);
               }
             })
             .catch((error) => {
@@ -533,15 +554,49 @@ class Assistant {
     } else {
       metadata = response.metadata;
     }
-    this.userBalance = metadata.userBalance;
-    this.userBalanceRemainingDays = metadata.userBalanceRemainingDays;
+    this.user.userBalance = metadata.userBalance;
+    this.user.userBalanceRemainingDays = metadata.userBalanceRemainingDays;
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
+  handlePublish(magicObj) {
+    const id = `${this.user.name}.${magicObj.name}@${magicObj.version}`;
+    const app = id.split("@")[0];
+    const appData = {
+      ...this.appDataRef.current[app],
+      id,
+      app,
+      description: magicObj.description,
+      minCost: magicObj.minCost,
+      status: magicObj.status,
+      published: true,
+    };
+    this.setApp(appData);
+    this.setAppData((currentAppData) => ({
+      ...currentAppData,
+      [app]: appData,
+    }));
+  }
   handleFavorite() {
-    console.log("handleFavorite");
+    const appData = {
+      ...this.appDataRef.current[this.app.app],
+      favorited: !this.app.favorited,
+    };
+    this.setApp(appData);
+    this.setAppData((currentAppData) => ({
+      ...currentAppData,
+      [this.app.app]: appData,
+    }));
   }
   handleBlock() {
-    console.log("handleBlock");
+    const appData = {
+      ...this.appDataRef.current[this.app.app],
+      blocked: !this.app.blocked,
+    };
+    this.setApp(appData);
+    this.setAppData((currentAppData) => ({
+      ...currentAppData,
+      [this.app.app]: appData,
+    }));
   }
   reload() {
     this.abortController.abort();
