@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
-function init() {
-  createRoot(document.getElementById("root")).render(<App />);
+async function init({ urlParams }) {
+  // get the notes here so they're available in the initial context call
+  // if we used a useEffect inside App, they wouldn't be available
+  const initNotes = await requestGetData("notes");
+  api.notes = initNotes;
+  createRoot(document.getElementById("root")).render(
+    <App urlParams={urlParams} initNotes={initNotes} />,
+  );
   return context();
 }
 
@@ -32,33 +38,12 @@ const api = {
   addNote: null,
 };
 
-function App() {
-  const [notes, setNotes] = useState("");
+function App({ urlParams, initNotes }) {
+  // note: in this simple example, we're not using urlParams
+  const [notes, setNotes] = useState(initNotes || "");
 
   useEffect(() => {
-    async function init() {
-      try {
-        const notes = await requestGetData("notes");
-        if (notes) {
-          setNotes(notes);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    init();
-  }, []);
-
-  useEffect(() => {
-    const saveTimeout = setTimeout(async () => {
-      try {
-        await requestPutData("notes", notes);
-      } catch (error) {
-        console.error(error);
-      }
-    }, 500); //debounce writes
-
-    return () => clearTimeout(saveTimeout);
+    requestPutData("notes", notes).catch(console.error);
   }, [notes]);
 
   api.notes = notes;

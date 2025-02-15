@@ -53,11 +53,10 @@ function ChatDisplay({
   );
 }
 
-const messageStyle = "prose prose-stone mx-2 max-w-full";
+const messageStyle = "prose prose-stone mx-2 max-w-full ";
 const assistantMessageStyle = messageStyle;
 const userMessageStyle =
-  messageStyle +
-  "self-end bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
+  messageStyle + "bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
 
 const assistantMessageContainerStyle = "group";
 const userMessageContainerStyle = "self-end max-w-[80%]";

@@ -97,9 +97,9 @@ Controls the availability of your App or Function. Supported values:
 - 'deprecated': App or Function is available but users receive deprecation warnings.
 - 'inactive': Function cannot be called. Apps cannot currently be made inactive.
 
-## Making your App magical
+## Making your App Magic
 
-As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes a Magic App magical is how it works with the Assistant by exposing a global `app` object that includes:
+As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes the App magic is how it works with the Assistant by exposing a global `app` object that includes:
 
 - `app.init` ((urlParams) => string?): an optionally async function called when the App is first loaded with URL parameters as an argument. It can optionally return a context string that's used by the Assistant to dynamically initialize the App.
 - `app.context` ((any) => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App.
@@ -107,61 +107,84 @@ As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some 
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 
-Let's look at a simple example App we'll call magicsandbox.HelloWorld and walk through its lifecycle:
+Let's look at a simple example App, magicsandbox.Notes, and walk through its lifecycle:
 
 ```javascript
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
-function init({ urlParams }) {
+async function init({ urlParams }) {
+  // get the notes here so they're available in the initial context call
+  // if we used a useEffect inside App, they wouldn't be available
+  const initNotes = await requestGetData("notes");
+  api.notes = initNotes;
   createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} />,
+    <App urlParams={urlParams} initNotes={initNotes} />,
   );
-  return context(); // optional
+  return context();
 }
 
 function context() {
-  return `# magicsandbox.HelloWorld
+  return `# magicsandbox.Notes
 
-This is a simple hello world app that displays text.
+This is a simple notes app.
 
 ## Context
 
-The current text is: ${api.text}
+The current notes are:
+
+<notes>
+${api.notes}
+</notes>
 
 ## API
 
-### app.api.setText(text: string)
+### app.api.addNote(note: string)
 
-Updates the displayed text.`;
+Add a note to the notes.
+`;
 }
 
 const api = {
-  text: null,
-  setText: null,
+  notes: null,
+  addNote: null,
 };
 
-function App({ urlParams }) {
+function App({ urlParams, initNotes }) {
   // note: in this simple example, we're not using urlParams
-  const [text, setText] = useState("Hello, world!");
-  api.text = text;
-  api.setText = setText;
-  return <div>{text}</div>;
+  const [notes, setNotes] = useState(initNotes || "");
+
+  useEffect(() => {
+    requestPutData("notes", notes).catch(console.error);
+  }, [notes]);
+
+  api.notes = notes;
+  api.addNote = (note) => {
+    setNotes(`${notes}\n${note}`);
+  };
+
+  return (
+    <div className="flex h-screen w-screen flex-col">
+      <textarea
+        className="grow resize-none border-none p-4"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Add a note..."
+      />
+    </div>
+  );
 }
 
 export { init, context, api };
 ```
 
-1. The user says "open a hello world app but make it say 'Good morning!'".
-2. The Assistant launches magicsandbox.HelloWorld, triggering a call to `app.init()`.
-3. `app.init` renders the App and returns a context string.
-4. The Assistant reads the context string and executes the script `app.api.setText("Good morning!");`. Note: if `app.init` didn't return anything, this step would be skipped.
-5. Later, the user says "what does it say?", triggering a call to `app.context()`.
+1. The user says "I'm competing in a chili cookoff, can you add the groceries I'll need to my notes?".
+2. The Assistant launches magicsandbox.Notes, triggering a call to `app.init()`.
+3. `app.init` uses [requestGetData](#requestgetdata) to get the user's notes, renders the App, and returns a context string.
+4. The Assistant reads the context string, which includes the user's notes and the App's API. The Assistant replies "I'll add the groceries you need to your notes. Since you already have a note to buy tomatoes and onions, I won't add them again." The Assistant then executes the script `app.api.addNote("For the chili cookoff, buy: ...");`. Note: if `app.init` didn't return anything, this step would be skipped.
+5. Later, the user says "can you make me a to do list for the day?", triggering a call to `app.context()`.
 6. `app.context` returns a context string.
-7. The Assistant reads the context string and replies to the user with "It says 'Good morning!'".
-8. Later, the user says "now make it say 'Goodbye!'", triggering a call to `app.context()`.
-9. `app.context` returns a context string.
-10. The Assistant reads the context string and executes the script `app.api.setText("Goodbye!");`.
+7. The Assistant reads the context string and replies "Based on your notes, here's a to do list for the day: ...".
 
 When you export `init`, `context`, and `api` from your `script`, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
 

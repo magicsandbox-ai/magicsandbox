@@ -422,7 +422,7 @@ class Assistant {
     this.requestTimeoutId = window.setTimeout(() => {
       this.requestTimeoutId = null;
       this.processRequestBatch();
-    }, 50);
+    }, 16);
   }
   async processRequestBatch() {
     if (this.requestProcessing || this.requestQueue.length === 0) return;
@@ -525,7 +525,7 @@ class Assistant {
       if (!this.requestTimeoutId) {
         this.requestTimeoutId = window.setTimeout(() => {
           this.processRequestBatch();
-        }, 50);
+        }, 16);
       }
     }
   }
@@ -589,6 +589,10 @@ class Assistant {
       ...currentAppData,
       [app.app]: appData,
     }));
+    this.toastsRef.current.addToast(
+      `${app.app} ${favorited ? "favorited" : "unfavorited"}`,
+      "info",
+    );
   }
   handleBlock(app) {
     const blocked = app.blocked ? null : Date.now();
@@ -603,6 +607,10 @@ class Assistant {
       ...currentAppData,
       [app.app]: appData,
     }));
+    this.toastsRef.current.addToast(
+      `${app.app} ${blocked ? "blocked" : "unblocked"}`,
+      "info",
+    );
   }
   reload() {
     this.abortController.abort();

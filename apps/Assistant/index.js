@@ -9,35 +9,22 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
-const sampleAppData = {
-  "magicsandbox.Assistant": {
-    id: "magicsandbox.Assistant@1.0.0",
-    app: "magicsandbox.Assistant",
-    description: "The Assistant",
-    favorited: 10000,
-    recent: 10000,
-    published: 10000,
-    blocked: 10000,
-  },
-  "magicsandbox.Dev": {
-    id: "magicsandbox.Dev@1.0.0",
-    app: "magicsandbox.Dev",
-    description: "The Dev",
-    favorited: 10000,
-    recent: 10000,
-    published: 10000,
-    blocked: 10000,
-  },
-  "magicsandbox.Docs": {
-    id: "magicsandbox.Docs@1.0.0",
-    app: "magicsandbox.Docs",
-    description: "The Docs",
-    favorited: 10000,
-    recent: 10000,
-    published: 10000,
-    blocked: 10000,
-  },
-};
+const sampleAppData = Object.fromEntries(
+  Array.from(Array(100).keys()).map((i) => {
+    return [
+      `magicsandbox.App${i}`,
+      {
+        id: `magicsandbox.App${i}@1.0.0`,
+        app: `magicsandbox.App${i}`,
+        description: `App ${i}`,
+        favorited: i,
+        recent: i,
+        published: i,
+        blocked: i,
+      },
+    ];
+  }),
+);
 
 function App({ urlParams, user }) {
   const [confirm, setConfirm] = useState(null);
@@ -88,6 +75,11 @@ function App({ urlParams, user }) {
       //   };
       // }
       settingsRef.current = {};
+      // const appData = await requestGetData("appData", {
+      //   app: "magicsandbox.Assistant",
+      // });
+      // appDataRef.current = appData || {};
+      // setAppData(appData || {});
       assistantRef.current = new Assistant({
         urlParams,
         user,
@@ -103,23 +95,28 @@ function App({ urlParams, user }) {
         setApp,
         setAppData,
       });
-      const { app } = urlParams;
+      let { app } = urlParams;
       if (app) {
-        setConfirm({
-          header: `Open App ${app}?`,
-          message: `The link you opened includes a request to open this App`,
-          callback: (response) => {
-            setConfirm(null);
-            if (response) {
-              assistantRef.current.handleApp({ app });
-            }
-          },
-        });
+        app = app.split("@")[0];
+        const [author, name] = app.split(".");
+        app = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
+        if (
+          Date.now() - (appData[app]?.recent || 0) >
+          1000 * 60 * 60 * 24 * 7
+        ) {
+          //only ask for confirmation if the app hasn't been opened in the last week
+          setConfirm({
+            header: `Open App ${app}?`,
+            message: `The link you opened includes a request to open this App`,
+            callback: (response) => {
+              setConfirm(null);
+              if (response) {
+                assistantRef.current.handleApp({ app });
+              }
+            },
+          });
+        }
       }
-      // const appData = await requestGetData("appData", {
-      //   app: "magicsandbox.Assistant",
-      // });
-      // setAppData(appData || {});
     }
     if (!settingsRef.current) {
       init().catch((error) => {

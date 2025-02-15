@@ -49,7 +49,11 @@ function Home({
           </button>
         </div>
       </div>
-      <AppList appData={appData} setAppData={setAppData} />
+      <AppList
+        appData={appData}
+        setAppData={setAppData}
+        assistantRef={assistantRef}
+      />
     </div>
   );
 }

@@ -18,8 +18,9 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
+import { Star, Ban, MoveVertical } from "lucide-react";
 
-function AppList({ appData, setAppData }) {
+function AppList({ appData, setAppData, assistantRef }) {
   const [state, setState] = useState("favorited");
 
   const states = ["favorited", "published", "recent", "blocked"];
@@ -51,6 +52,9 @@ function AppList({ appData, setAppData }) {
 
   const sortable = state === "favorited" || state === "published";
   const ListComponent = sortable ? SortableList : StaticList;
+  const favoritable =
+    state === "favorited" || state === "published" || state === "recent";
+  const blockable = state === "recent" || state === "blocked";
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -71,7 +75,14 @@ function AppList({ appData, setAppData }) {
         <ListComponent {...{ appData, setAppData, state, displayApps }}>
           <div className="flex flex-col items-center gap-2">
             {displayApps.map((app) => (
-              <AppCard key={app.app} app={app} sortable={sortable} />
+              <AppCard
+                key={app.app}
+                app={app}
+                sortable={sortable}
+                favoritable={favoritable}
+                blockable={blockable}
+                assistantRef={assistantRef}
+              />
             ))}
           </div>
         </ListComponent>
@@ -156,46 +167,57 @@ function AppListButton({ active, onClick, children }) {
 }
 
 /*
-- id, description, icon for deprecated
-- expand to see minCost, finalCost, deprecated explained
-- expand to edit and pin a version? link to homepage?
-- buttons to (un)favorite, (un)block
+- expand to see description, minCost, finalCost?, status
+- expand to see versions, pin a version? link to homepage?
 - add bang?
 */
 
-function AppCard({ app, sortable }) {
-  const CardComponent = sortable ? SortableCard : StaticCard;
-  return (
-    <CardComponent app={app}>
-      <div>{app.id.split("@")[0]}</div>
-    </CardComponent>
-  );
-}
-
-function SortableCard({ app, children }) {
+function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: app.app });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  const style = sortable
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }
+    : undefined;
+
+  const handleClick = (e) => {
+    if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
+      assistantRef.current.handleApp({ app: app.app });
+    }
   };
 
   return (
-    <div
-      className="touch-none" //https://docs.dndkit.com/api-documentation/sensors/pointer#touch-action
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
-      {children}
+    <div className="touch-none" ref={setNodeRef} style={style}>
+      <div
+        className="flex cursor-pointer items-center gap-2 rounded-md border border-stone-500 bg-stone-100 px-2 py-px hover:bg-stone-200"
+        onClick={handleClick}
+      >
+        {sortable && (
+          <button
+            className="cursor-grab touch-none active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <MoveVertical />
+          </button>
+        )}
+        <p>{app.id.split("@")[0]}</p>
+        {favoritable && (
+          <button onClick={() => assistantRef.current.handleFavorite(app)}>
+            <Star className={app.favorited ? "fill-yellow-500" : ""} />
+          </button>
+        )}
+        {blockable && (
+          <button onClick={() => assistantRef.current.handleBlock(app)}>
+            <Ban className={app.blocked ? "text-red-500" : ""} />
+          </button>
+        )}
+      </div>
     </div>
   );
-}
-
-function StaticCard({ children }) {
-  return children;
 }
 
 export default AppList;

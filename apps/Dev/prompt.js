@@ -37,7 +37,7 @@ Defaults to \`<div id="root"></div>\` if not provided.
 
 Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.`);
 
-  sections.push(getHeadings(docs, ["Making your App magical"]));
+  sections.push(getHeadings(docs, ["Making your App Magic"]));
   sections.push(contextPrompt({ context, summarizedContext }));
   sections.push(apiPrompt({ context, summarizedContext }));
   sections.push(instructionsPrompt({ context, summarizedContext }));
