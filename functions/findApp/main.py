@@ -15,11 +15,12 @@ import msgpack
 from .prompts import get_app_descriptions_from_input_prompt
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("magicsandbox.findApp")
 
 '''
 adjust this to enable functions as well
 ratings
+switch to aiosqlite so sqlite doesn't block the event loop
 '''
 
 class TestingSkipException(Exception):
@@ -306,5 +307,5 @@ class AppData:
 async def findApp(app_data: AppData, body: FindAppBody):
     return await app_data.find_app(body.args)
 
-def findApp_update(app_data: AppData, items: list[FindAppUpdateItem]):
+async def findApp_update(app_data: AppData, items: list[FindAppUpdateItem]):
     return app_data.update_app_data(items)

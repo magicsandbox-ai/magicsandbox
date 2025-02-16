@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("magicsandbox.llm")
 
 class LlmArgs(BaseModel):
     model: str | None = None
