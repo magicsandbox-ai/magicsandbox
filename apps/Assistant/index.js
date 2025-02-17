@@ -17,14 +17,36 @@ const sampleAppData = Object.fromEntries(
         id: `magicsandbox.App${i}@1.0.0`,
         app: `magicsandbox.App${i}`,
         description: `App ${i}`,
-        favorited: i,
-        recent: i,
-        published: i,
-        blocked: i,
+        favorited: i + 1,
+        recent: i + 1,
+        published: i + 1,
+        blocked: i + 1,
       },
     ];
   }),
 );
+
+// sampleAppData[
+//   "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName"
+// ] = {
+//   id: "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName@1.0.0",
+//   app: "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName",
+//   description: "App 100",
+//   favorited: 0.5,
+//   recent: 101,
+//   published: 101,
+//   blocked: 101,
+// };
+
+sampleAppData["magicsandbox.LongerAppName"] = {
+  id: "magicsandbox.LongerAppName@1.0.0",
+  app: "magicsandbox.LongerAppName",
+  description: "App 100",
+  favorited: 0.1,
+  recent: 101,
+  published: 101,
+  blocked: 101,
+};
 
 function App({ user }) {
   const [confirm, setConfirm] = useState(null);
@@ -210,7 +232,7 @@ function App({ user }) {
   );
 }
 
-function init({ user }) {
+function init({ user } = {}) {
   createRoot(document.getElementById("root")).render(<App user={user} />);
 }
 

@@ -52,7 +52,7 @@ export function dev(magicPath, debug, port, url) {
       console.log(
         `Magic Sandbox dev server running at http://localhost:${port}`,
       );
-      const appUrl = `${url}?app=magicsandbox.DevLocal&port=${port}&token=${token}`;
+      const appUrl = `${url}?_app=magicsandbox.DevLocal&port=${port}&token=${token}`;
       console.log(`Opening ${appUrl} in your default browser...`);
       open(appUrl);
     });

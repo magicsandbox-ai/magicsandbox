@@ -479,7 +479,13 @@ class Assistant {
             .then((response) => {
               if (abortSignal.aborted) return;
               let finalResponse = response;
-              if (response?.[Symbol.asyncIterator]) {
+              if (request === "urlParams") {
+                finalResponse = Object.fromEntries(
+                  Object.entries(response).filter(
+                    ([key]) => !key.startsWith("_"), //params that start with _ are reserved
+                  ),
+                );
+              } else if (response?.[Symbol.asyncIterator]) {
                 finalResponse = this.sandboxRef.current.streamData(response);
               }
               this.sandboxRef.current.postMessage(event.sandboxId, {
@@ -562,8 +568,8 @@ class Assistant {
       minCost: magicObj.minCost,
       status: magicObj.status,
       published: Date.now(),
+      recent: Date.now(),
     };
-    this.setApp(appData);
     this.setAppData((currentAppData) => ({
       ...currentAppData,
       [app]: appData,
@@ -576,8 +582,11 @@ class Assistant {
       ...this.appDataRef.current[app.app],
       favorited,
       blocked,
+      recent: Date.now(),
     };
-    this.setApp(appData);
+    if (this.app?.app === app.app) {
+      this.setApp(appData);
+    }
     this.setAppData((currentAppData) => ({
       ...currentAppData,
       [app.app]: appData,
@@ -594,8 +603,11 @@ class Assistant {
       ...this.appDataRef.current[app.app],
       favorited,
       blocked,
+      recent: Date.now(),
     };
-    this.setApp(appData);
+    if (this.app?.app === app.app) {
+      this.setApp(appData);
+    }
     this.setAppData((currentAppData) => ({
       ...currentAppData,
       [app.app]: appData,

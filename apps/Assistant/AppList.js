@@ -57,38 +57,40 @@ function AppList({ appData, setAppData, assistantRef }) {
   const blockable = state === "recent" || state === "blocked";
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex gap-6">
-        {states.map((s) => (
-          <AppListButton
-            key={s}
-            active={s === state}
-            onClick={() => setState(s)}
-          >
-            {properCase(s)}
-          </AppListButton>
-        ))}
+    <div className="flex justify-center pb-6">
+      <div className="flex w-full max-w-lg flex-col items-center">
+        <div className="flex w-full justify-evenly">
+          {states.map((s) => (
+            <AppListButton
+              key={s}
+              active={s === state}
+              onClick={() => setState(s)}
+            >
+              {properCase(s)}
+            </AppListButton>
+          ))}
+        </div>
+        <p className="mt-2 text-lg font-medium">{`${properCase(state)} Apps`}</p>
+        {message && <p className="text-sm text-stone-500">{message}</p>}
+        {displayApps.length > 0 ? (
+          <ListComponent {...{ appData, setAppData, state, displayApps }}>
+            <div className="mt-3 flex max-w-full flex-col divide-y divide-stone-300 border border-stone-500 bg-stone-50">
+              {displayApps.map((app) => (
+                <AppCard
+                  key={app.app}
+                  app={app}
+                  sortable={sortable}
+                  favoritable={favoritable}
+                  blockable={blockable}
+                  assistantRef={assistantRef}
+                />
+              ))}
+            </div>
+          </ListComponent>
+        ) : (
+          <p>Nothing to see here yet!</p>
+        )}
       </div>
-      <p className="text-lg font-medium">{`${properCase(state)} Apps`}</p>
-      {message && <p className="text-sm text-stone-500">{message}</p>}
-      {displayApps.length > 0 ? (
-        <ListComponent {...{ appData, setAppData, state, displayApps }}>
-          <div className="flex flex-col items-center gap-2">
-            {displayApps.map((app) => (
-              <AppCard
-                key={app.app}
-                app={app}
-                sortable={sortable}
-                favoritable={favoritable}
-                blockable={blockable}
-                assistantRef={assistantRef}
-              />
-            ))}
-          </div>
-        </ListComponent>
-      ) : (
-        <p>Nothing to see here yet!</p>
-      )}
     </div>
   );
 }
@@ -112,14 +114,14 @@ function SortableList({ appData, setAppData, state, displayApps, children }) {
       if (activeApp[state] > overState) {
         //add 1 to overApp and everything after it
         Object.entries(appData).forEach(([key, app]) => {
-          if (app[state] >= overState) {
+          if (app[state] && app[state] >= overState) {
             newAppData[key] = { ...app, [state]: app[state] + 1 };
           }
         });
       } else {
         //subtract 1 from overApp and everything before it
         Object.entries(appData).forEach(([key, app]) => {
-          if (app[state] <= overState) {
+          if (app[state] && app[state] <= overState) {
             newAppData[key] = { ...app, [state]: app[state] - 1 };
           }
         });
@@ -154,7 +156,7 @@ function StaticList({ children }) {
 function AppListButton({ active, onClick, children }) {
   return (
     <button
-      className={`w-20 rounded-md py-px hover:bg-stone-300 ${
+      className={`w-20 rounded-md py-px hover:bg-stone-200 ${
         active
           ? "border-2 border-stone-700 bg-stone-200 font-medium"
           : "border border-stone-500 bg-stone-100"
@@ -190,32 +192,34 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
   };
 
   return (
-    <div className="touch-none" ref={setNodeRef} style={style}>
-      <div
-        className="flex cursor-pointer items-center gap-2 rounded-md border border-stone-500 bg-stone-100 px-2 py-px hover:bg-stone-200"
-        onClick={handleClick}
-      >
-        {sortable && (
-          <button
-            className="cursor-grab touch-none active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <MoveVertical />
-          </button>
-        )}
-        <p>{app.id.split("@")[0]}</p>
-        {favoritable && (
-          <button onClick={() => assistantRef.current.handleFavorite(app)}>
-            <Star className={app.favorited ? "fill-yellow-500" : ""} />
-          </button>
-        )}
-        {blockable && (
-          <button onClick={() => assistantRef.current.handleBlock(app)}>
-            <Ban className={app.blocked ? "text-red-500" : ""} />
-          </button>
-        )}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex w-full cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
+      onClick={handleClick}
+    >
+      <div className="mx-1 min-w-0 grow text-wrap break-words">
+        {app.id.split("@")[0]}
       </div>
+      {favoritable && (
+        <button onClick={() => assistantRef.current.handleFavorite(app)}>
+          <Star className={app.favorited ? "fill-yellow-500" : ""} />
+        </button>
+      )}
+      {blockable && (
+        <button onClick={() => assistantRef.current.handleBlock(app)}>
+          <Ban className={app.blocked ? "text-red-500" : ""} />
+        </button>
+      )}
+      {sortable && (
+        <button
+          className="cursor-grab touch-none active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <MoveVertical />
+        </button>
+      )}
     </div>
   );
 }
