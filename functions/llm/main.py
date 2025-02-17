@@ -250,8 +250,17 @@ def trim_message(message, content_tokens, forward_budget, backward_budget, token
             c['text'] = tokenizer.decode(final_tokens)
 
 async def openai_transform(stream, model, expected_cost):
+    buffer = '' # buffer to reduce overhead to json and length prefixes
+    buffer_size = 20
     async for chunk in stream:
-        yield chunk.choices[0].delta.content or ''
+        content = chunk.choices[0].delta.content
+        if content:
+            buffer += content
+            if len(buffer) >= buffer_size:
+                yield json.dumps({'model': model, 'content': buffer})
+                buffer = ''
+    if buffer:
+        yield json.dumps({'model': model, 'content': buffer})
     final_cost = get_cost(model, chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
     if final_cost > expected_cost:
         logger.warning(

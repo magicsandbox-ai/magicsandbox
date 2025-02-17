@@ -97,6 +97,8 @@ function App({ user }) {
               }
             },
           });
+        } else {
+          assistantRef.current.handleApp({ app });
         }
       }
     }
@@ -134,9 +136,11 @@ function App({ user }) {
 
   useEffect(() => {
     appDataRef.current = appData;
-    requestPutData("appData", appData, { app: "magicsandbox.Assistant" }).catch(
-      console.error,
-    );
+    if (Object.keys(appData).length > 0) {
+      requestPutData("appData", appData, {
+        app: "magicsandbox.Assistant",
+      }).catch(console.error);
+    }
   }, [appData]);
 
   let modalComponent;

@@ -1000,7 +1000,7 @@ Consult your specific server framework's documentation for details.
 
 Usually Function results are intended for the user, but there are scenarios where you want to instruct the Magic Sandbox server to do something:
 
-- [Charge the caller a variable cost](todo)
+- [Charge the caller a variable cost](#variable-costs)
 
 You do this using a command object, which is an object with two keys: `result` and `__command`. `result` will be sent to the user, while `__command` is interpreted by the server.
 
