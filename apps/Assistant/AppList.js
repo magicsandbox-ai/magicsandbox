@@ -88,7 +88,7 @@ function AppList({ appData, setAppData, assistantRef }) {
             </div>
           </ListComponent>
         ) : (
-          <p>Nothing to see here yet!</p>
+          <p className="mt-3">Nothing to see here yet!</p>
         )}
       </div>
     </div>

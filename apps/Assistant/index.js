@@ -9,45 +9,6 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
-const sampleAppData = Object.fromEntries(
-  Array.from(Array(100).keys()).map((i) => {
-    return [
-      `magicsandbox.App${i}`,
-      {
-        id: `magicsandbox.App${i}@1.0.0`,
-        app: `magicsandbox.App${i}`,
-        description: `App ${i}`,
-        favorited: i + 1,
-        recent: i + 1,
-        published: i + 1,
-        blocked: i + 1,
-      },
-    ];
-  }),
-);
-
-// sampleAppData[
-//   "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName"
-// ] = {
-//   id: "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName@1.0.0",
-//   app: "thisisareallylongauthorname.ThisIsAnEvenLongerReallyLongReallyReallyReallyLongAppName",
-//   description: "App 100",
-//   favorited: 0.5,
-//   recent: 101,
-//   published: 101,
-//   blocked: 101,
-// };
-
-sampleAppData["magicsandbox.LongerAppName"] = {
-  id: "magicsandbox.LongerAppName@1.0.0",
-  app: "magicsandbox.LongerAppName",
-  description: "App 100",
-  favorited: 0.1,
-  recent: 101,
-  published: 101,
-  blocked: 101,
-};
-
 function App({ user }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -66,7 +27,7 @@ function App({ user }) {
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the full screen chat
   const [app, setApp] = useState(null); // type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
-  const [appData, setAppData] = useState(sampleAppData); // {[app: string]: App}
+  const [appData, setAppData] = useState({}); // {[app: string]: App}
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -97,11 +58,11 @@ function App({ user }) {
       //   };
       // }
       settingsRef.current = {};
-      // const appData = await requestGetData("appData", {
-      //   app: "magicsandbox.Assistant",
-      // });
-      // appDataRef.current = appData || {};
-      // setAppData(appData || {});
+      const appData = await requestGetData("appData", {
+        app: "magicsandbox.Assistant",
+      });
+      appDataRef.current = appData || {};
+      setAppData(appData || {});
       assistantRef.current = new Assistant({
         user,
         sandboxRef,
