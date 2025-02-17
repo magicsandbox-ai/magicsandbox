@@ -78,16 +78,10 @@ const Preview = forwardRef(function Preview(
       });
     }
     sandboxRef.current
-      .getInit(
+      .getInit({
         sandboxId,
-        {
-          input: "",
-          budget: 0.005,
-          urlParams: {},
-          ...appObj.args,
-        },
-        1000,
-      )
+        timeout: 1000,
+      })
       .catch(() => {}); //ignore
     setState("ready");
     return { logs };

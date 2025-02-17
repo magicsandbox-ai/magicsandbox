@@ -161,7 +161,8 @@ function App({ urlParams }) {
   );
 }
 
-function init({ urlParams }) {
+async function init() {
+  const urlParams = await requestUrlParams();
   createRoot(document.getElementById("root")).render(
     <App urlParams={urlParams} />,
   );

@@ -26,7 +26,7 @@ const sampleAppData = Object.fromEntries(
   }),
 );
 
-function App({ urlParams, user }) {
+function App({ user }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
@@ -81,7 +81,6 @@ function App({ urlParams, user }) {
       // appDataRef.current = appData || {};
       // setAppData(appData || {});
       assistantRef.current = new Assistant({
-        urlParams,
         user,
         sandboxRef,
         toastsRef,
@@ -95,9 +94,9 @@ function App({ urlParams, user }) {
         setApp,
         setAppData,
       });
-      let { app } = urlParams;
-      if (app) {
-        app = app.split("@")[0];
+      const { _app } = await requestUrlParams();
+      if (_app) {
+        let app = _app.split("@")[0];
         const [author, name] = app.split(".");
         app = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
         if (
@@ -211,10 +210,8 @@ function App({ urlParams, user }) {
   );
 }
 
-function init({ urlParams, user }) {
-  createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} user={user} />,
-  );
+function init({ user }) {
+  createRoot(document.getElementById("root")).render(<App user={user} />);
 }
 
 export { init };

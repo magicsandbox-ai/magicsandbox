@@ -17,11 +17,8 @@ function validateAndDefaultRequest(request, data, assistant, app) {
     openUrl: ["url"],
     publish: ["magicObj"],
     download: ["filename", "content"],
+    urlParams: [],
   };
-  if (assistant) {
-    delete data?.options?.backup; //assistants should not allow apps to access backup storage
-    delete data?.options?.updateUrl; //assistants should not allow apps to updateUrl
-  }
   if (!(request in requiredKeys)) {
     return "Invalid request";
   }
@@ -32,11 +29,11 @@ function validateAndDefaultRequest(request, data, assistant, app) {
   if (missingKeys.length > 0) {
     return `Missing required keys: ${missingKeys.join(", ")}`;
   }
+  // todo more type checking - like making sure urlParams params is an object
   if (request === "app") {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,
       includeMetadata: data.options?.includeMetadata || [],
-      updateUrl: data.options?.updateUrl || false,
     };
     if (data.options.maxCost > maximumMaxCost) {
       return `maxCost must be less than or equal to ${maximumMaxCost}`;
@@ -52,7 +49,7 @@ function validateAndDefaultRequest(request, data, assistant, app) {
       return `maxCost must be less than or equal to ${maximumMaxCost}`;
     }
     if (assistant && app) {
-      data.options.app = app;
+      data.options.app = app; //assistant provides app calling requestFunction
     }
   } else if (
     assistant &&
@@ -66,13 +63,18 @@ function validateAndDefaultRequest(request, data, assistant, app) {
   ) {
     data.options = {
       ...data.options,
-      app: data.options?.app || app,
+      app: data.options?.app || app, //assistant provides app calling requestData
     };
+    delete data.options.backup; //assistants should not allow apps to access backup storage
   } else if (request === "fetch") {
     data.options = {
       ...data.options,
       responseType: data.options?.responseType || "auto",
     };
+  } else if (assistant && request === "urlParams" && data.params) {
+    data.params = Object.fromEntries(
+      Object.entries(data.params).filter(([key]) => !key.startsWith("_")), //params that start with _ are reserved
+    );
   }
   if (
     assistant &&

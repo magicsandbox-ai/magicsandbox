@@ -61,7 +61,8 @@ document.addEventListener("click", (e) => {
   }
 });
 
-async function init({ urlParams }) {
+async function init() {
+  const urlParams = await requestUrlParams();
   const { id } = urlParams;
   if (id) {
     scrollToId(id);

@@ -1,6 +1,6 @@
 const exampleAppFiles = {
   "magic.json5": `{
-  name: '',
+  name: 'Example',
   version: '0.1.0',
   description: '',
   dependencies: {
@@ -11,9 +11,9 @@ const exampleAppFiles = {
   "index.js": `import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 
-function init({ urlParams }) {
+function init() {
   createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} />,
+    <App />,
   );
   return context(); // optional
 }
@@ -39,8 +39,7 @@ const api = {
   setText: null,
 };
 
-function App({ urlParams }) {
-  // note: in this simple example, we're not using urlParams
+function App() {
   const [text, setText] = useState("Hello, world!");
   api.text = text;
   api.setText = setText;

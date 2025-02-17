@@ -236,7 +236,7 @@ const Sandbox = forwardRef(function Sandbox(
     );
   }
 
-  async function getInit(sandboxId, args, timeout) {
+  async function getInit({ sandboxId, timeout, args }) {
     const script = `return await window.app?.init?.(args);`;
     const { result } = await executeScriptAndWaitForResponse({
       sandboxId,

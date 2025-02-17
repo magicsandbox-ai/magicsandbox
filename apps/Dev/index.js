@@ -558,10 +558,8 @@ function App() {
 
 const privateApi = {};
 
-function init({ input, budget, urlParams }) {
-  createRoot(document.getElementById("root")).render(
-    <App input={input} budget={budget} urlParams={urlParams} />,
-  );
+function init() {
+  createRoot(document.getElementById("root")).render(<App />);
   return prompt();
 }
 

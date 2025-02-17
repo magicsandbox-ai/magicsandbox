@@ -11,5 +11,6 @@ export const globals = {
   requestOpenUrl: false,
   requestPublish: false,
   requestDownload: false,
+  requestUrlParams: false,
   requestSandbox: false,
 };

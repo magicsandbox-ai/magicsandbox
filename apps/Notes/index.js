@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
-async function init({ urlParams }) {
+async function init() {
   // get the notes here so they're available in the initial context call
   // if we used a useEffect inside App, they wouldn't be available
   const initNotes = await requestGetData("notes");
   api.notes = initNotes;
   createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} initNotes={initNotes} />,
+    <App initNotes={initNotes} />,
   );
   return context();
 }
@@ -38,8 +38,7 @@ const api = {
   addNote: null,
 };
 
-function App({ urlParams, initNotes }) {
-  // note: in this simple example, we're not using urlParams
+function App({ initNotes }) {
   const [notes, setNotes] = useState(initNotes || "");
 
   useEffect(() => {

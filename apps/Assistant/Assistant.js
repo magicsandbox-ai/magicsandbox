@@ -20,7 +20,6 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 
 class Assistant {
   constructor({
-    urlParams,
     user,
     sandboxRef,
     settingsRef,
@@ -34,7 +33,6 @@ class Assistant {
     setApp,
     setAppData,
   }) {
-    this.urlParams = urlParams;
     this.user = user;
     this.sandboxRef = sandboxRef;
     this.settingsRef = settingsRef;
@@ -322,6 +320,7 @@ class Assistant {
       }
       const handleAppResult = async (result) => {
         this.setDisplayMessage(`${result.metadata.id} loaded`);
+        requestUrlParams({ _app: result.metadata.id }).catch(console.error);
         const app = result.metadata.id.split("@")[0];
         const appData = {
           ...this.appDataRef.current[app],
@@ -340,15 +339,10 @@ class Assistant {
         this.sandboxRef.current.postMessage(sandboxId, result);
         let initContext;
         try {
-          initContext = await this.sandboxRef.current.getInit(
+          initContext = await this.sandboxRef.current.getInit({
             sandboxId,
-            {
-              input,
-              budget: Math.max(this.budget - result.metadata.finalCost, 0),
-              urlParams: this.urlParams,
-            },
-            10000,
-          );
+            timeout: 10000,
+          });
         } catch {
           //ignore
         }
@@ -376,7 +370,6 @@ class Assistant {
           "finalCost",
           "status",
         ],
-        updateUrl: true,
       };
       try {
         const result = await requestApp(app, requestAppOptions);

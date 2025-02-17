@@ -101,8 +101,8 @@ Controls the availability of your App or Function. Supported values:
 
 As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes the App magic is how it works with the Assistant by exposing a global `app` object that includes:
 
-- `app.init` ((urlParams) => string?): an optionally async function called when the App is first loaded with URL parameters as an argument. It can optionally return a context string that's used by the Assistant to dynamically initialize the App.
-- `app.context` ((any) => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App.
+- `app.init` (() => string?): an optionally async function called when the App is first loaded with URL parameters as an argument. It can optionally return a context string that's used by the Assistant to dynamically initialize the App.
+- `app.context` (() => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App.
 - `app.api` (object): an object that exposes your App's API to the Assistant.
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
@@ -113,13 +113,13 @@ Let's look at a simple example App, magicsandbox.Notes, and walk through its lif
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
-async function init({ urlParams }) {
+async function init() {
   // get the notes here so they're available in the initial context call
   // if we used a useEffect inside App, they wouldn't be available
   const initNotes = await requestGetData("notes");
   api.notes = initNotes;
   createRoot(document.getElementById("root")).render(
-    <App urlParams={urlParams} initNotes={initNotes} />,
+    <App initNotes={initNotes} />,
   );
   return context();
 }
@@ -150,8 +150,7 @@ const api = {
   addNote: null,
 };
 
-function App({ urlParams, initNotes }) {
-  // note: in this simple example, we're not using urlParams
+function App({ initNotes }) {
   const [notes, setNotes] = useState(initNotes || "");
 
   useEffect(() => {
@@ -336,10 +335,6 @@ export default {
 ```
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
-
-#### initArgs ({ input: string, budget: number, urlParams: object })
-
-Arguments to pass to `app.init` during development.
 
 #### cacheRequests (boolean) (default true)
 
@@ -739,6 +734,21 @@ Download a file.
 
 **Returns:** a Promise that resolves to true
 
+### requestUrlParams
+
+Get or update URL parameters.
+
+**Arguments:**
+
+- `params` _(object | null, default undefined)_:
+  - If `undefined`, returns current URL parameters without making changes
+  - If an object, key/value pairs to use to update the URL parameters. Setting a value to `null` will remove that parameter.
+  - If `null`, removes all URL parameters
+
+**Returns:** a Promise that resolves to an object containing the URL parameters after making any updates in `params`.
+
+Note: URL parameters that begin with an underscore (e.g. `_app`) are reserved for Magic Sandbox use. These parameters cannot be modified by Apps.
+
 ### requestSandbox
 
 A convenience function to call other Sandbox functions.
@@ -804,8 +814,6 @@ The 'frame.html' file loads [frame.js](todo), which sets up a listener in the Ap
 - `args`: App Sandbox will save the object to the global `args` variable
 
 todo url params
-
-todo updateUrl in requestApp
 
 todo reload
 
