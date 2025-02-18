@@ -107,7 +107,7 @@ As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some 
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 
-Let's look at a simple example App, magicsandbox.Notes, and walk through its lifecycle:
+Let's look at a simple example.Notes App and walk through its lifecycle:
 
 ```javascript
 import React, { useState, useEffect } from "react";
@@ -125,7 +125,7 @@ async function init() {
 }
 
 function context() {
-  return `# magicsandbox.Notes
+  return `# example.Notes
 
 This is a simple notes app.
 
@@ -178,7 +178,7 @@ export { init, context, api };
 ```
 
 1. The user says "I'm competing in a chili cookoff, can you add the groceries I'll need to my notes?".
-2. The Assistant launches magicsandbox.Notes, triggering a call to `app.init()`.
+2. The Assistant launches example.Notes, triggering a call to `app.init()`.
 3. `app.init` uses [requestGetData](#requestgetdata) to get the user's notes, renders the App, and returns a context string.
 4. The Assistant reads the context string, which includes the user's notes and the App's API. The Assistant replies "I'll add the groceries you need to your notes. Since you already have a note to buy tomatoes and onions, I won't add them again." The Assistant then executes the script `app.api.addNote("For the chili cookoff, buy: ...");`. Note: if `app.init` didn't return anything, this step would be skipped.
 5. Later, the user says "can you make me a to do list for the day?", triggering a call to `app.context()`.
@@ -246,13 +246,7 @@ Specifies how to decode the response from your Function's endpoint. Supported va
 - 'string': Decode the response as a UTF-8 string
 - 'bytes': Return the raw bytes as an ArrayBuffer
 
-### stream
-
-_(boolean, default false)_
-
-Whether your Function supports streaming.
-
-Special care should be taken when streaming with decode set to 'json'. See [Streaming JSON](#streaming-json) for details.
+See [Streaming JSON](#streaming-json) for details on streaming with decode set to 'json'.
 
 ### subscribeToUpdates
 
@@ -1095,7 +1089,6 @@ type Metadata = {
   finalCost: number;
   status: "active" | "deprecated" | "inactive";
   decode: "json" | "string" | "bytes";
-  stream: boolean;
 };
 ```
 
