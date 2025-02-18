@@ -250,9 +250,19 @@ class Assistant {
         role: "assistant",
         tags: [],
       };
+      const chunkProcessor = (chunk) => {
+        const { model, content, summary } = chunk.result || {};
+        if (model) {
+          llmMessage.model = model;
+        }
+        if (summary) {
+          llmMessage.summary = summary;
+        }
+        return content;
+      };
       for await (const { tag, content } of tagStreamParser({
         stream,
-        chunkProcessor: (chunk) => chunk.result?.content,
+        chunkProcessor,
       })) {
         if (abortSignal.aborted) return;
         const lastTag = llmMessage.tags[llmMessage.tags.length - 1];

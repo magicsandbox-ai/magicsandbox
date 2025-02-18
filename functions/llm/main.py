@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from fastapi import HTTPException
 from litellm import acompletion
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
 import logging
+import asyncio
+from .summary import handle_summary, summary_cost
 
 logger = logging.getLogger("magicsandbox.llm")
 
@@ -27,6 +29,7 @@ class LlmArgs(BaseModel):
     # 'tools',
     # 'tool_choice',
     # 'parallel_tool_calls',
+    summarize: bool | None = None
 
 class LlmBody(Body):
     args: LlmArgs | str
@@ -38,24 +41,32 @@ default_tokenizer = DefaultTokenizer()
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
 supported_models = {
     'claude-3-5-sonnet-20241022': {
+        'max_input_tokens': 200000,
+        'max_output_tokens': 8192,
         'input_cost_per_token': 3 / 1000000,
         'output_cost_per_token': 15 / 1000000,
         'tokenizer': default_tokenizer,
         'max_vision_tokens': 1600,
     },
     'gpt-4o-2024-08-06': {
+        'max_input_tokens': 128000,
+        'max_output_tokens': 16384,
         'input_cost_per_token': 2.5 / 1000000,
         'output_cost_per_token': 10 / 1000000,
         'tokenizer': gpt_4o_tokenizer,
         'max_vision_tokens': 1445,
     },
     'gpt-4o-mini-2024-07-18': {
+        'max_input_tokens': 128000,
+        'max_output_tokens': 16384,
         'input_cost_per_token': 0.15 / 1000000,
         'output_cost_per_token': 0.6 / 1000000,
         'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
         'max_vision_tokens': 1445,
     },
     'gemini/gemini-1.5-flash-002': {
+        'max_input_tokens': 1048576,
+        'max_output_tokens': 8192,
         'input_cost_per_token': 0.075 / 1000000,
         'output_cost_per_token': 0.3 / 1000000,
         'tokenizer': gemini_tokenizer,
@@ -63,6 +74,8 @@ supported_models = {
         'vision_disabled': True, # can't compute cost for audio/video so need to disable until can filter it out specifically
     },
     'gemini/gemini-1.5-flash-8b-001': {
+        'max_input_tokens': 1048576,
+        'max_output_tokens': 8192,
         'input_cost_per_token': 0.0375 / 1000000,
         'output_cost_per_token': 0.15 / 1000000,
         'tokenizer': gemini_tokenizer, # note: 8b not yet included in get_tokenizer_for_model. assume same as flash-002
@@ -71,7 +84,7 @@ supported_models = {
     }
 }
 
-async def llm(body: LlmBody):
+async def llm(body: LlmBody, test=False):
     if isinstance(body.args, str):
         args = LlmArgs(messages=[{"role": "user", "content": body.args}])
     else:
@@ -79,27 +92,44 @@ async def llm(body: LlmBody):
     if args.messages is None:
         raise HTTPException(status_code=400, detail='messages required')
     if args.max_completion_tokens is None:
-        args.max_completion_tokens = 1000
+        args.max_completion_tokens = 100
+    elif args.max_completion_tokens > 99000 and not body.options.stream:
+        # because max command object size is 100KB
+        raise HTTPException(status_code=400, detail='max_completion_tokens must be less than 99000 when streaming is disabled')
+    if args.summarize:
+        body.options.maxCost -= summary_cost
     model, expected_cost = find_model(args, body.options.maxCost) # note that this may modify args.messages and args.max_completion_tokens
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
     api_args.update({
         'model': model,
-        'stream': True,
-        'stream_options': {'include_usage': True},
         'timeout': 60,
     })
-    stream = await acompletion(**api_args)
-    return StreamingResponse(length_prefix_transform(openai_transform(stream, model, expected_cost), final_object=True),
-                             headers={'x-length-prefix': 'true'})
+    if body.options.stream:
+        api_args.update({
+            'stream': True,
+            'stream_options': {'include_usage': True},
+        })
+    if test:
+        api_args.update({
+            'mock_response': 'This is mock content',
+        })
+    response, summary = await asyncio.gather(
+            acompletion(**api_args),
+            handle_summary(args, test)
+        )
+    if body.options.stream:
+        return handle_stream_response(response, model, expected_cost, summary)
+    else:
+        return handle_response(response, model, expected_cost, summary)
 
 def process_messages(model, args):
-    if not supported_models[model].get('vision_disabled', False):
-        return args.messages
     for message in args.messages:
-        content = message.get('content')
-        if content is not None and not isinstance(content, str):
-            message['content'] = [c for c in content if c['type'] == 'text']
+        if supported_models[model].get('vision_disabled', False):
+            content = message.get('content')
+            if content is not None and not isinstance(content, str):
+                message['content'] = [c for c in content if c['type'] == 'text']
+        message.pop('cache_control', None) # disable prompt caching
     return args.messages
 
 def find_model(args: LlmArgs, maxCost: float):
@@ -249,21 +279,53 @@ def trim_message(message, content_tokens, forward_budget, backward_budget, token
                 final_tokens += tokens[-backward_budget:]
             c['text'] = tokenizer.decode(final_tokens)
 
-async def openai_transform(stream, model, expected_cost):
+def handle_stream_response(response, model, expected_cost, summary):
+    return StreamingResponse(length_prefix_transform(
+                                openai_transform(response, model, expected_cost, summary), 
+                                final_object=True),
+                             headers={'x-length-prefix': 'true'})
+
+async def openai_transform(response, model, expected_cost, summary):
     buffer = '' # buffer to reduce overhead to json and length prefixes
     buffer_size = 20
-    async for chunk in stream:
+    first_chunk = True
+    async for chunk in response:
         content = chunk.choices[0].delta.content
         if content:
             buffer += content
             if len(buffer) >= buffer_size:
-                yield json.dumps({'model': model, 'content': buffer})
+                if first_chunk:
+                    yield json.dumps({'model': model, 'content': buffer, 'summary': summary})
+                    first_chunk = False
+                else:
+                    yield json.dumps({'content': buffer})
                 buffer = ''
     if buffer:
-        yield json.dumps({'model': model, 'content': buffer})
-    final_cost = get_cost(model, chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
+        if first_chunk:
+            yield json.dumps({'model': model, 'content': buffer, 'summary': summary})
+        else:
+            yield json.dumps({'content': buffer})
+    final_cost = handle_final_cost(model, expected_cost, chunk.usage, summary)
+    yield json.dumps({'__command': {'finalCost': final_cost}})
+
+def handle_final_cost(model, expected_cost, usage, summary):
+    final_cost = get_cost(model, usage.prompt_tokens, usage.completion_tokens)
     if final_cost > expected_cost:
         logger.warning(
             f'Final cost exceeds expected cost: final={final_cost:.6f} expected={expected_cost:.6f} model={model}'
         )
-    yield json.dumps({'__command': {'finalCost': final_cost}})
+    if summary is not None:
+        final_cost += summary_cost
+    return final_cost
+
+def handle_response(response, model, expected_cost, summary):
+    final_cost = handle_final_cost(model, expected_cost, response.usage, summary)
+    content = {
+        'result': {
+            'model': model, 
+            'content': response.choices[0].message.content,
+            'summary': summary,
+        },
+        '__command': {'finalCost': final_cost},
+        }
+    return JSONResponse(content=content, headers={'x-command-object': 'true'})

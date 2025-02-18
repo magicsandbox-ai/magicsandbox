@@ -27,7 +27,8 @@
     "dev:prod": "magicsandbox dev -d apps",
     "publish-function:prod": "magicsandbox publish -d functions",
     "publish:prod": "magicsandbox publish -d apps",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "pytest": "pipenv run pytest"
   },
   "jest": {
     "transform": {},

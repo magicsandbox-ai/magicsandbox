@@ -6,6 +6,8 @@ os.environ['EMBEDDING_MODEL'] = 'sentence-transformers/all-mpnet-base-v2'
 from .main import AppData, FindAppUpdateItem, FindAppArgs
 
 '''
+npm run pytest -- functions/findApp/test_main.py
+
 note: the order of these tests matters (which is probably not a good practice)
 '''
 
@@ -88,6 +90,6 @@ async def test_find(app_data):
 
 @pytest.mark.asyncio(loop_scope="module")
 async def test_sync(app_data):
-    await app_data.sync_app_data() //persist embeddings
-    app_data.init_app_embeddings() //read embeddings
+    await app_data.sync_app_data() ##persist embeddings
+    app_data.init_app_embeddings() ##read embeddings
     assert len(app_data.app_embeddings['apps']) > 0

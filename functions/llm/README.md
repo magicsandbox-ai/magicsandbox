@@ -8,13 +8,18 @@ You can simply pass a string, which will be used as the user message.
 
 Or you can pass an object with the following keys. Refer to the [OpenAI docs](https://platform.openai.com/docs/api-reference/chat/create) for details. Note that not all OpenAI arguments are supported.
 
-- `messages` (**required**)
+- `messages` _(**required**)_
 - `model`: supported models are:
   - `claude-3-5-sonnet-20241022`
+    - Prompt caching is not supported
   - `gpt-4o-2024-08-06`
   - `gpt-4o-mini-2024-07-18`
-  - `gemini/gemini-1.5-flash-002` (note: vision is not supported)
-  - `gemini/gemini-1.5-flash-8b-001` (note: vision is not supported)
+  - `gemini/gemini-1.5-flash-002`
+    - Prompt caching is not supported
+    - Vision is not supported
+  - `gemini/gemini-1.5-flash-8b-001`
+    - Prompt caching is not supported
+    - Vision is not supported
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
 - `response_format`
 - `temperature`
@@ -23,37 +28,40 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `presence_penalty`
 - `logit_bias`
 
+magicsandbox.llm also accepts additional arguments:
+
+- `summarize` _(boolean, default: `false`)_: whether to return a short summary of the first user message in `messages`
+
 ## Returns
 
-Objects with keys:
+Object(s) with keys:
 
 - `model`: the model used
 - `content`: the content of the response
+- `summary`: the summary, if `summarize` is `true`
+
+When `stream` is `true` (recommended), returns a stream of objects. `model` and `summary` are present on only the first object.
+
+When `stream` is false, returns a single object with keys `model`, `content`, and `summary`.
 
 ## Usage
 
 ### Streaming
 
-Since the LLM response can take some time to generate, you should leverage streaming:
-
 ```javascript
-const response = await requestFunction(
+const stream = await requestFunction(
   "magicsandbox.llm",
   { messages: [{ role: "user", content: "Hello, world!" }] },
   { maxCost: 0.01, stream: true },
 );
 
-for await (const chunk of response) {
-  if (chunk.result) {
-    const { model, content } = chunk.result;
-    // do something
-  } else {
-    // do something with chunk.metadata if you want
-  }
+for await (const chunk of stream) {
+  const { result: { model, content, summary } = {}, metadata } = chunk;
+  console.log(model, summary); //present on only the first chunk
+  console.log(content); //present on all but last chunk
+  console.log(metadata); //present on only the last chunk
 }
 ```
-
-If you don't set `stream` to `true` when calling `requestFunction`, `response.result` will be an array of objects with keys `model` and `content`.
 
 ### maxCost
 
@@ -63,7 +71,7 @@ magicsandbox.llm checks that the `maxCost` you provide is sufficient given `mode
 - Reducing `max_completion_tokens` to 500
 - Trimming the content of `messages`
 
-If you want to avoid the above behavior, ensure that you set `maxCost` appropriately. A conservative assumption is that each byte in messages will become a token. This may seem overly conservative, but this is the assumption magicsandbox.llm uses for models like Claude that don't have a publicly available tokenizer. That might look something like this:
+This may be acceptable or even convenient for some use cases. However, if you want to avoid the above behavior, ensure that you set `maxCost` appropriately. A conservative assumption is that each byte in messages will become a token. This may seem overly conservative, but this is the assumption magicsandbox.llm uses for models like Claude that don't have a publicly available tokenizer. That might look something like this:
 
 ```javascript
 const messages = [{ role: "user", content: "Hello, world!" }];

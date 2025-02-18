@@ -20,6 +20,8 @@ function App({ user }) {
     - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
+  - model: the model used to generate the message
+  - summary: summary of the first user message
   */
   const [messages, setMessages] = useState([]);
   const [collapsed, setCollapsed] = useState(true);
