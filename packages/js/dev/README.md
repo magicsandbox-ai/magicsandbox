@@ -31,7 +31,7 @@ And adds the following to your `package.json`:
 }
 ```
 
-You can then run `npm run dev MyApp`, which will start a local dev server. Open [magicsandbox.ai?app=magicsandbox.DevLocal](https://magicsandbox.ai?app=magicsandbox.DevLocal) to see your App and start making changes.
+You can then run `npm run dev MyApp`, which will start a local dev server and open magicsandbox.DevLocal, where you can see your App and start making changes.
 
 Run `npx magicsandbox --help` to see more command line options.
 
@@ -54,7 +54,7 @@ package.json
 
 ## Documentation
 
-This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file. Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?app=magicsandbox.Docs) for details on `magic.json` and Magic Sandbox in general.
+This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file. Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on `magic.json` and Magic Sandbox in general.
 
 ### magic.json file
 

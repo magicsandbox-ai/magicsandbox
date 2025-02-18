@@ -1,6 +1,6 @@
 # Magic Sandbox Documentation
 
-This technical documentation is aimed at developers interested in writing code that runs on Magic Sandbox. For non-technical user support, please see the [About](https://magicsandbox.ai?app=magicsandbox.About) page. This documentation assumes you have already read through the About page and are familiar with Magic Sandbox at a high level.
+This technical documentation is aimed at developers interested in writing code that runs on Magic Sandbox. For non-technical user support, please see the [About](https://magicsandbox.ai?_app=magicsandbox.About) page. This documentation assumes you have already read through the About page and are familiar with Magic Sandbox at a high level.
 
 1. [Magic Apps](#magic-apps)
 2. [Magic Functions](#magic-functions)
@@ -274,7 +274,7 @@ From your endpoint, you can call other Magic Functions by making a POST request 
 
 ## magicsandbox.Dev
 
-The App [magicsandbox.Dev](https://magicsandbox.ai?app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
+The App [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
 
 With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Magic Apps](#magic-apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
 

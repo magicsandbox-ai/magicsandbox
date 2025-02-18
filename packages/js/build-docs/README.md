@@ -6,7 +6,7 @@
 
 `npm install "@magicsandbox.ai/build-docs"`
 
-Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?app=magicsandbox.Docs) for details on the `magic.json` file and Magic Sandbox in general.
+Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on the `magic.json` file and Magic Sandbox in general.
 
 `@magicsandbox.ai/build-docs` installs [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) as a dependency.
 

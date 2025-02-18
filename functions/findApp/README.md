@@ -11,7 +11,7 @@ An object with keys:
 
 ## Returns
 
-An array of objects with the following keys. Refer to the [docs](https://magicsandbox.ai/?app=magicsandbox.Docs) for details.
+An array of objects with the following keys. Refer to the [docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details.
 
 - `id` (string)
 - `description` (string)

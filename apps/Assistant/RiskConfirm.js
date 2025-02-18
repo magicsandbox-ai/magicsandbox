@@ -47,7 +47,7 @@ function RiskConfirm({ risk }) {
     {
       text: "Learn More",
       className: "bg-blue-500 hover:bg-blue-700 text-white w-32",
-      onClick: () => requestOpenUrl("?app=magicsandbox.About"), //todo link to a section
+      onClick: () => requestOpenUrl("?_app=magicsandbox.About"), //todo link to a section
       closeOnClick: false,
     },
   ];

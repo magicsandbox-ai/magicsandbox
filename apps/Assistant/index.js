@@ -9,7 +9,7 @@ import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import Chat from "./Chat.js";
 
-function App({ user }) {
+function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   const [modal, setModal] = useState("");
@@ -27,8 +27,9 @@ function App({ user }) {
   const [collapsed, setCollapsed] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
-  //false is a signal to indicate an app is loading, so don't show a flash of the full screen chat
-  const [app, setApp] = useState(null); // type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
+  //type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
 
   const sandboxRef = useRef(null);
@@ -79,7 +80,7 @@ function App({ user }) {
         setApp,
         setAppData,
       });
-      const { _app } = await requestUrlParams();
+      const { _app } = urlParams;
       if (_app) {
         let app = _app.split("@")[0];
         const [author, name] = app.split(".");
@@ -199,8 +200,11 @@ function App({ user }) {
   );
 }
 
-function init({ user } = {}) {
-  createRoot(document.getElementById("root")).render(<App user={user} />);
+async function init({ user } = {}) {
+  const urlParams = await requestUrlParams();
+  createRoot(document.getElementById("root")).render(
+    <App user={user} urlParams={urlParams} />,
+  );
 }
 
 export { init };

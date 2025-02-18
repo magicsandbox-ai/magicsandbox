@@ -56,7 +56,7 @@ function rehypeLinks() {
     visit(tree, "element", (node) => {
       if (node.tagName === "a" && node.properties.href.startsWith("#")) {
         node.properties.href =
-          "https://magicsandbox.ai/?app=magicsandbox.Docs&id=" +
+          "https://magicsandbox.ai/?_app=magicsandbox.Docs&id=" +
           node.properties.href.slice(1); //remove leading #
       }
     });
