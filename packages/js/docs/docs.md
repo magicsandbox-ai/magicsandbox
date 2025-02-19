@@ -1088,7 +1088,7 @@ type Metadata = {
   minCost: number;
   finalCost: number;
   status: "active" | "deprecated" | "inactive";
-  decode: "json" | "string" | "bytes";
+  decode: "json" | "msgpack" | "string" | "bytes";
 };
 ```
 
