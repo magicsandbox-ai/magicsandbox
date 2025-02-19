@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Star, Ban, CircleArrowUp, Loader, Maximize2 } from "lucide-react";
-import ChatInput from "./ChatInput.js";
 import {
-  ChatDisplay,
-  assistantMessageStyle,
-  formatMessage,
-} from "./ChatDisplay.js";
+  Star,
+  Ban,
+  CircleArrowUp,
+  Maximize2,
+  OctagonPause,
+  Plus,
+} from "lucide-react";
+import ChatInput from "./ChatInput.js";
+import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
+import { ModelPicker } from "./ModelPicker.js";
 
 function Chat({
   collapsed,
@@ -15,11 +19,14 @@ function Chat({
   messages,
   chatLoading,
   app,
+  model,
+  setModel,
 }) {
   const [input, setInput] = useState("");
 
   const maximizeButtonRef = useRef(null);
   const shouldFocusMaximizeButtonRef = useRef(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (shouldFocusMaximizeButtonRef.current) {
@@ -53,6 +60,11 @@ function Chat({
     }
   }
 
+  function handleNewConversation() {
+    assistantRef.current.handleNewConversation();
+    inputRef.current.focus();
+  }
+
   function handleMaximize() {
     setCollapsed(!collapsed);
     shouldFocusMaximizeButtonRef.current = true;
@@ -61,7 +73,11 @@ function Chat({
   let maximizeComponent = null;
   if (app !== null) {
     maximizeComponent = (
-      <button ref={maximizeButtonRef} className="mx-2" onClick={handleMaximize}>
+      <button
+        ref={maximizeButtonRef}
+        className={collapsed ? "mx-2" : ""}
+        onClick={handleMaximize}
+      >
         <Maximize2 />
       </button>
     );
@@ -114,11 +130,16 @@ function Chat({
             >
               {!collapsed && (
                 <>
-                  <div className="flex">
-                    <p className={assistantMessageStyle + " grow"}>
-                      {messages.length === 0 ? "What can I help you with?" : ""}
-                    </p>
-                    {maximizeComponent}
+                  <div className="mx-2 flex items-center justify-between gap-2">
+                    <div className="flex grow items-center">
+                      <ModelPicker model={model} setModel={setModel} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={handleNewConversation}>
+                        <Plus />
+                      </button>
+                      {maximizeComponent}
+                    </div>
                   </div>
                   <ChatDisplay
                     outerClassName="max-h-[80vh]"
@@ -130,6 +151,7 @@ function Chat({
               )}
               <div className="flex items-center">
                 <ChatInput
+                  ref={inputRef}
                   className={`mx-1 max-h-[148px] grow resize-none px-1 ${
                     collapsed ? "outline-0" : ""
                   }`}
@@ -144,9 +166,13 @@ function Chat({
           </div>
         </div>
         <div className="mr-2 flex flex-1 items-center justify-start gap-2">
-          <button onClick={handleInput}>
+          <button onClick={() => handleInput(input)}>
             {chatLoading ? (
-              <Loader className="animate-spin" />
+              <OctagonPause
+                onClick={() => {
+                  assistantRef.current.handleStopConversation();
+                }}
+              />
             ) : (
               <CircleArrowUp />
             )}

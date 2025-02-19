@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import ChatInput from "./ChatInput.js";
 import AppList from "./AppList.js";
-import { CircleArrowUp, Loader } from "lucide-react";
+import { CircleArrowUp } from "lucide-react";
 
 function Home({
   toastsRef,
@@ -38,12 +38,8 @@ function Home({
             handleInput={handleInput}
             placeholder="Chat with your Assistant"
           />
-          <button className="mr-1" onClick={handleInput}>
-            {chatLoading ? (
-              <Loader className="animate-spin" />
-            ) : (
-              <CircleArrowUp />
-            )}
+          <button className="mr-1" onClick={() => handleInput(input)}>
+            <CircleArrowUp />
           </button>
         </div>
       </div>

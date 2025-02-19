@@ -160,4 +160,4 @@ const rehypeSanitizeOptions = {
   },
 };
 
-export { ChatDisplay, assistantMessageStyle, userMessageStyle, formatMessage };
+export { ChatDisplay, formatMessage };

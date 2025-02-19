@@ -37,6 +37,7 @@ function App({ user, urlParams }) {
   //type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
   const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
+  const [model, setModel] = useState("auto");
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -46,6 +47,7 @@ function App({ user, urlParams }) {
   const conversationsRef = useRef({
     [conversation.conversationId]: conversation,
   }); // {[conversationId: string]: Conversation}
+  const modelRef = useRef(model);
 
   useEffect(() => {
     async function init() {
@@ -61,6 +63,7 @@ function App({ user, urlParams }) {
         appDataRef,
         conversationRef,
         conversationsRef,
+        modelRef,
         setConfirm,
         setRisk,
         setConversation,
@@ -147,6 +150,10 @@ function App({ user, urlParams }) {
     conversationRef.current = conversation;
   }, [conversation]);
 
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
+
   let modalComponent;
   if (confirm) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
@@ -184,6 +191,8 @@ function App({ user, urlParams }) {
             messages,
             chatLoading,
             app,
+            model,
+            setModel,
           }}
         />
       )}

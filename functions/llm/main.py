@@ -39,6 +39,7 @@ gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002')
 default_tokenizer = DefaultTokenizer()
 
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
+# keep these in sync with Assistant/ModelPicker.js - need a better way to do this
 supported_models = {
     'claude-3-5-sonnet-20241022': {
         'max_input_tokens': 200000,

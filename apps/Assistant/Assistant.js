@@ -17,6 +17,7 @@ import {
   magicSystemPrompt,
 } from "./prompts.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
+import { models } from "./ModelPicker.js";
 
 class Assistant {
   constructor({
@@ -26,6 +27,7 @@ class Assistant {
     toastsRef,
     conversationRef,
     conversationsRef,
+    modelRef,
     setConfirm,
     setRisk,
     setConversation,
@@ -40,6 +42,7 @@ class Assistant {
     this.toastsRef = toastsRef;
     this.conversationRef = conversationRef;
     this.conversationsRef = conversationsRef;
+    this.modelRef = modelRef;
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
     this.setConversation = setConversation;
@@ -161,6 +164,7 @@ class Assistant {
       conversationId = this.conversationRef.current.conversationId;
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const abortSignal = this.abortIdController.signal(conversationId);
+      abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
       this.setChatLoading(true);
       const prevMessage = messages[messages.length - 1];
       let newMessages;
@@ -274,21 +278,44 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      const stream = [
-        {
+      async function* mockStream() {
+        yield {
           result: {
             model: "claude-3-5-sonnet-20241022",
             content: "Hello world!",
             summary: messages.length === 0 ? "Hello world" : null,
           },
-        },
-        { result: { content: " This is a test message." } },
-        { metadata: { finalCost: 0.01 } },
-      ];
+        };
+        for (let i = 0; i < 10; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          yield {
+            result: { content: " test" },
+          };
+        }
+      }
+      const stream = mockStream();
+      // const max_completion_tokens = 5000;
+      // let model, maxCost;
+      // if (this.modelRef.current === "auto") {
+      //   maxCost = llmBudget;
+      // } else {
+      //   model = this.modelRef.current;
+      //   const inputTokens = new TextEncoder().encode(
+      //     JSON.stringify(messages),
+      //   ).length; //one token per byte
+      //   maxCost =
+      //     models[model].input_cost_per_token * inputTokens +
+      //     models[model].output_cost_per_token * max_completion_tokens;
+      // }
       // const stream = await requestFunction(
       //   "magicsandbox.llm",
-      //   { messages: llmMessages, summarize: messages.length === 0 },
-      //   { maxCost: llmBudget, stream: true },
+      //   {
+      //     messages: llmMessages,
+      //     model,
+      //     max_completion_tokens,
+      //     summarize: messages.length === 0,
+      //   },
+      //   { maxCost, stream: true },
       // );
       const llmMessage = {
         role: "assistant",
@@ -311,6 +338,7 @@ class Assistant {
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
+        maxTagLength: 0, //mustdo delete this
       })) {
         if (abortSignal.aborted) return;
         const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
@@ -675,6 +703,23 @@ class Assistant {
       `${app.app} ${blocked ? "blocked" : "unblocked"}`,
       "info",
     );
+  }
+  handleStopConversation() {
+    const conversationId = this.conversationRef.current.conversationId;
+    this.abortIdController.abort(conversationId);
+  }
+  handleNewConversation() {
+    const oldConversationId = this.conversationRef.current.conversationId;
+    this.abortIdController.abort(oldConversationId);
+    //duplicating some code here - maybe there's a better way to do this?
+    const newConversation = {
+      conversationId: Date.now(),
+      summary: null,
+      messages: [],
+    };
+    this.setConversation(newConversation);
+    this.conversationsRef.current[newConversation.conversationId] =
+      newConversation;
   }
   reload() {
     this.abortIdController.abort(null);

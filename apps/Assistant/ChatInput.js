@@ -1,18 +1,16 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, forwardRef } from "react";
 
-function ChatInput({
-  className,
-  input,
-  setInput,
-  handleInput,
-  placeholder,
-  focus = true,
-}) {
-  const ref = useRef(null);
+const ChatInput = forwardRef(function ChatInput(
+  { className, input, setInput, handleInput, placeholder, focus = true },
+  forwardedRef,
+) {
+  const innerRef = useRef(null);
+  // Use the forwarded ref if provided, otherwise fall back to inner ref
+  const ref = forwardedRef || innerRef;
 
   useEffect(() => {
     if (focus) {
-      ref.current.focus();
+      ref.current?.focus();
     }
   }, []);
 
@@ -43,6 +41,6 @@ function ChatInput({
       placeholder={placeholder}
     />
   );
-}
+});
 
 export default ChatInput;
