@@ -12,6 +12,11 @@ function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
+  conversation is an object with keys:
+  - conversationId
+  - summary
+  - messages
+
   messages is an array of objects with keys:
   - role: "user", "assistant", or "display"
   - tags: an array of objects [{tag?: string, content: string}] representing a message
@@ -19,9 +24,12 @@ function App({ user, urlParams }) {
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   - model: the model used to generate the message
-  - summary: summary of the first user message
   */
-  const [messages, setMessages] = useState([]);
+  const [conversation, setConversation] = useState({
+    conversationId: Date.now(),
+    summary: null,
+    messages: [],
+  });
   const [collapsed, setCollapsed] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
@@ -34,6 +42,10 @@ function App({ user, urlParams }) {
   const toastsRef = useRef(null);
   const assistantRef = useRef(null);
   const appDataRef = useRef({});
+  const conversationRef = useRef(conversation);
+  const conversationsRef = useRef({
+    [conversation.conversationId]: conversation,
+  }); // {[conversationId: string]: Conversation}
 
   useEffect(() => {
     async function init() {
@@ -47,9 +59,11 @@ function App({ user, urlParams }) {
         sandboxRef,
         toastsRef,
         appDataRef,
+        conversationRef,
+        conversationsRef,
         setConfirm,
         setRisk,
-        setMessages,
+        setConversation,
         setChatLoading,
         setCollapsed,
         setApp,
@@ -79,6 +93,13 @@ function App({ user, urlParams }) {
           assistantRef.current.handleApp({ app });
         }
       }
+      const conversationData = await requestGetAllData({
+        app: "magicsandbox.Assistant",
+      });
+      conversationsRef.current = Object.fromEntries(
+        Object.entries(conversationData).filter(([, v]) => v.conversationId),
+      );
+      conversationsRef.current[conversation.conversationId] = conversation;
     }
     if (assistantRef.current === null) {
       init().catch((error) => {
@@ -117,9 +138,14 @@ function App({ user, urlParams }) {
     if (Object.keys(appData).length > 0) {
       requestPutData("appData", appData, {
         app: "magicsandbox.Assistant",
+        evictionPolicy: "fifo",
       }).catch(console.error);
     }
   }, [appData]);
+
+  useEffect(() => {
+    conversationRef.current = conversation;
+  }, [conversation]);
 
   let modalComponent;
   if (confirm) {
@@ -127,6 +153,9 @@ function App({ user, urlParams }) {
   } else if (risk) {
     modalComponent = <RiskConfirm risk={risk} />;
   }
+
+  const messages = conversation.messages;
+
   return (
     <div className="flex h-screen w-full flex-col">
       {messages.length === 0 && app === null && (

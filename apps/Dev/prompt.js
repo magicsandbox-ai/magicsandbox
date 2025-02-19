@@ -1,6 +1,8 @@
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
 
+const heading = "Making your App Magic";
+
 /*
 todos:
 - instructions on calling findFunction
@@ -37,7 +39,7 @@ Defaults to \`<div id="root"></div>\` if not provided.
 
 Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.`);
 
-  sections.push(getHeadings(docs, ["Making your App Magic"]));
+  sections.push(getHeadings(docs, [heading]));
   sections.push(contextPrompt({ context, summarizedContext }));
   sections.push(apiPrompt({ context, summarizedContext }));
   sections.push(instructionsPrompt({ context, summarizedContext }));
@@ -155,24 +157,29 @@ ${api.join("\n\n")}`;
 
 function instructionsPrompt({ context, summarizedContext }) {
   let instructions;
+  const createAppInstructions = [
+    "  - Set relevant values for `name` and `description` based on the user's request.",
+    "  - Use `createString` to create `index.js`, `index.html`, `index.css`, or additional files as needed. Make sure to use the triple backtick syntax and the top level file tags.",
+    `  - Unless the user requested otherwise or you feel it's inappropriate for the user's request, use \`index.js\` to create a React app and use Tailwind for styling. Use the example from the ${heading} section as a template. If using React and Tailwind, you likely can use the default values and don't need to create \`index.html\` or \`index.css\`.`,
+    "  - Apply styling to make the app take up the full screen and look modern and clean.",
+    "  - Use the data sandbox functions `requestPutData`, `requestGetData`, etc. to persist user data when appropriate.",
+    "  - If the user requests a complex app, implement enough basic functionality to make the app useful. Then, after running your script, suggest some additional features the user may want to add.",
+  ];
   if (!context) {
     //called from init
     instructions = [
-      "- Use `app.api.createApp` to create a new App.",
-      "- Set relevant values for `name` and `description` based on the user's request.",
-      "- Use `createString` to create `index.js`, `index.html`, or `index.css` files as needed. Make sure to use the triple backtick syntax and the top level file tags.",
-      "- Unless the user requested otherwise or you feel it's inappropriate for the user's request, use `index.js` to create a React app and use Tailwind for styling. Use the magicsandbox.HelloWorld example as a template. If using React and Tailwind, you likely can use the default values and don't need to create `index.html` or `index.css`.",
-      "- Apply styling to make the app take up the full screen and look modern and clean.",
-      "- Use the data sandbox functions `requestPutData`, `requestGetData`, etc. to persist user data when appropriate.",
-      "- If the user requests a complex app, implement enough basic functionality to make the app useful. Then, after running your script, suggest some additional features the user may want to add.",
+      "- Use `app.api.createApp` to create a new App. When using `app.api.CreateApp`:",
+      ...createAppInstructions,
     ];
   } else {
     instructions = [
-      "- If the user is asking a question about how the code works, just answer it. If they're asking you to make a change, use `app.api.updateFiles`.",
-      "- When using `app.api.updateFiles`:",
+      "- If the user is asking a question about how the code works, just answer it.",
+      "- If the user is asking you to make a change, use `app.api.updateFiles`. When using `app.api.updateFiles`:",
       "  - Respect the user's existing libraries and code conventions.",
       "  - Make sure to use the triple backtick syntax and the top level file tags.",
       "  - Use <find> and <replace> tags to make small changes to large files. Otherwise, update the entire file. Ensure you're using the correct `updateString` syntax either way.",
+      "- If the user is asking you to create a new App, use `app.api.createApp`. When using `app.api.createApp`:",
+      ...createAppInstructions,
     ];
     if (summarizedContext) {
       instructions.push(

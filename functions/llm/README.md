@@ -39,10 +39,11 @@ Object(s) with keys:
 - `model`: the model used
 - `content`: the content of the response
 - `summary`: the summary, if `summarize` is `true`
+- `finish_reason`: the reason the response finished (see the OpenAI docs)
 
-When `stream` is `true` (recommended), returns a stream of objects. `model` and `summary` are present on only the first object.
+When `stream` is `true` (recommended), returns a stream of objects. `model` and `summary` are present on only the first object. `finish_reason` is present on only the final object.
 
-When `stream` is false, returns a single object with keys `model`, `content`, and `summary`.
+When `stream` is false, returns a single object with keys `model`, `content`, `summary`, and `finish_reason`.
 
 ## Usage
 
@@ -56,9 +57,11 @@ const stream = await requestFunction(
 );
 
 for await (const chunk of stream) {
-  const { result: { model, content, summary } = {}, metadata } = chunk;
+  const { result: { model, content, summary, finish_reason } = {}, metadata } =
+    chunk;
   console.log(model, summary); //present on only the first chunk
   console.log(content); //present on all but last chunk
+  console.log(finish_reason); //present on the final result chunk (the second to last chunk)
   console.log(metadata); //present on only the last chunk
 }
 ```

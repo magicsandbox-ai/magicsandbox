@@ -92,7 +92,7 @@ async def llm(body: LlmBody, test=False):
     if args.messages is None:
         raise HTTPException(status_code=400, detail='messages required')
     if args.max_completion_tokens is None:
-        args.max_completion_tokens = 100
+        args.max_completion_tokens = 1000
     elif args.max_completion_tokens > 99000 and not body.options.stream:
         # because max command object size is 100KB
         raise HTTPException(status_code=400, detail='max_completion_tokens must be less than 99000 when streaming is disabled')
@@ -290,6 +290,7 @@ async def openai_transform(response, model, expected_cost, summary):
     buffer_size = 20
     first_chunk = True
     async for chunk in response:
+        logger.debug('%s', json.dumps(chunk.json(), default=str, indent=2))
         content = chunk.choices[0].delta.content
         if content:
             buffer += content
@@ -300,11 +301,11 @@ async def openai_transform(response, model, expected_cost, summary):
                 else:
                     yield json.dumps({'content': buffer})
                 buffer = ''
-    if buffer:
-        if first_chunk:
-            yield json.dumps({'model': model, 'content': buffer, 'summary': summary})
-        else:
-            yield json.dumps({'content': buffer})
+    finish_reason = chunk.choices[0].finish_reason or finish_reason
+    if first_chunk:
+        yield json.dumps({'model': model, 'content': buffer, 'summary': summary, 'finish_reason': finish_reason})
+    else:
+        yield json.dumps({'content': buffer, 'finish_reason': finish_reason})
     final_cost = handle_final_cost(model, expected_cost, chunk.usage, summary)
     yield json.dumps({'__command': {'finalCost': final_cost}})
 
@@ -319,12 +320,14 @@ def handle_final_cost(model, expected_cost, usage, summary):
     return final_cost
 
 def handle_response(response, model, expected_cost, summary):
+    logger.debug('%s', json.dumps(response.json(), default=str, indent=2))
     final_cost = handle_final_cost(model, expected_cost, response.usage, summary)
     content = {
         'result': {
             'model': model, 
             'content': response.choices[0].message.content,
             'summary': summary,
+            'finish_reason': response.choices[0].finish_reason,
         },
         '__command': {'finalCost': final_cost},
         }

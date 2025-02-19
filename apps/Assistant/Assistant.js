@@ -24,9 +24,11 @@ class Assistant {
     sandboxRef,
     appDataRef,
     toastsRef,
+    conversationRef,
+    conversationsRef,
     setConfirm,
     setRisk,
-    setMessages,
+    setConversation,
     setChatLoading,
     setCollapsed,
     setApp,
@@ -36,16 +38,19 @@ class Assistant {
     this.sandboxRef = sandboxRef;
     this.appDataRef = appDataRef;
     this.toastsRef = toastsRef;
+    this.conversationRef = conversationRef;
+    this.conversationsRef = conversationsRef;
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
-    this.setMessages = setMessages;
+    this.setConversation = setConversation;
     this.setChatLoading = setChatLoading;
     this.setCollapsed = setCollapsed;
     this._setApp = setApp;
     this.setAppData = setAppData;
     this.app = null;
-    this.abortController = new AbortController();
+    this.abortIdController = new AbortIdController();
     this.budget = null;
+    this.saveTimeoutIds = {};
     this.requestTimeoutId = null;
     this.requestQueue = [];
     this.requestProcessing = false;
@@ -62,8 +67,36 @@ class Assistant {
     this._setApp(app);
     this.app = app;
   }
-  setDisplayMessage(message) {
-    this.setMessages((messages) => {
+  setMessages(conversationId, messages) {
+    if (typeof messages === "function") {
+      messages = messages(
+        this.conversationsRef.current[conversationId].messages,
+      );
+    }
+    if (conversationId === this.conversationRef.current.conversationId) {
+      this.setConversation((conversation) => ({
+        ...conversation,
+        messages,
+      }));
+    }
+    this.conversationsRef.current[conversationId].messages = messages;
+    if (this.saveTimeoutIds[conversationId]) {
+      clearTimeout(this.saveTimeoutIds[conversationId]);
+    }
+    this.saveTimeoutIds[conversationId] = setTimeout(() => {
+      requestPutData(
+        conversationId,
+        this.conversationsRef.current[conversationId],
+        {
+          app: "magicsandbox.Assistant",
+          evictionPolicy: "fifo",
+        },
+      ).catch(console.error);
+      delete this.saveTimeoutIds[conversationId];
+    }, 500);
+  }
+  setDisplayMessage(conversationId, message) {
+    this.setMessages(conversationId, (messages) => {
       return [
         ...messages,
         { role: "display", tags: [{ content: `\n\n${message}` }] },
@@ -107,11 +140,11 @@ class Assistant {
     requestPutData(
       "usageData",
       { avgDaysBetweenUsage, ts: now },
-      { app: "magicsandbox.Assistant" },
+      { app: "magicsandbox.Assistant", evictionPolicy: "fifo" },
     ).catch(console.error);
     return budget;
   }
-  handleError(error) {
+  handleError(conversationId, error) {
     console.error(error);
     let message = "please try again";
     let type = "error";
@@ -119,13 +152,15 @@ class Assistant {
       message = error.message;
       type = error.type;
     }
-    this.setDisplayMessage(`Error: ${message}`);
+    this.setDisplayMessage(conversationId, `Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
   async handleInput({ input, messages, initContext }) {
+    let conversationId;
     try {
+      conversationId = this.conversationRef.current.conversationId;
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      const abortSignal = this.abortController.signal;
+      const abortSignal = this.abortIdController.signal(conversationId);
       this.setChatLoading(true);
       const prevMessage = messages[messages.length - 1];
       let newMessages;
@@ -163,7 +198,7 @@ class Assistant {
         //continuing after an intermediate_script, already created user message with logs
         newMessages = [...messages];
       }
-      this.setMessages([
+      this.setMessages(conversationId, [
         ...newMessages,
         {
           role: "display", //this message gets overwritten below by the llm response
@@ -239,11 +274,22 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      const stream = await requestFunction(
-        "magicsandbox.llm",
-        { messages: llmMessages },
-        { maxCost: llmBudget, stream: true },
-      );
+      const stream = [
+        {
+          result: {
+            model: "claude-3-5-sonnet-20241022",
+            content: "Hello world!",
+            summary: messages.length === 0 ? "Hello world" : null,
+          },
+        },
+        { result: { content: " This is a test message." } },
+        { metadata: { finalCost: 0.01 } },
+      ];
+      // const stream = await requestFunction(
+      //   "magicsandbox.llm",
+      //   { messages: llmMessages, summarize: messages.length === 0 },
+      //   { maxCost: llmBudget, stream: true },
+      // );
       const llmMessage = {
         role: "assistant",
         tags: [],
@@ -251,7 +297,11 @@ class Assistant {
       const chunkProcessor = (chunk) => {
         const { model, content, summary } = chunk.result || {};
         if (model) {
-          llmMessage.model = model;
+          //this removes everything before the first hyphen and everything after the last alphabetical char
+          //claude-3-5-sonnet-20241022 becomes claude-3-5-sonnet
+          //gemini/gemini-1.5-flash-8b-001 becomes gemini-1.5-flash-8b
+          const match = model.match(/(?:.*\/)?(.*[A-Za-z])/);
+          llmMessage.model = match[1] || model;
         }
         if (summary) {
           llmMessage.summary = summary;
@@ -269,7 +319,7 @@ class Assistant {
         } else {
           llmMessage.tags.push({ tag, content });
         }
-        this.setMessages([...newMessages, llmMessage]);
+        this.setMessages(conversationId, [...newMessages, llmMessage]);
       }
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "launch_app") {
@@ -296,30 +346,31 @@ class Assistant {
             logs = ["[Uncaught Error] Error: script timed out"];
           }
           if (abortSignal.aborted) return;
-          this.setMessages((messages) => {
-            return [
-              ...messages,
-              {
-                role: "user",
-                tags: [{ tag: "logs", content: formatLogs(logs) }],
-                promptToContinue: tag.tag === "intermediate_script",
-              },
-            ];
-          });
+          this.setMessages(conversationId, [
+            ...newMessages,
+            llmMessage,
+            {
+              role: "user",
+              tags: [{ tag: "logs", content: formatLogs(logs) }],
+              promptToContinue: tag.tag === "intermediate_script",
+            },
+          ]);
           break;
         }
       }
     } catch (error) {
-      this.handleError(error);
+      this.handleError(conversationId, error);
     } finally {
       this.setChatLoading(false);
     }
   }
   async handleApp({ input, app, messages }) {
+    let conversationId;
     try {
-      const abortSignal = this.abortController.signal;
+      conversationId = this.conversationRef.current.conversationId;
+      const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      this.setDisplayMessage(`Loading ${app}...`);
+      this.setDisplayMessage(conversationId, `Loading ${app}...`);
       if (!messages) {
         // loading from a url
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
@@ -327,7 +378,7 @@ class Assistant {
         this.setApp(false);
       }
       const handleAppResult = async (result) => {
-        this.setDisplayMessage(`${result.metadata.id} loaded`);
+        this.setDisplayMessage(conversationId, `${result.metadata.id} loaded`);
         requestUrlParams({ _app: result.metadata.id }).catch(console.error);
         const app = result.metadata.id.split("@")[0];
         const appData = {
@@ -401,10 +452,10 @@ class Assistant {
                   if (abortSignal.aborted) return;
                   await handleAppResult(result);
                 } catch (error) {
-                  this.handleError(error);
+                  this.handleError(conversationId, error);
                 }
               } else {
-                this.setDisplayMessage(`${app} not opened`);
+                this.setDisplayMessage(conversationId, `${app} not opened`);
               }
             },
           });
@@ -413,7 +464,7 @@ class Assistant {
         }
       }
     } catch (error) {
-      this.handleError(error);
+      this.handleError(conversationId, error);
     }
   }
   handleRequest(event) {
@@ -427,7 +478,7 @@ class Assistant {
   }
   async processRequestBatch() {
     if (this.requestProcessing || this.requestQueue.length === 0) return;
-    const abortSignal = this.abortController.signal;
+    const abortSignal = this.abortIdController.signal(null);
     this.requestProcessing = true;
     let batch = [...this.requestQueue];
     this.requestQueue = [];
@@ -626,13 +677,17 @@ class Assistant {
     );
   }
   reload() {
-    this.abortController.abort();
-    this.abortController = new AbortController();
+    this.abortIdController.abort(null);
+    this.abortIdController = new AbortIdController();
     this.sandboxRef.current.reload();
     this.handleApprovePromise?.resolve(false);
     this.setConfirm(null);
     this.setRisk(null);
-    this.setMessages([]);
+    this.setConversation({
+      conversationId: Date.now(),
+      summary: null,
+      messages: [],
+    });
     this.setChatLoading(false);
     this.setApp(null);
     this.budget = null;
@@ -642,3 +697,24 @@ class Assistant {
 }
 
 export { Assistant };
+
+class AbortIdController {
+  constructor() {
+    this.signals = { null: { aborted: false } };
+  }
+  signal(id) {
+    if (!this.signals[id]) {
+      this.signals[id] = { aborted: false };
+    }
+    return this.signals[id];
+  }
+  abort(id) {
+    if (id === null) {
+      Object.values(this.signals).forEach((signal) => {
+        signal.aborted = true;
+      });
+    } else {
+      this.signals[id].aborted = true;
+    }
+  }
+}
