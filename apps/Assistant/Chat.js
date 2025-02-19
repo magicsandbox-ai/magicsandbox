@@ -10,7 +10,6 @@ import {
 function Chat({
   collapsed,
   setCollapsed,
-  settingsRef,
   toastsRef,
   assistantRef,
   messages,
@@ -38,7 +37,7 @@ function Chat({
   async function handleInput(input) {
     //don't let user submit while loading
     //todo let user stop loading?
-    if (input === "" || !settingsRef.current || chatLoading) return;
+    if (input === "" || assistantRef.current === null || chatLoading) return;
     setInput("");
     try {
       if (app !== null) {

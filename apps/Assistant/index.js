@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.js";
 import RiskConfirm from "./RiskConfirm.js";
-import AssistantSettings from "./AssistantSettings.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
@@ -12,7 +11,6 @@ import Chat from "./Chat.js";
 function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
-  const [modal, setModal] = useState("");
   /*
   messages is an array of objects with keys:
   - role: "user", "assistant", or "display"
@@ -34,33 +32,11 @@ function App({ user, urlParams }) {
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
-  const settingsRef = useRef(null);
   const assistantRef = useRef(null);
   const appDataRef = useRef({});
 
   useEffect(() => {
     async function init() {
-      // try {
-      //   const savedSettings = await requestGetData("settings", {
-      //     app: "magicsandbox.Assistant",
-      //   });
-      //   if (savedSettings) {
-      //     settingsRef.current = savedSettings;
-      //   }
-      // } catch (error) {
-      //   console.error(error);
-      //   toastsRef.current.addToast(
-
-      //     "Failed to load Assistant settings. Using default settings",
-      //     "error",
-      //   );
-      // } finally {
-      //   settingsRef.current = {
-      //     ...defaultSettings,
-      //     ...settingsRef.current,
-      //   };
-      // }
-      settingsRef.current = {};
       const appData = await requestGetData("appData", {
         app: "magicsandbox.Assistant",
       });
@@ -70,7 +46,6 @@ function App({ user, urlParams }) {
         user,
         sandboxRef,
         toastsRef,
-        settingsRef,
         appDataRef,
         setConfirm,
         setRisk,
@@ -105,7 +80,7 @@ function App({ user, urlParams }) {
         }
       }
     }
-    if (!settingsRef.current) {
+    if (assistantRef.current === null) {
       init().catch((error) => {
         console.error(error);
         if (error.name === "ToastError") {
@@ -151,22 +126,12 @@ function App({ user, urlParams }) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
   } else if (risk) {
     modalComponent = <RiskConfirm risk={risk} />;
-  } else if (modal === "settings") {
-    modalComponent = (
-      <AssistantSettings
-        assistantRef={assistantRef}
-        setModal={setModal}
-        addToast={toastsRef.current.addToast}
-      />
-    );
   }
   return (
     <div className="flex h-screen w-full flex-col">
       {messages.length === 0 && app === null && (
         <Home
           {...{
-            setModal,
-            settingsRef,
             toastsRef,
             assistantRef,
             messages,
@@ -185,7 +150,6 @@ function App({ user, urlParams }) {
           {...{
             collapsed,
             setCollapsed,
-            settingsRef,
             toastsRef,
             assistantRef,
             messages,

@@ -4,8 +4,6 @@ import AppList from "./AppList.js";
 import { CircleArrowUp, Loader } from "lucide-react";
 
 function Home({
-  //setModal,
-  settingsRef,
   toastsRef,
   assistantRef,
   messages,
@@ -16,7 +14,7 @@ function Home({
   const [input, setInput] = useState("");
 
   async function handleInput(input) {
-    if (input === "" || !settingsRef.current || chatLoading) return;
+    if (input === "" || assistantRef.current === null || chatLoading) return;
     try {
       setInput("");
       await assistantRef.current.handleInput({ input, messages });

@@ -22,7 +22,6 @@ class Assistant {
   constructor({
     user,
     sandboxRef,
-    settingsRef,
     appDataRef,
     toastsRef,
     setConfirm,
@@ -35,7 +34,6 @@ class Assistant {
   }) {
     this.user = user;
     this.sandboxRef = sandboxRef;
-    this.settingsRef = settingsRef;
     this.appDataRef = appDataRef;
     this.toastsRef = toastsRef;
     this.setConfirm = setConfirm;
