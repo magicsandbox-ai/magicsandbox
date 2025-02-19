@@ -291,6 +291,7 @@ async def openai_transform(response, model, expected_cost, summary):
     buffer = '' # buffer to reduce overhead to json and length prefixes
     buffer_size = 20
     first_chunk = True
+    finish_reason = None
     async for chunk in response:
         logger.debug('%s', json.dumps(chunk.json(), default=str, indent=2))
         content = chunk.choices[0].delta.content
@@ -303,7 +304,7 @@ async def openai_transform(response, model, expected_cost, summary):
                 else:
                     yield json.dumps({'content': buffer})
                 buffer = ''
-    finish_reason = chunk.choices[0].finish_reason or finish_reason
+        finish_reason = chunk.choices[0].finish_reason or finish_reason
     if first_chunk:
         yield json.dumps({'model': model, 'content': buffer, 'summary': summary, 'finish_reason': finish_reason})
     else:

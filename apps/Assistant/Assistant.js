@@ -711,7 +711,9 @@ class Assistant {
   handleNewConversation() {
     const oldConversationId = this.conversationRef.current.conversationId;
     this.abortIdController.abort(oldConversationId);
-    //duplicating some code here - maybe there's a better way to do this?
+    this.setNewConversation();
+  }
+  setNewConversation() {
     const newConversation = {
       conversationId: Date.now(),
       summary: null,
@@ -728,11 +730,7 @@ class Assistant {
     this.handleApprovePromise?.resolve(false);
     this.setConfirm(null);
     this.setRisk(null);
-    this.setConversation({
-      conversationId: Date.now(),
-      summary: null,
-      messages: [],
-    });
+    this.setNewConversation();
     this.setChatLoading(false);
     this.setApp(null);
     this.budget = null;
