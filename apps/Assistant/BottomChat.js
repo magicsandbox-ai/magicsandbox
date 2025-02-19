@@ -11,7 +11,7 @@ import ChatInput from "./ChatInput.js";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
 import { ModelPicker } from "./ModelPicker.js";
 
-function Chat({
+function BottomChat({
   collapsed,
   setCollapsed,
   toastsRef,
@@ -83,15 +83,6 @@ function Chat({
     );
   }
 
-  let handleContinue;
-  if (messages[messages.length - 1]?.promptToContinue) {
-    handleContinue = () => {
-      assistantRef.current.handleInput({
-        messages,
-      });
-    };
-  }
-
   let placeholder;
   if (collapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -107,14 +98,6 @@ function Chat({
 
   return (
     <>
-      {app === null && (
-        <ChatDisplay
-          outerClassName="my-4 flex flex-1 flex-col items-center"
-          innerClassName="w-full max-w-screen-lg"
-          messages={messages}
-          handleContinue={handleContinue}
-        />
-      )}
       <div className="flex flex-none items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
         <div className="flex-1" /> {/* spacer */}
         <div className="flex h-12 w-full max-w-screen-lg flex-initial items-center">
@@ -144,7 +127,7 @@ function Chat({
                   <ChatDisplay
                     outerClassName="max-h-[80vh]"
                     messages={messages}
-                    handleContinue={handleContinue}
+                    assistantRef={assistantRef}
                   />
                   <hr className="mx-2 border-stone-300" />
                 </>
@@ -193,4 +176,4 @@ function Chat({
   );
 }
 
-export default Chat;
+export default BottomChat;

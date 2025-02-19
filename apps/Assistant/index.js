@@ -6,7 +6,9 @@ import RiskConfirm from "./RiskConfirm.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
 import Home from "./Home.js";
-import Chat from "./Chat.js";
+import BottomChat from "./BottomChat.js";
+import { ChatDisplay } from "./ChatDisplay.js";
+import ChatHistory from "./ChatHistory.js";
 
 function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
@@ -154,6 +156,8 @@ function App({ user, urlParams }) {
     modelRef.current = model;
   }, [model]);
 
+  const messages = conversation.messages;
+
   let modalComponent;
   if (confirm) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
@@ -161,43 +165,60 @@ function App({ user, urlParams }) {
     modalComponent = <RiskConfirm risk={risk} />;
   }
 
-  const messages = conversation.messages;
-
   return (
-    <div className="flex h-screen w-full flex-col">
-      {messages.length === 0 && app === null && (
-        <Home
+    <div className="flex h-screen">
+      {app === null && (
+        <ChatHistory
           {...{
-            toastsRef,
-            assistantRef,
-            messages,
-            chatLoading,
-            appData,
-            setAppData,
-          }}
-        />
-      )}
-      <Sandbox
-        ref={sandboxRef}
-        className={`w-full ${app !== null ? "grow" : "hidden"}`}
-      />
-      {(messages.length > 0 || app !== null) && (
-        <Chat
-          {...{
-            collapsed,
-            setCollapsed,
-            toastsRef,
-            assistantRef,
-            messages,
-            chatLoading,
-            app,
             model,
             setModel,
+            assistantRef,
           }}
         />
       )}
-      {modalComponent}
-      <Toasts className="top-2" ref={toastsRef} />
+      <div className="flex grow flex-col">
+        {messages.length === 0 && app === null && (
+          <Home
+            {...{
+              toastsRef,
+              assistantRef,
+              messages,
+              chatLoading,
+              appData,
+              setAppData,
+            }}
+          />
+        )}
+        {messages.length > 0 && app === null && (
+          <ChatDisplay
+            outerClassName="my-4 flex grow flex-col items-center"
+            innerClassName="w-full max-w-screen-lg"
+            messages={messages}
+            assistantRef={assistantRef}
+          />
+        )}
+        <Sandbox
+          ref={sandboxRef}
+          className={`w-full ${app !== null ? "grow" : "hidden"}`}
+        />
+        {(messages.length > 0 || app !== null) && (
+          <BottomChat
+            {...{
+              collapsed,
+              setCollapsed,
+              toastsRef,
+              assistantRef,
+              messages,
+              chatLoading,
+              app,
+              model,
+              setModel,
+            }}
+          />
+        )}
+        {modalComponent}
+        <Toasts className="top-2" ref={toastsRef} />
+      </div>
     </div>
   );
 }

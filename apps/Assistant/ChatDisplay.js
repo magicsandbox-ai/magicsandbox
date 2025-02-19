@@ -8,7 +8,7 @@ function ChatDisplay({
   outerClassName = "",
   innerClassName = "",
   messages,
-  handleContinue,
+  assistantRef,
 }) {
   const ref = useRef(null);
 
@@ -22,6 +22,15 @@ function ChatDisplay({
   ) {
     //already at the bottom so scroll to bottom once new message is added
     scrollToBottom = true;
+  }
+
+  let handleContinue;
+  if (messages[messages.length - 1]?.promptToContinue) {
+    handleContinue = () => {
+      assistantRef.current.handleInput({
+        messages,
+      });
+    };
   }
 
   return (
