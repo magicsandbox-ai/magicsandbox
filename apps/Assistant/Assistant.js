@@ -278,45 +278,45 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      async function* mockStream() {
-        yield {
-          result: {
-            model: "claude-3-5-sonnet-20241022",
-            content: "Hello world!",
-            summary: messages.length === 0 ? "Hello world" : null,
-          },
-        };
-        for (let i = 0; i < 10; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          yield {
-            result: { content: " test" },
-          };
-        }
-      }
-      const stream = mockStream();
-      // const max_completion_tokens = 5000;
-      // let model, maxCost;
-      // if (this.modelRef.current === "auto") {
-      //   maxCost = llmBudget;
-      // } else {
-      //   model = this.modelRef.current;
-      //   const inputTokens = new TextEncoder().encode(
-      //     JSON.stringify(messages),
-      //   ).length; //one token per byte
-      //   maxCost =
-      //     models[model].input_cost_per_token * inputTokens +
-      //     models[model].output_cost_per_token * max_completion_tokens;
+      // async function* mockStream() {
+      //   yield {
+      //     result: {
+      //       model: "claude-3-5-sonnet-20241022",
+      //       content: "Hello world!",
+      //       summary: messages.length === 0 ? "Hello world" : null,
+      //     },
+      //   };
+      //   for (let i = 0; i < 10; i++) {
+      //     await new Promise((resolve) => setTimeout(resolve, 1000));
+      //     yield {
+      //       result: { content: " test" },
+      //     };
+      //   }
       // }
-      // const stream = await requestFunction(
-      //   "magicsandbox.llm",
-      //   {
-      //     messages: llmMessages,
-      //     model,
-      //     max_completion_tokens,
-      //     summarize: messages.length === 0,
-      //   },
-      //   { maxCost, stream: true },
-      // );
+      // const stream = mockStream();
+      const max_completion_tokens = 5000;
+      let model, maxCost;
+      if (this.modelRef.current === "auto") {
+        maxCost = llmBudget;
+      } else {
+        model = this.modelRef.current;
+        const inputTokens = new TextEncoder().encode(
+          JSON.stringify(messages),
+        ).length; //one token per byte
+        maxCost =
+          models[model].input_cost_per_token * inputTokens +
+          models[model].output_cost_per_token * max_completion_tokens;
+      }
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        {
+          messages: llmMessages,
+          model,
+          max_completion_tokens,
+          summarize: messages.length === 0,
+        },
+        { maxCost, stream: true },
+      );
       const llmMessage = {
         role: "assistant",
         tags: [],

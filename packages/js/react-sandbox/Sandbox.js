@@ -178,11 +178,15 @@ const Sandbox = forwardRef(function Sandbox(
       addListener(listener);
       await frameReady;
       removeListener(listener);
-      for await (const chunk of data) {
-        if (debug) {
-          console.log(debug, chunk);
+      try {
+        for await (const chunk of data) {
+          if (debug) {
+            console.log(debug, chunk);
+          }
+          postMessage(sandboxId, { value: chunk, id });
         }
-        postMessage(sandboxId, { value: chunk, id });
+      } catch (error) {
+        postMessage(sandboxId, { done: { error: error.message }, id });
       }
       postMessage(sandboxId, { done: true, id });
     } finally {

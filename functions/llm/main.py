@@ -102,6 +102,7 @@ async def llm(body: LlmBody, test=False):
     model, expected_cost = find_model(args, body.options.maxCost) # note that this may modify args.messages and args.max_completion_tokens
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
+    api_args.pop('summarize', None) # remove custom args or litellm will throw an error
     api_args.update({
         'model': model,
         'timeout': 60,
