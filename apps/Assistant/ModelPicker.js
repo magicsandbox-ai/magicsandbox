@@ -4,7 +4,7 @@ import React from "react";
 
 const models = {
   auto: {
-    name: "Auto Selected Model",
+    name: "Model: Auto",
   },
   "claude-3-5-sonnet-20241022": {
     name: "Claude 3.5 Sonnet",

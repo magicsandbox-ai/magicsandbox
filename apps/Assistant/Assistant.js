@@ -25,12 +25,14 @@ class Assistant {
     sandboxRef,
     appDataRef,
     toastsRef,
-    conversationRef,
     conversationsRef,
+    currentConversationRef,
+    conversationSummariesRef,
     modelRef,
     setConfirm,
     setRisk,
-    setConversation,
+    setCurrentConversation,
+    setConversationSummaries,
     setChatLoading,
     setCollapsed,
     setApp,
@@ -40,12 +42,14 @@ class Assistant {
     this.sandboxRef = sandboxRef;
     this.appDataRef = appDataRef;
     this.toastsRef = toastsRef;
-    this.conversationRef = conversationRef;
     this.conversationsRef = conversationsRef;
+    this.currentConversationRef = currentConversationRef;
+    this.conversationSummariesRef = conversationSummariesRef;
     this.modelRef = modelRef;
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
-    this.setConversation = setConversation;
+    this.setCurrentConversation = setCurrentConversation;
+    this.setConversationSummaries = setConversationSummaries;
     this.setChatLoading = setChatLoading;
     this.setCollapsed = setCollapsed;
     this._setApp = setApp;
@@ -70,50 +74,52 @@ class Assistant {
     this._setApp(app);
     this.app = app;
   }
-  /**
-   * Update current conversation
-   *
-   * - conversationId:
-   *   - if not provided, update current conversation
-   *   - if provided, set current conversation to the conversation with the given id
-   *     - if provided and not equal to the current conversationId, the current conversation is stopped
-   *     - if the conversation does not exist, it is created
-   *     - updates are applied using summary, messages, or message, but they're optional
-   * - summary: update summary
-   * - messages: update messages
-   * - message: add a new message. messages and message cannot both be provided
-   */
-  handleUpdateConversation({ conversationId, messages, message, summary }) {
-    if (messages && message) {
-      throw new Error(
-        "messages and message cannot both be provided to handleUpdateConversation",
-      );
-    }
-    let updateCurrentConversation =
-      messages !== undefined || message !== undefined;
-    let updateConversationSummaries = summary !== undefined;
-    const currentConversationId =
-      this.currentConversationRef.current.conversationId;
-    if (!conversationId) {
-      conversationId = currentConversationId;
-    } else if (conversationId !== currentConversationId) {
+  handleStopConversation() {
+    this.abortIdController.abort(
+      this.currentConversationRef.current.conversationId,
+    );
+  }
+  handleNewConversation() {
+    this.handleStopConversation();
+    const conversationId = Date.now();
+    const conversation = {
+      conversationId,
+      messages: [],
+      summary: null,
+      lastUpdated: Date.now(),
+    };
+    this.conversationsRef.current[conversationId] = conversation;
+    this.setCurrentConversation({
+      conversationId,
+      messages: conversation.messages,
+    });
+    this.setConversationSummaries((conversationSummaries) => [
+      { conversationId, summary: conversation.summary },
+      ...conversationSummaries,
+    ]);
+    document.getElementById("chat-input").focus();
+  }
+  handleSwitchConversation(conversationId) {
+    if (conversationId !== this.currentConversationRef.current.conversationId) {
       this.handleStopConversation();
-      updateCurrentConversation = true;
-      updateConversationSummaries = true;
-      if (!(conversationId in this.conversationsRef.current)) {
-        this.conversationsRef.current[conversationId] = {
-          conversationId,
-          messages: [],
-          summary: null,
-        };
-      }
+      const conversation = this.conversationsRef.current[conversationId];
+      delete conversation.messages[conversation.messages.length - 1]
+        ?.promptToContinue;
+      this.setCurrentConversation({
+        conversationId,
+        messages: conversation.messages,
+      });
     }
+  }
+  handleUpdateConversation({ messages, message, summary }) {
+    const conversationId = this.currentConversationRef.current.conversationId;
     const conversation = this.conversationsRef.current[conversationId];
-    conversation.lastUpdated = Date.now();
-    if (updateCurrentConversation) {
+    const messagesUpdated = messages !== undefined || message !== undefined;
+    if (messagesUpdated) {
+      conversation.lastUpdated = Date.now();
       if (messages !== undefined) {
         conversation.messages = messages;
-      } else if (message !== undefined) {
+      } else {
         conversation.messages.push(message);
       }
       this.setCurrentConversation({
@@ -121,10 +127,15 @@ class Assistant {
         messages: conversation.messages,
       });
     }
-    if (updateConversationSummaries) {
-      if (summary !== undefined) {
-        conversation.summary = summary;
-      }
+    const summaryUpdated = summary !== undefined;
+    if (summaryUpdated) {
+      conversation.summary = summary;
+    }
+    const latestConversation =
+      this.conversationSummariesRef.current[0] === conversationId;
+    if (messagesUpdated && !(!summaryUpdated && latestConversation)) {
+      //if messages were updated, move the summary to the top
+      //unless summary wasn't updated and it's already at the top - then do nothing
       this.setConversationSummaries((conversationSummaries) => [
         { conversationId, summary: conversation.summary },
         ...conversationSummaries.filter(
@@ -132,59 +143,17 @@ class Assistant {
             conversationSummary.conversationId !== conversationId,
         ),
       ]);
-    }
-    this.conversationsRef.current[conversationId] = conversation;
-    if (conversation.messages.length > 0) {
-      //if the user creates a new chat, show it in the ui, but don't bother to save it yet
-      if (this.saveTimeoutIds[conversationId]) {
-        clearTimeout(this.saveTimeoutIds[conversationId]);
-      }
-      this.saveTimeoutIds[conversationId] = setTimeout(() => {
-        requestPutData(
-          conversationId,
-          this.conversationsRef.current[conversationId],
-          {
-            app: "magicsandbox.Assistant",
-            evictionPolicy: "fifo",
-          },
-        ).catch(console.error);
-        delete this.saveTimeoutIds[conversationId];
-      }, 500);
-    }
-  }
-  handleStopConversation() {
-    this.abortIdController.abort(this.conversationRef.current.conversationId);
-  }
-  handleNewConversation() {
-    this.handleUpdateConversation({ conversationId: Date.now() });
-    document.getElementById("chat-input").focus();
-  }
-  handleSwitchConversation(conversationId) {
-    this.handleUpdateConversation({ conversationId });
-    document.getElementById("chat-input").focus();
-  }
-  setMessages(conversationId, messages) {
-    /*
-    this was originally written to require conversationId so that a conversation could
-    be updated even after the user opened a new conversation
-    so a user could open a new conversation, then come back and see the completed old one
-    but doing so would require more code to properly handle chatLoading and not launching apps or running scripts
-    so for now, anytime the user opens a new conversation, the old one is aborted
-    so the check for conversationId here could be removed
-    but leaving it for now in case come back to this idea and handle chatLoading, apps, scripts
-    */
-    if (typeof messages === "function") {
-      messages = messages(
-        this.conversationsRef.current[conversationId].messages,
+    } else if (summaryUpdated) {
+      //otherwise, if summary is updated, update in place
+      this.setConversationSummaries((conversationSummaries) =>
+        conversationSummaries.map((conversationSummary) =>
+          conversationSummary.conversationId === conversationId
+            ? { conversationId, summary: conversation.summary }
+            : conversationSummary,
+        ),
       );
     }
-    if (conversationId === this.conversationRef.current.conversationId) {
-      this.setConversation((conversation) => ({
-        ...conversation,
-        messages,
-      }));
-    }
-    this.conversationsRef.current[conversationId].messages = messages;
+    this.conversationsRef.current[conversationId] = conversation;
     if (this.saveTimeoutIds[conversationId]) {
       clearTimeout(this.saveTimeoutIds[conversationId]);
     }
@@ -200,12 +169,9 @@ class Assistant {
       delete this.saveTimeoutIds[conversationId];
     }, 500);
   }
-  setDisplayMessage(conversationId, message) {
-    this.setMessages(conversationId, (messages) => {
-      return [
-        ...messages,
-        { role: "display", tags: [{ content: `\n\n${message}` }] },
-      ];
+  setDisplayMessage(message) {
+    this.handleUpdateConversation({
+      message: { role: "display", tags: [{ content: `\n\n${message}` }] },
     });
   }
   async updateBudget(update = true) {
@@ -249,7 +215,7 @@ class Assistant {
     ).catch(console.error);
     return budget;
   }
-  handleError(conversationId, error) {
+  handleError(error) {
     console.error(error);
     let message = "please try again";
     let type = "error";
@@ -257,13 +223,12 @@ class Assistant {
       message = error.message;
       type = error.type;
     }
-    this.setDisplayMessage(conversationId, `Error: ${message}`);
+    this.setDisplayMessage(`Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
-  async handleInput({ input, messages, initContext }) {
-    let conversationId;
+  async handleInput({ input, messages = [], initContext }) {
     try {
-      conversationId = this.conversationRef.current.conversationId;
+      const conversationId = this.currentConversationRef.current.conversationId;
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const abortSignal = this.abortIdController.signal(conversationId);
       abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
@@ -304,13 +269,15 @@ class Assistant {
         //continuing after an intermediate_script, already created user message with logs
         newMessages = [...messages];
       }
-      this.setMessages(conversationId, [
-        ...newMessages,
-        {
-          role: "display", //this message gets overwritten below by the llm response
-          tags: [{ content: "Working on it..." }],
-        },
-      ]);
+      this.handleUpdateConversation({
+        messages: [
+          ...newMessages,
+          {
+            role: "display", //this message gets overwritten below by the llm response
+            tags: [{ content: "Working on it..." }],
+          },
+        ],
+      });
       const userMessage = newMessages[newMessages.length - 1];
       if (messages.length === 0) {
         await this.updateBudget();
@@ -384,8 +351,8 @@ class Assistant {
         yield {
           result: {
             model: "claude-3-5-sonnet-20241022",
-            content: "Hello world!",
-            summary: messages.length === 0 ? "Hello world" : null,
+            content: `Hello world! ${Date.now()}`,
+            summary: messages.length === 0 ? `Hello world ${Date.now()}` : null,
           },
         };
         for (let i = 0; i < 10; i++) {
@@ -429,7 +396,7 @@ class Assistant {
           llmMessage.model = models[model]?.name || model;
         }
         if (summary) {
-          llmMessage.summary = summary;
+          this.handleUpdateConversation({ summary });
         }
         return content;
       };
@@ -445,7 +412,9 @@ class Assistant {
         } else {
           llmMessage.tags.push({ tag, content });
         }
-        this.setMessages(conversationId, [...newMessages, llmMessage]);
+        this.handleUpdateConversation({
+          messages: [...newMessages, llmMessage],
+        });
       }
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "launch_app") {
@@ -472,20 +441,22 @@ class Assistant {
             logs = ["[Uncaught Error] Error: script timed out"];
           }
           if (abortSignal.aborted) return;
-          this.setMessages(conversationId, [
-            ...newMessages,
-            llmMessage,
-            {
-              role: "user",
-              tags: [{ tag: "logs", content: formatLogs(logs) }],
-              promptToContinue: tag.tag === "intermediate_script",
-            },
-          ]);
+          this.handleUpdateConversation({
+            messages: [
+              ...newMessages,
+              llmMessage,
+              {
+                role: "user",
+                tags: [{ tag: "logs", content: formatLogs(logs) }],
+                promptToContinue: tag.tag === "intermediate_script",
+              },
+            ],
+          });
           break;
         }
       }
     } catch (error) {
-      this.handleError(conversationId, error);
+      this.handleError(error);
     } finally {
       this.setChatLoading(false);
     }
@@ -493,7 +464,7 @@ class Assistant {
   async handleApp({ input, app, messages }) {
     let conversationId;
     try {
-      conversationId = this.conversationRef.current.conversationId;
+      conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
       this.setDisplayMessage(conversationId, `Loading ${app}...`);

@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { ModelPicker } from "./ModelPicker.js";
 import { Menu, Search, Plus } from "lucide-react";
 
-//menu, search, new
-
-export default function ChatHistory({ model, setModel, assistantRef }) {
+const ChatHistory = memo(function ChatHistory({
+  conversationSummaries,
+  currentConversationId,
+  model,
+  setModel,
+  assistantRef,
+}) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
   function handleSearch() {
@@ -13,7 +17,7 @@ export default function ChatHistory({ model, setModel, assistantRef }) {
 
   if (show) {
     return (
-      <div className="absolute flex h-full w-56 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 py-3 md:static">
+      <div className="absolute flex h-full w-56 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />
@@ -28,6 +32,26 @@ export default function ChatHistory({ model, setModel, assistantRef }) {
         <div className="mx-3">
           <ModelPicker model={model} setModel={setModel} />
         </div>
+        <div className="grow space-y-3 overflow-y-auto px-3">
+          {conversationSummaries
+            .filter(({ summary }) => summary)
+            .map(({ conversationId, summary }) => (
+              <button
+                className={`truncate rounded-lg px-1 py-0.5 text-sm hover:bg-stone-300 ${
+                  currentConversationId === conversationId
+                    ? "bg-stone-200 outline outline-1 outline-stone-500"
+                    : ""
+                }`}
+                onClick={() =>
+                  assistantRef.current.handleSwitchConversation(conversationId)
+                }
+                key={conversationId}
+                title={summary}
+              >
+                {summary}
+              </button>
+            ))}
+        </div>
       </div>
     );
   } else {
@@ -37,4 +61,6 @@ export default function ChatHistory({ model, setModel, assistantRef }) {
       </button>
     );
   }
-}
+});
+
+export default ChatHistory;

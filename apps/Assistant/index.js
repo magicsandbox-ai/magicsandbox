@@ -10,6 +10,13 @@ import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 
+const initConversation = {
+  conversationId: Date.now(),
+  messages: [],
+  summary: null,
+  lastUpdated: Date.now(),
+};
+
 function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -36,11 +43,16 @@ function App({ user, urlParams }) {
   - conversationId
   - summary
   */
-  const [conversation, setConversation] = useState({
-    conversationId: Date.now(),
-    summary: null,
-    messages: [],
+  const [currentConversation, setCurrentConversation] = useState({
+    conversationId: initConversation.conversationId,
+    messages: initConversation.messages,
   });
+  const [conversationSummaries, setConversationSummaries] = useState([
+    {
+      conversationId: initConversation.conversationId,
+      summary: initConversation.summary,
+    },
+  ]);
   const [collapsed, setCollapsed] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
@@ -54,10 +66,11 @@ function App({ user, urlParams }) {
   const toastsRef = useRef(null);
   const assistantRef = useRef(null);
   const appDataRef = useRef({});
-  const conversationRef = useRef(conversation);
   const conversationsRef = useRef({
-    [conversation.conversationId]: conversation,
-  }); // {[conversationId: string]: Conversation}
+    [initConversation.conversationId]: initConversation,
+  });
+  const currentConversationRef = useRef(currentConversation);
+  const conversationSummariesRef = useRef(conversationSummaries);
   const modelRef = useRef(model);
 
   useEffect(() => {
@@ -72,12 +85,14 @@ function App({ user, urlParams }) {
         sandboxRef,
         toastsRef,
         appDataRef,
-        conversationRef,
         conversationsRef,
+        currentConversationRef,
+        conversationSummariesRef,
         modelRef,
         setConfirm,
         setRisk,
-        setConversation,
+        setCurrentConversation,
+        setConversationSummaries,
         setChatLoading,
         setCollapsed,
         setApp,
@@ -110,10 +125,20 @@ function App({ user, urlParams }) {
       const conversationData = await requestGetAllData({
         app: "magicsandbox.Assistant",
       });
-      conversationsRef.current = Object.fromEntries(
-        Object.entries(conversationData).filter(([, v]) => v.conversationId),
+      conversationsRef.current = {
+        ...conversationsRef.current, //keep initConversation
+        ...Object.fromEntries(
+          Object.entries(conversationData).filter(([, v]) => v.conversationId),
+        ),
+      };
+      setConversationSummaries(
+        Object.entries(conversationsRef.current)
+          .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
+          .map(([conversationId, conversation]) => ({
+            conversationId,
+            summary: conversation.summary,
+          })),
       );
-      conversationsRef.current[conversation.conversationId] = conversation;
     }
     if (assistantRef.current === null) {
       init().catch((error) => {
@@ -148,6 +173,14 @@ function App({ user, urlParams }) {
   }, []);
 
   useEffect(() => {
+    currentConversationRef.current = currentConversation;
+  }, [currentConversation]);
+
+  useEffect(() => {
+    conversationSummariesRef.current = conversationSummaries;
+  }, [conversationSummaries]);
+
+  useEffect(() => {
     appDataRef.current = appData;
     if (Object.keys(appData).length > 0) {
       requestPutData("appData", appData, {
@@ -158,14 +191,10 @@ function App({ user, urlParams }) {
   }, [appData]);
 
   useEffect(() => {
-    conversationRef.current = conversation;
-  }, [conversation]);
-
-  useEffect(() => {
     modelRef.current = model;
   }, [model]);
 
-  const messages = conversation.messages;
+  const messages = currentConversation.messages;
 
   let modalComponent;
   if (confirm) {
@@ -179,6 +208,8 @@ function App({ user, urlParams }) {
       {app === null && (
         <ChatHistory
           {...{
+            conversationSummaries,
+            currentConversationId: currentConversation.conversationId,
             model,
             setModel,
             assistantRef,
@@ -191,7 +222,6 @@ function App({ user, urlParams }) {
             {...{
               toastsRef,
               assistantRef,
-              messages,
               chatLoading,
               appData,
               setAppData,

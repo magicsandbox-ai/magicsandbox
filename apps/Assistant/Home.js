@@ -3,21 +3,14 @@ import ChatInput from "./ChatInput.js";
 import AppList from "./AppList.js";
 import { CircleArrowUp } from "lucide-react";
 
-function Home({
-  toastsRef,
-  assistantRef,
-  messages,
-  chatLoading,
-  appData,
-  setAppData,
-}) {
+function Home({ toastsRef, assistantRef, chatLoading, appData, setAppData }) {
   const [input, setInput] = useState("");
 
   async function handleInput(input) {
     if (input === "" || assistantRef.current === null || chatLoading) return;
     try {
       setInput("");
-      await assistantRef.current.handleInput({ input, messages });
+      await assistantRef.current.handleInput({ input });
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("An unexpected error occurred", "error");
