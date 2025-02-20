@@ -14,10 +14,11 @@ function App({ user, urlParams }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
-  conversation is an object with keys:
+  conversationsRef maintains all the conversation data. it's an object mapping conversationIds to objects with keys:
   - conversationId
-  - summary
-  - messages
+  - messages: see below
+  - summary: summary of the first user message
+  - lastUpdated: timestamp of the last message
 
   messages is an array of objects with keys:
   - role: "user", "assistant", or "display"
@@ -26,6 +27,14 @@ function App({ user, urlParams }) {
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   - model: the model used to generate the message
+
+  currentConversation is an object with keys:
+  - conversationId
+  - messages
+
+  conversationSummaries is an array of objects with keys, sorted by lastUpdated timestamp descending:
+  - conversationId
+  - summary
   */
   const [conversation, setConversation] = useState({
     conversationId: Date.now(),

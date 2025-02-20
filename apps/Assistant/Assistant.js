@@ -70,6 +70,99 @@ class Assistant {
     this._setApp(app);
     this.app = app;
   }
+  /**
+   * Update current conversation
+   *
+   * - conversationId:
+   *   - if not provided, update current conversation
+   *   - if provided, set current conversation to the conversation with the given id
+   *     - if provided and not equal to the current conversationId, the current conversation is stopped
+   *     - if the conversation does not exist, it is created
+   *     - updates are applied using summary, messages, or message, but they're optional
+   * - summary: update summary
+   * - messages: update messages
+   * - message: add a new message. messages and message cannot both be provided
+   */
+  handleUpdateConversation({ conversationId, messages, message, summary }) {
+    if (messages && message) {
+      throw new Error(
+        "messages and message cannot both be provided to handleUpdateConversation",
+      );
+    }
+    let updateCurrentConversation =
+      messages !== undefined || message !== undefined;
+    let updateConversationSummaries = summary !== undefined;
+    const currentConversationId =
+      this.currentConversationRef.current.conversationId;
+    if (!conversationId) {
+      conversationId = currentConversationId;
+    } else if (conversationId !== currentConversationId) {
+      this.handleStopConversation();
+      updateCurrentConversation = true;
+      updateConversationSummaries = true;
+      if (!(conversationId in this.conversationsRef.current)) {
+        this.conversationsRef.current[conversationId] = {
+          conversationId,
+          messages: [],
+          summary: null,
+        };
+      }
+    }
+    const conversation = this.conversationsRef.current[conversationId];
+    conversation.lastUpdated = Date.now();
+    if (updateCurrentConversation) {
+      if (messages !== undefined) {
+        conversation.messages = messages;
+      } else if (message !== undefined) {
+        conversation.messages.push(message);
+      }
+      this.setCurrentConversation({
+        conversationId,
+        messages: conversation.messages,
+      });
+    }
+    if (updateConversationSummaries) {
+      if (summary !== undefined) {
+        conversation.summary = summary;
+      }
+      this.setConversationSummaries((conversationSummaries) => [
+        { conversationId, summary: conversation.summary },
+        ...conversationSummaries.filter(
+          (conversationSummary) =>
+            conversationSummary.conversationId !== conversationId,
+        ),
+      ]);
+    }
+    this.conversationsRef.current[conversationId] = conversation;
+    if (conversation.messages.length > 0) {
+      //if the user creates a new chat, show it in the ui, but don't bother to save it yet
+      if (this.saveTimeoutIds[conversationId]) {
+        clearTimeout(this.saveTimeoutIds[conversationId]);
+      }
+      this.saveTimeoutIds[conversationId] = setTimeout(() => {
+        requestPutData(
+          conversationId,
+          this.conversationsRef.current[conversationId],
+          {
+            app: "magicsandbox.Assistant",
+            evictionPolicy: "fifo",
+          },
+        ).catch(console.error);
+        delete this.saveTimeoutIds[conversationId];
+      }, 500);
+    }
+  }
+  handleStopConversation() {
+    this.abortIdController.abort(this.conversationRef.current.conversationId);
+  }
+  handleNewConversation() {
+    this.handleUpdateConversation({ conversationId: Date.now() });
+    document.getElementById("chat-input").focus();
+  }
+  handleSwitchConversation(conversationId) {
+    this.handleUpdateConversation({ conversationId });
+    document.getElementById("chat-input").focus();
+  }
   setMessages(conversationId, messages) {
     /*
     this was originally written to require conversationId so that a conversation could
@@ -708,23 +801,6 @@ class Assistant {
       `${app.app} ${blocked ? "blocked" : "unblocked"}`,
       "info",
     );
-  }
-  handleStopConversation() {
-    const conversationId = this.conversationRef.current.conversationId;
-    this.abortIdController.abort(conversationId);
-  }
-  handleNewConversation() {
-    const conversationId = this.conversationRef.current.conversationId;
-    this.abortIdController.abort(conversationId);
-    const newConversation = {
-      conversationId: Date.now(),
-      summary: null,
-      messages: [],
-    };
-    this.setConversation(newConversation);
-    this.conversationsRef.current[newConversation.conversationId] =
-      newConversation;
-    document.getElementById("chat-input").focus();
   }
   reload() {
     this.abortIdController.abort(null);
