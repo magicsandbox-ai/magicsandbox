@@ -13,7 +13,7 @@ export default function ChatHistory({ model, setModel, assistantRef }) {
 
   if (show) {
     return (
-      <div className="flex w-56 flex-col gap-2 border-r-2 border-stone-500 bg-stone-100 py-3">
+      <div className="absolute flex h-full w-56 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 py-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />

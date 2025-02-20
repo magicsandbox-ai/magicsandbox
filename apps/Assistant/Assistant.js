@@ -71,6 +71,15 @@ class Assistant {
     this.app = app;
   }
   setMessages(conversationId, messages) {
+    /*
+    this was originally written to require conversationId so that a conversation could
+    be updated even after the user opened a new conversation
+    so a user could open a new conversation, then come back and see the completed old one
+    but doing so would require more code to properly handle chatLoading and not launching apps or running scripts
+    so for now, anytime the user opens a new conversation, the old one is aborted
+    so the check for conversationId here could be removed
+    but leaving it for now in case come back to this idea and handle chatLoading, apps, scripts
+    */
     if (typeof messages === "function") {
       messages = messages(
         this.conversationsRef.current[conversationId].messages,
@@ -324,11 +333,7 @@ class Assistant {
       const chunkProcessor = (chunk) => {
         const { model, content, summary } = chunk.result || {};
         if (model) {
-          //this removes everything before the first hyphen and everything after the last alphabetical char
-          //claude-3-5-sonnet-20241022 becomes claude-3-5-sonnet
-          //gemini/gemini-1.5-flash-8b-001 becomes gemini-1.5-flash-8b
-          const match = model.match(/(?:.*\/)?(.*[A-Za-z])/);
-          llmMessage.model = match[1] || model;
+          llmMessage.model = models[model]?.name || model;
         }
         if (summary) {
           llmMessage.summary = summary;
@@ -709,6 +714,8 @@ class Assistant {
     this.abortIdController.abort(conversationId);
   }
   handleNewConversation() {
+    const conversationId = this.conversationRef.current.conversationId;
+    this.abortIdController.abort(conversationId);
     const newConversation = {
       conversationId: Date.now(),
       summary: null,
@@ -717,6 +724,7 @@ class Assistant {
     this.setConversation(newConversation);
     this.conversationsRef.current[newConversation.conversationId] =
       newConversation;
+    document.getElementById("chat-input").focus();
   }
   reload() {
     this.abortIdController.abort(null);
@@ -752,7 +760,9 @@ class AbortIdController {
         signal.aborted = true;
       });
     } else {
-      this.signals[id].aborted = true;
+      if (this.signals[id]) {
+        this.signals[id].aborted = true;
+      }
     }
   }
 }

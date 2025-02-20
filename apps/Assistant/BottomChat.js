@@ -26,7 +26,6 @@ function BottomChat({
 
   const maximizeButtonRef = useRef(null);
   const shouldFocusMaximizeButtonRef = useRef(false);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     if (shouldFocusMaximizeButtonRef.current) {
@@ -58,11 +57,6 @@ function BottomChat({
       console.error(error);
       toastsRef.current.addToast("An unexpected error occurred", "error");
     }
-  }
-
-  function handleNewConversation() {
-    assistantRef.current.handleNewConversation();
-    inputRef.current.focus();
   }
 
   function handleMaximize() {
@@ -118,7 +112,11 @@ function BottomChat({
                       <ModelPicker model={model} setModel={setModel} />
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={handleNewConversation}>
+                      <button
+                        onClick={() =>
+                          assistantRef.current.handleNewConversation()
+                        }
+                      >
                         <Plus />
                       </button>
                       {maximizeComponent}
@@ -134,7 +132,6 @@ function BottomChat({
               )}
               <div className="flex items-center">
                 <ChatInput
-                  ref={inputRef}
                   className={`mx-1 max-h-[148px] grow resize-none px-1 ${
                     collapsed ? "outline-0" : ""
                   }`}

@@ -1,12 +1,14 @@
-import React, { useRef, useEffect, forwardRef } from "react";
+import React, { useRef, useEffect } from "react";
 
-const ChatInput = forwardRef(function ChatInput(
-  { className, input, setInput, handleInput, placeholder, focus = true },
-  forwardedRef,
-) {
-  const innerRef = useRef(null);
-  // Use the forwarded ref if provided, otherwise fall back to inner ref
-  const ref = forwardedRef || innerRef;
+function ChatInput({
+  className,
+  input,
+  setInput,
+  handleInput,
+  placeholder,
+  focus = true,
+}) {
+  const ref = useRef(null);
 
   useEffect(() => {
     if (focus) {
@@ -32,6 +34,7 @@ const ChatInput = forwardRef(function ChatInput(
 
   return (
     <textarea
+      id="chat-input"
       ref={ref}
       className={className}
       value={input}
@@ -41,6 +44,6 @@ const ChatInput = forwardRef(function ChatInput(
       placeholder={placeholder}
     />
   );
-});
+}
 
 export default ChatInput;
