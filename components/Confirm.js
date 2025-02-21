@@ -18,7 +18,7 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
   return (
     <div className="flex flex-col gap-4 break-words p-4">
       {header && <h2 className="text-lg font-bold">{header}</h2>}
-      {message && <p>{message}</p>}
+      {message && <p className="whitespace-pre-wrap">{message}</p>}
       {customContent}
       <div className="flex justify-center gap-4">
         {buttons.map((b, i) => (

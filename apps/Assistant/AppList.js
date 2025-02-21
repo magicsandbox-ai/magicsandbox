@@ -29,7 +29,8 @@ function AppList({ appData, setAppData, assistantRef }) {
   if (state === "favorited") {
     message = "Your Assistant can launch your favorited apps";
   } else if (state === "blocked") {
-    message = "Your Assistant will not launch blocked apps";
+    message =
+      "Blocked apps don't appear in searches and can't be launched without approval";
   }
 
   let filter;
@@ -71,7 +72,9 @@ function AppList({ appData, setAppData, assistantRef }) {
           ))}
         </div>
         <p className="mt-2 text-lg font-medium">{`${properCase(state)} Apps`}</p>
-        {message && <p className="text-sm text-stone-500">{message}</p>}
+        {message && (
+          <p className="text-center text-sm text-stone-500">{message}</p>
+        )}
         {displayApps.length > 0 ? (
           <ListComponent {...{ appData, setAppData, state, displayApps }}>
             <div className="mt-3 flex max-w-full flex-col divide-y divide-stone-300 border border-stone-500 bg-stone-50">
@@ -187,7 +190,7 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
 
   const handleClick = (e) => {
     if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
-      assistantRef.current.handleApp({ app: app.app });
+      assistantRef.current.handleApp({ app: app.app, maxCost: app.minCost });
     }
   };
 

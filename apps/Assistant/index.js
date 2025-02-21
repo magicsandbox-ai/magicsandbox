@@ -9,6 +9,7 @@ import Home from "./Home.js";
 import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
+import { formatAsDollars } from "./utils.js";
 
 const initConversation = {
   conversationId: Date.now(),
@@ -58,6 +59,7 @@ function App({ user, urlParams }) {
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
   //type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
   const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
@@ -100,26 +102,52 @@ function App({ user, urlParams }) {
       });
       const { _app } = urlParams;
       if (_app) {
-        let app = _app.split("@")[0];
-        const [author, name] = app.split(".");
-        app = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
-        if (
-          Date.now() - (appData[app]?.recent || 0) >
-          1000 * 60 * 60 * 24 * 7
+        let appString = _app.split("@")[0];
+        const [author, name] = appString.split(".");
+        appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
+        const app = appData[appString] || { app: appString };
+        let maxCost;
+        let messages = [
+          "The link you opened includes a request to open this App",
+        ];
+        if (app.blocked) {
+          messages.push(`${app} costs ${formatAsDollars(app.minCost)}`);
+          messages.push("This App is blocked");
+        } else if (app.favorited || app.published) {
+          messages = []; //no need to confirma
+          maxCost = app.minCost;
+        } else if (
+          Date.now() - (app.recent || 0) < 1000 * 60 * 60 * 24 * 7 &&
+          app.minCost < 0.01
         ) {
-          //only ask for confirmation if the app hasn't been opened in the last week
+          //todo enable user to configure thresholds
+          messages = []; //opened in last week and less than a penny, no need to confirm
+          maxCost = app.minCost;
+        } else if (app.minCost) {
+          maxCost = app.minCost;
+          //todo if app's minCost has increased, requestApp will throw and the user will be shown the new cost
+          //but without any explanation, which is confusing
+          messages.push(`${app} costs ${formatAsDollars(app.minCost)}`);
+        } else {
+          //don't know the cost, leave messages as is
+          //todo look up cost here rather than requestApp throwing and showing another confirmation?
+          //todo enable user to configure?
+          maxCost = 0.01;
+        }
+        if (messages.length > 0) {
+          const message = messages.join("\n");
           setConfirm({
             header: `Open App ${app}?`,
-            message: `The link you opened includes a request to open this App`,
+            message,
             callback: (response) => {
               setConfirm(null);
               if (response) {
-                assistantRef.current.handleApp({ app });
+                assistantRef.current.handleApp({ app: app.app, maxCost });
               }
             },
           });
         } else {
-          assistantRef.current.handleApp({ app });
+          assistantRef.current.handleApp({ app: app.app, maxCost });
         }
       }
       const conversationData = await requestGetAllData({

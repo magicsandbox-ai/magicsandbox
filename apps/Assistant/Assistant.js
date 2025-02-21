@@ -237,8 +237,8 @@ class Assistant {
   }
   async handleInput({ input, messages = [], initContext }) {
     try {
-      const conversationId = this.currentConversationRef.current.conversationId;
       const sandboxId = this.sandboxRef.current.getSandboxId();
+      const conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
       this.setChatLoading(true);
@@ -289,8 +289,6 @@ class Assistant {
       });
       const userMessage = newMessages[newMessages.length - 1];
       if (messages.length === 0) {
-        await this.updateBudget();
-        if (abortSignal.aborted) return;
         userMessage.tags.push({
           tag: "favorited_apps",
           content: formatFavoritedApps(Object.values(this.appDataRef.current)),
@@ -400,11 +398,17 @@ class Assistant {
       }
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "launch_app") {
-          await this.handleApp({
-            input,
-            app: tag.content.trim(),
-            messages: [...newMessages, llmMessage],
-          });
+          const app = this.appDataRef.current[tag.content.trim()];
+          if (app) {
+            await this.handleApp({
+              input,
+              app: app.app,
+              maxCost: app.minCost,
+              messages: [...newMessages, llmMessage],
+            });
+          } else {
+            //todo warn user that app failed to launch
+          }
           break;
         } else if (
           tag.tag === "intermediate_script" ||
@@ -443,21 +447,21 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ input, app, messages }) {
+  async handleApp({ input, app, messages, maxCost }) {
     let conversationId;
     try {
       conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      this.setDisplayMessage(conversationId, `Loading ${app}...`);
+      this.setDisplayMessage(`Loading ${app}...`);
       if (!messages) {
-        // loading from a url
+        // loading from a url or from home page
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
         // so we call setApp now with the special value of false (rather than null) to avoid the flash
         this.setApp(false);
       }
       const handleAppResult = async (result) => {
-        this.setDisplayMessage(conversationId, `${result.metadata.id} loaded`);
+        this.setDisplayMessage(`${result.metadata.id} loaded`);
         requestUrlParams({ _app: result.metadata.id }).catch(console.error);
         const app = result.metadata.id.split("@")[0];
         const appData = {
@@ -474,6 +478,7 @@ class Assistant {
           ...currentAppData,
           [app]: appData,
         }));
+        this.budget = result.metadata.minCost - result.metadata.finalCost;
         this.sandboxRef.current.postMessage(sandboxId, result);
         let initContext;
         try {
@@ -495,12 +500,8 @@ class Assistant {
           });
         }
       };
-      if (this.budget === null) {
-        await this.updateBudget();
-        if (abortSignal.aborted) return;
-      }
       const requestAppOptions = {
-        maxCost: this.budget,
+        maxCost,
         includeMetadata: [
           "id",
           "description",
@@ -516,10 +517,11 @@ class Assistant {
       } catch (error) {
         if (abortSignal.aborted) return;
         if (error.data?.minCost) {
-          //budget is lower than minCost, prompt user to approve
+          //maxCost is lower than minCost, prompt user to approve
+          //todo enable user to configure how maxCost is set from here
           this.setConfirm({
             header: `Open App ${app}?`,
-            message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than your budget`,
+            message: `${app} costs ${formatAsDollars(error.data.minCost)}`,
             callback: async (response) => {
               this.setConfirm(null);
               if (response) {
@@ -534,7 +536,7 @@ class Assistant {
                   this.handleError(conversationId, error);
                 }
               } else {
-                this.setDisplayMessage(conversationId, `${app} not opened`);
+                this.setDisplayMessage(`${app} not opened`);
               }
             },
           });
