@@ -178,6 +178,38 @@ class Assistant {
       delete this.saveTimeoutIds[conversationId];
     }, 500);
   }
+  async _handleDeleteConversation(conversationId) {
+    delete this.conversationsRef.current[conversationId];
+    await requestDeleteData(conversationId, {
+      app: "magicsandbox.Assistant",
+    });
+  }
+  async handleDeleteConversations(conversationIds) {
+    try {
+      if (conversationIds === null) {
+        conversationIds = Object.keys(this.conversationsRef.current);
+      }
+      await Promise.all(
+        conversationIds.map((conversationId) => {
+          this._handleDeleteConversation(conversationId);
+        }),
+      );
+    } catch (error) {
+      console.error(error); //todo
+    }
+    conversationIds = new Set(conversationIds);
+    this.setConversationSummaries((conversationSummaries) =>
+      conversationSummaries.filter(
+        (conversationSummary) =>
+          !conversationIds.has(conversationSummary.conversationId),
+      ),
+    );
+    if (
+      conversationIds.has(this.currentConversationRef.current.conversationId)
+    ) {
+      this.handleNewConversation();
+    }
+  }
   setDisplayMessage(message) {
     this.handleUpdateConversation({
       message: { role: "display", tags: [{ content: `\n\n${message}` }] },
@@ -327,45 +359,45 @@ class Assistant {
           })),
       ];
       console.log(llmMessages);
-      async function* mockStream() {
-        yield {
-          result: {
-            model: "claude-3-5-sonnet-20241022",
-            content: `Hello world! ${Date.now()}`,
-            summary: messages.length === 0 ? `Hello world ${Date.now()}` : null,
-          },
-        };
-        for (let i = 0; i < 10; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          yield {
-            result: { content: " test" },
-          };
-        }
-      }
-      const stream = mockStream();
-      // const max_completion_tokens = 5000;
-      // let model, maxCost;
-      // if (this.modelRef.current === "auto") {
-      //   maxCost = llmBudget;
-      // } else {
-      //   model = this.modelRef.current;
-      //   const inputTokens = new TextEncoder().encode(
-      //     JSON.stringify(messages),
-      //   ).length; //one token per byte
-      //   maxCost =
-      //     models[model].input_cost_per_token * inputTokens +
-      //     models[model].output_cost_per_token * max_completion_tokens;
+      // async function* mockStream() {
+      //   yield {
+      //     result: {
+      //       model: "claude-3-5-sonnet-20241022",
+      //       content: `Hello world! ${Date.now()}`,
+      //       summary: messages.length === 0 ? `Hello world ${Date.now()}` : null,
+      //     },
+      //   };
+      //   for (let i = 0; i < 10; i++) {
+      //     await new Promise((resolve) => setTimeout(resolve, 1000));
+      //     yield {
+      //       result: { content: " test" },
+      //     };
+      //   }
       // }
-      // const stream = await requestFunction(
-      //   "magicsandbox.llm",
-      //   {
-      //     messages: llmMessages,
-      //     model,
-      //     max_completion_tokens,
-      //     summarize: messages.length === 0,
-      //   },
-      //   { maxCost, stream: true },
-      // );
+      // const stream = mockStream();
+      const max_completion_tokens = 5000;
+      let model, maxCost;
+      if (this.modelRef.current === "auto") {
+        maxCost = llmBudget;
+      } else {
+        model = this.modelRef.current;
+        const inputTokens = new TextEncoder().encode(
+          JSON.stringify(messages),
+        ).length; //one token per byte
+        maxCost =
+          models[model].input_cost_per_token * inputTokens +
+          models[model].output_cost_per_token * max_completion_tokens;
+      }
+      const stream = await requestFunction(
+        "magicsandbox.llm",
+        {
+          messages: llmMessages,
+          model,
+          max_completion_tokens,
+          summarize: messages.length === 0,
+        },
+        { maxCost, stream: true },
+      );
       const llmMessage = {
         role: "assistant",
         tags: [],

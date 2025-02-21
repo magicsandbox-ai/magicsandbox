@@ -51,7 +51,7 @@ document.addEventListener("click", (e) => {
   if (e.target.href) {
     e.preventDefault();
     const url = new URL(e.target.href);
-    const app = url.searchParams.get("app");
+    const app = url.searchParams.get("_app");
     const id = url.searchParams.get("id");
     if (app === "magicsandbox.Docs" && id) {
       scrollToId(id);

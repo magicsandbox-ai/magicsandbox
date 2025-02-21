@@ -1,6 +1,6 @@
 import React, { useState, memo } from "react";
 import { ModelPicker } from "./ModelPicker.js";
-import { Menu, Search, Plus } from "lucide-react";
+import { Menu, Search, Trash2, Plus } from "lucide-react";
 
 const ChatHistory = memo(function ChatHistory({
   conversationSummaries,
@@ -15,15 +15,22 @@ const ChatHistory = memo(function ChatHistory({
     console.log("search");
   }
 
+  function handleDelete() {
+    assistantRef.current.handleDeleteConversations(null); //todo
+  }
+
   if (show) {
     return (
-      <div className="absolute flex h-full w-56 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
+      <div className="absolute flex h-full w-64 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />
           </button>
           <button onClick={() => handleSearch()}>
             <Search />
+          </button>
+          <button onClick={() => handleDelete()}>
+            <Trash2 />
           </button>
           <button onClick={() => assistantRef.current.handleNewConversation()}>
             <Plus />
@@ -37,7 +44,7 @@ const ChatHistory = memo(function ChatHistory({
             .filter(({ summary }) => summary)
             .map(({ conversationId, summary }) => (
               <button
-                className={`truncate rounded-lg px-1 py-0.5 text-sm hover:bg-stone-300 ${
+                className={`w-full truncate rounded-lg px-1 py-0.5 text-sm hover:bg-stone-300 ${
                   currentConversationId === conversationId
                     ? "bg-stone-200 outline outline-1 outline-stone-500"
                     : ""
