@@ -1,7 +1,7 @@
 import { parse } from "./parser.js";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
-import { createDeferredPromise } from "@utils.js";
+import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox";
 
 function sanitizeIdentifier(name) {
   return name.replace(/[^a-zA-Z0-9_$]/g, "_");

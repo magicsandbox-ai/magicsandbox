@@ -33,8 +33,7 @@
   "jest": {
     "transform": {},
     "moduleNameMapper": {
-      "^@components/(.*)$": "<rootDir>/components/$1",
-      "^@utils.js$": "<rootDir>/utils.js"
+      "^@components/(.*)$": "<rootDir>/components/$1"
     },
     "testPathIgnorePatterns": [
       "testUtils.js"

@@ -1,4 +1,4 @@
-import { formatAsDollars } from "@utils.js";
+import { formatAsDollars } from "./utils.js";
 
 /**
  * - init (optional)

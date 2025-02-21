@@ -6,8 +6,11 @@ import {
   DownloadRisk,
   RateLimitRisk,
 } from "./Risks.js";
-import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
-import { createDeferredPromise, formatAsDollars } from "@utils.js";
+import {
+  validateAndDefaultRequest,
+  createDeferredPromise,
+} from "@magicsandbox.ai/react-sandbox";
+import { formatAsDollars } from "./utils.js";
 import {
   formatMessage,
   formatFavoritedApps,
@@ -98,23 +101,24 @@ class Assistant {
     document.getElementById("chat-input").focus();
   }
   handleSwitchConversation(conversationId) {
-    if (conversationId !== this.currentConversationRef.current.conversationId) {
-      this.handleStopConversation();
-      const conversation = this.conversationsRef.current[conversationId];
-      conversation.messages.push({
-        role: "system",
-        tags: [
-          {
-            content:
-              "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like launching an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
-          },
-        ],
-      });
-      this.setCurrentConversation({
-        conversationId,
-        messages: conversation.messages,
-      });
+    if (conversationId === this.currentConversationRef.current.conversationId) {
+      return;
     }
+    this.handleStopConversation();
+    const conversation = this.conversationsRef.current[conversationId];
+    conversation.messages.push({
+      role: "system",
+      tags: [
+        {
+          content:
+            "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like launching an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
+        },
+      ],
+    });
+    this.setCurrentConversation({
+      conversationId,
+      messages: conversation.messages,
+    });
   }
   handleUpdateConversation({ messages, message, summary }) {
     const conversationId = this.currentConversationRef.current.conversationId;
