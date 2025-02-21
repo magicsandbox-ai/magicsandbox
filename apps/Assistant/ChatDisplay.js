@@ -101,6 +101,7 @@ const Message = memo(function Message({ message, onComplete }) {
 });
 
 function formatMessage(message) {
+  if (message.role === "system") return "";
   const tagsToInclude = {
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
     assistant: new Set([undefined, "intermediate_script", "final_script"]), //exclude launch_app

@@ -10,12 +10,10 @@ import { validateAndDefaultRequest } from "@magicsandbox.ai/react-sandbox";
 import { createDeferredPromise, formatAsDollars } from "@utils.js";
 import {
   formatMessage,
-  formatSuggestedApps,
+  formatFavoritedApps,
   formatLogs,
-  inputSystemPrompt,
-  initSystemPrompt,
-  magicSystemPrompt,
-} from "./prompts.js";
+  prompt,
+} from "./prompt.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
 
@@ -103,8 +101,15 @@ class Assistant {
     if (conversationId !== this.currentConversationRef.current.conversationId) {
       this.handleStopConversation();
       const conversation = this.conversationsRef.current[conversationId];
-      delete conversation.messages[conversation.messages.length - 1]
-        ?.promptToContinue;
+      conversation.messages.push({
+        role: "system",
+        tags: [
+          {
+            content:
+              "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like launching an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
+          },
+        ],
+      });
       this.setCurrentConversation({
         conversationId,
         messages: conversation.messages,
@@ -282,28 +287,9 @@ class Assistant {
       if (messages.length === 0) {
         await this.updateBudget();
         if (abortSignal.aborted) return;
-        // const { result } = await requestFunction("magicsandbox.findApp", {
-        //   input,
-        //   maxCost: this.budget,
-        // });
-        // if (abortSignal.aborted) return;
-        const result = [
-          {
-            id: "magicsandbox.Dev",
-            description: "Develop, preview, and publish a Magic Sandbox App",
-          },
-          {
-            id: "magicsandbox.Docs",
-            description: "Magic Sandbox documentation",
-          },
-          {
-            id: "magicsandbox.Notes",
-            description: "Take notes, to-do lists, and more",
-          },
-        ];
         userMessage.tags.push({
-          tag: "suggested_apps",
-          content: formatSuggestedApps(result),
+          tag: "favorited_apps",
+          content: formatFavoritedApps(Object.values(this.appDataRef.current)),
         });
       } else if (!initContext && this.app) {
         let context, selection;
@@ -327,18 +313,10 @@ class Assistant {
           });
         }
       }
-      let systemPrompt;
-      if (!this.app) {
-        systemPrompt = inputSystemPrompt;
-      } else if (initContext) {
-        systemPrompt = initSystemPrompt;
-      } else {
-        systemPrompt = magicSystemPrompt;
-      }
       const llmBudget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
       const llmMessages = [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: prompt({ app: this.app, initContext }) },
         ...newMessages
           .filter((message) => message.role !== "display")
           .map((message, i, filteredMessages) => ({

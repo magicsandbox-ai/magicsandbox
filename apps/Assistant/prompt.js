@@ -19,9 +19,10 @@ function formatMessage(message, isFinalMessage) {
     .join("");
 }
 
-function formatSuggestedApps(apps) {
+function formatFavoritedApps(apps) {
   const content = apps
-    .map((app) => `${app.id.split("@")[0]}: ${app.description}`)
+    .filter((app) => app.favorited)
+    .map((app) => `${app.app}: ${app.description}`)
     .join("\n");
   return `\n${content}\n`;
 }
@@ -42,21 +43,31 @@ function formatLogs(logs) {
   return `${formattedLogs}\n`;
 }
 
+function prompt({ app, initContext }) {
+  if (!app) {
+    return inputSystemPrompt;
+  } else if (initContext) {
+    return initSystemPrompt;
+  } else {
+    return magicSystemPrompt;
+  }
+}
+
 const inputSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox.
 
-The user's initial message will include both the user's request and a list of suggested apps that you can choose to launch. The suggested apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, use the author.Name format.
+The user's initial message will include both the user's request and a list of the user's favorited apps that you can choose to launch. The favorited apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, use the author.Name format.
 
 <example_user_message>
 <user_request>
 what's the weather today?
 </user_request>
-<suggested_apps>
+<favorited_apps>
 magicsandbox.Weather: local and global weather, weather forecast, weather radar, weather history
 magicsandbox.Search: search the web
-</suggested_apps>
+</favorited_apps>
 </example_user_message>
 
-In your response, you can launch one of the suggested apps by enclosing its name in the form \`author.Name\` in <launch_app> tags. Anything outside of <launch_app> tags will be displayed to the user:
+In your response, you can launch one of the favorited apps by enclosing its name in the form \`author.Name\` in <launch_app> tags. Anything outside of <launch_app> tags will be displayed to the user:
 
 <example_assistant_response>
 Let me open magicsandbox.Weather so we can check today's weather.
@@ -70,7 +81,7 @@ Follow these guidelines when responding:
 - Don't launch an app if the user is asking a question that you can simply answer directly. To illustrate, consider two different scenarios where the user is asking a programming question:
   1. The user asks "how do you sort a list in JS?": you should answer directly without launching an app. The user is better served with a quick and direct answer.
   2. The user asks "can you help me build a tic-tac-toe game?": you should launch a relevant app if one is available, like a code editor. Though you could answer directly, a complex request like this is better served by launching a relevant app.
-- Don't launch an app if the suggested apps are irrelevant.
+- Don't launch an app if the favorited apps are irrelevant.
 - You can launch an app in any of your responses. If you chose not to launch an app in your original response but it's become clear that the user would benefit from using an app, you can launch the app in a later response.
 
 After launching an app, you'll receive additional context on how you can use the app to fulfill the user's request.`;
@@ -187,11 +198,4 @@ Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of t
 
 ${sandboxDocs}`;
 
-export {
-  formatMessage,
-  formatSuggestedApps,
-  formatLogs,
-  inputSystemPrompt,
-  initSystemPrompt,
-  magicSystemPrompt,
-};
+export { formatMessage, formatFavoritedApps, formatLogs, prompt };
