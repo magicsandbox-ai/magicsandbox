@@ -2,17 +2,100 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import SideBar from "./SideBar.js";
 
+/*
+magicsandbox.Notes helps you organize and chat with your notes.
+
+When you chat with your Assistant, it can always see the current note you have open. You can add additional notes to the chat by:
+
+1. Clicking the checkbox next to a note in the sidebar
+2. Using Ctrl+Click or Shift+Click in the sidebar to select notes and folders
+3. Starring a note by clicking the star icon next to it in the sidebar. Starred notes are included in the chat when:
+   - They are in the same folder as your current note
+   - They are in any parent folder above your current note
+
+Notes that will be included in the chat are shown in bold in the sidebar.
+
+Double click on a folder or note in the sidebar to rename it.
+*/
+
+/*
+nodes is an object mapping id to objects with keys:
+- id: number
+- name: string
+
+Keys for folders:
+- collapsed?: boolean
+- childrenIds?: number[]
+
+Keys for notes:
+- content?: string
+- checked?: boolean
+- starred?: boolean
+
+the root node is a folder with id 0. it will always have at least one child
+*/
+
 async function init() {
-  // get the notes here so they're available in the initial context call
-  // if we used a useEffect inside App, they wouldn't be available
-  const initNotes = (await requestGetData("notes")) || { "New Folder": "" };
-  const initCurrentFolder =
-    (await requestGetData("currentFolder")) || "New Folder";
-  api.folders = Object.keys(initNotes);
+  const defaultNodes = {
+    0: {
+      id: 0,
+      name: "root",
+      collapsed: false,
+      childrenIds: [1],
+    },
+    1: {
+      id: 1,
+      name: "New Note",
+      content: "",
+      checked: false,
+      starred: false,
+    },
+  };
+  const initNodes = (await requestGetData("nodes")) || defaultNodes;
+  const initCurrentNodeId = (await requestGetData("currentNodeId")) || 1;
   createRoot(document.getElementById("root")).render(
-    <App initNotes={initNotes} initCurrentFolder={initCurrentFolder} />,
+    <App initNodes={initNodes} initCurrentNodeId={initCurrentNodeId} />,
   );
   return context();
+}
+
+function App({ initNodes, initCurrentNodeId }) {
+  const [nodes, setNodes] = useState(initNodes);
+  const [currentNodeId, setCurrentNodeId] = useState(initCurrentNodeId);
+
+  useEffect(() => {
+    requestPutData("nodes", nodes).catch(console.error);
+  }, [nodes]);
+
+  useEffect(() => {
+    requestPutData("currentNodeId", currentNodeId).catch(console.error);
+  }, [currentNodeId]);
+
+  function handleChange(e) {
+    setNodes((nodes) => ({
+      ...nodes,
+      [currentNodeId]: { ...nodes[currentNodeId], content: e.target.value },
+    }));
+  }
+
+  return (
+    <div className="flex h-screen w-screen">
+      <SideBar
+        {...{
+          nodes,
+          setNodes,
+          currentNodeId,
+          setCurrentNodeId,
+        }}
+      />
+      <textarea
+        className="grow resize-none border-none p-4"
+        value={nodes[currentNodeId].content}
+        onChange={handleChange}
+        placeholder="Add a note..."
+      />
+    </div>
+  );
 }
 
 function context() {
@@ -58,58 +141,5 @@ Add a note to the specified folder. If the folder doesn't exist, it will be crea
 }
 
 const api = {};
-
-function App({ initNotes, initCurrentFolder }) {
-  const [notes, setNotes] = useState(initNotes || { "New Folder": "" });
-  const [currentFolder, setCurrentFolder] = useState(
-    initCurrentFolder || "New Folder",
-  );
-
-  useEffect(() => {
-    requestPutData("notes", notes).catch(console.error);
-  }, [notes]);
-
-  useEffect(() => {
-    requestPutData("currentFolder", currentFolder).catch(console.error);
-  }, [currentFolder]);
-
-  function handleChange(e) {
-    setNotes((notes) => ({ ...notes, [currentFolder]: e.target.value }));
-  }
-
-  function addNote(folder, note) {
-    const newNotes = { ...notes };
-    if (newNotes[folder]) {
-      newNotes[folder] = `${newNotes[folder]}\n${note}`;
-    } else {
-      newNotes[folder] = note;
-    }
-    setNotes(newNotes);
-    setCurrentFolder(folder);
-  }
-
-  const currentNotes = notes[currentFolder];
-  api.currentNotes = currentNotes;
-  api.currentFolder = currentFolder;
-  api.folders = Object.keys(notes);
-  api.addNote = addNote;
-
-  return (
-    <div className="flex h-screen w-screen">
-      <SideBar
-        folders={Object.keys(notes)}
-        currentFolder={currentFolder}
-        setCurrentFolder={setCurrentFolder}
-        setNotes={setNotes}
-      />
-      <textarea
-        className="grow resize-none border-none p-4"
-        value={currentNotes}
-        onChange={handleChange}
-        placeholder="Add a note..."
-      />
-    </div>
-  );
-}
 
 export { init, context, api };

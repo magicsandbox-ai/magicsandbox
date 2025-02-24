@@ -415,7 +415,6 @@ class Assistant {
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
-        maxTagLength: 0, //mustdo delete this
       })) {
         if (abortSignal.aborted) return;
         const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
