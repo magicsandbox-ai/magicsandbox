@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import SideBar from "./SideBar.js";
 import Info from "./Info.js";
 import Note from "./Note.js";
-
+import DeleteConfirm from "./DeleteConfirm.js";
 /*
 nodes is an object mapping id to objects with keys:
 - id: number
@@ -51,7 +51,8 @@ async function init() {
 function App({ initNodes, initCurrentNodeId }) {
   const [nodes, setNodes] = useState(initNodes);
   const [currentNodeId, setCurrentNodeId] = useState(initCurrentNodeId);
-  const [modal, setModal] = useState(null); //info
+  const [showInfo, setShowInfo] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     requestPutData("nodes", nodes).catch(console.error);
@@ -63,6 +64,13 @@ function App({ initNodes, initCurrentNodeId }) {
 
   const tree = buildTree(nodes, currentNodeId);
 
+  let modalComponent;
+  if (deleteId) {
+    modalComponent = <DeleteConfirm id={deleteId} setDeleteId={setDeleteId} />;
+  } else if (showInfo) {
+    modalComponent = <Info setShowInfo={setShowInfo} />;
+  }
+
   return (
     <div className="flex h-screen w-screen">
       <SideBar
@@ -71,7 +79,8 @@ function App({ initNodes, initCurrentNodeId }) {
           setNodes,
           currentNodeId,
           setCurrentNodeId,
-          setModal,
+          setShowInfo,
+          setDeleteId,
         }}
       />
       {"content" in nodes[currentNodeId] && (
@@ -82,7 +91,7 @@ function App({ initNodes, initCurrentNodeId }) {
           currentNodeId={currentNodeId}
         />
       )}
-      {modal && <Info setModal={setModal} />}
+      {modalComponent}
     </div>
   );
 }

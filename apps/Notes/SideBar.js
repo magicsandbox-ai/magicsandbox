@@ -24,7 +24,8 @@ function SideBar({
   setNodes,
   currentNodeId,
   setCurrentNodeId,
-  setModal,
+  setShowInfo,
+  setDeleteId,
 }) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
@@ -32,8 +33,8 @@ function SideBar({
     console.log("search");
   }
 
-  function handleDelete() {
-    console.log("delete");
+  function handleDelete(id) {
+    setDeleteId(id);
   }
 
   function handleAdd(parentId, type) {
@@ -75,13 +76,13 @@ function SideBar({
           <button onClick={() => setShow(!show)}>
             <Menu />
           </button>
-          <button onClick={() => setModal("info")}>
+          <button onClick={() => setShowInfo(true)}>
             <Info />
           </button>
           <button onClick={() => handleSearch()}>
             <Search />
           </button>
-          <button onClick={() => handleDelete()}>
+          <button onClick={() => handleDelete(currentNodeId)}>
             <Trash2 />
           </button>
           <button onClick={() => handleAdd(0, "folder")}>
@@ -101,6 +102,7 @@ function SideBar({
                 currentNodeId,
                 setCurrentNodeId,
                 handleAdd,
+                handleDelete,
               }}
             />
           ))}
@@ -118,7 +120,14 @@ function SideBar({
   }
 }
 
-function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
+function Node({
+  node,
+  setNodes,
+  currentNodeId,
+  setCurrentNodeId,
+  handleAdd,
+  handleDelete,
+}) {
   const [renameValue, setRenameValue] = useState(null);
 
   function handleRename(e) {
@@ -133,37 +142,6 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
       });
     }
     setRenameValue(null);
-  }
-
-  function handleClick(event) {
-    if (event.ctrlKey) {
-      setNodes((nodes) => {
-        const ids = [];
-        let newChecked = false; //if all notes are checked, we'll uncheck
-        const nodesToVisit = [node.id];
-        while (nodesToVisit.length > 0) {
-          const currentId = nodesToVisit.pop();
-          ids.push(currentId);
-          const currentNode = nodes[currentId];
-          if (currentNode.childrenIds) {
-            nodesToVisit.push(...currentNode.childrenIds);
-          } else {
-            if (!currentNode.checked) {
-              newChecked = true; //but if a single note is unchecked, we'll check
-            }
-          }
-        }
-        const newNodes = {};
-        for (const id of ids) {
-          if (nodes[id].childrenIds) {
-            newNodes[id] = { ...nodes[id], collapsed: false };
-          } else {
-            newNodes[id] = { ...nodes[id], checked: newChecked };
-          }
-        }
-        return { ...nodes, ...newNodes };
-      });
-    }
   }
 
   const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
@@ -227,12 +205,50 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
     );
   }
 
+  function handleClick(event) {
+    if (event.ctrlKey) {
+      setNodes((nodes) => {
+        const ids = [];
+        let newChecked = false; //if all notes are checked, we'll uncheck
+        const nodesToVisit = [node.id];
+        while (nodesToVisit.length > 0) {
+          const currentId = nodesToVisit.pop();
+          ids.push(currentId);
+          const currentNode = nodes[currentId];
+          if (currentNode.childrenIds) {
+            nodesToVisit.push(...currentNode.childrenIds);
+          } else {
+            if (!currentNode.checked) {
+              newChecked = true; //but if a single note is unchecked, we'll check
+            }
+          }
+        }
+        const newNodes = {};
+        for (const id of ids) {
+          if (nodes[id].childrenIds) {
+            newNodes[id] = { ...nodes[id], collapsed: false };
+          } else {
+            newNodes[id] = { ...nodes[id], checked: newChecked };
+          }
+        }
+        return { ...nodes, ...newNodes };
+      });
+    }
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Delete") {
+      handleDelete(node.id);
+    }
+  }
+
   return (
     <div
       className={nodeClassName}
       style={{ marginLeft: `${(node.depth - 1) * 16}px` }}
       title={node.name}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
       {component}
     </div>

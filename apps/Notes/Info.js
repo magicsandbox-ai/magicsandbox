@@ -31,12 +31,12 @@ function InfoInner() {
   );
 }
 
-function Info({ setModal }) {
+function Info({ setShowInfo }) {
   return (
     <ModalOverlay
       modal={<InfoInner />}
       onClose={() => {
-        setModal(null);
+        setShowInfo(false);
       }}
       fullScreen={true}
     />
