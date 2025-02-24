@@ -46,7 +46,7 @@ function ModalOverlay({ modal, onClose, fullScreen }) {
         onClick={handleClick}
       >
         <div
-          className="max-w-full rounded-lg border-2 border-stone-500 bg-white shadow-lg"
+          className="max-h-[80%] max-w-[80%] overflow-y-auto rounded-lg border-2 border-stone-500 bg-white shadow-lg"
           role="dialog"
           aria-modal="true"
         >

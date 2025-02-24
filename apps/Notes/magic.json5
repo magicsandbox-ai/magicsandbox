@@ -7,4 +7,13 @@
     "react-dom": "^18.0.0",
     "lucide-react": "^0.408.0",
   },
+  esbuildOptions: {
+    //the dependencies for components are in node_modules
+    //but node_modules is not a parent of components
+    //so we need to add node_modules to nodePaths
+    nodePaths: ["./node_modules"],
+  },
+  tailwindConfig: {
+    content: ["apps/Notes/**/*.js", "components/**/*.js"],
+  },
 }

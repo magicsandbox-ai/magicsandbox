@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Menu,
+  Info,
   Search,
   Trash2,
   FolderPlus,
@@ -13,14 +14,18 @@ import {
 } from "lucide-react";
 
 /*
-todo this is rerendering on every content change
 todo drag and drop?
-todo node bold if in context
-ctrl click and shift click
-info modal
+todo delete
+todo search
 */
 
-function SideBar({ nodes, setNodes, currentNodeId, setCurrentNodeId }) {
+function SideBar({
+  tree,
+  setNodes,
+  currentNodeId,
+  setCurrentNodeId,
+  setModal,
+}) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
   function handleSearch() {
@@ -32,43 +37,46 @@ function SideBar({ nodes, setNodes, currentNodeId, setCurrentNodeId }) {
   }
 
   function handleAdd(parentId, type) {
-    const newId = Date.now();
-    const newParentNode = {
-      ...nodes[parentId],
-      childrenIds: [...nodes[parentId].childrenIds, newId],
-    };
-    let newNode;
-    if (type === "folder") {
-      newNode = {
-        id: newId,
-        name: "New Folder",
-        collapsed: false,
-        childrenIds: [],
+    setNodes((nodes) => {
+      const newId = Date.now();
+      const newParentNode = {
+        ...nodes[parentId],
+        childrenIds: [...nodes[parentId].childrenIds, newId],
       };
-    } else {
-      newNode = {
-        id: newId,
-        name: "New Note",
-        content: "",
-        checked: false,
-        starred: false,
+      let newNode;
+      if (type === "folder") {
+        newNode = {
+          id: newId,
+          name: "New Folder",
+          collapsed: false,
+          childrenIds: [],
+        };
+      } else {
+        newNode = {
+          id: newId,
+          name: "New Note",
+          content: "",
+          checked: false,
+          starred: false,
+        };
+      }
+      return {
+        ...nodes,
+        [newParentNode.id]: newParentNode,
+        [newNode.id]: newNode,
       };
-    }
-    setNodes({
-      ...nodes,
-      [newParentNode.id]: newParentNode,
-      [newNode.id]: newNode,
     });
   }
 
-  const tree = buildTree(nodes);
-
   if (show) {
     return (
-      <div className="absolute flex h-full w-64 flex-col gap-3 border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
+      <div className="absolute flex h-full w-64 flex-col border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />
+          </button>
+          <button onClick={() => setModal("info")}>
+            <Info />
           </button>
           <button onClick={() => handleSearch()}>
             <Search />
@@ -83,7 +91,7 @@ function SideBar({ nodes, setNodes, currentNodeId, setCurrentNodeId }) {
             <Plus />
           </button>
         </div>
-        <div className="grow space-y-3 overflow-y-auto px-3">
+        <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
           {tree.map((node) => (
             <Node
               key={node.id}
@@ -101,9 +109,11 @@ function SideBar({ nodes, setNodes, currentNodeId, setCurrentNodeId }) {
     );
   } else {
     return (
-      <button className="absolute ml-3 mt-3" onClick={() => setShow(!show)}>
-        <Menu />
-      </button>
+      <div className="m-3 flex flex-col">
+        <button onClick={() => setShow(!show)}>
+          <Menu />
+        </button>
+      </div>
     );
   }
 }
@@ -125,17 +135,51 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
     setRenameValue(null);
   }
 
-  const baseClassName = "w-full rounded-lg px-1 py-0.5 text-sm ";
-  const renameClassName = baseClassName + "border border-stone-500 bg-white";
+  function handleClick(event) {
+    if (event.ctrlKey) {
+      setNodes((nodes) => {
+        const ids = [];
+        let newChecked = false; //if all notes are checked, we'll uncheck
+        const nodesToVisit = [node.id];
+        while (nodesToVisit.length > 0) {
+          const currentId = nodesToVisit.pop();
+          ids.push(currentId);
+          const currentNode = nodes[currentId];
+          if (currentNode.childrenIds) {
+            nodesToVisit.push(...currentNode.childrenIds);
+          } else {
+            if (!currentNode.checked) {
+              newChecked = true; //but if a single note is unchecked, we'll check
+            }
+          }
+        }
+        const newNodes = {};
+        for (const id of ids) {
+          if (nodes[id].childrenIds) {
+            newNodes[id] = { ...nodes[id], collapsed: false };
+          } else {
+            newNodes[id] = { ...nodes[id], checked: newChecked };
+          }
+        }
+        return { ...nodes, ...newNodes };
+      });
+    }
+  }
+
+  const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
+  const renameClassName =
+    baseClassName + "w-full border border-stone-500 bg-white";
   const nodeClassName =
     baseClassName +
-    `flex items-center gap-1 hover:bg-stone-300 ${
+    `group cursor-pointer flex items-center gap-2 hover:bg-stone-300 ${
       currentNodeId === node.id
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;
   const nameClassName = "grow truncate";
-  const buttonClassName = "w-4 h-4";
+  const iconClassName = "w-4 h-4";
+  const hoverButtonClassName =
+    "opacity-0 focus:opacity-100 group-hover:opacity-100";
 
   if (renameValue !== null) {
     return (
@@ -149,13 +193,15 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
         />
       </form>
     );
-  } else if (node.childrenIds) {
-    return (
+  }
+  let component;
+  if (node.childrenIds) {
+    component = (
       <Folder
         {...{
-          nodeClassName,
           nameClassName,
-          buttonClassName,
+          iconClassName,
+          hoverButtonClassName,
           node,
           setNodes,
           setCurrentNodeId,
@@ -165,12 +211,12 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
       />
     );
   } else {
-    return (
+    component = (
       <Note
         {...{
-          nodeClassName,
           nameClassName,
-          buttonClassName,
+          iconClassName,
+          hoverButtonClassName,
           node,
           setNodes,
           setCurrentNodeId,
@@ -179,12 +225,23 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
       />
     );
   }
+
+  return (
+    <div
+      className={nodeClassName}
+      style={{ marginLeft: `${(node.depth - 1) * 16}px` }}
+      title={node.name}
+      onClick={handleClick}
+    >
+      {component}
+    </div>
+  );
 }
 
 function Folder({
-  nodeClassName,
   nameClassName,
-  buttonClassName,
+  iconClassName,
+  hoverButtonClassName,
   node,
   setNodes,
   setCurrentNodeId,
@@ -199,41 +256,41 @@ function Folder({
   }
 
   return (
-    <div
-      className={nodeClassName + " group"}
-      style={{ marginLeft: `${(node.depth - 1) * 16}px` }}
-      title={node.name}
-    >
-      <button className={buttonClassName} onClick={handleCollapse}>
-        {node.collapsed ? <ChevronDown /> : <ChevronRight />}
+    <>
+      <button onClick={handleCollapse}>
+        {node.collapsed ? (
+          <ChevronRight className={iconClassName} />
+        ) : (
+          <ChevronDown className={iconClassName} />
+        )}
       </button>
-      <button
+      <div
         className={nameClassName}
         onClick={() => setCurrentNodeId(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
-      </button>
+      </div>
       <button
-        className={buttonClassName + " invisible group-hover:visible"}
+        className={hoverButtonClassName}
         onClick={() => handleAdd(node.id, "folder")}
       >
-        <FolderPlus />
+        <FolderPlus className={iconClassName} />
       </button>
       <button
-        className={buttonClassName + " invisible group-hover:visible"}
+        className={hoverButtonClassName}
         onClick={() => handleAdd(node.id, "note")}
       >
-        <Plus />
+        <Plus className={iconClassName} />
       </button>
-    </div>
+    </>
   );
 }
 
 function Note({
-  nodeClassName,
   nameClassName,
-  buttonClassName,
+  iconClassName,
+  hoverButtonClassName,
   node,
   setNodes,
   setCurrentNodeId,
@@ -254,43 +311,36 @@ function Note({
   }
 
   return (
-    <div
-      className={nodeClassName}
-      style={{ marginLeft: `${(node.depth - 1) * 16}px` }}
-      title={node.name}
-    >
-      <button className={buttonClassName} onClick={handleCheck}>
-        {node.checked ? <Square /> : <Check />}
-      </button>
+    <>
       <button
-        className={nameClassName}
+        className={node.checked ? "" : hoverButtonClassName}
+        onClick={handleCheck}
+      >
+        {node.checked ? (
+          <Check className={iconClassName} />
+        ) : (
+          <Square className={iconClassName} />
+        )}
+      </button>
+      <div
+        className={`${nameClassName} ${node.inContext ? "font-bold" : ""}`}
         onClick={() => setCurrentNodeId(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
+      </div>
+      <button
+        className={node.starred ? "" : hoverButtonClassName}
+        onClick={handleStar}
+      >
+        <Star
+          className={`${iconClassName} ${
+            node.starred ? "fill-yellow-500" : ""
+          }`}
+        />
       </button>
-      <button className={buttonClassName} onClick={() => handleStar()}>
-        <Star className={node.starred ? "fill-yellow-500" : ""} />
-      </button>
-    </div>
+    </>
   );
 }
 
 export default SideBar;
-
-/**
- * Returns an array of nodes sorted in depth first order, with depth added to each node
- */
-function buildTree(nodes, rootId = 0, depth = 0) {
-  const tree = [];
-  const node = nodes[rootId];
-  if (node.id !== 0) {
-    tree.push({ ...node, depth }); //don't push root element
-  }
-  if (node.childrenIds && !node.collapsed) {
-    for (const childId of node.childrenIds) {
-      tree.push(...buildTree(nodes, childId, depth + 1));
-    }
-  }
-  return tree;
-}

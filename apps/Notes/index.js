@@ -1,22 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import SideBar from "./SideBar.js";
-
-/*
-magicsandbox.Notes helps you organize and chat with your notes.
-
-When you chat with your Assistant, it can always see the current note you have open. You can add additional notes to the chat by:
-
-1. Clicking the checkbox next to a note in the sidebar
-2. Using Ctrl+Click or Shift+Click in the sidebar to select notes and folders
-3. Starring a note by clicking the star icon next to it in the sidebar. Starred notes are included in the chat when:
-   - They are in the same folder as your current note
-   - They are in any parent folder above your current note
-
-Notes that will be included in the chat are shown in bold in the sidebar.
-
-Double click on a folder or note in the sidebar to rename it.
-*/
+import Info from "./Info.js";
+import Note from "./Note.js";
 
 /*
 nodes is an object mapping id to objects with keys:
@@ -33,6 +19,9 @@ Keys for notes:
 - starred?: boolean
 
 the root node is a folder with id 0. it will always have at least one child
+
+todo context
+todo api
 */
 
 async function init() {
@@ -62,6 +51,7 @@ async function init() {
 function App({ initNodes, initCurrentNodeId }) {
   const [nodes, setNodes] = useState(initNodes);
   const [currentNodeId, setCurrentNodeId] = useState(initCurrentNodeId);
+  const [modal, setModal] = useState(null); //info
 
   useEffect(() => {
     requestPutData("nodes", nodes).catch(console.error);
@@ -71,29 +61,28 @@ function App({ initNodes, initCurrentNodeId }) {
     requestPutData("currentNodeId", currentNodeId).catch(console.error);
   }, [currentNodeId]);
 
-  function handleChange(e) {
-    setNodes((nodes) => ({
-      ...nodes,
-      [currentNodeId]: { ...nodes[currentNodeId], content: e.target.value },
-    }));
-  }
+  const tree = buildTree(nodes, currentNodeId);
 
   return (
     <div className="flex h-screen w-screen">
       <SideBar
         {...{
-          nodes,
+          tree,
           setNodes,
           currentNodeId,
           setCurrentNodeId,
+          setModal,
         }}
       />
-      <textarea
-        className="grow resize-none border-none p-4"
-        value={nodes[currentNodeId].content}
-        onChange={handleChange}
-        placeholder="Add a note..."
-      />
+      {"content" in nodes[currentNodeId] && (
+        <Note
+          key={currentNodeId}
+          initContent={nodes[currentNodeId].content}
+          setNodes={setNodes}
+          currentNodeId={currentNodeId}
+        />
+      )}
+      {modal && <Info setModal={setModal} />}
     </div>
   );
 }
@@ -143,3 +132,43 @@ Add a note to the specified folder. If the folder doesn't exist, it will be crea
 const api = {};
 
 export { init, context, api };
+
+/**
+ * Returns an array of nodes sorted in depth first order, adding keys:
+ * - depth: number
+ * - pathIds: number[]
+ * - pathNames: string[]
+ * - inContext: boolean
+ */
+function buildTree(
+  nodes,
+  currentNodeId,
+  rootId = 0,
+  depth = 0,
+  pathIds = [],
+  pathNames = [],
+) {
+  const tree = [];
+  const node = nodes[rootId];
+  if (node.id !== 0) {
+    //don't push root element
+    const inContext =
+      node.content && (currentNodeId === node.id || node.checked);
+    tree.push({ ...node, depth, pathIds, pathNames, inContext });
+  }
+  if (node.childrenIds && !node.collapsed) {
+    for (const childId of node.childrenIds) {
+      tree.push(
+        ...buildTree(
+          nodes,
+          currentNodeId,
+          childId,
+          depth + 1,
+          [...pathIds, node.id],
+          [...pathNames, node.name],
+        ),
+      );
+    }
+  }
+  return tree;
+}
