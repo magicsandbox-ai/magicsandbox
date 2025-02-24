@@ -136,8 +136,9 @@ export { init, context, api };
 /**
  * Returns an array of nodes sorted in depth first order, adding keys:
  * - depth: number
- * - pathIds: number[]
- * - pathNames: string[]
+ * - parentNames: string[]
+ * - parentId: number
+ * - parentIds: number[]
  * - inContext: boolean
  */
 function buildTree(
@@ -145,8 +146,9 @@ function buildTree(
   currentNodeId,
   rootId = 0,
   depth = 0,
-  pathIds = [],
-  pathNames = [],
+  parentNames = [],
+  parentId = null,
+  parentIds = [],
 ) {
   const tree = [];
   const node = nodes[rootId];
@@ -154,7 +156,7 @@ function buildTree(
     //don't push root element
     const inContext =
       node.content && (currentNodeId === node.id || node.checked);
-    tree.push({ ...node, depth, pathIds, pathNames, inContext });
+    tree.push({ ...node, depth, parentNames, parentId, parentIds, inContext });
   }
   if (node.childrenIds && !node.collapsed) {
     for (const childId of node.childrenIds) {
@@ -164,10 +166,24 @@ function buildTree(
           currentNodeId,
           childId,
           depth + 1,
-          [...pathIds, node.id],
-          [...pathNames, node.name],
+          [...parentNames, node.name],
+          node.id,
+          [...parentIds, node.id],
         ),
       );
+    }
+  }
+  if (depth === 0) {
+    const currentNode = tree.find((node) => node.id === currentNodeId);
+    const currentNodeParents = new Set(currentNode.parentIds);
+    for (const node of tree) {
+      if (
+        node.starred &&
+        node.content &&
+        currentNodeParents.has(node.parentId)
+      ) {
+        node.inContext = true;
+      }
     }
   }
   return tree;

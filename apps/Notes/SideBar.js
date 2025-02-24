@@ -190,6 +190,7 @@ function Node({ node, setNodes, currentNodeId, setCurrentNodeId, handleAdd }) {
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={handleRename}
           autoFocus
+          onFocus={(e) => e.target.select()}
         />
       </form>
     );
