@@ -4,6 +4,8 @@ import SideBar from "./SideBar.js";
 import Info from "./Info.js";
 import Note from "./Note.js";
 import DeleteConfirm from "./DeleteConfirm.js";
+import Search from "./Search.js";
+
 /*
 nodes is an object mapping id to objects with keys:
 - id: number
@@ -53,9 +55,13 @@ function App({ initNodes, initCurrentNodeId }) {
   const [currentNodeId, setCurrentNodeId] = useState(initCurrentNodeId);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
 
   useEffect(() => {
     requestPutData("nodes", nodes).catch(console.error);
+    setSearchResults(null); //no longer valid
   }, [nodes]);
 
   useEffect(() => {
@@ -67,6 +73,20 @@ function App({ initNodes, initCurrentNodeId }) {
   let modalComponent;
   if (deleteId) {
     modalComponent = <DeleteConfirm id={deleteId} setDeleteId={setDeleteId} />;
+  } else if (showSearch) {
+    modalComponent = (
+      <Search
+        {...{
+          tree,
+          setShowSearch,
+          searchQuery,
+          setSearchQuery,
+          searchResults,
+          setSearchResults,
+          setCurrentNodeId,
+        }}
+      />
+    );
   } else if (showInfo) {
     modalComponent = <Info setShowInfo={setShowInfo} />;
   }
@@ -81,6 +101,7 @@ function App({ initNodes, initCurrentNodeId }) {
           setCurrentNodeId,
           setShowInfo,
           setDeleteId,
+          setShowSearch,
         }}
       />
       {"content" in nodes[currentNodeId] && (

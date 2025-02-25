@@ -9,13 +9,6 @@ function DeleteConfirm({ deleteId, setDeleteId, nodes, setNodes }) {
   } else {
     header = `Are you sure you want to delete note "${deleteNode.name}"?`;
   }
-  const nodesToDelete = new Set();
-  const nodesToVisit = [deleteId];
-  while (nodesToVisit.length > 0) {
-    const currentId = nodesToVisit.pop();
-    nodesToDelete.add(currentId);
-    nodesToVisit.push(...nodes[currentId].childrenIds);
-  }
   const buttons = [
     {
       text: "Cancel",
@@ -26,6 +19,13 @@ function DeleteConfirm({ deleteId, setDeleteId, nodes, setNodes }) {
       text: "Delete",
       className: "bg-red-500 hover:bg-red-700 text-white w-32",
       onClick: () => {
+        const nodesToDelete = new Set();
+        const nodesToVisit = [deleteId];
+        while (nodesToVisit.length > 0) {
+          const currentId = nodesToVisit.pop();
+          nodesToDelete.add(currentId);
+          nodesToVisit.push(...nodes[currentId].childrenIds);
+        }
         setNodes((nodes) => {
           Object.fromEntries(
             Object.entries(nodes).filter(([id]) => !nodesToDelete.has(id)),

@@ -15,8 +15,6 @@ import {
 
 /*
 todo drag and drop?
-todo delete
-todo search
 */
 
 function SideBar({
@@ -26,11 +24,12 @@ function SideBar({
   setCurrentNodeId,
   setShowInfo,
   setDeleteId,
+  setShowSearch,
 }) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
   function handleSearch() {
-    console.log("search");
+    setShowSearch(true);
   }
 
   function handleDelete(id) {
