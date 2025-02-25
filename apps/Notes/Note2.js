@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { EditorState, Plugin, PluginKey } from "prosemirror-state";
+import { EditorState } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { Slice } from "prosemirror-model";
 import {
@@ -37,75 +37,59 @@ menu?
   Make sure you load style/prosemirror.css as a stylesheet when using prosemirror-view
 */
 
-const originalContent = "### Hello World!\n\n test";
-const newContent = "## Goodbye!\n\n test";
-const diff = diffLines(originalContent, newContent);
-
-/*
-how to turn on and off? reconfigure?
-*/
-
-function diffPlugin() {
-  return new Plugin({
-    key: new PluginKey("diff"),
-    state: {
-      init(config, state) {
-        return {
-          original: defaultMarkdownSerializer.serialize(state.doc),
-          diff: [],
-        };
-      },
-      apply(tr, value, oldState, newState) {
-        return {
-          original: value.original,
-          diff: diffLines(
-            value.original,
-            defaultMarkdownSerializer.serialize(newState.doc),
-          ),
-        };
-      },
-    },
-    props: {
-      decorations(state) {
-        return DecorationSet.create(state.doc, [
-          Decoration.inline(0, state.doc.content.size, {
-            style: "color: purple",
-          }),
-        ]);
-      },
-    },
-  });
-}
-
-const plugins = [...exampleSetup({ schema, menuBar: false }), reactKeys()];
+// const originalContent = "### Hello World!\n\n test";
+// const newContent = "## Goodbye!\n\n test";
+// const diff = diffLines(originalContent, newContent);
 
 function Note() {
   const [editorState, setEditorState] = useState(
     EditorState.create({
-      doc: defaultMarkdownParser.parse(originalContent),
-      plugins,
+      doc: defaultMarkdownParser.parse("### Hello World!"),
+      plugins: [...exampleSetup({ schema, menuBar: false }), reactKeys()],
     }),
   );
-  //const [editable, setEditable] = useState(true);
+  const [diff, setDiff] = useState(null);
 
   function update() {
-    setEditorState(
-      editorState.reconfigure({ plugins: [...plugins, diffPlugin()] }),
-    );
-    const diffedContent = diff
-      .map((change) => {
-        const symbol = change.added ? "+" : change.removed ? "-" : "";
-        return `${symbol}${change.value}`;
-      })
-      .join("\n");
-    const newDoc = defaultMarkdownParser.parse(diffedContent);
-    const tr = editorState.tr.replace(
-      0,
-      editorState.doc.content.size,
-      new Slice(newDoc.content, 0, 0),
-    );
-    setEditorState((s) => s.apply(tr));
-    //setEditable(false);
+    if (diff) {
+      //simulate approving changes
+      const newDoc = defaultMarkdownParser.parse(diff.newContent);
+      const tr = editorState.tr.replace(
+        0,
+        editorState.doc.content.size,
+        new Slice(newDoc.content, 0, 0),
+      );
+      setEditorState((s) => s.apply(tr));
+      setDiff(null);
+    } else {
+      const originalContent = defaultMarkdownSerializer.serialize(
+        editorState.doc,
+      );
+      const newContent = [
+        ...originalContent.split("\n").slice(1),
+        Date.now(),
+      ].join("\n");
+      const diff = diffLines(originalContent, newContent);
+      setDiff({
+        originalContent,
+        newContent,
+        decorations,
+      });
+      //add annotations / metadata somehow
+      const diffedContent = diff
+        .map((change) => {
+          const symbol = change.added ? "+" : change.removed ? "-" : "";
+          return `${symbol}${change.value}`;
+        })
+        .join("\n");
+      const newDoc = defaultMarkdownParser.parse(diffedContent);
+      const tr = editorState.tr.replace(
+        0,
+        editorState.doc.content.size,
+        new Slice(newDoc.content, 0, 0),
+      );
+      setEditorState((s) => s.apply(tr));
+    }
   }
 
   return (
@@ -114,14 +98,10 @@ function Note() {
       dispatchTransaction={(tr) => {
         const newState = editorState.apply(tr);
         setEditorState(newState);
-        const diffKey = new PluginKey("diff");
-        const { diff = [] } = diffKey.getState(newState) || {};
-        if (diff.length === 0) {
-          setEditorState(newState.reconfigure({ plugins }));
-        }
-        //console.log(defaultMarkdownSerializer.serialize(newState.doc));
+        console.log(defaultMarkdownSerializer.serialize(newState.doc)); //todo save updated doc
       }}
-      //editable={() => editable}
+      decorations={() => diff?.decorations}
+      editable={() => Boolean(diff)}
     >
       <Button onClick={update} />
       <ProseMirrorDoc />
