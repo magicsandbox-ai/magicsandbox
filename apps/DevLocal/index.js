@@ -46,11 +46,17 @@ function App({ urlParams }) {
 
   async function previewApp(update = true) {
     const sandboxId = previewRef.current.getSandboxId();
-    const response = await requestFetch(`http://localhost:${portRef.current}`, {
-      headers: {
-        "x-token": tokenRef.current,
-      },
-    });
+    let response;
+    try {
+      response = await requestFetch(`http://localhost:${portRef.current}`, {
+        headers: {
+          "x-token": tokenRef.current,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new Error("Unexpected error. Is your development server running?");
+    }
     if (response.status >= 400) {
       throw new Error(response.body.error);
     }

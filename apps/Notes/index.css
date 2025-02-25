@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply text-stone-700;
+}
+
+.ProseMirror {
+  @apply grow p-3 focus:outline-none;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold;
+  }
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  ol {
+    @apply list-inside list-decimal;
+  }
+  ul {
+    @apply list-inside list-disc;
+  }
+  li {
+    @apply ml-4;
+  }
+  li p {
+    @apply inline;
+  }
+  pre code::before {
+    content: "```";
+  }
+  pre code::after {
+    content: "```";
+  }
+}

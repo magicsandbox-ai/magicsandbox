@@ -6,6 +6,9 @@
     react: "^18.0.0",
     "react-dom": "^18.0.0",
     "lucide-react": "^0.408.0",
+    "@handlewithcare/react-prosemirror": "^2.2.4",
+    "prosemirror-markdown": "^1.13.1",
+    "prosemirror-example-setup": "^1.2.3",
   },
   esbuildOptions: {
     //the dependencies for components are in node_modules
@@ -16,4 +19,5 @@
   tailwindConfig: {
     content: ["apps/Notes/**/*.js", "components/**/*.js"],
   },
+  scriptFile: "temp.js",
 }
