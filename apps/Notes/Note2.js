@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { EditorState } from "prosemirror-state";
+import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
-import { Transform } from "prosemirror-transform";
+import { Transform, Step, StepResult } from "prosemirror-transform";
 import { Slice } from "prosemirror-model";
 import {
   schema,
@@ -9,6 +9,7 @@ import {
   defaultMarkdownSerializer,
 } from "prosemirror-markdown";
 import { exampleSetup } from "prosemirror-example-setup";
+import { history } from "prosemirror-history";
 import {
   ProseMirror,
   ProseMirrorDoc,
@@ -17,7 +18,6 @@ import {
 import { diffArrays } from "diff";
 
 /*
-go back to diff view on undo
 menu? need prosemirror-view/style/prosemirror.css? just need container relative?
 display keyboard shortcuts somewhere
 allow creating links
@@ -26,20 +26,45 @@ escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
 
+function diffPlugin(historyPlugin) {
+  return new Plugin({
+    state: {
+      init() {
+        return;
+      },
+      apply(tr) {
+        const diffStep = tr.steps.find((step) => step instanceof DiffStep);
+        if (!diffStep) return;
+        const { redo = true } = tr.getMeta(historyPlugin) || {};
+        if (
+          (diffStep.type === "create" && redo) ||
+          (diffStep.type === "apply" && !redo)
+        ) {
+          diffStep?.callback();
+        }
+      },
+    },
+  });
+}
+
 function Note() {
-  const [editorState, setEditorState] = useState(
-    EditorState.create({
+  const [editorState, setEditorState] = useState(() => {
+    const historyPlugin = history();
+    return EditorState.create({
       doc: defaultMarkdownParser.parse("### Hello World!\n\n\u200B\n\ntest"),
       plugins: [
+        reactKeys(),
         ...exampleSetup({
           schema,
           menuBar: false,
-          mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" },
+          mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" }, //indenting lists
+          history: false, //set up manually so we can pass to diffPlugin
         }),
-        reactKeys(),
+        historyPlugin,
+        diffPlugin(historyPlugin),
       ],
-    }),
-  );
+    });
+  });
   const [diff, setDiff] = useState(null);
 
   function update() {
@@ -51,6 +76,7 @@ function Note() {
         editorState.doc.content.size,
         new Slice(newDoc.content, 0, 0),
       );
+      tr.step(new DiffStep("apply", () => setDiff(diff)));
       setEditorState((s) => s.apply(tr));
       setDiff(null);
     } else {
@@ -128,6 +154,15 @@ function Note() {
         editorState.doc.content.size,
         new Slice(transform.doc.content, 0, 0),
       );
+      transaction.step(
+        new DiffStep("create", () =>
+          setDiff({
+            originalContent,
+            newContent,
+            decorationSet,
+          }),
+        ),
+      );
       setEditorState((s) => s.apply(transaction));
       setDiff({
         originalContent,
@@ -179,3 +214,28 @@ function serialize(doc) {
   }
   return defaultMarkdownSerializer.serialize(transform.doc);
 }
+
+class DiffStep extends Step {
+  constructor(type, callback) {
+    super();
+    this.type = type;
+    this.callback = callback;
+  }
+  apply(doc) {
+    return StepResult.ok(doc);
+  }
+  invert() {
+    return this;
+  }
+  map() {
+    return this;
+  }
+  toJSON() {
+    return {};
+  }
+  fromJSON() {
+    return new DiffStep();
+  }
+}
+
+Step.jsonID("diff", DiffStep);
