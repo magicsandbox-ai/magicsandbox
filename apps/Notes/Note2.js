@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { EditorState } from "prosemirror-state";
-import { Decoration, DecorationSet } from "prosemirror-view";
+import { DecorationSet, Decoration } from "prosemirror-view";
+import { Transform } from "prosemirror-transform";
 import { Slice } from "prosemirror-model";
 import {
   schema,
@@ -13,7 +14,7 @@ import {
   ProseMirrorDoc,
   reactKeys,
 } from "@handlewithcare/react-prosemirror";
-import { diffLines } from "diff";
+import { diffArrays } from "diff";
 
 /*
 documents serialized to markdown
@@ -44,7 +45,7 @@ menu?
 function Note() {
   const [editorState, setEditorState] = useState(
     EditorState.create({
-      doc: defaultMarkdownParser.parse("### Hello World!"),
+      doc: defaultMarkdownParser.parse("### Hello World!\ntest"),
       plugins: [...exampleSetup({ schema, menuBar: false }), reactKeys()],
     }),
   );
@@ -66,29 +67,84 @@ function Note() {
         editorState.doc,
       );
       const newContent = [
-        ...originalContent.split("\n").slice(1),
+        ...originalContent.split("\n\n").slice(1),
         Date.now(),
-      ].join("\n");
-      const diff = diffLines(originalContent, newContent);
+      ].join("\n\n");
+      const diff = diffArrays(
+        originalContent.split("\n\n"),
+        newContent.split("\n\n"),
+        { oneChangePerToken: true },
+      );
+      const diffedContent = diff
+        .map((change) => {
+          if (change.added) {
+            return `%%added%%\n\n${change.value}`;
+          } else if (change.removed) {
+            return `%%removed%%\n\n${change.value}`;
+          } else {
+            return change.value;
+          }
+        })
+        .join("\n\n");
+      const newDoc = defaultMarkdownParser.parse(diffedContent);
+      let prevNode;
+      const decorations = [];
+      const deletes = [];
+      newDoc.content.forEach((node, pos) => {
+        if (prevNode) {
+          decorations.push({
+            from: pos,
+            to: pos + node.nodeSize,
+            attrs: {
+              class: prevNode,
+            },
+          });
+          prevNode = null;
+        } else if (
+          node.textContent === "%%added%%" ||
+          node.textContent === "%%removed%%"
+        ) {
+          deletes.push({
+            from: pos,
+            to: pos + node.nodeSize,
+          });
+          if (node.textContent === "%%added%%") {
+            prevNode = "added";
+          } else {
+            prevNode = "removed";
+          }
+        } else {
+          prevNode = null;
+        }
+      });
+      const transform = new Transform(newDoc);
+      for (const d of deletes) {
+        transform.delete(
+          transform.mapping.map(d.from),
+          transform.mapping.map(d.to),
+        );
+      }
+      const decorationSet = DecorationSet.create(
+        transform.doc,
+        decorations.map((d) =>
+          Decoration.node(
+            transform.mapping.map(d.from),
+            transform.mapping.map(d.to),
+            d.attrs,
+          ),
+        ),
+      );
+      const transaction = editorState.tr.replace(
+        0,
+        editorState.doc.content.size,
+        new Slice(transform.doc.content, 0, 0),
+      );
+      setEditorState((s) => s.apply(transaction));
       setDiff({
         originalContent,
         newContent,
-        decorations,
+        decorationSet,
       });
-      //add annotations / metadata somehow
-      const diffedContent = diff
-        .map((change) => {
-          const symbol = change.added ? "+" : change.removed ? "-" : "";
-          return `${symbol}${change.value}`;
-        })
-        .join("\n");
-      const newDoc = defaultMarkdownParser.parse(diffedContent);
-      const tr = editorState.tr.replace(
-        0,
-        editorState.doc.content.size,
-        new Slice(newDoc.content, 0, 0),
-      );
-      setEditorState((s) => s.apply(tr));
     }
   }
 
@@ -100,8 +156,8 @@ function Note() {
         setEditorState(newState);
         console.log(defaultMarkdownSerializer.serialize(newState.doc)); //todo save updated doc
       }}
-      decorations={() => diff?.decorations}
-      editable={() => Boolean(diff)}
+      decorations={() => diff?.decorationSet}
+      editable={() => !diff}
     >
       <Button onClick={update} />
       <ProseMirrorDoc />

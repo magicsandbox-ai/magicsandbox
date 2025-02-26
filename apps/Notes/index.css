@@ -44,4 +44,10 @@ body {
   pre code::after {
     content: "```";
   }
+  .added {
+    @apply bg-green-100;
+  }
+  .removed {
+    @apply bg-red-100 line-through;
+  }
 }
