@@ -7,7 +7,7 @@ body {
 }
 
 .ProseMirror {
-  @apply grow p-3 focus:outline-none;
+  @apply grow whitespace-pre-wrap p-3 focus:outline-none;
 
   h1,
   h2,
@@ -15,7 +15,7 @@ body {
   h4,
   h5,
   h6 {
-    @apply font-bold;
+    @apply border-b border-stone-300 pb-0.5 font-bold;
   }
   h1 {
     @apply text-2xl;
@@ -38,11 +38,18 @@ body {
   li p {
     @apply inline;
   }
-  pre code::before {
-    content: "```";
+  pre {
+    @apply relative rounded-md bg-stone-50 p-2 text-sm;
   }
-  pre code::after {
-    content: "```";
+  pre:hover::after {
+    @apply pointer-events-none absolute bottom-1 right-2 text-xs italic text-stone-400;
+    content: "Ctrl+Enter to exit";
+  }
+  blockquote {
+    @apply border-l-4 border-stone-300 bg-stone-50 p-2 italic;
+  }
+  strong {
+    @apply font-bold;
   }
   .added {
     @apply bg-green-100;

@@ -17,36 +17,27 @@ import {
 import { diffArrays } from "diff";
 
 /*
-documents serialized to markdown
-assistant generates changes using markdown
-  could be new note or find/replace
-take diff of markdown documents
-somehow display those diffs
-  create a transaction
-    node.replace?
-    transaction vs transformation?
-  add marks?
-  widget? nodeviews? schema?
-  maybe a highlight?
-
-
-ctrl+enter to escape code. or escape then enter
-  or keep space at bottom always? or handle down arrow?
-handle tabs in lists to indent
-deleting input rules?
-menu? 
-  Make sure you load style/prosemirror.css as a stylesheet when using prosemirror-view
+go back to diff view on undo
+menu? need prosemirror-view/style/prosemirror.css? just need container relative?
+display keyboard shortcuts somewhere
+allow creating links
+plugin to display ctrl+enter to exit code block when selection is in code block (maybe even then only on enter), instead of on hover
+escaping/deleting blocks in general can be kind of annoying
+pasting images?
 */
-
-// const originalContent = "### Hello World!\n\n test";
-// const newContent = "## Goodbye!\n\n test";
-// const diff = diffLines(originalContent, newContent);
 
 function Note() {
   const [editorState, setEditorState] = useState(
     EditorState.create({
-      doc: defaultMarkdownParser.parse("### Hello World!\ntest"),
-      plugins: [...exampleSetup({ schema, menuBar: false }), reactKeys()],
+      doc: defaultMarkdownParser.parse("### Hello World!\n\n\u200B\n\ntest"),
+      plugins: [
+        ...exampleSetup({
+          schema,
+          menuBar: false,
+          mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" },
+        }),
+        reactKeys(),
+      ],
     }),
   );
   const [diff, setDiff] = useState(null);
@@ -63,9 +54,7 @@ function Note() {
       setEditorState((s) => s.apply(tr));
       setDiff(null);
     } else {
-      const originalContent = defaultMarkdownSerializer.serialize(
-        editorState.doc,
-      );
+      const originalContent = serialize(editorState.doc);
       const newContent = [
         ...originalContent.split("\n\n").slice(1),
         Date.now(),
@@ -154,7 +143,7 @@ function Note() {
       dispatchTransaction={(tr) => {
         const newState = editorState.apply(tr);
         setEditorState(newState);
-        console.log(defaultMarkdownSerializer.serialize(newState.doc)); //todo save updated doc
+        console.log(serialize(newState.doc)); //todo save updated doc
       }}
       decorations={() => diff?.decorationSet}
       editable={() => !diff}
@@ -170,3 +159,23 @@ function Button({ onClick }) {
 }
 
 export default Note;
+
+/**
+ * Serialize a Prosemirror document to a markdown string
+ *
+ * Prosemirror's markdown serializer and parser don't preserve empty lines,
+ * so first replace all empty paragraphs in the doc with a zero width space
+ */
+function serialize(doc) {
+  const emptyParagraphs = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === "paragraph" && node.textContent === "") {
+      emptyParagraphs.push(pos);
+    }
+  });
+  const transform = new Transform(doc);
+  for (const pos of emptyParagraphs) {
+    transform.insert(transform.mapping.map(pos), schema.text("\u200B"));
+  }
+  return defaultMarkdownSerializer.serialize(transform.doc);
+}
