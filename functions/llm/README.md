@@ -10,14 +10,14 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 
 - `messages` _(**required**)_
 - `model`: supported models are:
-  - `claude-3-5-sonnet-20241022`
+  - `claude-3-7-sonnet-20250219`
     - Prompt caching is not supported
   - `gpt-4o-2024-08-06`
   - `gpt-4o-mini-2024-07-18`
-  - `gemini/gemini-1.5-flash-002`
+  - `gemini-1.5-flash-002`
     - Prompt caching is not supported
     - Vision is not supported
-  - `gemini/gemini-1.5-flash-8b-001`
+  - `gemini-1.5-flash-8b-001`
     - Prompt caching is not supported
     - Vision is not supported
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
@@ -28,9 +28,7 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `presence_penalty`
 - `logit_bias`
 
-magicsandbox.llm also accepts additional arguments:
-
-- `summarize` _(boolean, default: `false`)_: whether to return a short summary of the first user message in `messages`
+Or, to generate multiple responses, you can pass an array of up to 10 objects with the above keys. In this case, you can also provide an additional `maxCost` key indicating how to split `maxCost` across the responses.
 
 ## Returns
 
@@ -38,12 +36,11 @@ Object(s) with keys:
 
 - `model`: the model used
 - `content`: the content of the response
-- `summary`: the summary, if `summarize` is `true`
 - `finish_reason`: the reason the response finished (see the OpenAI docs)
 
-When `stream` is `true` (recommended), returns a stream of objects. `model` and `summary` are present on only the first object. `finish_reason` is present on only the final object.
+When `stream` is `true` (recommended), returns a stream of objects. `model` is present on only the first object. `finish_reason` is present on only the final object. If generating multiple responses, each object will have an additional `index` key indicating the zero based index of the response.
 
-When `stream` is false, returns a single object with keys `model`, `content`, `summary`, and `finish_reason`.
+When `stream` is false, returns a single object with keys `model`, `content`, and `finish_reason`. If generating multiple responses, returns an array of objects with these keys.
 
 ## Usage
 
@@ -57,9 +54,8 @@ const stream = await requestFunction(
 );
 
 for await (const chunk of stream) {
-  const { result: { model, content, summary, finish_reason } = {}, metadata } =
-    chunk;
-  console.log(model, summary); //present on only the first chunk
+  const { result: { model, content, finish_reason } = {}, metadata } = chunk;
+  console.log(model); //present on only the first chunk
   console.log(content); //present on all but last chunk
   console.log(finish_reason); //present on the final result chunk (the second to last chunk)
   console.log(metadata); //present on only the last chunk
@@ -92,3 +88,30 @@ const stream = await requestFunction(
 ```
 
 magicsandbox.llm charges [variable costs](https://magicsandbox.ai/?_app=magicsandbox.Docs&id=variable-costs), so you'll only be charged for the tokens used, not the entire `maxCost`.
+
+### Multiple responses
+
+```javascript
+const stream = await requestFunction(
+  "magicsandbox.llm",
+  [
+    { messages: [{ role: "user", content: "Hello, world!" }], maxCost: 0.009 },
+    {
+      messages: [
+        {
+          role: "user",
+          content: "Generate a summary for this user input: Hello, world!",
+        },
+      ],
+      maxCost: 0.001,
+    },
+  ],
+  { maxCost: 0.01, stream: true },
+);
+
+for await (const chunk of stream) {
+  const { result: { model, content, finish_reason, index } = {}, metadata } =
+    chunk;
+  //...
+}
+```

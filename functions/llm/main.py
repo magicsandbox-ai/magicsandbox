@@ -1,7 +1,7 @@
-from ..body import Body
+from ..body import Body, Options
 import json
 from math import floor
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from fastapi import HTTPException
 from litellm import acompletion
 from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
 import logging
 import asyncio
-from .summary import handle_summary, summary_cost
+from aiostream.stream import merge
 
 logger = logging.getLogger("magicsandbox.llm")
 
@@ -29,19 +29,33 @@ class LlmArgs(BaseModel):
     # 'tools',
     # 'tool_choice',
     # 'parallel_tool_calls',
-    summarize: bool | None = None
+    maxCost: float | None = None
+
+    @field_validator('maxCost')
+    @classmethod
+    def validate_max_cost(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError('maxCost must be strictly positive if provided')
+        return v
 
 class LlmBody(Body):
-    args: LlmArgs | str
+    args: list[LlmArgs] | LlmArgs | str
+
+    @field_validator('args')
+    @classmethod
+    def validate_args(cls, v):
+        if isinstance(v, list) and len(v) > 10:
+            raise ValueError('cannot generate more than 10 responses at once')
+        return v
 
 gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
 gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002')
 default_tokenizer = DefaultTokenizer()
 
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
-# keep these in sync with Assistant/ModelPicker.js - need a better way to do this
+# keep these in sync with Assistant/ModelPicker.js (and the README) - need a better way to do this
 supported_models = {
-    'claude-3-5-sonnet-20241022': {
+    'claude-3-7-sonnet-20250219': {
         'max_input_tokens': 200000,
         'max_output_tokens': 8192,
         'input_cost_per_token': 3 / 1000000,
@@ -65,7 +79,8 @@ supported_models = {
         'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
         'max_vision_tokens': 1445,
     },
-    'gemini/gemini-1.5-flash-002': {
+    'gemini-1.5-flash-002': {
+        'api_name': 'gemini/gemini-1.5-flash-002',
         'max_input_tokens': 1048576,
         'max_output_tokens': 8192,
         'input_cost_per_token': 0.075 / 1000000,
@@ -74,7 +89,8 @@ supported_models = {
         'max_vision_tokens': 0,
         'vision_disabled': True, # can't compute cost for audio/video so need to disable until can filter it out specifically
     },
-    'gemini/gemini-1.5-flash-8b-001': {
+    'gemini-1.5-flash-8b-001': {
+        'api_name': 'gemini/gemini-1.5-flash-8b-001',
         'max_input_tokens': 1048576,
         'max_output_tokens': 8192,
         'input_cost_per_token': 0.0375 / 1000000,
@@ -87,43 +103,55 @@ supported_models = {
 
 async def llm(body: LlmBody, test=False):
     if isinstance(body.args, str):
-        args = LlmArgs(messages=[{"role": "user", "content": body.args}])
+        args_list = [LlmArgs(messages=[{"role": "user", "content": body.args}])]
+    elif isinstance(body.args, list):
+        args_list = body.args
     else:
-        args = body.args
+        args_list = [body.args]
+    total_max_cost = 0
+    for args in args_list:
+        if args.maxCost is None:
+            total_max_cost = None
+            break
+        total_max_cost += args.maxCost
+    if total_max_cost is not None:
+        max_cost_pcts = [args.maxCost / total_max_cost for args in args_list]
+    else:
+        max_cost_pcts = [1 / len(args_list) for _ in args_list]
+    tasks = [get_response(args, body.options.stream, body.options.maxCost * max_cost_pcts[i], i if test else None) for i, args in enumerate(args_list)]
+    results = await asyncio.gather(*tasks)
+    if body.options.stream:
+        return handle_stream_response(results)
+    else:
+        return handle_response(results)
+
+async def get_response(args: LlmArgs, stream: bool, maxCost: float, test=None):
     if args.messages is None:
         raise HTTPException(status_code=400, detail='messages required')
     if args.max_completion_tokens is None:
         args.max_completion_tokens = 1000
-    elif args.max_completion_tokens > 99000 and not body.options.stream:
+    elif args.max_completion_tokens > 99000 and not stream:
         # because max command object size is 100KB
         raise HTTPException(status_code=400, detail='max_completion_tokens must be less than 99000 when streaming is disabled')
-    if args.summarize:
-        body.options.maxCost -= summary_cost
-    model, expected_cost = find_model(args, body.options.maxCost) # note that this may modify args.messages and args.max_completion_tokens
+    model, expected_cost = find_model(args, maxCost) # note that this may modify args.messages and args.max_completion_tokens
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
-    api_args.pop('summarize', None) # remove custom args or litellm will throw an error
+    api_args.pop('maxCost', None) # remove custom args or litellm will throw an error
     api_args.update({
-        'model': model,
+        'model': supported_models[model].get('api_name', model),
         'timeout': 60,
     })
-    if body.options.stream:
+    if stream:
         api_args.update({
             'stream': True,
             'stream_options': {'include_usage': True},
         })
-    if test:
+    if test is not None:
         api_args.update({
-            'mock_response': 'This is mock content',
+            'mock_response': f'This is mock content {test}',
         })
-    response, summary = await asyncio.gather(
-            acompletion(**api_args),
-            handle_summary(args, test)
-        )
-    if body.options.stream:
-        return handle_stream_response(response, model, expected_cost, summary)
-    else:
-        return handle_response(response, model, expected_cost, summary)
+    response = await acompletion(**api_args)
+    return {'response': response, 'expected_cost': expected_cost, 'model': model}
 
 def process_messages(model, args):
     for message in args.messages:
@@ -281,13 +309,23 @@ def trim_message(message, content_tokens, forward_budget, backward_budget, token
                 final_tokens += tokens[-backward_budget:]
             c['text'] = tokenizer.decode(final_tokens)
 
-def handle_stream_response(response, model, expected_cost, summary):
-    return StreamingResponse(length_prefix_transform(
-                                openai_transform(response, model, expected_cost, summary), 
-                                final_object=True),
+def handle_stream_response(results):
+    if len(results) > 1:
+        streams = [handle_stream_result(result, i) for i, result in enumerate(results)]
+        stream = merge(*streams)
+    else:
+        stream = handle_stream_result(results[0])
+    return StreamingResponse(length_prefix_transform(handle_stream_final_cost(stream), final_object=True),
                              headers={'x-length-prefix': 'true'})
 
-async def openai_transform(response, model, expected_cost, summary):
+async def handle_stream_result(result, index=None):
+    def data(**kwargs):
+        if index is not None:
+            kwargs['index'] = index
+        return json.dumps(kwargs)
+    response = result['response']
+    model = result['model']
+    expected_cost = result['expected_cost']
     buffer = '' # buffer to reduce overhead to json and length prefixes
     buffer_size = 20
     first_chunk = True
@@ -299,39 +337,60 @@ async def openai_transform(response, model, expected_cost, summary):
             buffer += content
             if len(buffer) >= buffer_size:
                 if first_chunk:
-                    yield json.dumps({'model': model, 'content': buffer, 'summary': summary})
+                    yield data(model=model, content=buffer)
                     first_chunk = False
                 else:
-                    yield json.dumps({'content': buffer})
+                    yield data(content=buffer)
                 buffer = ''
         finish_reason = chunk.choices[0].finish_reason or finish_reason
     if first_chunk:
-        yield json.dumps({'model': model, 'content': buffer, 'summary': summary, 'finish_reason': finish_reason})
+        yield data(model=model, content=buffer, finish_reason=finish_reason)
     else:
-        yield json.dumps({'content': buffer, 'finish_reason': finish_reason})
-    final_cost = handle_final_cost(model, expected_cost, chunk.usage, summary)
+        yield data(content=buffer, finish_reason=finish_reason)
+    final_cost = handle_final_cost(model, expected_cost, chunk.usage)
+    yield {'final_cost': final_cost}
+
+async def handle_stream_final_cost(stream):
+    final_cost = 0
+    async for chunk in stream:
+        if isinstance(chunk, dict):
+            final_cost += chunk['final_cost']
+        else:
+            yield chunk
     yield json.dumps({'__command': {'finalCost': final_cost}})
 
-def handle_final_cost(model, expected_cost, usage, summary):
+def handle_final_cost(model, expected_cost, usage):
     final_cost = get_cost(model, usage.prompt_tokens, usage.completion_tokens)
     if final_cost > expected_cost:
         logger.warning(
             f'Final cost exceeds expected cost: final={final_cost:.6f} expected={expected_cost:.6f} model={model}'
         )
-    if summary is not None:
-        final_cost += summary_cost
     return final_cost
 
-def handle_response(response, model, expected_cost, summary):
-    logger.debug('%s', json.dumps(response.json(), default=str, indent=2))
-    final_cost = handle_final_cost(model, expected_cost, response.usage, summary)
+def handle_response(results):
+    final_result = []
+    final_cost = 0
+    for r in results:
+        result, result_cost = handle_result(r)
+        final_result.append(result)
+        final_cost += result_cost
+    if len(final_result) == 1:
+        final_result = final_result[0]
     content = {
-        'result': {
-            'model': model, 
-            'content': response.choices[0].message.content,
-            'summary': summary,
-            'finish_reason': response.choices[0].finish_reason,
-        },
+        'result': final_result,
         '__command': {'finalCost': final_cost},
-        }
+    }
     return JSONResponse(content=content, headers={'x-command-object': 'true'})
+
+def handle_result(result):
+    response = result['response']
+    model = result['model']
+    expected_cost = result['expected_cost']
+    logger.debug('%s', json.dumps(response.json(), default=str, indent=2))
+    final_cost = handle_final_cost(model, expected_cost, response.usage)
+    return ({
+            'model': model,
+            'content': response.choices[0].message.content,
+            'finish_reason': response.choices[0].finish_reason,
+            },
+            final_cost)

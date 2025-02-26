@@ -6,8 +6,8 @@ const models = {
   auto: {
     name: "Model: Auto",
   },
-  "claude-3-5-sonnet-20241022": {
-    name: "Claude 3.5 Sonnet",
+  "claude-3-7-sonnet-20250219": {
+    name: "Claude 3.7 Sonnet",
     input_cost_per_token: 3 / 1000000,
     output_cost_per_token: 15 / 1000000,
   },
@@ -21,12 +21,12 @@ const models = {
     input_cost_per_token: 0.15 / 1000000,
     output_cost_per_token: 0.6 / 1000000,
   },
-  "gemini/gemini-1.5-flash-002": {
+  "gemini-1.5-flash-002": {
     name: "Gemini 1.5 Flash",
     input_cost_per_token: 0.075 / 1000000,
     output_cost_per_token: 0.3 / 1000000,
   },
-  "gemini/gemini-1.5-flash-8b-001": {
+  "gemini-1.5-flash-8b-001": {
     name: "Gemini 1.5 Flash 8B",
     input_cost_per_token: 0.0375 / 1000000,
     output_cost_per_token: 0.15 / 1000000,
