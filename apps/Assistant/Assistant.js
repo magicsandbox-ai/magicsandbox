@@ -725,7 +725,7 @@ class Assistant {
   }
   async handleMetadata(response, id, abortSignal) {
     let metadata;
-    if (response?.[Symbol.asyncIterator]) {
+    if (response[Symbol.asyncIterator]) {
       for await (const chunk of response) {
         if (abortSignal.aborted) return;
         if (chunk.metadata) {

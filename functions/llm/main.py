@@ -183,6 +183,8 @@ def find_model(args: LlmArgs, maxCost: float):
         expected_cost = get_cost(model, input_tokens, output_tokens)
         if expected_cost <= maxCost:
             return model, expected_cost
+        else:
+            logger.debug('expected_cost %s > maxCost %s for model %s: input_tokens %s, output_tokens %s', expected_cost, maxCost, model, input_tokens, output_tokens)
     # trim messages so that we can use the last model in the list (which should be the cheapest)
     args.messages = trim_messages(args, model, input_tokens, maxCost)
     return model, maxCost
@@ -331,7 +333,7 @@ async def handle_stream_result(result, index=None):
     first_chunk = True
     finish_reason = None
     async for chunk in response:
-        logger.debug('%s', json.dumps(chunk.json(), default=str, indent=2))
+        #logger.debug('%s', json.dumps(chunk.json(), default=str, indent=2))
         content = chunk.choices[0].delta.content
         if content:
             buffer += content
@@ -352,11 +354,14 @@ async def handle_stream_result(result, index=None):
 
 async def handle_stream_final_cost(stream):
     final_cost = 0
-    async for chunk in stream:
-        if isinstance(chunk, dict):
-            final_cost += chunk['final_cost']
-        else:
-            yield chunk
+    async with stream.stream() as streamer:
+        # this context ensures the stream is properly closed. something to do with gc?
+        # without it there's a warning about the stream being iterated outside of its context
+        async for chunk in streamer:
+            if isinstance(chunk, dict):
+                final_cost += chunk['final_cost']
+            else:
+                yield chunk
     yield json.dumps({'__command': {'finalCost': final_cost}})
 
 def handle_final_cost(model, expected_cost, usage):
@@ -386,7 +391,7 @@ def handle_result(result):
     response = result['response']
     model = result['model']
     expected_cost = result['expected_cost']
-    logger.debug('%s', json.dumps(response.json(), default=str, indent=2))
+    #logger.debug('%s', json.dumps(response.json(), default=str, indent=2))
     final_cost = handle_final_cost(model, expected_cost, response.usage)
     return ({
             'model': model,

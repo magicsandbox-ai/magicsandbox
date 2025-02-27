@@ -156,6 +156,22 @@ async function requestHandler({
       const app =
         data.options.app ||
         `${appObjRef.current.author}.${appObjRef.current.name}`;
+      if (requestDataRef.current[app] === undefined) {
+        //initialize requestDataRef[app]
+        try {
+          if (app) {
+            const allData = await requestSandbox("getAllData", {
+              options: { app },
+            });
+            requestDataRef.current[app] = allData || {};
+          } else {
+            requestDataRef.current[app] = {};
+          }
+        } catch (e) {
+          console.warn(`Failed to initialize data for ${app}:`, e);
+          requestDataRef.current[app] = {};
+        }
+      }
       if (request === "putData") {
         if (data.val === null) {
           sandboxRef.current.postMessage(sandboxId, {
@@ -175,26 +191,19 @@ async function requestHandler({
         return;
       } else if (request === "getData") {
         response = requestDataRef.current[app]?.[data.key];
-        if (response !== undefined) {
-          sandboxRef.current.postMessage(sandboxId, { id, response });
-          return;
-        }
-        //otherwise, fall through to requestSandbox
+        sandboxRef.current.postMessage(sandboxId, { id, response });
+        return;
       } else if (request === "getAllData") {
-        response = requestDataRef.current[app];
-        if (response !== undefined) {
-          sandboxRef.current.postMessage(sandboxId, { id, response });
-          return;
-        }
+        response = requestDataRef.current[app] || {};
+        sandboxRef.current.postMessage(sandboxId, { id, response });
+        return;
       } else if (request === "getAllKeysData") {
-        response = requestDataRef.current[app];
-        if (response !== undefined) {
-          sandboxRef.current.postMessage(sandboxId, {
-            id,
-            response: Object.keys(response),
-          });
-          return;
-        }
+        response = Object.keys(requestDataRef.current[app] || {});
+        sandboxRef.current.postMessage(sandboxId, {
+          id,
+          response: Object.keys(response),
+        });
+        return;
       }
     }
     let error;
