@@ -5,7 +5,8 @@
  * Arguments: an object with keys:
  * - stream (AsyncIterable<any>): The stream to parse
  * - chunkProcessor (function(any) => string) (default (chunk) => chunk): A function that returns a string from a chunk of the stream
- * - maxTagLength (number) (default 100): The maximum expected length of a tag
+ * - validTags (string[]): An optional array of valid tags. All other tags are ignored
+ * - maxTagLength (number) (default 100): The maximum expected length of a tag. Only used if validTags is not provided
  *
  * Returns:
  * - AsyncGenerator<{content: string, tag?: string}>
@@ -25,8 +26,13 @@
 async function* tagStreamParser({
   stream,
   chunkProcessor = (chunk) => chunk,
+  validTags,
   maxTagLength = 100,
 }) {
+  if (validTags) {
+    maxTagLength = Math.max(...validTags.map((tag) => tag.length));
+    validTags = new Set(validTags);
+  }
   let buffer = "";
   let tag;
   for await (const chunk of stream) {
@@ -36,6 +42,7 @@ async function* tagStreamParser({
       ({ buffer, tag, results } = processBuffer({
         buffer: buffer + str,
         tag,
+        validTags,
         bufferLength: maxTagLength + 3,
       }));
       if (results) {
@@ -48,6 +55,7 @@ async function* tagStreamParser({
   const { results } = processBuffer({
     buffer,
     tag,
+    validTags,
     bufferLength: 0,
   });
   if (results) {
@@ -57,11 +65,18 @@ async function* tagStreamParser({
   }
 }
 
-function processBuffer({ buffer, tag, bufferLength }) {
+function processBuffer({ buffer, tag, validTags, bufferLength }) {
   const results = [];
   while (buffer.length > bufferLength) {
-    const regex = tag ? new RegExp(`<\\/${tag}>`) : /<[a-zA-Z_][\w.-]*>/;
-    const match = buffer.match(regex);
+    let match;
+    if (tag) {
+      match = buffer.match(new RegExp(`<\\/${tag}>`));
+    } else {
+      match = buffer.match(/<[a-zA-Z_][\w.-]*>/);
+      if (validTags && match && !validTags.has(match[0].slice(1, -1))) {
+        match = null;
+      }
+    }
     if (match) {
       if (match.index > 0) {
         results.push({
@@ -92,6 +107,8 @@ function processBuffer({ buffer, tag, bufferLength }) {
  * Parses the top level tags of a string
  *
  * Arguments: a string
+ * - string (string): The string to parse
+ * - validTags (string[]): An optional array of valid tags. All other tags are ignored
  *
  * Returns: {content: string, tag?: string}[]
  *
@@ -99,10 +116,12 @@ function processBuffer({ buffer, tag, bufferLength }) {
  *
  * Returns: [{content: "hello world"}, {content: "test", tag: "example"}, {content: "goodbye"}]
  */
-function tagParser(string) {
+function tagParser(string, validTags) {
+  validTags = validTags ? new Set(validTags) : undefined;
   const { results } = processBuffer({
     buffer: string,
     tag: undefined,
+    validTags,
     bufferLength: 0,
   });
   return results;

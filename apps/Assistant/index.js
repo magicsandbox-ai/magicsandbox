@@ -73,7 +73,7 @@ function App({ user, urlParams }) {
   });
   const currentConversationRef = useRef(currentConversation);
   const conversationSummariesRef = useRef(conversationSummaries);
-  const modelRef = useRef(model);
+  const modelRef = useRef(null);
 
   useEffect(() => {
     async function init() {

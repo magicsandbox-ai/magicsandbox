@@ -102,6 +102,35 @@ describe("tagStreamParser", () => {
       },
     ]);
   });
+
+  test("respects validTags", async () => {
+    const stream = createStream([
+      {
+        result: {
+          model: "gemini-1.5-flash-002",
+          content:
+            "`<ul>` and `<ol>` are both HTML list elements, but they create different",
+        },
+      },
+      {
+        result: {
+          content: " types of lists. `<ul>` creates an unordered list...",
+        },
+      },
+      { metadata: { finalCost: 100 } },
+    ]);
+    const results = await collectStream(
+      tagStreamParser({
+        stream,
+        chunkProcessor: (chunk) => chunk.result?.content,
+        validTags: ["intermediate_script", "final_script", "launch_app"],
+      }),
+    );
+    const content = results.map((r) => r.content).join("");
+    expect(content).toEqual(
+      "`<ul>` and `<ol>` are both HTML list elements, but they create different types of lists. `<ul>` creates an unordered list...",
+    );
+  });
 });
 
 describe("tagParser", () => {
@@ -132,6 +161,23 @@ describe("tagParser", () => {
     expect(result).toEqual([
       { content: "let me run a script ", tag: undefined },
       { content: "return <div>hello world</div>", tag: "script" },
+    ]);
+  });
+
+  test("respects validTags", () => {
+    const input =
+      "`<ul>` and `<ol>` are both HTML list elements, but they create different types of lists. `<ul>` creates an unordered list...";
+    const result = tagParser(input, [
+      "intermediate_script",
+      "final_script",
+      "launch_app",
+    ]);
+    expect(result).toEqual([
+      {
+        content:
+          "`<ul>` and `<ol>` are both HTML list elements, but they create different types of lists. `<ul>` creates an unordered list...",
+        tag: undefined,
+      },
     ]);
   });
 });

@@ -359,22 +359,6 @@ class Assistant {
             content: formatMessage(message, i === filteredMessages.length - 1),
           })),
       ];
-      // async function* mockStream() {
-      //   yield {
-      //     result: {
-      //       model: "claude-3-5-sonnet-20241022",
-      //       content: `Hello world! ${Date.now()}`,
-      //       summary: messages.length === 0 ? `Hello world ${Date.now()}` : null,
-      //     },
-      //   };
-      //   for (let i = 0; i < 10; i++) {
-      //     await new Promise((resolve) => setTimeout(resolve, 1000));
-      //     yield {
-      //       result: { content: " test" },
-      //     };
-      //   }
-      // }
-      // const stream = mockStream();
       const max_completion_tokens = 5000;
       let model, maxCost;
       if (this.modelRef.current === "auto") {
@@ -382,7 +366,7 @@ class Assistant {
       } else {
         model = this.modelRef.current;
         const inputTokens = new TextEncoder().encode(
-          JSON.stringify(messages),
+          JSON.stringify(llmMessages),
         ).length; //one token per byte
         maxCost =
           models[model].input_cost_per_token * inputTokens +
@@ -412,6 +396,7 @@ class Assistant {
       };
       let summary = "";
       const chunkProcessor = (chunk) => {
+        console.log(chunk);
         const { model, content, index } = chunk.result || {};
         if (index === 1) {
           summary += content;
@@ -425,6 +410,7 @@ class Assistant {
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
+        validTags: ["intermediate_script", "final_script", "launch_app"],
       })) {
         if (abortSignal.aborted) return;
         const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
