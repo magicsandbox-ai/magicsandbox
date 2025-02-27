@@ -16,6 +16,7 @@ import {
   formatFavoritedApps,
   formatLogs,
   prompt,
+  createSummaryArgs,
 } from "./prompt.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
@@ -358,7 +359,6 @@ class Assistant {
             content: formatMessage(message, i === filteredMessages.length - 1),
           })),
       ];
-      console.log(llmMessages);
       // async function* mockStream() {
       //   yield {
       //     result: {
@@ -388,29 +388,39 @@ class Assistant {
           models[model].input_cost_per_token * inputTokens +
           models[model].output_cost_per_token * max_completion_tokens;
       }
-      const stream = await requestFunction(
-        "magicsandbox.llm",
+      const llmArgs = [
         {
           messages: llmMessages,
           model,
           max_completion_tokens,
-          summarize: messages.length === 0,
+          maxCost,
         },
-        { maxCost, stream: true },
-      );
+      ];
+      if (!messages.some((message) => message.role === "user")) {
+        const summaryArgs = createSummaryArgs(userMessage);
+        llmArgs.push(summaryArgs);
+        maxCost += summaryArgs.maxCost;
+      }
+      console.log(llmArgs);
+      const stream = await requestFunction("magicsandbox.llm", llmArgs, {
+        maxCost,
+        stream: true,
+      });
       const llmMessage = {
         role: "assistant",
         tags: [],
       };
+      let summary = "";
       const chunkProcessor = (chunk) => {
-        const { model, content, summary } = chunk.result || {};
-        if (model) {
-          llmMessage.model = models[model]?.name || model;
+        const { model, content, index } = chunk.result || {};
+        if (index === 1) {
+          summary += content;
+        } else {
+          if (model) {
+            llmMessage.model = models[model]?.name || model;
+          }
+          return content;
         }
-        if (summary) {
-          this.handleUpdateConversation({ summary });
-        }
-        return content;
       };
       for await (const { tag, content } of tagStreamParser({
         stream,
@@ -427,6 +437,7 @@ class Assistant {
           messages: [...newMessages, llmMessage],
         });
       }
+      this.handleUpdateConversation({ summary });
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "launch_app") {
           const app = this.appDataRef.current[tag.content.trim()];

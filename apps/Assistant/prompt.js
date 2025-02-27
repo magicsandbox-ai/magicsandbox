@@ -53,6 +53,46 @@ function prompt({ app, initContext }) {
   }
 }
 
+function createSummaryArgs(userMessage) {
+  const userRequest = userMessage.tags
+    .find(({ tag }) => tag === "user_request")
+    .content.slice(0, 200);
+  return {
+    messages: [
+      {
+        role: "system",
+        content:
+          "Create concise 4-5 word summaries of user messages for a chat interface. Focus on the main topic or action. Be brief but descriptive. Do not use punctuation at the end.",
+      },
+      {
+        role: "user",
+        content:
+          "Can you help me debug this Python code that keeps giving me a TypeError when I try to process a list of dictionaries?",
+      },
+      { role: "assistant", content: "Python TypeError debugging help" },
+      {
+        role: "user",
+        content:
+          "What are some good restaurants in Seattle that serve authentic Italian cuisine? I particularly enjoy pasta dishes and would prefer somewhere with a cozy atmosphere.",
+      },
+      {
+        role: "assistant",
+        content: "Seattle Italian restaurant recommendations",
+      },
+      {
+        role: "user",
+        content:
+          "I need to create a presentation for tomorrow morning about the latest market trends in renewable energy, focusing specifically on solar and wind power developments.",
+      },
+      { role: "assistant", content: "renewable energy presentation help" },
+      { role: "user", content: userRequest },
+    ],
+    model: "gemini-1.5-flash-8b-001",
+    max_completion_tokens: 20,
+    maxCost: 0.00001,
+  };
+}
+
 const inputSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox.
 
 The user's initial message will include both the user's request and a list of the user's favorited apps that you can choose to launch. The favorited apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, use the author.Name format.
@@ -198,4 +238,10 @@ Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of t
 
 ${sandboxDocs}`;
 
-export { formatMessage, formatFavoritedApps, formatLogs, prompt };
+export {
+  formatMessage,
+  formatFavoritedApps,
+  formatLogs,
+  prompt,
+  createSummaryArgs,
+};

@@ -82,6 +82,11 @@ function App({ user, urlParams }) {
       });
       appDataRef.current = appData || {};
       setAppData(appData || {});
+      const model = await requestGetData("selectedModel", {
+        app: "magicsandbox.Assistant",
+      });
+      modelRef.current = model;
+      setModel(model);
       assistantRef.current = new Assistant({
         user,
         sandboxRef,
@@ -220,6 +225,10 @@ function App({ user, urlParams }) {
 
   useEffect(() => {
     modelRef.current = model;
+    requestPutData("selectedModel", model, {
+      app: "magicsandbox.Assistant",
+      evictionPolicy: "fifo",
+    }).catch(console.error);
   }, [model]);
 
   const messages = currentConversation.messages;
