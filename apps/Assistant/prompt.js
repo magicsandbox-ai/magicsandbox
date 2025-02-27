@@ -56,7 +56,8 @@ function prompt({ app, initContext }) {
 function createSummaryArgs(userMessage) {
   const userRequest = userMessage.tags
     .find(({ tag }) => tag === "user_request")
-    .content.slice(0, 200);
+    .content.trim()
+    .slice(0, 200);
   return {
     messages: [
       {
@@ -69,7 +70,7 @@ function createSummaryArgs(userMessage) {
         content:
           "Can you help me debug this Python code that keeps giving me a TypeError when I try to process a list of dictionaries?",
       },
-      { role: "assistant", content: "Python TypeError debugging help" },
+      { role: "assistant", content: "Python TypeError debugging" },
       {
         role: "user",
         content:
@@ -84,12 +85,12 @@ function createSummaryArgs(userMessage) {
         content:
           "I need to create a presentation for tomorrow morning about the latest market trends in renewable energy, focusing specifically on solar and wind power developments.",
       },
-      { role: "assistant", content: "renewable energy presentation help" },
+      { role: "assistant", content: "Renewable energy presentation" },
       { role: "user", content: userRequest },
     ],
     model: "gemini-1.5-flash-8b-001",
     max_completion_tokens: 20,
-    maxCost: 0.00001,
+    maxCost: 0.0001,
   };
 }
 

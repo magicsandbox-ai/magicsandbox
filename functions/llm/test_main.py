@@ -4,6 +4,8 @@ from .main import llm, LlmBody
 
 '''
 npm run pytest -- functions/llm/test_main.py
+
+todo test trim_messages
 '''
 
 @pytest.mark.asyncio

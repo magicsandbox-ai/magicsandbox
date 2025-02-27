@@ -207,7 +207,11 @@ def message_token_counter(message, tokenizer: Tokenizer, max_vision_tokens):
     content_tokens = 0
     for key, value in message.items():
         if isinstance(value, str):
-            num_tokens += tokenizer.count(value)
+            value_tokens = tokenizer.count(value)
+            if key == "content":
+                content_tokens += value_tokens
+            else:
+                num_tokens += value_tokens
             if key == "name":
                 num_tokens += 1 #tokens per name
         elif key == "content":
@@ -249,8 +253,9 @@ def trim_messages(args: LlmArgs, model, input_tokens, maxCost):
     # loop through messages backward taking up remaining budget
     messages_backward_budget = trim_message_loop(messages_token_counts, floor(input_token_budget * .8), forward=False)
     # now we can trim each message
+    trimmed_messages = []
     for i in range(len(args.messages)):
-        trim_message(
+        trimmed_messages.append(trim_message(
             args.messages[i], 
             messages_token_counts[i][1], 
             messages_forward_budget[i],
@@ -258,8 +263,8 @@ def trim_messages(args: LlmArgs, model, input_tokens, maxCost):
             model_info['tokenizer'],
             model_info['max_vision_tokens'], 
             i == len(args.messages) - 1,
-        )
-    return [m for m in args.messages if m is not None]
+        ))
+    return [m for m in trimmed_messages if m is not None]
 
 def trim_message_loop(messages_token_counts, budget, forward=True):
     messages_content_budget = [0 for _ in messages_token_counts]
@@ -280,11 +285,12 @@ def trim_message_loop(messages_token_counts, budget, forward=True):
 def trim_message(message, content_tokens, forward_budget, backward_budget, tokenizer: Tokenizer, max_vision_tokens, is_last_message):
     content_budget = forward_budget + backward_budget
     if content_budget >= content_tokens:
-        return
+        return message
     if content_budget <= 0:
-        message = None
-        return
+        return None
     content = message['content']
+    if isinstance(content, str):
+        content = [{"type": "text", "text": content}] # todo should just do this earlier so we don't have to handle strings throughout the code
     # handle images
     for i, c in enumerate(content):
         if c['type'] == 'image_url':
@@ -298,7 +304,7 @@ def trim_message(message, content_tokens, forward_budget, backward_budget, token
         found_text = False
         if c['type'] == 'text':
             if found_text:
-                # I think there is only one text type per message but it's not explict anywhere? 
+                # I think there is only one text type per message but it's not explicit anywhere? 
                 # just use up whole budget on first and delete the rest
                 del content[i]
                 continue
@@ -310,13 +316,16 @@ def trim_message(message, content_tokens, forward_budget, backward_budget, token
             if backward_budget > 0: # [-0:] selects the whole list
                 final_tokens += tokens[-backward_budget:]
             c['text'] = tokenizer.decode(final_tokens)
+    message['content'] = content # in case it was a string, we didn't mutate the original
+    return message
 
 def handle_stream_response(results):
     if len(results) > 1:
         streams = [handle_stream_result(result, i) for i, result in enumerate(results)]
         stream = merge(*streams)
     else:
-        stream = handle_stream_result(results[0])
+        # still wrap it in merge so the object passed to handle_stream_final_cost is consistent
+        stream = merge(handle_stream_result(results[0]))
     return StreamingResponse(length_prefix_transform(handle_stream_final_cost(stream), final_object=True),
                              headers={'x-length-prefix': 'true'})
 

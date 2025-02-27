@@ -224,11 +224,14 @@ function App({ user, urlParams }) {
   }, [appData]);
 
   useEffect(() => {
+    if (modelRef.current) {
+      //on mount, modelRef.current is null, and model is auto - don't save
+      requestPutData("selectedModel", model, {
+        app: "magicsandbox.Assistant",
+        evictionPolicy: "fifo",
+      }).catch(console.error);
+    }
     modelRef.current = model;
-    requestPutData("selectedModel", model, {
-      app: "magicsandbox.Assistant",
-      evictionPolicy: "fifo",
-    }).catch(console.error);
   }, [model]);
 
   const messages = currentConversation.messages;
