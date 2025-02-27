@@ -64,27 +64,38 @@ class FinancialRisk extends Risk {
     try {
       this._handleBatch(batch);
       const pendingRequests = this.pendingRequests;
-      const callback = (approved, askedUser) => {
-        this.handleApprove(approved, askedUser, pendingRequests);
-      };
-      if (this.pendingCost + this.approvedCost > this.assistant.budget) {
+      if (
+        this.pendingCost > 0 &&
+        this.pendingCost + this.approvedCost > this.assistant.budget
+      ) {
         const app = this.assistant.app.app;
         const pendingSpend = formatAsDollars(this.pendingCost);
         const approvedSpend = formatAsDollars(this.approvedCost);
         const totalSpend = formatAsDollars(
           this.pendingCost + this.approvedCost,
         );
-        const budget = formatAsDollars(this.assistant.budget);
+        let newBudget;
+        if (this.assistant.budget === 0) {
+          newBudget = (this.pendingCost + this.approvedCost) * 3;
+        } else {
+          newBudget = this.assistant.budget * 3;
+        }
+        const callback = (approved, askedUser) => {
+          this.handleApprove(approved, askedUser, pendingRequests, newBudget);
+        };
         return {
           callback,
           message: `${app} is requesting to spend ${pendingSpend}, for a total of ${totalSpend}`,
           details: [
-            `Budget: ${budget}`,
-            `Approved spend: ${approvedSpend}`,
+            `Spend so far: ${approvedSpend}`,
             `Pending spend: ${pendingSpend}`,
+            `Next confirmation at: ${formatAsDollars(newBudget)}`,
           ],
         };
       }
+      const callback = (approved, askedUser) => {
+        this.handleApprove(approved, askedUser, pendingRequests);
+      };
       return { callback };
     } finally {
       this.pendingRequests = {};
@@ -95,10 +106,10 @@ class FinancialRisk extends Risk {
     this.pendingRequests[id] = data;
     this.pendingCost += data.options.maxCost;
   }
-  handleApprove(approved, askedUser, pendingRequests) {
+  handleApprove(approved, askedUser, pendingRequests, newBudget) {
     if (approved) {
       if (askedUser) {
-        this.assistant.budget = this.assistant.budget * 2;
+        this.assistant.budget = newBudget;
       }
       Object.entries(pendingRequests).forEach(([id, data]) => {
         this.approvedRequests[id] = data;

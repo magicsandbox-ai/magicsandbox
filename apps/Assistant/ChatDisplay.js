@@ -85,6 +85,7 @@ const Message = memo(function Message({ message, onComplete }) {
         className={
           message.role === "user" ? userMessageStyle : assistantMessageStyle
         }
+        remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         rehypeSanitizeOptions={rehypeSanitizeOptions}
         onComplete={onComplete}
@@ -127,6 +128,16 @@ function formatTag({ tag, content }) {
 const preStyle =
   "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
 
+function remarkHtmlToText() {
+  return (tree) => {
+    visit(tree, (node) => {
+      if (node.type === "html") {
+        node.type = "text";
+      }
+    });
+  };
+}
+
 function rehypeCode() {
   return (tree) => {
     visit(tree, "element", (node) => {
@@ -159,8 +170,8 @@ function rehypeCode() {
   };
 }
 
+const remarkPlugins = [remarkHtmlToText];
 const rehypePlugins = [rehypeCode, rehypeHighlight];
-
 const rehypeSanitizeOptions = {
   ...defaultSchema,
   attributes: {

@@ -3,23 +3,29 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[[source]]
+url = "https://download.pytorch.org/whl/cpu"
+verify_ssl = true
+name = "torchcpu"
+
 [packages]
-numpy = "*"
-sentence-transformers = "*"
-fastapi = {extras = ["standard"] }
-tiktoken = "*"
-litellm = "*"
-google-cloud-aiplatform = {extras = ["tokenization"] }
-msgpack = "*"
-httpx = "*"
-boto3 = "*"
-aiostream = "*"
+numpy = "~=2.2"
+sentence-transformers = "~=3.4"
+fastapi = {version = "~=0.115.8", extras = ["standard"] }
+tiktoken = "~=0.9.0"
+litellm = "~=1.61"
+google-cloud-aiplatform = {version = "~=1.81", extras = ["tokenization"] }
+msgpack = "~=1.1"
+httpx = "~=0.28.1"
+boto3 = "~=1.37"
+aiostream = "~=0.6.4"
+torch = {version = "*", index = "torchcpu"} #dependency of sentence-transformers, only specified because of the index
 
 [dev-packages]
-jupyter = "*"
+jupyter = "~=1.1"
 magicsandbox-streaming = {editable = true, path = "packages/python/magicsandbox_streaming"}
-pytest = "*"
-pytest-asyncio = "*"
+pytest = "~=8.3"
+pytest-asyncio = "~=0.25.3"
 
 [requires]
 python_version = "3.12"
