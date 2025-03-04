@@ -1,11 +1,9 @@
 import pytest
 import json
-from .main import llm, LlmBody
+from .main import llm, LlmBody, LlmArgs, trim_messages_for_tokens, trim_messages_for_cost, supported_models
 
 '''
 npm run pytest -- functions/llm/test_main.py
-
-todo test trim_messages
 '''
 
 @pytest.mark.asyncio
@@ -100,7 +98,7 @@ async def test_multiple():
                 'maxCost': 0.05,
             },
             {
-                'model': 'gemini-1.5-flash-002',
+                'model': 'gemini-2.0-flash-lite-001',
                 'messages': [{'role': 'user', 'content': 'Goodbye!'}],
                 'maxCost': 0.05,
             },
@@ -113,7 +111,7 @@ async def test_multiple():
     assert response_body['result'][0]['content'] == 'This is mock content 0'
     assert response_body['result'][0]['model'] == 'gpt-4o-mini-2024-07-18'
     assert response_body['result'][1]['content'] == 'This is mock content 1'
-    assert response_body['result'][1]['model'] == 'gemini-1.5-flash-002'
+    assert response_body['result'][1]['model'] == 'gemini-2.0-flash-lite-001'
     assert isinstance(response_body['__command']['finalCost'], float)
 
 @pytest.mark.asyncio
@@ -131,7 +129,7 @@ async def test_multiple_stream():
                 'maxCost': 0.05,
             },
             {
-                'model': 'gemini-1.5-flash-002',
+                'model': 'gemini-2.0-flash-lite-001',
                 'messages': [{'role': 'user', 'content': 'Goodbye!'}],
                 'maxCost': 0.05,
             },
@@ -155,3 +153,33 @@ async def test_multiple_stream():
             assert isinstance(chunk['__command']['finalCost'], float)
     assert contents[0] == 'This is mock content 0'
     assert contents[1] == 'This is mock content 1'
+
+@pytest.mark.asyncio
+async def test_trim_messages_for_tokens():
+    long_message = "This is a very long message. " * 1000
+    messages = [
+        {'role': 'system', 'content': 'You are a helpful assistant.'},
+        {'role': 'user', 'content': long_message},
+    ]
+    args = LlmArgs(messages=messages)
+    model_info = supported_models['gpt-4o-mini-2024-07-18']
+    model_info['max_input_tokens'] = 100
+    input_tokens = 1000 # note this is not actually the token count of messages, but just needs to be higher than max_input_tokens
+    trimmed_messages = trim_messages_for_tokens(args, model_info, input_tokens)
+    assert trimmed_messages[0]['content'] == messages[0]['content']  # System message should be preserved
+    assert len(trimmed_messages[1]['content']) < len(messages[1]['content'])  # User message should be trimmed
+
+@pytest.mark.asyncio
+async def test_trim_messages_for_cost():
+    long_message = "This is a very long message. " * 1000
+    messages = [
+        {'role': 'system', 'content': 'You are a helpful assistant.'},
+        {'role': 'user', 'content': long_message},
+    ]
+    args = LlmArgs(messages=messages, max_completion_tokens=1000)
+    model_info = supported_models['claude-3-7-sonnet-20250219']
+    input_tokens = 1000 # note this is not actually the token count of messages, but just needs to be high enough to trigger trimming
+    max_cost = 500 * model_info['output_cost_per_token'] + 100 * model_info['input_cost_per_token']
+    trimmed_messages = trim_messages_for_cost(args, model_info, input_tokens, max_cost)    
+    assert trimmed_messages[0]['content'] == messages[0]['content']  # System message should be preserved
+    assert len(trimmed_messages[1]['content']) < len(messages[1]['content'])  # User message should be trimmed

@@ -13,13 +13,16 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
   - `claude-3-7-sonnet-20250219`
     - Prompt caching is not supported
   - `gpt-4o-2024-08-06`
-  - `gpt-4o-mini-2024-07-18`
-  - `gemini-1.5-flash-002`
+  - `gemini-2.0-flash-001`
     - Prompt caching is not supported
-    - Vision is not supported
+    - Multimodal inputs (images, audio, video) are not supported
+  - `gpt-4o-mini-2024-07-18`
+  - `gemini-2.0-flash-lite-001`
+    - Prompt caching is not supported
+    - Multimodal inputs (images, audio, video) are not supported
   - `gemini-1.5-flash-8b-001`
     - Prompt caching is not supported
-    - Vision is not supported
+    - Multimodal inputs (images, audio, video) are not supported
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
 - `response_format`
 - `temperature`

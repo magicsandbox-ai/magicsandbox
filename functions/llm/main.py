@@ -49,7 +49,7 @@ class LlmBody(Body):
         return v
 
 gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
-gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002')
+gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002') # google has not yet updated model to tokenizer map for gemini 2.0
 default_tokenizer = DefaultTokenizer()
 
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
@@ -71,6 +71,16 @@ supported_models = {
         'tokenizer': gpt_4o_tokenizer,
         'max_vision_tokens': 1445,
     },
+    'gemini-2.0-flash-001': {
+        'api_name': 'gemini/gemini-2.0-flash-001',
+        'max_input_tokens': 1048576,
+        'max_output_tokens': 8192,
+        'input_cost_per_token': 0.1 / 1000000,
+        'output_cost_per_token': 0.4 / 1000000,
+        'tokenizer': gemini_tokenizer,
+        'max_vision_tokens': 0,
+        'multimodal_disabled': True, # can't compute cost for audio/video so need to disable it
+    },
     'gpt-4o-mini-2024-07-18': {
         'max_input_tokens': 128000,
         'max_output_tokens': 16384,
@@ -79,25 +89,25 @@ supported_models = {
         'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
         'max_vision_tokens': 1445,
     },
-    'gemini-1.5-flash-002': {
-        'api_name': 'gemini/gemini-1.5-flash-002',
+    'gemini-2.0-flash-lite-001': {
+        'api_name': 'gemini/gemini-2.0-flash-lite-001',
         'max_input_tokens': 1048576,
         'max_output_tokens': 8192,
         'input_cost_per_token': 0.075 / 1000000,
         'output_cost_per_token': 0.3 / 1000000,
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
-        'vision_disabled': True, # can't compute cost for audio/video so need to disable until can filter it out specifically
+        'multimodal_disabled': True,
     },
     'gemini-1.5-flash-8b-001': {
         'api_name': 'gemini/gemini-1.5-flash-8b-001',
-        'max_input_tokens': 1048576,
+        'max_input_tokens': 128000, # actually 1048576, but pricing doubles after 128K, so should just use flash-lite
         'max_output_tokens': 8192,
         'input_cost_per_token': 0.0375 / 1000000,
         'output_cost_per_token': 0.15 / 1000000,
         'tokenizer': gemini_tokenizer, # note: 8b not yet included in get_tokenizer_for_model. assume same as flash-002
         'max_vision_tokens': 0,
-        'vision_disabled': True,
+        'multimodal_disabled': True,
     }
 }
 
@@ -155,7 +165,7 @@ async def get_response(args: LlmArgs, stream: bool, maxCost: float, test=None):
 
 def process_messages(model, args):
     for message in args.messages:
-        if supported_models[model].get('vision_disabled', False):
+        if supported_models[model].get('multimodal_disabled', False):
             content = message.get('content')
             if content is not None and not isinstance(content, str):
                 message['content'] = [c for c in content if c['type'] == 'text']
@@ -182,11 +192,12 @@ def find_model(args: LlmArgs, maxCost: float):
         output_tokens = args.max_completion_tokens
         expected_cost = get_cost(model, input_tokens, output_tokens)
         if expected_cost <= maxCost:
+            args.messages = trim_messages_for_tokens(args, model_info, input_tokens)
             return model, expected_cost
         else:
             logger.debug('expected_cost %s > maxCost %s for model %s: input_tokens %s, output_tokens %s', expected_cost, maxCost, model, input_tokens, output_tokens)
     # trim messages so that we can use the last model in the list (which should be the cheapest)
-    args.messages = trim_messages(args, model, input_tokens, maxCost)
+    args.messages = trim_messages_for_cost(args, model_info, input_tokens, maxCost)
     return model, maxCost
 
 base_token_count = 3 # every reply is primed with <|start|>assistant<|message|>
@@ -232,26 +243,44 @@ def get_cost(model, input_tokens, output_tokens):
     output_cost = output_tokens * model_info['output_cost_per_token']
     return input_cost + output_cost
 
-def trim_messages(args: LlmArgs, model, input_tokens, maxCost):
+def trim_messages_for_tokens(args: LlmArgs, model_info, input_tokens):
+    input_token_budget = model_info['max_input_tokens']
+    if input_tokens <= input_token_budget:
+        return args.messages # we're done without modifying messages
+    return trim_messages_impl(args, model_info, input_token_budget)
+
+def trim_messages_for_cost(args: LlmArgs, model_info, input_tokens, maxCost):
     # first try cutting output tokens to 500
     args.max_completion_tokens = min(args.max_completion_tokens, 500)
-    model_info = supported_models[model]
     input_cost = input_tokens * model_info['input_cost_per_token']
     output_cost = args.max_completion_tokens * model_info['output_cost_per_token']
     if input_cost + output_cost <= maxCost:
         return args.messages # we're done without modifying messages
     input_token_budget = (maxCost - output_cost) / model_info['input_cost_per_token'] - base_token_count
-    messages_token_counts = messages_token_counter(
+    input_token_budget = min(input_token_budget, model_info['max_input_tokens'])
+    return trim_messages_impl(args, model_info, input_token_budget)
+
+def trim_messages_impl(args, model_info, input_token_budget):
+    messages_token_counts = messages_token_counter( # todo counting for the second time here - should just do it in find_model
         args.messages, 
         model_info['tokenizer'], 
         model_info['max_vision_tokens'],
         return_list=True,
     )
+    if args.messages[0]['role'] == 'system' or args.messages[0]['role'] == 'developer':
+        # try to preserve the system prompt, forward budget is system prompt + 20% of budget
+        # but can't exceed 80% of budget, so backward budget is guaranteed to be at least 20% of budget
+        forward_budget = min(messages_token_counts[0][1] + floor(input_token_budget * .2), 
+                             floor(input_token_budget * .8)
+                            )
+    else:
+        forward_budget = floor(input_token_budget * .2)
+    backward_budget = floor(input_token_budget - forward_budget)
     # content token budget for each message. since we may add to the same message on forward and backward pass, track it here
     # loop through messages forward taking up to 20% of the budget
-    messages_forward_budget = trim_message_loop(messages_token_counts, floor(input_token_budget * .2))
+    messages_forward_budget = trim_message_loop(messages_token_counts, forward_budget)
     # loop through messages backward taking up remaining budget
-    messages_backward_budget = trim_message_loop(messages_token_counts, floor(input_token_budget * .8), forward=False)
+    messages_backward_budget = trim_message_loop(messages_token_counts, backward_budget, forward=False)
     # now we can trim each message
     trimmed_messages = []
     for i in range(len(args.messages)):

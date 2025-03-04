@@ -285,7 +285,7 @@ class AppData:
         # todo prompt caching?
         prompt = get_app_descriptions_from_input_prompt(input)
         response = await acompletion(
-            model='gemini/gemini-1.5-flash-002',
+            model='gemini/gemini-2.0-flash-lite-001',
             messages=[{'role': 'user', 'content': prompt}],
             max_completion_tokens=200,
             timeout=60

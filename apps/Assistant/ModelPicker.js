@@ -16,20 +16,20 @@ const models = {
     input_cost_per_token: 2.5 / 1000000,
     output_cost_per_token: 10 / 1000000,
   },
+  "gemini-2.0-flash-001": {
+    name: "Gemini 2.0 Flash",
+    input_cost_per_token: 0.1 / 1000000,
+    output_cost_per_token: 0.4 / 1000000,
+  },
   "gpt-4o-mini-2024-07-18": {
     name: "GPT 4o Mini",
     input_cost_per_token: 0.15 / 1000000,
     output_cost_per_token: 0.6 / 1000000,
   },
-  "gemini-1.5-flash-002": {
-    name: "Gemini 1.5 Flash",
+  "gemini-2.0-flash-lite-001": {
+    name: "Gemini 2.0 Flash Lite",
     input_cost_per_token: 0.075 / 1000000,
     output_cost_per_token: 0.3 / 1000000,
-  },
-  "gemini-1.5-flash-8b-001": {
-    name: "Gemini 1.5 Flash 8B",
-    input_cost_per_token: 0.0375 / 1000000,
-    output_cost_per_token: 0.15 / 1000000,
   },
 };
 
