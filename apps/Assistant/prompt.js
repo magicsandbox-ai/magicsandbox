@@ -94,7 +94,9 @@ function createSummaryArgs(userMessage) {
   };
 }
 
-const inputSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox.
+const identityPrompt = `You are a highly capable, helpful, thoughtful, and precise assistant on a web app platform called Magic Sandbox.`;
+
+const inputSystemPrompt = `${identityPrompt}
 
 The user's initial message will include both the user's request and a list of the user's favorited apps that you can choose to launch. The favorited apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, use the author.Name format.
 
@@ -130,7 +132,7 @@ After launching an app, you'll receive additional context on how you can use the
 
 // todo fix duplication
 
-const initSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox. An app has just been launched and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
+const initSystemPrompt = `${identityPrompt} An app has just been launched and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
 
 To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
 
@@ -175,7 +177,7 @@ Magic Sandbox executes Apps in a sandbox. The restrictions and capabilities of t
 
 ${sandboxDocs}`;
 
-const magicSystemPrompt = `You are a user's assistant on a web app platform called Magic Sandbox. The user is interacting with an app and is asking for your help.
+const magicSystemPrompt = `${identityPrompt} The user is interacting with an app and is asking for your help.
 
 In your response, you can:
 

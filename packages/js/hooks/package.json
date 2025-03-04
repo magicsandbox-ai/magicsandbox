@@ -1,0 +1,16 @@
+{
+  "name": "@magicsandbox.ai/hooks",
+  "version": "0.1.0",
+  "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  }
+}
