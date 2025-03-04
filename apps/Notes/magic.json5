@@ -3,6 +3,7 @@
   version: "0.1.0",
   description: "Take notes, to-do lists, and more",
   dependencies: {
+    "@magicsandbox.ai/hooks": "file:../../packages/js/hooks",
     react: "^18.0.0",
     "react-dom": "^18.0.0",
     "lucide-react": "^0.408.0",
@@ -20,5 +21,4 @@
   tailwindConfig: {
     content: ["apps/Notes/**/*.js", "components/**/*.js"],
   },
-  scriptFile: "temp.js",
 }

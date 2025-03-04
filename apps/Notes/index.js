@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { usePersistentState } from "@magicsandbox.ai/hooks";
 import SideBar from "./SideBar.js";
 import Info from "./Info.js";
 import Note from "./Note.js";
@@ -7,6 +8,12 @@ import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 
 /*
+The database has keys:
+
+- nodes (object): described below
+- currentNodeId (number): the current selected node id
+- [id] (string): all other keys map note ids to that note's content
+
 nodes is an object mapping id to objects with keys:
 - id: number
 - name: string
@@ -16,14 +23,14 @@ Keys for folders:
 - childrenIds?: number[]
 
 Keys for notes:
-- content?: string
 - checked?: boolean
 - starred?: boolean
 
-the root node is a folder with id 0. it will always have at least one child
+The root node is a folder with id 0. it will always have at least one child
 
-todo context
-todo api
+Content is stored separately from nodes to prevent unnecessary rerendering and improve data saving and syncing performance
+nodesRef mirrors the nodes object and also includes content as a key for each note
+Any updates to content must also keep nodesRef in sync
 */
 
 async function init() {
@@ -42,33 +49,45 @@ async function init() {
       starred: false,
     },
   };
-  const initNodes = (await requestGetData("nodes")) || defaultNodes;
-  const initCurrentNodeId = (await requestGetData("currentNodeId")) || 1;
+  const allData = await requestGetAllData();
+  const { nodes, currentNodeId, ...contents } = allData;
+  const initNodes = nodes || defaultNodes;
+  const initCurrentNodeId = currentNodeId || 1;
+  const prevNodesRef = Object.fromEntries(
+    //get contents into form expected by updateNodesRef
+    Object.entries(contents).map(([id, content]) => [id, { content }]),
+  );
+  const initNodesRef = updateNodesRef(initNodes, prevNodesRef);
   createRoot(document.getElementById("root")).render(
-    <App initNodes={initNodes} initCurrentNodeId={initCurrentNodeId} />,
+    <App
+      initNodes={initNodes}
+      initCurrentNodeId={initCurrentNodeId}
+      initNodesRef={initNodesRef}
+    />,
   );
   return context();
 }
 
-function App({ initNodes, initCurrentNodeId }) {
-  const [nodes, setNodes] = useState(initNodes);
-  const [currentNodeId, setCurrentNodeId] = useState(initCurrentNodeId);
+function App({ initNodes, initCurrentNodeId, initNodesRef }) {
+  const [nodes, setNodes] = usePersistentState("nodes", initNodes);
+  const [currentNodeId, setCurrentNodeId] = usePersistentState(
+    "currentNodeId",
+    initCurrentNodeId,
+  );
   const [showInfo, setShowInfo] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
 
+  const nodesRef = useRef(initNodesRef);
+
   useEffect(() => {
-    requestPutData("nodes", nodes).catch(console.error);
+    nodesRef.current = updateNodesRef(nodes, nodesRef.current);
     setSearchResults(null); //no longer valid
   }, [nodes]);
 
-  useEffect(() => {
-    requestPutData("currentNodeId", currentNodeId).catch(console.error);
-  }, [currentNodeId]);
-
-  const tree = buildTree(nodes, currentNodeId);
+  const tree = buildTree(nodesRef.current, currentNodeId);
 
   let modalComponent;
   if (deleteId) {
@@ -104,12 +123,11 @@ function App({ initNodes, initCurrentNodeId }) {
           setShowSearch,
         }}
       />
-      {"content" in nodes[currentNodeId] && (
+      {!("childrenIds" in nodes[currentNodeId]) && (
         <Note
           key={currentNodeId}
-          initContent={nodes[currentNodeId].content}
-          setNodes={setNodes}
           currentNodeId={currentNodeId}
+          nodesRef={nodesRef.current}
         />
       )}
       {modalComponent}
@@ -162,6 +180,17 @@ Add a note to the specified folder. If the folder doesn't exist, it will be crea
 const api = {};
 
 export { init, context, api };
+
+function updateNodesRef(nodes, prevNodesRef) {
+  return Object.fromEntries(
+    Object.entries(nodes).map(([id, node]) => {
+      if (!node.childrenIds) {
+        return [id, { ...node, content: prevNodesRef[id].content || "" }];
+      }
+      return [id, node];
+    }),
+  );
+}
 
 /**
  * Returns an array of nodes sorted in depth first order, adding keys:

@@ -13,6 +13,9 @@
 ### Usage
 
 ```javascript
+import { usePersistentState } from "@magicsandbox.ai/hooks";
+
+// ... in your component ...
 const [myState, setMyState] = usePersistentState("myState");
 ```
 
