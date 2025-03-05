@@ -47,10 +47,24 @@ useEffect(() => {
 - `initialState` _(any)_: The initial state value to use before data is loaded from storage. If they key does not exist in storage, this value will continue to be used.
 - `options` _(object)_: Additional options. Additional keys not listed here are passed to `requestGetData` and `requestPutData`.
   - `debounceMs` _(number, default 300)_: The number of milliseconds to wait before calling `requestPutData`, improving performance when many updates are made in quick succession. Set to 0 to disable debouncing.
+  - `onError` _(function)_: A callback function that will be called when an error occurs during loading or saving state. The function receives two arguments: the error object and an object containing the arguments passed to `requestGetData` or `requestPutData`.
 
 ```javascript
 const [myState, setMyState] = usePersistentState("myState", "myDefaultValue", {
   debounceMs: 1000,
+  onError: (error, args) => {
+    if ("value" in args) {
+      console.error(
+        `usePersistentState error saving key "${args.key}":`,
+        error,
+      );
+    } else {
+      console.error(
+        `usePersistentState error loading key "${args.key}":`,
+        error,
+      );
+    }
+  },
   app: "myName.myApp",
   evictionPolicy: "fifo",
 });

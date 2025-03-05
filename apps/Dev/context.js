@@ -370,25 +370,25 @@ ${body.join("\n")}
   }
 }
 
-function context(privateApi, { files = [], code = [] } = {}) {
+function context(appState, { files = [], code = [] } = {}) {
   let selectedFiles, selectedCode;
   if (files.length > 0 || code.length > 0) {
     selectedFiles = files;
     selectedCode = code;
   } else {
-    selectedFiles = [privateApi.selectedFilename];
+    selectedFiles = [appState.selectedFilename];
     if (
       !(
-        privateApi.selectedFilename.endsWith(".js") ||
-        privateApi.selectedFilename.endsWith(".jsx")
+        appState.selectedFilename.endsWith(".js") ||
+        appState.selectedFilename.endsWith(".jsx")
       )
     ) {
       //if we don't select at least one JS file, we won't get any JS context, so add scriptFile
-      selectedFiles.push(privateApi.scriptFile);
+      selectedFiles.push(appState.scriptFile);
     }
     selectedCode = [window.getSelection().toString()];
   }
-  return new Context(privateApi.files, selectedFiles, selectedCode).get();
+  return new Context(appState.files, selectedFiles, selectedCode).get();
 }
 
 export { context };

@@ -4,7 +4,7 @@ import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
 import JSON5 from "json5";
 
-function createApp(privateApi, name, description, createString) {
+function createApp(appState, name, description, createString) {
   const version = "0.1.0";
   const app = `${name}@${version}`;
   const files = {
@@ -28,24 +28,24 @@ function createApp(privateApi, name, description, createString) {
     assistant.warn("Anything in the createString outside of a tag is ignored");
   }
   //todo this is kind of a mess - need to clean up state management (and refs)
-  privateApi.setApps((apps) => {
+  appState.setApps((apps) => {
     const newApps = [...apps];
     if (!newApps.includes(app)) {
       newApps.push(app);
     }
     return newApps;
   });
-  privateApi.setSelectedApp(app);
-  privateApi.setFiles(files);
-  privateApi.setMerges({});
-  privateApi.setSelectedFilename("magic.json");
+  appState.setSelectedApp(app);
+  appState.setFiles(files);
+  appState.setMerges({});
+  appState.setSelectedFilename("magic.json");
   requestPutData(app, files);
   requestPutData("selectedApp", app);
-  privateApi.build(JSON5.parse(files["magic.json"]));
+  appState.build(JSON5.parse(files["magic.json"]));
 }
 
-function updateFiles(privateApi, updateString) {
-  const newFiles = { ...privateApi.files };
+function updateFiles(appState, updateString) {
+  const newFiles = { ...appState.files };
   let invalidUpdateString = false;
   const updatedFiles = new Set();
   for (const { tag: filename, content: fileUpdateString } of tagParser(
@@ -64,7 +64,7 @@ function updateFiles(privateApi, updateString) {
       newFiles[filename] = fileUpdateString;
     } else {
       if (!(filename in newFiles)) {
-        assistant.warn(
+        assistant.error(
           "File not found. Can only use <find> and <replace> tags for existing files:",
           filename,
         );
@@ -81,7 +81,7 @@ function updateFiles(privateApi, updateString) {
         }
         if (tag === "find") {
           if (find) {
-            assistant.warn("Consecutive <find> tag:", content);
+            assistant.error("Consecutive <find> tag:", content);
           }
           find = content;
         } else if (tag === "replace") {
@@ -91,18 +91,18 @@ function updateFiles(privateApi, updateString) {
               content.trim(),
             );
             if (newContent === newFiles[filename]) {
-              assistant.warn("Could not find text to replace:", find);
+              assistant.error("Could not find text to replace:", find);
             } else {
               newFiles[filename] = newContent;
             }
             find = null;
           } else {
-            assistant.warn("<replace> tag without <find> tag:", content);
+            assistant.error("<replace> tag without <find> tag:", content);
           }
         }
       }
       if (find) {
-        assistant.warn("<find> tag without <replace> tag:", find);
+        assistant.error("<find> tag without <replace> tag:", find);
       }
       if (invalidFileUpdateString) {
         assistant.warn(
@@ -114,20 +114,20 @@ function updateFiles(privateApi, updateString) {
   if (invalidUpdateString) {
     assistant.warn("Anything in the updateString outside of a tag is ignored");
   }
-  privateApi.setFiles(newFiles);
+  appState.setFiles(newFiles);
   //merges are the original files (kind of poorly named), so we want to keep any outstanding original files rather than overwrite them
-  privateApi.setMerges({
+  appState.setMerges({
     ...Object.fromEntries(
-      Object.entries(privateApi.files).filter(([filename]) =>
+      Object.entries(appState.files).filter(([filename]) =>
         updatedFiles.has(filename),
       ),
     ),
-    ...privateApi.merges,
+    ...appState.merges,
   });
 }
 
-function additionalContext(privateApi, { files, code }) {
-  assistant.full(context(privateApi, { files, code }));
+function additionalContext(appState, { files, code }) {
+  assistant.full(context(appState, { files, code }));
 }
 
 function advancedDocs() {

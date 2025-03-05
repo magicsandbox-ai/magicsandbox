@@ -126,7 +126,7 @@ function App({ urlParams }) {
     );
   }
 
-  privateApi.previewRef = previewRef;
+  appState.previewRef = previewRef;
 
   return (
     <div className="flex h-screen flex-col items-center text-stone-700">
@@ -174,19 +174,19 @@ async function init() {
   );
 }
 
-const privateApi = {
+const appState = {
   previewRef: null,
 };
 
 async function context() {
   //get context from Sandbox and return it
-  const sandbox = privateApi.previewRef.current.sandboxRef.current;
+  const sandbox = appState.previewRef.current.sandboxRef.current;
   const sandboxId = sandbox.getSandboxId();
   return await sandbox.getContext(sandboxId, 10000);
 }
 
 async function messageHandler(event) {
-  if (privateApi.previewRef === null) return; //this is the app.init call which we don't want to intercept
+  if (appState.previewRef === null) return; //this is the app.init call which we don't want to intercept
   //this executes the script in the Sandbox such that the Assistant doesn't know DevLocal is in between them
   //but to do so, it relies on implementation details in sandbox.js
   //which is not ideal, but not sure how to improve it
@@ -200,7 +200,7 @@ async function messageHandler(event) {
     //this must be synchronous before any awaits in this function
     const id = event.data.id;
     delete event.data.id;
-    const sandbox = privateApi.previewRef.current.sandboxRef.current;
+    const sandbox = appState.previewRef.current.sandboxRef.current;
     const sandboxId = sandbox.getSandboxId();
     const response = await sandbox.executeScriptAndWaitForResponse({
       sandboxId,

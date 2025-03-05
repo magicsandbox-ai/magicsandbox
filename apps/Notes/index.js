@@ -6,6 +6,8 @@ import Info from "./Info.js";
 import Note from "./Note.js";
 import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
+import { context as _context } from "./context.js";
+import { addNote as _addNote } from "./api.js";
 
 /*
 The database has keys:
@@ -19,19 +21,27 @@ nodes is an object mapping id to objects with keys:
 - name: string
 
 Keys for folders:
-- collapsed?: boolean
-- childrenIds?: number[]
+- collapsed: boolean
+- childrenIds: number[]
 
 Keys for notes:
-- checked?: boolean
-- starred?: boolean
+- checked: boolean
+- starred: boolean
 
 The root node is a folder with id 0. it will always have at least one child
 
 Content is stored separately from nodes to prevent unnecessary rerendering and improve data saving and syncing performance
-nodesRef mirrors the nodes object and also includes content as a key for each note
+nodesRef mirrors the nodes object and adds the following keys for each note:
+- content: string
+- newContent: string
 Any updates to content must also keep nodesRef in sync
 */
+
+const appState = {
+  //nodesRef...or tree?
+  //currentNodeId
+  //setNewContent
+};
 
 async function init() {
   const defaultNodes = {
@@ -126,8 +136,12 @@ function App({ initNodes, initCurrentNodeId, initNodesRef }) {
       {!("childrenIds" in nodes[currentNodeId]) && (
         <Note
           key={currentNodeId}
-          currentNodeId={currentNodeId}
-          nodesRef={nodesRef.current}
+          {...{
+            appState,
+            currentNodeId,
+            setCurrentNodeId,
+            nodesRef,
+          }}
         />
       )}
       {modalComponent}
@@ -136,48 +150,14 @@ function App({ initNodes, initCurrentNodeId, initNodesRef }) {
 }
 
 function context() {
-  const contextSections = [];
-  if (api.folders) {
-    contextSections.push(`The user has the following folders:
-<folders>
-${api.folders.join("\n")}
-</folders>`);
-  }
-  if (api.currentFolder) {
-    contextSections.push(`The user currently has the following folder open:
-<currentFolder>
-${api.currentFolder}
-</currentFolder>`);
-  }
-  if (api.currentNotes) {
-    contextSections.push(`The notes in the current folder are:
-<currentNotes>
-${api.currentNotes}
-</currentNotes>`);
-  }
-
-  return `# magicsandbox.Notes
-
-This is a simple notes app where users can create and edit notes in folders.
-
-## Context
-
-${contextSections.join("\n\n")}
-
-## API
-
-### app.api.addNote(folder: string, note: string)
-
-Add a note to the specified folder. If the folder doesn't exist, it will be created.
-
-## Instructions
-
-- Only use \`app.api.addNote\` to add a note if the user specifically asked you to. Pick the most appropriate folder for the note. If none of the existing folders are appropriate, create a new folder.
-- Otherwise, answer the user's question using the current notes as context.
-`;
+  return _context(appState);
 }
 
-const api = {};
+const api = {
+  addNote(parentId, note) {
+    _addNote(appState, parentId, note);
+  },
+};
 
 export { init, context, api };
 

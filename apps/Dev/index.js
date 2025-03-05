@@ -157,7 +157,7 @@ function App() {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
     appObj = await getDefaults(appObj);
-    privateApi.scriptFile = appObj.scriptFile;
+    appState.scriptFile = appObj.scriptFile;
     //this is only used for tailwind tooltips, so skip building tailwind.config.js
     //not worth the slow build that potentially makes network requests
     setTailwindState(
@@ -441,14 +441,14 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
-  privateApi.setApps = setApps;
-  privateApi.setSelectedApp = setSelectedApp;
-  privateApi.files = files;
-  privateApi.setFiles = setFiles;
-  privateApi.setMerges = setMerges;
-  privateApi.selectedFilename = selectedFilename;
-  privateApi.setSelectedFilename = setSelectedFilename;
-  privateApi.build = build;
+  appState.setApps = setApps;
+  appState.setSelectedApp = setSelectedApp;
+  appState.files = files;
+  appState.setFiles = setFiles;
+  appState.setMerges = setMerges;
+  appState.selectedFilename = selectedFilename;
+  appState.setSelectedFilename = setSelectedFilename;
+  appState.build = build;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -556,7 +556,7 @@ function App() {
   );
 }
 
-const privateApi = {};
+const appState = {};
 
 function init() {
   createRoot(document.getElementById("root")).render(<App />);
@@ -564,18 +564,18 @@ function init() {
 }
 
 function context() {
-  return _context(privateApi);
+  return _context(appState);
 }
 
 const api = {
   createApp: (name, description, createString) => {
-    _createApp(privateApi, name, description, createString);
+    _createApp(appState, name, description, createString);
   },
   updateFiles: (updateString) => {
-    _updateFiles(privateApi, updateString);
+    _updateFiles(appState, updateString);
   },
   additionalContext: ({ files, code }) => {
-    _additionalContext(privateApi, { files, code });
+    _additionalContext(appState, { files, code });
   },
   advancedDocs: () => {
     _advancedDocs();

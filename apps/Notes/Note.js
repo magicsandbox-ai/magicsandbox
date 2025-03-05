@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
@@ -26,7 +26,7 @@ escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
 
-function Note({ currentNodeId, nodesRef }) {
+function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
   const [editorState, setEditorState] = useState(() => {
     const historyPlugin = history();
     return EditorState.create({
@@ -48,110 +48,150 @@ function Note({ currentNodeId, nodesRef }) {
   });
   const [diff, setDiff] = useState(null);
 
-  function update() {
-    if (diff) {
-      //simulate approving changes
-      const newDoc = defaultMarkdownParser.parse(diff.newContent);
-      const tr = editorState.tr.replace(
-        0,
-        editorState.doc.content.size,
-        new Slice(newDoc.content, 0, 0),
-      );
-      tr.step(new DiffStep("apply", () => setDiff(diff)));
-      setEditorState((s) => s.apply(tr));
-      setDiff(null);
-    } else {
-      const originalContent = serialize(editorState.doc);
-      const newContent = [
-        ...originalContent.split("\n\n").slice(1),
-        Date.now(),
-      ].join("\n\n");
-      const diff = diffArrays(
-        originalContent.split("\n\n"),
-        newContent.split("\n\n"),
-        { oneChangePerToken: true },
-      );
-      const diffedContent = diff
-        .map((change) => {
-          if (change.added) {
-            return `%%added%%\n\n${change.value}`;
-          } else if (change.removed) {
-            return `%%removed%%\n\n${change.value}`;
-          } else {
-            return change.value;
-          }
-        })
-        .join("\n\n");
-      const newDoc = defaultMarkdownParser.parse(diffedContent);
-      let prevNode;
-      const decorations = [];
-      const deletes = [];
-      newDoc.content.forEach((node, pos) => {
-        if (prevNode) {
-          decorations.push({
-            from: pos,
-            to: pos + node.nodeSize,
-            attrs: {
-              class: prevNode,
-            },
-          });
-          prevNode = null;
-        } else if (
-          node.textContent === "%%added%%" ||
-          node.textContent === "%%removed%%"
-        ) {
-          deletes.push({
-            from: pos,
-            to: pos + node.nodeSize,
-          });
-          if (node.textContent === "%%added%%") {
-            prevNode = "added";
-          } else {
-            prevNode = "removed";
-          }
+  useEffect(() => {
+    createDiff(
+      nodesRef.current[currentNodeId].content,
+      nodesRef.current[currentNodeId].newContent,
+    );
+  }, []);
+
+  function createDiff(originalContent, newContent) {
+    if (originalContent === newContent) return;
+    const diff = diffArrays(
+      originalContent.split("\n\n"),
+      newContent.split("\n\n"),
+      { oneChangePerToken: true },
+    );
+    const diffedContent = diff
+      .map((change) => {
+        if (change.added) {
+          return `%%added%%\n\n${change.value}`;
+        } else if (change.removed) {
+          return `%%removed%%\n\n${change.value}`;
         } else {
-          prevNode = null;
+          return change.value;
         }
-      });
-      const transform = new Transform(newDoc);
-      for (const d of deletes) {
-        transform.delete(
+      })
+      .join("\n\n");
+    const newDoc = defaultMarkdownParser.parse(diffedContent);
+    let prevNode;
+    const decorations = [];
+    const deletes = [];
+    newDoc.content.forEach((node, pos) => {
+      if (prevNode) {
+        decorations.push({
+          from: pos,
+          to: pos + node.nodeSize,
+          attrs: {
+            class: prevNode,
+          },
+        });
+        prevNode = null;
+      } else if (
+        node.textContent === "%%added%%" ||
+        node.textContent === "%%removed%%"
+      ) {
+        deletes.push({
+          from: pos,
+          to: pos + node.nodeSize,
+        });
+        if (node.textContent === "%%added%%") {
+          prevNode = "added";
+        } else {
+          prevNode = "removed";
+        }
+      } else {
+        prevNode = null;
+      }
+    });
+    const transform = new Transform(newDoc);
+    for (const d of deletes) {
+      transform.delete(
+        transform.mapping.map(d.from),
+        transform.mapping.map(d.to),
+      );
+    }
+    const decorationSet = DecorationSet.create(
+      transform.doc,
+      decorations.map((d) =>
+        Decoration.node(
           transform.mapping.map(d.from),
           transform.mapping.map(d.to),
-        );
-      }
-      const decorationSet = DecorationSet.create(
-        transform.doc,
-        decorations.map((d) =>
-          Decoration.node(
-            transform.mapping.map(d.from),
-            transform.mapping.map(d.to),
-            d.attrs,
-          ),
+          d.attrs,
         ),
-      );
-      const transaction = editorState.tr.replace(
-        0,
-        editorState.doc.content.size,
-        new Slice(transform.doc.content, 0, 0),
-      );
-      transaction.step(
-        new DiffStep("create", () =>
-          setDiff({
-            originalContent,
-            newContent,
-            decorationSet,
-          }),
-        ),
-      );
-      setEditorState((s) => s.apply(transaction));
-      setDiff({
-        originalContent,
-        newContent,
-        decorationSet,
-      });
-    }
+      ),
+    );
+    const transaction = editorState.tr.replace(
+      0,
+      editorState.doc.content.size,
+      new Slice(transform.doc.content, 0, 0),
+    );
+    transaction.step(
+      new DiffStep("create", () =>
+        setDiff({
+          originalContent,
+          newContent,
+          decorationSet,
+        }),
+      ),
+    );
+    setEditorState((s) => s.apply(transaction));
+    setDiff({
+      originalContent,
+      newContent,
+      decorationSet,
+    });
   }
+
+  // function handleDiff(approve) {
+  //   if (diff === null) return;
+  //   let content;
+  //   if (approve) {
+  //     content = diff.newContent;
+  //   } else {
+  //     content = diff.originalContent;
+  //   }
+  //   const newDoc = defaultMarkdownParser.parse(content);
+  //   const tr = editorState.tr.replace(
+  //     0,
+  //     editorState.doc.content.size,
+  //     new Slice(newDoc.content, 0, 0),
+  //   );
+  //   tr.step(new DiffStep("apply", () => setDiff(diff)));
+  //   setEditorState((s) => s.apply(tr));
+  //   setDiff(null);
+  //   updateContent(currentNodeId, content);
+  // }
+
+  function updateContent(id, content) {
+    nodesRef.current[id].content = content;
+    nodesRef.current[id].newContent = undefined;
+    if (id !== currentNodeId) {
+      setCurrentNodeId(id);
+    }
+    requestPutData(id, { content }).catch(handlePutDataError);
+  }
+
+  function updateNewContent(id, newContent) {
+    const content = nodesRef.current[id].content;
+    nodesRef.current[id].newContent = newContent;
+    if (id !== currentNodeId) {
+      setCurrentNodeId(id);
+    } else {
+      createDiff(content, newContent);
+    }
+    requestPutData(id, {
+      content,
+      newContent,
+    }).catch(handlePutDataError);
+  }
+
+  function handlePutDataError(error) {
+    console.error(error); //todo
+  }
+
+  appState.updateContent = updateContent;
+  appState.updateNewContent = updateNewContent;
 
   return (
     <ProseMirror
@@ -159,19 +199,19 @@ function Note({ currentNodeId, nodesRef }) {
       dispatchTransaction={(tr) => {
         const newState = editorState.apply(tr);
         setEditorState(newState);
-        console.log(serialize(newState.doc)); //todo save updated doc
+        updateContent(currentNodeId, serialize(newState.doc));
       }}
       decorations={() => diff?.decorationSet}
       editable={() => !diff}
     >
-      <Button onClick={update} />
       <ProseMirrorDoc />
+      {/* {diff && (
+        <div>
+          <button onClick={approveDiff}>Approve</button>
+        </div>
+      )} */}
     </ProseMirror>
   );
-}
-
-function Button({ onClick }) {
-  return <button onClick={onClick}>Click me</button>;
 }
 
 export default Note;

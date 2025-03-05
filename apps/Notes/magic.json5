@@ -11,6 +11,7 @@
     "prosemirror-markdown": "^1.13.1",
     "prosemirror-example-setup": "^1.2.3",
     diff: "^7.0.0",
+    uuid: "^11.1.0",
   },
   esbuildOptions: {
     //the dependencies for components are in node_modules

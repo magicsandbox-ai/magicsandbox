@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 function usePersistentState(key, initialState, options = {}) {
-  const { debounceMs = 300, app, evictionPolicy } = options;
+  const { debounceMs = 300, onError, app, evictionPolicy } = options;
   const [value, setValue] = useState(initialState);
   const initialized = useRef(false);
   const timeoutRef = useRef(null);
@@ -19,21 +19,36 @@ function usePersistentState(key, initialState, options = {}) {
           initialized.current = true;
         }
       } catch (error) {
-        console.error(`usePersistentState error loading key "${key}":`, error);
+        if (onError) {
+          onError(error, { key, options: { app } });
+        } else {
+          console.error(
+            `usePersistentState error loading key "${key}":`,
+            error,
+          );
+        }
       }
     }
     load();
     return () => {
       isMounted = false;
     };
-  }, [key, app]);
+  }, [key, app, onError]);
 
   useEffect(() => {
     if (!initialized.current) return;
     clearTimeout(timeoutRef.current);
     const saveValue = () => {
       requestPutData(key, value, { app, evictionPolicy }).catch((error) => {
-        console.error(`usePersistentState error saving key "${key}":`, error);
+        if (onError) {
+          onError(error, {
+            key,
+            value,
+            options: { app, evictionPolicy },
+          });
+        } else {
+          console.error(`usePersistentState error saving key "${key}":`, error);
+        }
       });
     };
     if (debounceMs) {
@@ -41,7 +56,7 @@ function usePersistentState(key, initialState, options = {}) {
     } else {
       saveValue();
     }
-  }, [key, value, app, evictionPolicy, debounceMs]);
+  }, [key, value, app, evictionPolicy, debounceMs, onError]);
 
   return [value, setValue];
 }

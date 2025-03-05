@@ -17,8 +17,8 @@ function InfoInner() {
           Starring a note by clicking the star icon next to it in the sidebar.
           Starred notes are included in the chat when:
           <ul className="ml-6 list-outside list-disc space-y-1">
-            <li>They are in the same folder as your current note</li>
-            <li>They are in any parent folder above your current note</li>
+            <li>They are in the same folder as the note you have open</li>
+            <li>They are in any parent folder above the note you have open</li>
           </ul>
         </li>
       </ol>
