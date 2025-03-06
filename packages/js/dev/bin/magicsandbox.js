@@ -95,13 +95,16 @@ program
 
 program
   .command("test")
-  .description("Run Playwright tests for a Magic App")
+  .description(
+    "Run Playwright tests for a Magic App. Additional arguments are passed to the Playwright CLI",
+  )
   .argument("<path>", "Path to App directory (relative to --dir if specified)")
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--debug", "Debug build")
   .option("-p, --port <number>", "Port to run dev server on", "3000")
   .addOption(urlOption)
-  .action(async (appPath, options) => {
+  .allowUnknownOption(true)
+  .action(async (appPath, options, command) => {
     try {
       const test = await import("@magicsandbox.ai/test");
       await test.cli(
@@ -109,6 +112,7 @@ program
         options.debug,
         options.port,
         options.url,
+        command.args.slice(1), //first arg is path, rest get passed to playwright
       );
     } catch (error) {
       if (error.code === "ERR_MODULE_NOT_FOUND") {

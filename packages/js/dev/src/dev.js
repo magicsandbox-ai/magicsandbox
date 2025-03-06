@@ -50,14 +50,14 @@ export function dev({ magicPath, debug, port, url, autoOpen = true }) {
 
     return new Promise((resolve) => {
       server.listen(port, () => {
-        console.log(
-          `Magic Sandbox dev server running at http://localhost:${port}`,
-        );
+        const devServerUrl = `http://localhost:${port}`;
+        console.log(`Magic Sandbox dev server running at ${devServerUrl}`);
         const appUrl = `${url}?_app=magicsandbox.DevLocal&devLocalPort=${port}&devLocalToken=${token}`;
         if (autoOpen) {
           console.log(`Opening ${appUrl} in your default browser...`);
           open(appUrl);
         }
+        server.devServerUrl = devServerUrl;
         server.url = appUrl;
         resolve(server);
       });

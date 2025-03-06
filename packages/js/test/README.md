@@ -39,6 +39,10 @@ This command will:
 - If you haven't already, create a playwright.config.js file in MyApp/tests for you
 - Run the tests in MyApp/tests
 
+Any additional arguments are passed to [the Playwright CLI](https://playwright.dev/docs/test-cli):
+
+`npx magicsandbox test MyApp --ui`
+
 ## Writing tests
 
 See the [Playwright docs](https://playwright.dev/docs/writing-tests) for details on writing tests.
@@ -62,12 +66,14 @@ test("example test", async ({ app }) => {
   const context = await app.evaluate(() => app.context()); //https://playwright.dev/docs/api/class-frame#frame-evaluate
   expect(context).toEqual("This is the context");
   await app.evaluate(() => {
-    const text = app.text;
+    const text = app.api.text;
     app.api.setText(text + " Goodbye!");
   });
   await expect(app.getByText("Button clicked! Goodbye!")).toBeVisible();
 });
 ```
+
+**Warning**:
 
 The `app` fixture calls `app.init` for you by default. If you want to test `init`, disable this behavior like so:
 

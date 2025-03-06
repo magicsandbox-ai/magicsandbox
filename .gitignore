@@ -7,3 +7,4 @@ packages/js/tailwind-browser/dist/index.js
 apps/Docs/dist/*
 apps/Docs/index.md
 apps/About/dist/*
+**/test-results/

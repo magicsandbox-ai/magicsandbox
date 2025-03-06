@@ -1,7 +1,7 @@
 import { test, expect } from "@magicsandbox.ai/test";
 
 /*
-To test in development (if you are not sure whether this applies to you, ignore it):
+todo delete or change this command:
 npx magicsandbox test -p 3002 --url http://localhost:3000 packages/js/test/ExampleApp
 */
 
@@ -12,7 +12,7 @@ test("example test", async ({ app }) => {
   const context = await app.evaluate(() => app.context());
   expect(context).toEqual("This is the context");
   await app.evaluate(() => {
-    const text = app.text;
+    const text = app.api.text;
     app.api.setText(text + " Goodbye!");
   });
   await expect(app.getByText("Button clicked! Goodbye!")).toBeVisible();

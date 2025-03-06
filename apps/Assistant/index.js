@@ -77,11 +77,12 @@ function App({ user, urlParams }) {
 
   useEffect(() => {
     async function init() {
-      const appData = await requestGetData("appData", {
+      let appData = await requestGetData("appData", {
         app: "magicsandbox.Assistant",
       });
-      appDataRef.current = appData || {};
-      setAppData(appData || {});
+      appData = appData || {};
+      appDataRef.current = appData;
+      setAppData(appData);
       const model = await requestGetData("selectedModel", {
         app: "magicsandbox.Assistant",
       });
@@ -142,7 +143,7 @@ function App({ user, urlParams }) {
         if (messages.length > 0) {
           const message = messages.join("\n");
           setConfirm({
-            header: `Open App ${app}?`,
+            header: `Open App ${app.app}?`,
             message,
             callback: (response) => {
               setConfirm(null);
