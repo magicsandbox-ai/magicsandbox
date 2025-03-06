@@ -2,7 +2,7 @@ import { describe, expect, test } from "@jest/globals";
 import { getHeadings } from "../index.js";
 
 /*
-npm run test -- packages/js/docs
+npm run jest -- packages/js/docs
 */
 
 const docs = `# Documentation

@@ -33,6 +33,7 @@ async function installDependencies(magicPath, magicObj, packages) {
       command += ` ${packages.join(" ")}`;
     }
     execSync(command, { cwd: magicPath });
+    execSync("npm prune", { cwd: magicPath });
     let pjson = await fsPromises.readFile(
       path.join(magicPath, "package.json"),
       "utf8",

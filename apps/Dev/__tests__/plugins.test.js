@@ -8,7 +8,7 @@ import {
 } from "../plugins.js";
 
 /*
-npm run test -- apps/Dev
+npm run jest -- apps/Dev
 
 notes:
 - note that transformImports updates pkgImports as a side effect, so the order of the tests is important

@@ -3,7 +3,7 @@ import { tagStreamParser, tagParser } from "../index.js";
 import { createStream, collectStream } from "./testUtils.js";
 
 /*
-npm run test -- packages/js/streaming
+npm run jest -- packages/js/streaming
 */
 
 describe("tagStreamParser", () => {

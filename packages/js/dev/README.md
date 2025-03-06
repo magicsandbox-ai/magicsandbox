@@ -113,3 +113,7 @@ This will save three files in the same directory as your app:
 - `_debug_metafile.txt`: The output of [esbuild.analyzeMetafile](https://esbuild.github.io/api/#analyze)
 
 You may want to add `**/_debug_*` to your `.gitignore` file.
+
+## Testing
+
+Consider using [@magicsandbox.ai/test](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/test) to test your App.

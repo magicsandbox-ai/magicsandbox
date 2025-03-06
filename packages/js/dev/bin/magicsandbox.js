@@ -93,6 +93,35 @@ program
     }
   });
 
+program
+  .command("test")
+  .description("Run Playwright tests for a Magic App")
+  .argument("<path>", "Path to App directory (relative to --dir if specified)")
+  .option("-d, --dir <directory>", "Base directory", process.cwd())
+  .option("--debug", "Debug build")
+  .option("-p, --port <number>", "Port to run dev server on", "3000")
+  .addOption(urlOption)
+  .action(async (appPath, options) => {
+    try {
+      const test = await import("@magicsandbox.ai/test");
+      await test.cli(
+        handlePath(appPath, options.dir),
+        options.debug,
+        options.port,
+        options.url,
+      );
+    } catch (error) {
+      if (error.code === "ERR_MODULE_NOT_FOUND") {
+        console.error(
+          "To use the test command, install @magicsandbox.ai/test:",
+        );
+        console.error(`npm install "@magicsandbox.ai/test"`);
+        process.exit(1);
+      }
+      throw error;
+    }
+  });
+
 program.parse();
 
 function handlePath(appPath, dir) {

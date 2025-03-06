@@ -6,7 +6,7 @@ import {
 import { createStream } from "./testUtils.js";
 
 /*
-npm run test -- packages/js/streaming
+npm run jest -- packages/js/streaming
 */
 
 function encode(chunk) {

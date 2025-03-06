@@ -12,6 +12,7 @@ import {
   Check,
   Star,
 } from "lucide-react";
+import { v4 as uuid } from "uuid";
 
 /*
 todo drag and drop?

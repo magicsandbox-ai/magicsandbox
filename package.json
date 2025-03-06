@@ -7,6 +7,7 @@
     "@eslint/js": "^9.17.0",
     "@magicsandbox.ai/build-docs": "file:packages/js/build-docs",
     "@magicsandbox.ai/dev": "file:packages/js/dev",
+    "@magicsandbox.ai/test": "file:packages/js/test",
     "dotenv": "^16.4.7",
     "esbuild": "0.23.0",
     "eslint": "^9.17.0",
@@ -22,12 +23,14 @@
   "scripts": {
     "init": "magicsandbox init -d apps",
     "dev": "magicsandbox dev -d apps -p 3002 --url http://localhost:3000",
+    "test": "magicsandbox test -d apps -p 3002 --url http://localhost:3000",
     "publish-function": "magicsandbox publish -d functions --url http://localhost:3000",
     "publish": "magicsandbox publish -d apps --url http://localhost:3000",
     "dev:prod": "magicsandbox dev -d apps",
+    "test:prod": "magicsandbox test -d apps",
     "publish-function:prod": "magicsandbox publish -d functions",
     "publish:prod": "magicsandbox publish -d apps",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "pytest": "pipenv run pytest"
   },
   "jest": {
