@@ -37,12 +37,12 @@ program
   .option("-p, --port <number>", "Port to run dev server on", "3000")
   .addOption(urlOption)
   .action((appPath, options) => {
-    dev(
-      handlePath(appPath, options.dir),
-      options.debug,
-      parseInt(options.port),
-      options.url,
-    );
+    dev({
+      magicPath: handlePath(appPath, options.dir),
+      debug: options.debug,
+      port: parseInt(options.port),
+      url: options.url,
+    });
   });
 
 program

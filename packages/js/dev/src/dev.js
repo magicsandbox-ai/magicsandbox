@@ -3,7 +3,7 @@ import http from "http";
 import open from "open";
 import crypto from "crypto";
 
-export function dev(magicPath, debug, port, url) {
+export function dev({ magicPath, debug, port, url, autoOpen = true }) {
   try {
     const token = crypto.randomUUID();
 
@@ -48,16 +48,20 @@ export function dev(magicPath, debug, port, url) {
       }
     });
 
-    server.listen(port, () => {
-      console.log(
-        `Magic Sandbox dev server running at http://localhost:${port}`,
-      );
-      const appUrl = `${url}?_app=magicsandbox.DevLocal&port=${port}&token=${token}`;
-      console.log(`Opening ${appUrl} in your default browser...`);
-      open(appUrl);
+    return new Promise((resolve) => {
+      server.listen(port, () => {
+        console.log(
+          `Magic Sandbox dev server running at http://localhost:${port}`,
+        );
+        const appUrl = `${url}?_app=magicsandbox.DevLocal&devLocalPort=${port}&devLocalToken=${token}`;
+        if (autoOpen) {
+          console.log(`Opening ${appUrl} in your default browser...`);
+          open(appUrl);
+        }
+        server.url = appUrl;
+        resolve(server);
+      });
     });
-
-    return server;
   } catch (error) {
     console.error("Failed to start dev server:", error);
     process.exit(1);

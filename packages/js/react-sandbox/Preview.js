@@ -54,7 +54,7 @@ const Preview = forwardRef(function Preview(
     sandboxRef.current.reload();
   }
 
-  async function update(sandboxId, appObj, timeout) {
+  async function update(sandboxId, appObj, timeout, init = true) {
     appObjRef.current = appObj;
     sandboxRef.current.postMessage(sandboxId, {
       html: appObj.html,
@@ -77,12 +77,14 @@ const Preview = forwardRef(function Preview(
         script: appObj.script,
       });
     }
-    sandboxRef.current
-      .getInit({
-        sandboxId,
-        timeout: 1000,
-      })
-      .catch(() => {}); //ignore
+    if (init) {
+      sandboxRef.current
+        .getInit({
+          sandboxId,
+          timeout: 1000,
+        })
+        .catch(() => {}); //ignore
+    }
     setState("ready");
     return { logs };
   }

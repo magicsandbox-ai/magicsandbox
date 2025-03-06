@@ -22,19 +22,25 @@ function App({ urlParams }) {
 
   const previewRef = useRef(null);
   const toastsRef = useRef(null);
-  const portRef = useRef(null);
-  const tokenRef = useRef(null);
+  const urlParamsRef = useRef({});
 
   useEffect(() => {
     async function init() {
       try {
-        const { port, token } = urlParams;
+        const {
+          devLocalPort: port,
+          devLocalToken: token,
+          devLocalAutoInit: autoInit,
+        } = urlParams;
         if (!port || !token) {
           setState("error");
           return;
         }
-        portRef.current = port;
-        tokenRef.current = token;
+        urlParamsRef.current = {
+          port,
+          token,
+          autoInit: autoInit === "false" ? false : true,
+        };
         await previewApp();
       } catch (error) {
         console.error(error);
@@ -48,11 +54,14 @@ function App({ urlParams }) {
     const sandboxId = previewRef.current.getSandboxId();
     let response;
     try {
-      response = await requestFetch(`http://localhost:${portRef.current}`, {
-        headers: {
-          "x-token": tokenRef.current,
+      response = await requestFetch(
+        `http://localhost:${urlParamsRef.current.port}`,
+        {
+          headers: {
+            "x-token": urlParamsRef.current.token,
+          },
         },
-      });
+      );
     } catch (error) {
       console.error(error);
       throw new Error("Unexpected error. Is your development server running?");
@@ -62,7 +71,12 @@ function App({ urlParams }) {
     }
     const appObj = response.body;
     if (update) {
-      previewRef.current.update(sandboxId, appObj);
+      previewRef.current.update(
+        sandboxId,
+        appObj,
+        undefined,
+        urlParamsRef.current.autoInit,
+      );
     }
     return appObj;
   }

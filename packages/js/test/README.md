@@ -32,6 +32,13 @@ Then run:
 
 `npx magicsandbox test MyApp`
 
+This command will:
+
+- Run `npx playwright install` to ensure the Playwright browsers used for testing are installed and updated
+- Start the `@magicsandbox.ai/dev` development server for MyApp
+- If you haven't already, create a playwright.config.js file in MyApp/tests for you
+- Run the tests in MyApp/tests
+
 ## Writing tests
 
 See the [Playwright docs](https://playwright.dev/docs/writing-tests) for details on writing tests.
@@ -41,9 +48,7 @@ See the [Playwright docs](https://playwright.dev/docs/writing-tests) for details
 - Handling authentication using your API key
 - Adding an `app` fixture.
 
-Your App executes in a (nested) iframe, so by using the `app` fixture, you don't have to worry about selecting the correct element.
-
-`app` is a Playwright [Frame](https://playwright.dev/docs/api/class-frame) object with an additional `execute` method that you can use to test your App's `init`, `context`, and `api`. `execute` accepts a single string which will be used as an async function's body, so you can run multiple lines, use `await`, and return values.
+Your App executes in a (nested) iframe, so by using the `app` fixture, you don't have to worry about selecting the correct element. `app` is a Playwright [Frame](https://playwright.dev/docs/api/class-frame) object.
 
 Here's an example test:
 
@@ -54,12 +59,12 @@ test("example test", async ({ app }) => {
   await expect(app.getByText("Hello, world!")).toBeVisible();
   await app.getByRole("button", { name: "Click me" }).click();
   await expect(app.getByText("Button clicked!")).toBeVisible();
-  const context = await app.execute(`return app.context()`);
+  const context = await app.evaluate(() => app.context()); //https://playwright.dev/docs/api/class-frame#frame-evaluate
   expect(context).toEqual("This is the context");
-  await app.execute(`
+  await app.evaluate(() => {
     const text = app.text;
     app.api.setText(text + " Goodbye!");
-  `);
+  });
   await expect(app.getByText("Button clicked! Goodbye!")).toBeVisible();
 });
 ```
@@ -71,7 +76,7 @@ test.describe("run tests with autoInit disabled", () => {
   test.use({ appOptions: { autoInit: false } });
   test("test init", async ({ app }) => {
     await expect(app.getByText("Hello, world!")).not.toBeVisible();
-    const init = await app.execute(`return app.init()`);
+    const init = await app.evaluate(() => app.init());
     expect(init).toEqual("This is the init");
     await expect(app.getByText("Hello, world!")).toBeVisible();
   });
@@ -79,11 +84,3 @@ test.describe("run tests with autoInit disabled", () => {
 ```
 
 See the ExampleApp folder for an App that passes the above tests.
-
-## Todos
-
-configuration - add a key to magic.json? or playwright.config.js?
-configuring url params?
-how to implement disabling autoInit?
-enable auth with api key
-how to reuse dev server? need to await it?
