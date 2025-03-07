@@ -107,8 +107,18 @@ function App({ initcurrentNodeUuid, initNodes }) {
   const nodesRef = useRef(initNodes);
   const toastsRef = useRef(null);
 
-  function updateTree() {
+  async function updateTree(updatedUuids) {
     setTree(createTree(nodesRef.current, currentNodeUuid));
+    try {
+      await Promise.all(
+        updatedUuids.map((uuid) =>
+          requestPutData(uuid, nodesRef.current[uuid]),
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+      toastsRef.current.addToast("Error saving notes", "error");
+    }
   }
 
   let modalComponent;
@@ -129,6 +139,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
       <Search
         {...{
           tree,
+          nodesRef,
           setShowSearch,
           searchQuery,
           setSearchQuery,
@@ -147,6 +158,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
       <SideBar
         {...{
           tree,
+          nodesRef,
           updateTree,
           currentNodeUuid,
           setcurrentNodeUuid,

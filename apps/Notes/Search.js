@@ -1,39 +1,70 @@
 import React from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
 
-function SearchInner({
+function Search({
   tree,
+  nodesRef,
+  setShowSearch,
   searchQuery,
   setSearchQuery,
   searchResults,
   setSearchResults,
-  setcurrentNodeUuid,
+  setCurrentNodeUuid,
+}) {
+  return (
+    <ModalOverlay
+      modal={
+        <SearchInner
+          tree={tree}
+          nodesRef={nodesRef}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchResults={searchResults}
+          setSearchResults={setSearchResults}
+          setCurrentNodeUuid={setCurrentNodeUuid}
+        />
+      }
+      onClose={() => {
+        setShowSearch(false);
+      }}
+      fullScreen={true}
+    />
+  );
+}
+
+function SearchInner({
+  tree,
+  nodesRef,
+  searchQuery,
+  setSearchQuery,
+  searchResults,
+  setSearchResults,
+  setCurrentNodeUuid,
 }) {
   function handleSearch(e) {
     e.preventDefault();
     const searchTerms = searchQuery.toLowerCase().split(" ");
-    setSearchResults(
-      tree.filter((node) => {
-        if (!node.content) return false; // Only search notes, not folders
-        const searchText = `${node.content} ${node.name}`.toLowerCase();
-        const matches = searchTerms
-          .map((term) => {
-            const indexes = [];
-            let pos = searchText.indexOf(term);
-            while (pos !== -1 && indexes.length < 3) {
-              indexes.push(pos);
-              pos = searchText.indexOf(term, pos + 1);
-            }
-            return indexes.length > 0 ? { term, indexes } : null;
-          })
-          .filter(Boolean);
-        if (matches.length === searchTerms.length) {
-          node.matches = matches; // Attach match info to node
-          return true;
-        }
-        return false;
-      }),
-    );
+    const newSearchResults = [];
+    Object.values(tree).forEach((node) => {
+      const content = nodesRef.current[node.uuid].content;
+      if (!content) return; // Only search notes, not folders
+      const searchText = `${content} ${node.name}`.toLowerCase();
+      const matches = searchTerms
+        .map((term) => {
+          const indexes = [];
+          let pos = searchText.indexOf(term);
+          while (pos !== -1 && indexes.length < 3) {
+            indexes.push(pos);
+            pos = searchText.indexOf(term, pos + 1);
+          }
+          return indexes.length > 0 ? { term, indexes } : null;
+        })
+        .filter(Boolean);
+      if (matches.length === searchTerms.length) {
+        newSearchResults.push({ ...node, matches, content });
+      }
+    });
+    setSearchResults(newSearchResults);
   }
 
   return (
@@ -63,9 +94,9 @@ function SearchInner({
           ) : (
             searchResults.map((note) => (
               <SearchResult
-                key={note.id}
+                key={note.uuid}
                 note={note}
-                setcurrentNodeUuid={setcurrentNodeUuid}
+                setCurrentNodeUuid={setCurrentNodeUuid}
               />
             ))
           )}
@@ -75,8 +106,11 @@ function SearchInner({
   );
 }
 
-function SearchResult({ note, setcurrentNodeUuid }) {
-  const path = [...note.parentNames, note.name].join(" > ");
+function SearchResult({ note, setCurrentNodeUuid }) {
+  const path = [
+    ...note.ancestorNames.slice(1), //exclude root
+    note.name,
+  ].join("/");
 
   const matches = [];
   for (const { term, indexes } of note.matches) {
@@ -116,40 +150,11 @@ function SearchResult({ note, setcurrentNodeUuid }) {
   return (
     <div
       className="mb-4 rounded border p-3 hover:bg-gray-50"
-      onClick={() => setcurrentNodeUuid(note.id)}
+      onClick={() => setCurrentNodeUuid(note.uuid)}
     >
       <div className="mb-1 font-medium">{path}</div>
       <div className="line-clamp-2 text-sm text-gray-600">{segments}</div>
     </div>
-  );
-}
-
-function Search({
-  tree,
-  setShowSearch,
-  searchQuery,
-  setSearchQuery,
-  searchResults,
-  setSearchResults,
-  setcurrentNodeUuid,
-}) {
-  return (
-    <ModalOverlay
-      modal={
-        <SearchInner
-          tree={tree}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchResults={searchResults}
-          setSearchResults={setSearchResults}
-          setcurrentNodeUuid={setcurrentNodeUuid}
-        />
-      }
-      onClose={() => {
-        setShowSearch(false);
-      }}
-      fullScreen={true}
-    />
   );
 }
 

@@ -20,11 +20,12 @@ todo drag and drop?
 
 function SideBar({
   tree,
-  setNodes,
+  nodesRef,
+  updateTree,
   currentNodeUuid,
   setcurrentNodeUuid,
   setShowInfo,
-  setDeleteId,
+  setDeleteUuid,
   setShowSearch,
 }) {
   const [show, setShow] = useState(window.innerWidth > 768);
@@ -33,40 +34,35 @@ function SideBar({
     setShowSearch(true);
   }
 
-  function handleDelete(id) {
-    setDeleteId(id);
+  function handleDelete(uuid) {
+    setDeleteUuid(uuid);
   }
 
-  function handleAdd(parentId, type) {
-    setNodes((nodes) => {
-      const newId = Date.now();
-      const newParentNode = {
-        ...nodes[parentId],
-        childrenIds: [...nodes[parentId].childrenIds, newId],
+  function handleAdd(parent, type) {
+    const olderSibling =
+      tree[parent.childrenIds[parent.childrenIds.length - 1]];
+    const order = olderSibling.order + 1000;
+    const uuid = generateUuid();
+    if (type === "folder") {
+      nodesRef.current[uuid] = {
+        uuid,
+        name: "New Folder",
+        parentUuid: parent.uuid,
+        order,
+        collapsed: false,
       };
-      let newNode;
-      if (type === "folder") {
-        newNode = {
-          id: newId,
-          name: "New Folder",
-          collapsed: false,
-          childrenIds: [],
-        };
-      } else {
-        newNode = {
-          id: newId,
-          name: "New Note",
-          content: "",
-          checked: false,
-          starred: false,
-        };
-      }
-      return {
-        ...nodes,
-        [newParentNode.id]: newParentNode,
-        [newNode.id]: newNode,
+    } else {
+      nodesRef.current[uuid] = {
+        uuid,
+        name: "New Note",
+        parentUuid: parent.uuid,
+        order,
+        content: "",
+        checked: false,
+        starred: false,
       };
-    });
+    }
+    updateTree([uuid]);
   }
 
   if (show) {
@@ -85,20 +81,21 @@ function SideBar({
           <button onClick={() => handleDelete(currentNodeUuid)}>
             <Trash2 />
           </button>
-          <button onClick={() => handleAdd(0, "folder")}>
+          <button onClick={() => handleAdd(tree[0], "folder")}>
             <FolderPlus />
           </button>
-          <button onClick={() => handleAdd(0, "note")}>
+          <button onClick={() => handleAdd(tree[0], "note")}>
             <Plus />
           </button>
         </div>
         <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
           {tree.map((node) => (
             <Node
-              key={node.id}
+              key={node.uuid}
               {...{
                 node,
-                setNodes,
+                nodesRef,
+                updateTree,
                 currentNodeUuid,
                 setcurrentNodeUuid,
                 handleAdd,
@@ -122,7 +119,8 @@ function SideBar({
 
 function Node({
   node,
-  setNodes,
+  nodesRef,
+  updateTree,
   currentNodeUuid,
   setcurrentNodeUuid,
   handleAdd,
@@ -133,13 +131,8 @@ function Node({
   function handleRename(e) {
     e.preventDefault();
     if (renameValue.trim() && renameValue !== node.name) {
-      setNodes((nodes) => {
-        const newNode = {
-          ...nodes[node.id],
-          name: renameValue.trim(),
-        };
-        return { ...nodes, [node.id]: newNode };
-      });
+      nodesRef.current[node.uuid].name = renameValue.trim();
+      updateTree([node.uuid]);
     }
     setRenameValue(null);
   }
@@ -182,7 +175,8 @@ function Node({
           iconClassName,
           hoverButtonClassName,
           node,
-          setNodes,
+          nodesRef,
+          updateTree,
           setcurrentNodeUuid,
           setRenameValue,
           handleAdd,
@@ -197,7 +191,8 @@ function Node({
           iconClassName,
           hoverButtonClassName,
           node,
-          setNodes,
+          nodesRef,
+          updateTree,
           setcurrentNodeUuid,
           setRenameValue,
         }}
@@ -207,32 +202,54 @@ function Node({
 
   function handleClick(event) {
     if (event.ctrlKey) {
-      setNodes((nodes) => {
-        const ids = [];
-        let newChecked = false; //if all notes are checked, we'll uncheck
-        const nodesToVisit = [node.id];
-        while (nodesToVisit.length > 0) {
-          const currentId = nodesToVisit.pop();
-          ids.push(currentId);
-          const currentNode = nodes[currentId];
-          if (currentNode.childrenIds) {
-            nodesToVisit.push(...currentNode.childrenIds);
-          } else {
-            if (!currentNode.checked) {
-              newChecked = true; //but if a single note is unchecked, we'll check
-            }
+      const ids = [];
+      let newChecked = false; //if all notes are checked, we'll uncheck
+      const nodesToVisit = [node.id];
+      while (nodesToVisit.length > 0) {
+        const currentId = nodesToVisit.pop();
+        ids.push(currentId);
+        const currentNode = nodes[currentId];
+        if (currentNode.childrenIds) {
+          nodesToVisit.push(...currentNode.childrenIds);
+        } else {
+          if (!currentNode.checked) {
+            newChecked = true; //but if a single note is unchecked, we'll check
           }
         }
-        const newNodes = {};
-        for (const id of ids) {
-          if (nodes[id].childrenIds) {
-            newNodes[id] = { ...nodes[id], collapsed: false };
-          } else {
-            newNodes[id] = { ...nodes[id], checked: newChecked };
-          }
+      }
+      for (const id of ids) {
+        if (nodes[id].childrenIds) {
+          newNodes[id] = { ...nodes[id], collapsed: false };
+        } else {
+          newNodes[id] = { ...nodes[id], checked: newChecked };
         }
-        return { ...nodes, ...newNodes };
-      });
+      }
+      // setNodes((nodes) => {
+      //   const ids = [];
+      //   let newChecked = false; //if all notes are checked, we'll uncheck
+      //   const nodesToVisit = [node.id];
+      //   while (nodesToVisit.length > 0) {
+      //     const currentId = nodesToVisit.pop();
+      //     ids.push(currentId);
+      //     const currentNode = nodes[currentId];
+      //     if (currentNode.childrenIds) {
+      //       nodesToVisit.push(...currentNode.childrenIds);
+      //     } else {
+      //       if (!currentNode.checked) {
+      //         newChecked = true; //but if a single note is unchecked, we'll check
+      //       }
+      //     }
+      //   }
+      //   const newNodes = {};
+      //   for (const id of ids) {
+      //     if (nodes[id].childrenIds) {
+      //       newNodes[id] = { ...nodes[id], collapsed: false };
+      //     } else {
+      //       newNodes[id] = { ...nodes[id], checked: newChecked };
+      //     }
+      //   }
+      //   return { ...nodes, ...newNodes };
+      // });
     }
   }
 
@@ -260,7 +277,8 @@ function Folder({
   iconClassName,
   hoverButtonClassName,
   node,
-  setNodes,
+  nodesRef,
+  updateTree,
   setcurrentNodeUuid,
   setRenameValue,
   handleAdd,
@@ -290,13 +308,13 @@ function Folder({
       </div>
       <button
         className={hoverButtonClassName}
-        onClick={() => handleAdd(node.id, "folder")}
+        onClick={() => handleAdd(node, "folder")}
       >
         <FolderPlus className={iconClassName} />
       </button>
       <button
         className={hoverButtonClassName}
-        onClick={() => handleAdd(node.id, "note")}
+        onClick={() => handleAdd(node, "note")}
       >
         <Plus className={iconClassName} />
       </button>
@@ -309,7 +327,8 @@ function Note({
   iconClassName,
   hoverButtonClassName,
   node,
-  setNodes,
+  nodesRef,
+  updateTree,
   setcurrentNodeUuid,
   setRenameValue,
 }) {

@@ -4,11 +4,11 @@ import Confirm from "@components/Confirm.js";
 function DeleteConfirm({
   deleteUuid,
   setDeleteUuid,
-  nodes,
-  setNodes,
+  nodesRef,
+  updateTree,
   toastsRef,
 }) {
-  const deleteNode = nodes[deleteUuid];
+  const deleteNode = nodesRef.current[deleteUuid];
   let header;
   if (deleteNode.childrenUuids) {
     header = `Are you sure you want to delete folder "${deleteNode.name}" and all its contents?`;
@@ -26,24 +26,21 @@ function DeleteConfirm({
       className: "bg-red-500 hover:bg-red-700 text-white w-32",
       onClick: async () => {
         try {
-          const nodesToDelete = new Set();
+          const nodesToDelete = [];
           const nodesToVisit = [deleteUuid];
           while (nodesToVisit.length > 0) {
             const currentUuid = nodesToVisit.pop();
-            nodesToDelete.add(currentUuid);
-            nodesToVisit.push(...nodes[currentUuid].childrenUuids);
+            nodesToDelete.push(currentUuid);
+            nodesToVisit.push(...nodesRef.current[currentUuid].childrenUuids);
           }
-          setNodes((nodes) => {
-            Object.fromEntries(
-              Object.entries(nodes).filter(
-                ([uuid]) => !nodesToDelete.has(uuid),
-              ),
-            );
+          nodesToDelete.forEach((uuid) => {
+            delete nodesRef.current[uuid];
           });
-          setDeleteUuid(null);
+          updateTree(); //don't pass in updatedUuids because we want to delete, not update
           await Promise.all(
             nodesToDelete.map((uuid) => requestDeleteData(uuid)),
           );
+          setDeleteUuid(null);
         } catch (error) {
           console.error(error);
           toastsRef.current.addToast("Error deleting notes", "error");
