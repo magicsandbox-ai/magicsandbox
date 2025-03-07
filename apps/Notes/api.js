@@ -1,8 +1,8 @@
-import { v4 as uuid } from "uuid";
+import { generateUuid } from "./utils.js";
 
 function addNote(appState, parentId, name, content, folders) {
   const finalParentId = _getAndCreateFolders(appState, parentId, folders);
-  const newNoteId = uuid();
+  const newNoteId = generateUuid();
   const newNote = {
     id: newNoteId,
     name,
@@ -105,7 +105,7 @@ function _getAndCreateFolders(appState, parentId, folders) {
   }
   if (folders.length > 0) {
     const newFolders = [];
-    const newFolderIds = folders.map(() => uuid());
+    const newFolderIds = folders.map(() => generateUuid());
     for (let i = 0; i < folders.length; i++) {
       const newFolder = {
         id: newFolderIds[i],

@@ -12,7 +12,7 @@ import {
   Check,
   Star,
 } from "lucide-react";
-import { v4 as uuid } from "uuid";
+import { generateUuid } from "./utils.js";
 
 /*
 todo drag and drop?
@@ -21,8 +21,8 @@ todo drag and drop?
 function SideBar({
   tree,
   setNodes,
-  currentNodeId,
-  setCurrentNodeId,
+  currentNodeUuid,
+  setcurrentNodeUuid,
   setShowInfo,
   setDeleteId,
   setShowSearch,
@@ -82,7 +82,7 @@ function SideBar({
           <button onClick={() => handleSearch()}>
             <Search />
           </button>
-          <button onClick={() => handleDelete(currentNodeId)}>
+          <button onClick={() => handleDelete(currentNodeUuid)}>
             <Trash2 />
           </button>
           <button onClick={() => handleAdd(0, "folder")}>
@@ -99,8 +99,8 @@ function SideBar({
               {...{
                 node,
                 setNodes,
-                currentNodeId,
-                setCurrentNodeId,
+                currentNodeUuid,
+                setcurrentNodeUuid,
                 handleAdd,
                 handleDelete,
               }}
@@ -123,8 +123,8 @@ function SideBar({
 function Node({
   node,
   setNodes,
-  currentNodeId,
-  setCurrentNodeId,
+  currentNodeUuid,
+  setcurrentNodeUuid,
   handleAdd,
   handleDelete,
 }) {
@@ -150,7 +150,7 @@ function Node({
   const nodeClassName =
     baseClassName +
     `group cursor-pointer flex items-center gap-2 hover:bg-stone-300 ${
-      currentNodeId === node.id
+      currentNodeUuid === node.id
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;
@@ -183,7 +183,7 @@ function Node({
           hoverButtonClassName,
           node,
           setNodes,
-          setCurrentNodeId,
+          setcurrentNodeUuid,
           setRenameValue,
           handleAdd,
         }}
@@ -198,7 +198,7 @@ function Node({
           hoverButtonClassName,
           node,
           setNodes,
-          setCurrentNodeId,
+          setcurrentNodeUuid,
           setRenameValue,
         }}
       />
@@ -261,7 +261,7 @@ function Folder({
   hoverButtonClassName,
   node,
   setNodes,
-  setCurrentNodeId,
+  setcurrentNodeUuid,
   setRenameValue,
   handleAdd,
 }) {
@@ -283,7 +283,7 @@ function Folder({
       </button>
       <div
         className={nameClassName}
-        onClick={() => setCurrentNodeId(node.id)}
+        onClick={() => setcurrentNodeUuid(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
@@ -310,7 +310,7 @@ function Note({
   hoverButtonClassName,
   node,
   setNodes,
-  setCurrentNodeId,
+  setcurrentNodeUuid,
   setRenameValue,
 }) {
   function handleCheck() {
@@ -341,7 +341,7 @@ function Note({
       </button>
       <div
         className={`${nameClassName} ${node.inContext ? "font-bold" : ""}`}
-        onClick={() => setCurrentNodeId(node.id)}
+        onClick={() => setcurrentNodeUuid(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}

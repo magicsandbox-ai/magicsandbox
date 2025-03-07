@@ -7,7 +7,7 @@ function SearchInner({
   setSearchQuery,
   searchResults,
   setSearchResults,
-  setCurrentNodeId,
+  setcurrentNodeUuid,
 }) {
   function handleSearch(e) {
     e.preventDefault();
@@ -65,7 +65,7 @@ function SearchInner({
               <SearchResult
                 key={note.id}
                 note={note}
-                setCurrentNodeId={setCurrentNodeId}
+                setcurrentNodeUuid={setcurrentNodeUuid}
               />
             ))
           )}
@@ -75,7 +75,7 @@ function SearchInner({
   );
 }
 
-function SearchResult({ note, setCurrentNodeId }) {
+function SearchResult({ note, setcurrentNodeUuid }) {
   const path = [...note.parentNames, note.name].join(" > ");
 
   const matches = [];
@@ -116,7 +116,7 @@ function SearchResult({ note, setCurrentNodeId }) {
   return (
     <div
       className="mb-4 rounded border p-3 hover:bg-gray-50"
-      onClick={() => setCurrentNodeId(note.id)}
+      onClick={() => setcurrentNodeUuid(note.id)}
     >
       <div className="mb-1 font-medium">{path}</div>
       <div className="line-clamp-2 text-sm text-gray-600">{segments}</div>
@@ -131,7 +131,7 @@ function Search({
   setSearchQuery,
   searchResults,
   setSearchResults,
-  setCurrentNodeId,
+  setcurrentNodeUuid,
 }) {
   return (
     <ModalOverlay
@@ -142,7 +142,7 @@ function Search({
           setSearchQuery={setSearchQuery}
           searchResults={searchResults}
           setSearchResults={setSearchResults}
-          setCurrentNodeId={setCurrentNodeId}
+          setcurrentNodeUuid={setcurrentNodeUuid}
         />
       }
       onClose={() => {

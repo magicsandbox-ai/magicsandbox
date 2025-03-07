@@ -8,6 +8,8 @@ import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 import { context as _context } from "./context.js";
 import { addNote as _addNote } from "./api.js";
+import { generateUuid } from "./utils.js";
+import { updateTreeRef } from "./updateTreeRef.js";
 
 /*
 The database has keys:
@@ -19,7 +21,7 @@ The database has keys:
   - stateDetails? (string | null)
   For folders:
   - collapsed (boolean)
-  - childrenIds (number[])
+  - childrenUuids (string[])
   For notes:
   - checked (boolean)
   - starred (boolean)
@@ -36,10 +38,11 @@ Notes:
 - prevContent is used for display assistant changes to content (edits)
 
 treeRef is a modified view of nodes that maps ids to node objects and adds keys:
+- id (number)
 - depth (number)
 - parentNames (string[])
-- parentId (number)
-- parentIds (number[])
+- parentUuid (number)
+- parentUuids (number[])
 - inContext (boolean)
 For notes:
 - content (string)
@@ -47,27 +50,28 @@ For notes:
 
 Notes:
 - treeRef uses integer ids to make them easier for the assistant to reference vs. a long uuid
-- The root node has id 0, and the remaining nodes are 1, 2, 3, etc.
+- The root node has id 0, and the remaining nodes 1...n in depth first order
 - Any updates to nodes automatically update treeRef
 - Any updates to content/prevContent must keep treeRef in sync
 */
 
 const appState = {
   //nodesRef...or tree?
-  //currentNodeId
+  //currentNodeUuid
   //setNewContent
 };
 
 async function init() {
+  const defaultUuid = generateUuid();
   const defaultNodes = {
-    0: {
-      id: 0,
+    ["0"]: {
+      uuid: "0",
       name: "root",
       collapsed: false,
-      childrenIds: [1],
+      childrenUuids: [defaultUuid],
     },
-    1: {
-      id: 1,
+    [defaultUuid]: {
+      uuid: defaultUuid,
       name: "New Note",
       content: "",
       checked: false,
@@ -75,59 +79,83 @@ async function init() {
     },
   };
   const allData = await requestGetAllData();
-  const { nodes, currentNodeId, ...contents } = allData;
+  const { nodes, prevNodes, currentNodeUuid, ...contents } = allData;
   const initNodes = nodes || defaultNodes;
-  const initCurrentNodeId = currentNodeId || 1;
-  const prevNodesRef = Object.fromEntries(
-    //get contents into form expected by updateNodesRef
-    Object.entries(contents).map(([id, content]) => [id, { content }]),
+  const initPrevNodes = prevNodes || null;
+  const initcurrentNodeUuid = currentNodeUuid || 1;
+  const prevTreeRef = Object.fromEntries(
+    //get contents into form expected by updateTreeRef
+    Object.entries(contents).map(([uuid, { content, newContent }]) => [
+      uuid,
+      { uuid, content, newContent },
+    ]),
   );
-  const initNodesRef = updateNodesRef(initNodes, prevNodesRef);
+  const initTreeRef = updateTreeRef({
+    nodes: initNodes,
+    currentNodeUuid: initcurrentNodeUuid,
+    prevTreeRef,
+  });
   createRoot(document.getElementById("root")).render(
     <App
       initNodes={initNodes}
-      initCurrentNodeId={initCurrentNodeId}
-      initNodesRef={initNodesRef}
+      initPrevNodes={initPrevNodes}
+      initcurrentNodeUuid={initcurrentNodeUuid}
+      initTreeRef={initTreeRef}
     />,
   );
   return context();
 }
 
-function App({ initNodes, initCurrentNodeId, initNodesRef }) {
+function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
   const [nodes, setNodes] = usePersistentState("nodes", initNodes);
-  const [currentNodeId, setCurrentNodeId] = usePersistentState(
-    "currentNodeId",
-    initCurrentNodeId,
+  const [prevNodes, setPrevNodes] = usePersistentState(
+    "prevNodes",
+    initPrevNodes,
+  );
+  const [currentNodeUuid, setcurrentNodeUuid] = usePersistentState(
+    "currentNodeUuid",
+    initcurrentNodeUuid,
   );
   const [showInfo, setShowInfo] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
+  const [deleteUuid, setDeleteUuid] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
 
-  const nodesRef = useRef(initNodesRef);
+  const treeRef = useRef(initTreeRef);
 
   useEffect(() => {
-    nodesRef.current = updateNodesRef(nodes, nodesRef.current);
+    treeRef.current = updateTreeRef({
+      nodes,
+      currentNodeUuid,
+      prevTreeRef: treeRef.current,
+    });
     setSearchResults(null); //no longer valid
   }, [nodes]);
 
-  const tree = buildTree(nodesRef.current, currentNodeId);
-
   let modalComponent;
-  if (deleteId) {
-    modalComponent = <DeleteConfirm id={deleteId} setDeleteId={setDeleteId} />;
+  if (deleteUuid) {
+    modalComponent = (
+      <DeleteConfirm
+        {...{
+          deleteUuid,
+          setDeleteUuid,
+          nodes,
+          setNodes,
+        }}
+      />
+    );
   } else if (showSearch) {
     modalComponent = (
       <Search
         {...{
-          tree,
+          treeRef,
           setShowSearch,
           searchQuery,
           setSearchQuery,
           searchResults,
           setSearchResults,
-          setCurrentNodeId,
+          setcurrentNodeUuid,
         }}
       />
     );
@@ -139,23 +167,23 @@ function App({ initNodes, initCurrentNodeId, initNodesRef }) {
     <div className="flex h-screen w-screen">
       <SideBar
         {...{
-          tree,
+          treeRef,
           setNodes,
-          currentNodeId,
-          setCurrentNodeId,
+          currentNodeUuid,
+          setcurrentNodeUuid,
           setShowInfo,
-          setDeleteId,
+          setDeleteUuid,
           setShowSearch,
         }}
       />
-      {!("childrenIds" in nodes[currentNodeId]) && (
+      {!("childrenUuids" in nodes[currentNodeUuid]) && (
         <Note
-          key={currentNodeId}
+          key={currentNodeUuid}
           {...{
             appState,
-            currentNodeId,
-            setCurrentNodeId,
-            nodesRef,
+            currentNodeUuid,
+            setcurrentNodeUuid,
+            treeRef,
           }}
         />
       )}
@@ -175,70 +203,3 @@ const api = {
 };
 
 export { init, context, api };
-
-function updateNodesRef(nodes, prevNodesRef) {
-  return Object.fromEntries(
-    Object.entries(nodes).map(([id, node]) => {
-      if (!node.childrenIds) {
-        return [id, { ...node, content: prevNodesRef[id].content || "" }];
-      }
-      return [id, node];
-    }),
-  );
-}
-
-/**
- * Returns an array of nodes sorted in depth first order, adding keys:
- * - depth: number
- * - parentNames: string[]
- * - parentId: number
- * - parentIds: number[]
- * - inContext: boolean
- */
-function buildTree(
-  nodes,
-  currentNodeId,
-  rootId = 0,
-  depth = 0,
-  parentNames = [],
-  parentId = null,
-  parentIds = [],
-) {
-  const tree = [];
-  const node = nodes[rootId];
-  if (node.id !== 0) {
-    //don't push root element
-    const inContext =
-      node.content && (currentNodeId === node.id || node.checked);
-    tree.push({ ...node, depth, parentNames, parentId, parentIds, inContext });
-  }
-  if (node.childrenIds && !node.collapsed) {
-    for (const childId of node.childrenIds) {
-      tree.push(
-        ...buildTree(
-          nodes,
-          currentNodeId,
-          childId,
-          depth + 1,
-          [...parentNames, node.name],
-          node.id,
-          [...parentIds, node.id],
-        ),
-      );
-    }
-  }
-  if (depth === 0) {
-    const currentNode = tree.find((node) => node.id === currentNodeId);
-    const currentNodeParents = new Set(currentNode.parentIds);
-    for (const node of tree) {
-      if (
-        node.starred &&
-        node.content &&
-        currentNodeParents.has(node.parentId)
-      ) {
-        node.inContext = true;
-      }
-    }
-  }
-  return tree;
-}

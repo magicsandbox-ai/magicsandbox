@@ -26,12 +26,12 @@ escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
 
-function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
+function Note({ appState, currentNodeUuid, setcurrentNodeUuid, nodesRef }) {
   const [editorState, setEditorState] = useState(() => {
     const historyPlugin = history();
     return EditorState.create({
       doc: defaultMarkdownParser.parse(
-        nodesRef.current[currentNodeId].content || "",
+        nodesRef.current[currentNodeUuid].content || "",
       ),
       plugins: [
         reactKeys(),
@@ -50,8 +50,8 @@ function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
 
   useEffect(() => {
     createDiff(
-      nodesRef.current[currentNodeId].content,
-      nodesRef.current[currentNodeId].newContent,
+      nodesRef.current[currentNodeUuid].content,
+      nodesRef.current[currentNodeUuid].newContent,
     );
   }, []);
 
@@ -160,14 +160,14 @@ function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
   //   tr.step(new DiffStep("apply", () => setDiff(diff)));
   //   setEditorState((s) => s.apply(tr));
   //   setDiff(null);
-  //   updateContent(currentNodeId, content);
+  //   updateContent(currentNodeUuid, content);
   // }
 
   function updateContent(id, content) {
     nodesRef.current[id].content = content;
     nodesRef.current[id].newContent = undefined;
-    if (id !== currentNodeId) {
-      setCurrentNodeId(id);
+    if (id !== currentNodeUuid) {
+      setcurrentNodeUuid(id);
     }
     requestPutData(id, { content }).catch(handlePutDataError);
   }
@@ -175,8 +175,8 @@ function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
   function updateNewContent(id, newContent) {
     const content = nodesRef.current[id].content;
     nodesRef.current[id].newContent = newContent;
-    if (id !== currentNodeId) {
-      setCurrentNodeId(id);
+    if (id !== currentNodeUuid) {
+      setcurrentNodeUuid(id);
     } else {
       createDiff(content, newContent);
     }
@@ -199,7 +199,7 @@ function Note({ appState, currentNodeId, setCurrentNodeId, nodesRef }) {
       dispatchTransaction={(tr) => {
         const newState = editorState.apply(tr);
         setEditorState(newState);
-        updateContent(currentNodeId, serialize(newState.doc));
+        updateContent(currentNodeUuid, serialize(newState.doc));
       }}
       decorations={() => diff?.decorationSet}
       editable={() => !diff}
