@@ -2,8 +2,10 @@ import { buildAppLocal } from "./buildAppLocal.js";
 import http from "http";
 import open from "open";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
-export function dev({ magicPath, debug, port, url, autoOpen = true }) {
+function dev({ magicPath, debug, port, url, autoOpen = true }) {
   try {
     const token = crypto.randomUUID();
 
@@ -58,7 +60,23 @@ export function dev({ magicPath, debug, port, url, autoOpen = true }) {
           open(appUrl);
         }
         server.devServerUrl = devServerUrl;
-        server.url = appUrl;
+        server.appUrl = appUrl;
+
+        //create a file to enable detecting if the dev server is running
+        const jsonPath = path.join(magicPath, ".devlocal.json");
+        fs.writeFileSync(
+          jsonPath,
+          JSON.stringify({ devServerUrl, appUrl }, null, 2),
+        );
+        function cleanup() {
+          if (fs.existsSync(jsonPath)) {
+            fs.unlinkSync(jsonPath);
+          }
+          process.exit(0);
+        }
+        server.on("close", cleanup);
+        process.on("SIGINT", () => server.close());
+        process.on("SIGTERM", () => server.close());
         resolve(server);
       });
     });
@@ -67,3 +85,31 @@ export function dev({ magicPath, debug, port, url, autoOpen = true }) {
     process.exit(1);
   }
 }
+
+async function isRunning(magicPath) {
+  const jsonPath = path.join(magicPath, ".devlocal.json");
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+      const response = await fetch(data.devServerUrl, {
+        method: "OPTIONS",
+      });
+      if (response.ok) {
+        return data;
+      } else {
+        throw new Error(`${data.devServerUrl} returned ${response.status}`);
+      }
+    } catch (error) {
+      console.error(
+        `${jsonPath} exists but error connecting to dev server:`,
+        error,
+      );
+      console.log(`Deleting ${jsonPath}`);
+      fs.unlinkSync(jsonPath);
+      return false;
+    }
+  }
+  return false;
+}
+
+export { dev, isRunning };

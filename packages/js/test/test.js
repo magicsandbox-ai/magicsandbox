@@ -2,7 +2,7 @@ import "dotenv/config";
 import { test as base, expect } from "@playwright/test";
 
 async function waitForFrame(page) {
-  await expect(page.locator("iframe")).toHaveCount(1);
+  await expect(page.locator("iframe")).toHaveCount(1, { timeout: 10000 });
 }
 
 const test = base.extend({
@@ -36,14 +36,22 @@ const test = base.extend({
     );
     await page.goto(url);
     await waitForFrame(page);
-    const assistant = page.frame("sandbox");
+    const assistant = page.mainFrame().childFrames()[0];
     await waitForFrame(assistant);
     const devLocal = assistant.childFrames()[0];
-    const responsePromise = devLocal
+    const buildCompletePromise = devLocal
       .page()
-      .waitForResponse(process.env.MAGICSANDBOX_DEV_SERVER_URL);
+      .waitForEvent("requestfinished", (request) => {
+        return request
+          .url()
+          .startsWith(process.env.MAGICSANDBOX_DEV_SERVER_URL);
+      });
     await assistant.getByRole("button", { name: "Approve" }).click(); //approve opening of DevLocal
-    await responsePromise;
+    await buildCompletePromise;
+    //request is finished, but the messages have to be passed through all the frames
+    //so wait an extra second
+    //todo this is not ideal - maybe listen for an event in the devlocal or app frame?
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const app = devLocal.childFrames()[0];
     await use(app);
   },

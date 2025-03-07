@@ -8,6 +8,10 @@
 
 See the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) to learn more about Magic Sandbox.
 
+## Cost Warning
+
+Because there are costs associated with loading Apps on Magic Sandbox, there are costs associated with running tests. See the [Tests Cost Warning](#tests-cost-warning) and [Configuration Cost Warning](#configuration-cost-warning) sections below for more details.
+
 ## Usage
 
 Set up a folder structured like so:
@@ -24,7 +28,7 @@ MyApp/
 
 `@magicsandbox.ai/test` requires the `MAGICSANDBOX_API_KEY` environment variable to be set, which you can set in a `.env` file in your project root. You can get an API key [here](https://magicsandbox.ai/api-key).
 
-See the next section for details on creating the test files like `test1.spec.js`.
+See [Writing Tests](#writing-tests) for details on creating the test files like `test1.spec.js`.
 
 `@magicsandbox.ai/test` depends on [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev), so you should already be able to successfully run `npx magicsandbox dev MyApp`.
 
@@ -34,25 +38,26 @@ Then run:
 
 This command will:
 
-- Run `npx playwright install` to ensure the Playwright browsers used for testing are installed and updated
-- Start the `@magicsandbox.ai/dev` development server for MyApp
-- If you haven't already, create a playwright.config.js file in MyApp/tests for you
+- Run `npx playwright install` to ensure the Playwright browsers used for testing are installed
+- Start the `@magicsandbox.ai/dev` development server for MyApp if it's not already running
+- If you haven't already, create a playwright.config.js file in MyApp/tests for you. See [Configuration](#configuration) for details.
 - Run the tests in MyApp/tests
 
 Any additional arguments are passed to [the Playwright CLI](https://playwright.dev/docs/test-cli):
 
 `npx magicsandbox test MyApp --ui`
 
-## Writing tests
+## Writing Tests
 
 See the [Playwright docs](https://playwright.dev/docs/writing-tests) for details on writing tests.
 
-`@magicsandbox.ai/test` extends Playwright's `test` function by:
+`@magicsandbox.ai/test` extends Playwright's `test` function by adding an `app` fixture. When you use the `app` fixture, `@magicsandbox.ai/test` handles:
 
-- Handling authentication using your API key
-- Adding an `app` fixture.
+- Authentication using your API key
+- Loading the correct URL and waiting for the dev server to build the app
+- Selecting the correct nested iframe to use as the `app` fixture
 
-Your App executes in a (nested) iframe, so by using the `app` fixture, you don't have to worry about selecting the correct element. `app` is a Playwright [Frame](https://playwright.dev/docs/api/class-frame) object.
+`app` is a Playwright [Frame](https://playwright.dev/docs/api/class-frame) object.
 
 Here's an example test:
 
@@ -73,9 +78,7 @@ test("example test", async ({ app }) => {
 });
 ```
 
-**Warning**:
-
-The `app` fixture calls `app.init` for you by default. If you want to test `init`, disable this behavior like so:
+By default, `app.init` is automatically called. If you want to test `init`, disable this behavior like so:
 
 ```javascript
 test.describe("run tests with autoInit disabled", () => {
@@ -90,3 +93,17 @@ test.describe("run tests with autoInit disabled", () => {
 ```
 
 See the ExampleApp folder for an App that passes the above tests.
+
+### Tests Cost Warning
+
+Each Playwright test runs in a new browser instance. That means each test has to load the Apps magicsandbox.Assistant and magicsandbox.DevLocal at a cost of $0.002. Be sure not to run thousands of tests!
+
+## Configuration
+
+You can create or edit the `playwright.config.js` file in your App's tests folder and `magicsandbox.ai/test` won't override your changes. See the [Playwright docs](https://playwright.dev/docs/test-configuration) for details.
+
+When the dev server first starts, the initial build can be slow (rebuilds are much faster). To guard against slow builds causing tests to fail, `magicsandbox.ai/test` configures a timeout of 60 seconds rather than Playwright's default of 30 seconds.
+
+### Configuration Cost Warning
+
+Because each test has a cost, consider carefully the impact of using `projects` to configure Playwright to run tests across many browsers or configurations.
