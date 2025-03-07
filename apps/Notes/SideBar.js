@@ -157,7 +157,7 @@ function Node({
   const nameClassName = "grow truncate";
   const iconClassName = "w-4 h-4";
   const hoverButtonClassName =
-    "opacity-0 focus:opacity-100 group-hover:opacity-100";
+    "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
 
   if (renameValue !== null) {
     return (

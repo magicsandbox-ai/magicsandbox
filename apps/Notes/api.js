@@ -135,7 +135,7 @@ function _getNote(appState, id) {
     throw new Error(`Note with id ${id} not found`);
   }
   if (!("content" in note)) {
-    throw new Error(`Cannot call appendToNote on a folder with id ${id}`);
+    throw new Error(`Cannot call appendToNote on a folder. id: ${id}`);
   }
   return note;
 }

@@ -12,29 +12,44 @@ import { addNote as _addNote } from "./api.js";
 /*
 The database has keys:
 
-- nodes (object): described below
-- currentNodeId (number): the current selected node id
-- [id] (string): all other keys map note ids to that note's content
+- nodes (object): an object mapping uuids to objects with keys:
+  - uuid (string)
+  - name (string)
+  - state? ("new" | "edited" | "renamed" | "moved" | "deleted" | null)
+  - stateDetails? (string | null)
+  For folders:
+  - collapsed (boolean)
+  - childrenIds (number[])
+  For notes:
+  - checked (boolean)
+  - starred (boolean)
+- prevNodes? (object): previous version of nodes
+- currentNodeUuid (string): the current selected node uuid
+- [uuid] (object): all other keys map uuids to objects with keys:
+  - content: string
+  - prevContent: string
 
-nodes is an object mapping id to objects with keys:
-- id: number
-- name: string
+Notes:
+- The root node is a folder with uuid "0"
+- prevNodes is used to revert assistant changes to nodes (renames, moves, deletes)
+- content is stored separately from nodes to prevent unnecessary rerendering and improve data saving and syncing performance
+- prevContent is used for display assistant changes to content (edits)
 
-Keys for folders:
-- collapsed: boolean
-- childrenIds: number[]
+treeRef is a modified view of nodes that maps ids to node objects and adds keys:
+- depth (number)
+- parentNames (string[])
+- parentId (number)
+- parentIds (number[])
+- inContext (boolean)
+For notes:
+- content (string)
+- newContent (string)
 
-Keys for notes:
-- checked: boolean
-- starred: boolean
-
-The root node is a folder with id 0. it will always have at least one child
-
-Content is stored separately from nodes to prevent unnecessary rerendering and improve data saving and syncing performance
-nodesRef mirrors the nodes object and adds the following keys for each note:
-- content: string
-- newContent: string
-Any updates to content must also keep nodesRef in sync
+Notes:
+- treeRef uses integer ids to make them easier for the assistant to reference vs. a long uuid
+- The root node has id 0, and the remaining nodes are 1, 2, 3, etc.
+- Any updates to nodes automatically update treeRef
+- Any updates to content/prevContent must keep treeRef in sync
 */
 
 const appState = {
