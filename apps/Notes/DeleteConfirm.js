@@ -1,10 +1,16 @@
 import React from "react";
 import Confirm from "@components/Confirm.js";
 
-function DeleteConfirm({ deleteId, setDeleteId, nodes, setNodes }) {
-  const deleteNode = nodes[deleteId];
+function DeleteConfirm({
+  deleteUuid,
+  setDeleteUuid,
+  nodes,
+  setNodes,
+  toastsRef,
+}) {
+  const deleteNode = nodes[deleteUuid];
   let header;
-  if (deleteNode.childrenIds) {
+  if (deleteNode.childrenUuids) {
     header = `Are you sure you want to delete folder "${deleteNode.name}" and all its contents?`;
   } else {
     header = `Are you sure you want to delete note "${deleteNode.name}"?`;
@@ -13,31 +19,41 @@ function DeleteConfirm({ deleteId, setDeleteId, nodes, setNodes }) {
     {
       text: "Cancel",
       className: "bg-stone-300 hover:bg-stone-400 text-black w-32",
-      onClick: () => setDeleteId(null),
+      onClick: () => setDeleteUuid(null),
     },
     {
       text: "Delete",
       className: "bg-red-500 hover:bg-red-700 text-white w-32",
-      onClick: () => {
-        const nodesToDelete = new Set();
-        const nodesToVisit = [deleteId];
-        while (nodesToVisit.length > 0) {
-          const currentId = nodesToVisit.pop();
-          nodesToDelete.add(currentId);
-          nodesToVisit.push(...nodes[currentId].childrenIds);
-        }
-        setNodes((nodes) => {
-          Object.fromEntries(
-            Object.entries(nodes).filter(([id]) => !nodesToDelete.has(id)),
+      onClick: async () => {
+        try {
+          const nodesToDelete = new Set();
+          const nodesToVisit = [deleteUuid];
+          while (nodesToVisit.length > 0) {
+            const currentUuid = nodesToVisit.pop();
+            nodesToDelete.add(currentUuid);
+            nodesToVisit.push(...nodes[currentUuid].childrenUuids);
+          }
+          setNodes((nodes) => {
+            Object.fromEntries(
+              Object.entries(nodes).filter(
+                ([uuid]) => !nodesToDelete.has(uuid),
+              ),
+            );
+          });
+          setDeleteUuid(null);
+          await Promise.all(
+            nodesToDelete.map((uuid) => requestDeleteData(uuid)),
           );
-        });
-        setDeleteId(null);
+        } catch (error) {
+          console.error(error);
+          toastsRef.current.addToast("Error deleting notes", "error");
+        }
       },
     },
   ];
   return (
     <Confirm
-      onClose={() => setDeleteId(null)}
+      onClose={() => setDeleteUuid(null)}
       header={header}
       buttons={buttons}
     />

@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { usePersistentState } from "@magicsandbox.ai/hooks";
+import { Toasts } from "@components/Toasts.js";
 import SideBar from "./SideBar.js";
 import Info from "./Info.js";
 import Note from "./Note.js";
@@ -9,50 +10,51 @@ import Search from "./Search.js";
 import { context as _context } from "./context.js";
 import { addNote as _addNote } from "./api.js";
 import { generateUuid } from "./utils.js";
-import { updateTreeRef } from "./updateTreeRef.js";
+import { createTree } from "./createTree.js";
 
 /*
 The database has keys:
 
-- nodes (object): an object mapping uuids to objects with keys:
+- currentNodeUuid (string): the current selected node uuid
+- [uuid] (object): all other keys map uuids to node objects with keys:
   - uuid (string)
+  - state? ("new" | "edited" | "renamed" | "moved" | "deleted")
   - name (string)
-  - state? ("new" | "edited" | "renamed" | "moved" | "deleted" | null)
-  - stateDetails? (string | null)
+  - prevName? (string)
+  - parentUuid? (string) //populated for all but root
+  - prevParentUuid? (string)
+  - order (number) //position within parent
   For folders:
   - collapsed (boolean)
-  - childrenUuids (string[])
   For notes:
+  - content (string)
+  - prevContent? (string)
   - checked (boolean)
   - starred (boolean)
-- prevNodes? (object): previous version of nodes
-- currentNodeUuid (string): the current selected node uuid
-- [uuid] (object): all other keys map uuids to objects with keys:
-  - content: string
-  - prevContent: string
 
 Notes:
 - The root node is a folder with uuid "0"
-- prevNodes is used to revert assistant changes to nodes (renames, moves, deletes)
-- content is stored separately from nodes to prevent unnecessary rerendering and improve data saving and syncing performance
-- prevContent is used for display assistant changes to content (edits)
+- The nodes are stored in nodesRef, not state, to avoid unnecessary rerendering
+- Make any changes by mutating nodesRef
+- Then, if you mutated content, call updateContent
+- If you mutated content and prevContent, call updatePrevContent
+- For all other changes, call updateTree
 
-treeRef is a modified view of nodes that maps ids to node objects and adds keys:
+tree is a modified view of nodesRef that maps ids to node objects and adds keys:
 - id (number)
 - depth (number)
-- parentNames (string[])
-- parentUuid (number)
-- parentUuids (number[])
+- ancestorNames (string[])
+- ancestorUuids (string[]) //parent, grandparent, etc.
 - inContext (boolean)
-For notes:
+For folders:
+- childrenUuids (string[]) //just children (not grandchildren, etc.)
+For notes, these keys are **removed**:
 - content (string)
-- newContent (string)
+- prevContent (string)
 
 Notes:
 - treeRef uses integer ids to make them easier for the assistant to reference vs. a long uuid
 - The root node has id 0, and the remaining nodes 1...n in depth first order
-- Any updates to nodes automatically update treeRef
-- Any updates to content/prevContent must keep treeRef in sync
 */
 
 const appState = {
@@ -67,51 +69,31 @@ async function init() {
     ["0"]: {
       uuid: "0",
       name: "root",
+      parentUuid: null,
       collapsed: false,
-      childrenUuids: [defaultUuid],
     },
     [defaultUuid]: {
       uuid: defaultUuid,
       name: "New Note",
+      parentUuid: "0",
+      order: 0,
       content: "",
       checked: false,
       starred: false,
     },
   };
   const allData = await requestGetAllData();
-  const { nodes, prevNodes, currentNodeUuid, ...contents } = allData;
+  const { currentNodeUuid, ...nodes } = allData;
+  const initcurrentNodeUuid = currentNodeUuid || defaultUuid;
   const initNodes = nodes || defaultNodes;
-  const initPrevNodes = prevNodes || null;
-  const initcurrentNodeUuid = currentNodeUuid || 1;
-  const prevTreeRef = Object.fromEntries(
-    //get contents into form expected by updateTreeRef
-    Object.entries(contents).map(([uuid, { content, newContent }]) => [
-      uuid,
-      { uuid, content, newContent },
-    ]),
-  );
-  const initTreeRef = updateTreeRef({
-    nodes: initNodes,
-    currentNodeUuid: initcurrentNodeUuid,
-    prevTreeRef,
-  });
   createRoot(document.getElementById("root")).render(
-    <App
-      initNodes={initNodes}
-      initPrevNodes={initPrevNodes}
-      initcurrentNodeUuid={initcurrentNodeUuid}
-      initTreeRef={initTreeRef}
-    />,
+    <App initcurrentNodeUuid={initcurrentNodeUuid} initNodes={initNodes} />,
   );
   return context();
 }
 
-function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
-  const [nodes, setNodes] = usePersistentState("nodes", initNodes);
-  const [prevNodes, setPrevNodes] = usePersistentState(
-    "prevNodes",
-    initPrevNodes,
-  );
+function App({ initcurrentNodeUuid, initNodes }) {
+  const [tree, setTree] = useState(createTree(initNodes, initcurrentNodeUuid));
   const [currentNodeUuid, setcurrentNodeUuid] = usePersistentState(
     "currentNodeUuid",
     initcurrentNodeUuid,
@@ -122,16 +104,12 @@ function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
 
-  const treeRef = useRef(initTreeRef);
+  const nodesRef = useRef(initNodes);
+  const toastsRef = useRef(null);
 
-  useEffect(() => {
-    treeRef.current = updateTreeRef({
-      nodes,
-      currentNodeUuid,
-      prevTreeRef: treeRef.current,
-    });
-    setSearchResults(null); //no longer valid
-  }, [nodes]);
+  function updateTree() {
+    setTree(createTree(nodesRef.current, currentNodeUuid));
+  }
 
   let modalComponent;
   if (deleteUuid) {
@@ -140,8 +118,9 @@ function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
         {...{
           deleteUuid,
           setDeleteUuid,
-          nodes,
-          setNodes,
+          nodesRef,
+          updateTree,
+          toastsRef,
         }}
       />
     );
@@ -149,7 +128,7 @@ function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
     modalComponent = (
       <Search
         {...{
-          treeRef,
+          tree,
           setShowSearch,
           searchQuery,
           setSearchQuery,
@@ -167,8 +146,8 @@ function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
     <div className="flex h-screen w-screen">
       <SideBar
         {...{
-          treeRef,
-          setNodes,
+          tree,
+          updateTree,
           currentNodeUuid,
           setcurrentNodeUuid,
           setShowInfo,
@@ -176,18 +155,19 @@ function App({ initNodes, initPrevNodes, initcurrentNodeUuid, initTreeRef }) {
           setShowSearch,
         }}
       />
-      {!("childrenUuids" in nodes[currentNodeUuid]) && (
+      {!("childrenUuids" in nodesRef.current[currentNodeUuid]) && (
         <Note
           key={currentNodeUuid}
           {...{
             appState,
             currentNodeUuid,
             setcurrentNodeUuid,
-            treeRef,
+            nodesRef,
           }}
         />
       )}
       {modalComponent}
+      <Toasts className="top-2" ref={toastsRef} />
     </div>
   );
 }
