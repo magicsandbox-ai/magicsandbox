@@ -12,12 +12,14 @@ describe("createTree", () => {
     const nodes = {
       ["0"]: {
         uuid: "0",
+        type: "folder",
         name: "root",
         parentUuid: null,
         collapsed: false,
       },
       ["101"]: {
         uuid: "101",
+        type: "note",
         name: "note 1",
         content: "content 1",
         prevContent: "new content 1",
@@ -27,12 +29,14 @@ describe("createTree", () => {
       },
       ["201"]: {
         uuid: "201",
+        type: "folder",
         name: "folder 1",
         parentUuid: "0",
         collapsed: false,
       },
       ["102"]: {
         uuid: "102",
+        type: "note",
         name: "note 2",
         content: "content 2",
         prevContent: "new content 2",
@@ -42,12 +46,14 @@ describe("createTree", () => {
       },
       ["202"]: {
         uuid: "202",
+        type: "folder",
         name: "folder 2",
         collapsed: false,
         parentUuid: "0",
       },
       ["103"]: {
         uuid: "103",
+        type: "note",
         name: "note 3",
         content: "content 3",
         prevContent: "new content 3",
@@ -57,6 +63,7 @@ describe("createTree", () => {
       },
       ["104"]: {
         uuid: "104",
+        type: "note",
         name: "note 4",
         content: "content 4",
         prevContent: "new content 4",

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { usePersistentState } from "@magicsandbox.ai/hooks";
 import { Toasts } from "@components/Toasts.js";
@@ -9,15 +9,15 @@ import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 import { context as _context } from "./context.js";
 import { addNote as _addNote } from "./api.js";
-import { generateUuid } from "./utils.js";
-import { createTree } from "./createTree.js";
+import NotesState from "./NotesState.js";
 
 /*
 The database has keys:
 
 - currentNodeUuid (string): the current selected node uuid
-- [uuid] (object): all other keys map uuids to node objects with keys:
+- [uuid] (object): all other keys map uuids to Node objects with keys:
   - uuid (string)
+  - type ("folder" | "note")
   - state? ("new" | "edited" | "renamed" | "moved" | "deleted")
   - name (string)
   - prevName? (string)
@@ -34,92 +34,68 @@ The database has keys:
 
 Notes:
 - The root node is a folder with uuid "0"
-- The nodes are stored in nodesRef, not state, to avoid unnecessary rerendering
-- Make any changes by mutating nodesRef
-- Then, if you mutated content, call updateContent
-- If you mutated content and prevContent, call updatePrevContent
-- For all other changes, call updateTree
 
-tree is a modified view of nodesRef that maps ids to node objects and adds keys:
+NotesState constructs a tree from the node objects and adds the following keys:
+
 - id (number)
 - depth (number)
 - ancestorNames (string[])
 - ancestorUuids (string[]) //parent, grandparent, etc.
-- inContext (boolean)
+- display (boolean) //whether to display the node (i.e. are any of its parents collapsed?)
+- inContext (boolean) //see Info.js
 For folders:
 - childrenUuids (string[]) //just children (not grandchildren, etc.)
-For notes, these keys are **removed**:
-- content (string)
-- prevContent (string)
 
 Notes:
-- treeRef uses integer ids to make them easier for the assistant to reference vs. a long uuid
+- id is an integer that's easy for the assistant to reference vs. a long uuid
 - The root node has id 0, and the remaining nodes 1...n in depth first order
+- tree is an array of nodes, with the index in the array being the node's id
+
+Use NotesState to manage all state. It has methods:
+- setCurrentNodeUuid(newCurrentNodeUuid)
+- getDescendants(uuid)
+- updateNode(node)
+- addNode(node)
+- deleteNode(uuid)
+
+NotesState also implements the API. See context.js
 */
 
-const appState = {
-  //nodesRef...or tree?
-  //currentNodeUuid
-  //setNewContent
-};
-
 async function init() {
-  const defaultUuid = generateUuid();
-  const defaultNodes = {
-    ["0"]: {
-      uuid: "0",
-      name: "root",
-      parentUuid: null,
-      collapsed: false,
-    },
-    [defaultUuid]: {
-      uuid: defaultUuid,
-      name: "New Note",
-      parentUuid: "0",
-      order: 0,
-      content: "",
-      checked: false,
-      starred: false,
-    },
-  };
   const allData = await requestGetAllData();
   const { currentNodeUuid, ...nodes } = allData;
-  const initcurrentNodeUuid = currentNodeUuid || defaultUuid;
-  const initNodes = nodes || defaultNodes;
   createRoot(document.getElementById("root")).render(
-    <App initcurrentNodeUuid={initcurrentNodeUuid} initNodes={initNodes} />,
+    <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,
   );
   return context();
 }
 
 function App({ initcurrentNodeUuid, initNodes }) {
-  const [tree, setTree] = useState(createTree(initNodes, initcurrentNodeUuid));
-  const [currentNodeUuid, setcurrentNodeUuid] = usePersistentState(
+  const [currentNodeUuid, setCurrentNodeUuid] = usePersistentState(
     "currentNodeUuid",
     initcurrentNodeUuid,
   );
+  const [tree, setTree] = useState([]);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteUuid, setDeleteUuid] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
 
-  const nodesRef = useRef(initNodes);
+  const notesStateRef = useRef(null);
   const toastsRef = useRef(null);
 
-  async function updateTree(updatedUuids) {
-    setTree(createTree(nodesRef.current, currentNodeUuid));
-    try {
-      await Promise.all(
-        updatedUuids.map((uuid) =>
-          requestPutData(uuid, nodesRef.current[uuid]),
-        ),
+  useEffect(() => {
+    if (notesStateRef.current === null) {
+      notesStateRef.current = new NotesState(
+        initNodes,
+        initcurrentNodeUuid,
+        setCurrentNodeUuid,
+        setTree,
+        //putErrorHandler //todo, need to debounce in case many errors at once //toastsRef.current.addToast("Error saving notes", "error");
       );
-    } catch (error) {
-      console.error(error);
-      toastsRef.current.addToast("Error saving notes", "error");
     }
-  }
+  }, []);
 
   let modalComponent;
   if (deleteUuid) {
@@ -145,7 +121,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
           setSearchQuery,
           searchResults,
           setSearchResults,
-          setcurrentNodeUuid,
+          setCurrentNodeUuid,
         }}
       />
     );
@@ -161,7 +137,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
           nodesRef,
           updateTree,
           currentNodeUuid,
-          setcurrentNodeUuid,
+          setCurrentNodeUuid,
           setShowInfo,
           setDeleteUuid,
           setShowSearch,
@@ -173,7 +149,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
           {...{
             appState,
             currentNodeUuid,
-            setcurrentNodeUuid,
+            setCurrentNodeUuid,
             nodesRef,
           }}
         />

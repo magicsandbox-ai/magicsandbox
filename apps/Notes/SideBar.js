@@ -23,7 +23,7 @@ function SideBar({
   nodesRef,
   updateTree,
   currentNodeUuid,
-  setcurrentNodeUuid,
+  setCurrentNodeUuid,
   setShowInfo,
   setDeleteUuid,
   setShowSearch,
@@ -40,12 +40,13 @@ function SideBar({
 
   function handleAdd(parent, type) {
     const olderSibling =
-      tree[parent.childrenIds[parent.childrenIds.length - 1]];
+      nodesRef.current[parent.childrenUuids[parent.childrenUuids.length - 1]];
     const order = olderSibling.order + 1000;
     const uuid = generateUuid();
     if (type === "folder") {
       nodesRef.current[uuid] = {
         uuid,
+        type,
         name: "New Folder",
         parentUuid: parent.uuid,
         order,
@@ -54,6 +55,7 @@ function SideBar({
     } else {
       nodesRef.current[uuid] = {
         uuid,
+        type,
         name: "New Note",
         parentUuid: parent.uuid,
         order,
@@ -66,6 +68,8 @@ function SideBar({
   }
 
   if (show) {
+    const displayNodes = [];
+
     return (
       <div className="absolute flex h-full w-64 flex-col border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
@@ -94,10 +98,11 @@ function SideBar({
               key={node.uuid}
               {...{
                 node,
+                tree,
                 nodesRef,
                 updateTree,
                 currentNodeUuid,
-                setcurrentNodeUuid,
+                setCurrentNodeUuid,
                 handleAdd,
                 handleDelete,
               }}
@@ -122,7 +127,7 @@ function Node({
   nodesRef,
   updateTree,
   currentNodeUuid,
-  setcurrentNodeUuid,
+  setCurrentNodeUuid,
   handleAdd,
   handleDelete,
 }) {
@@ -177,7 +182,7 @@ function Node({
           node,
           nodesRef,
           updateTree,
-          setcurrentNodeUuid,
+          setCurrentNodeUuid,
           setRenameValue,
           handleAdd,
         }}
@@ -193,7 +198,7 @@ function Node({
           node,
           nodesRef,
           updateTree,
-          setcurrentNodeUuid,
+          setCurrentNodeUuid,
           setRenameValue,
         }}
       />
@@ -208,7 +213,7 @@ function Node({
       while (nodesToVisit.length > 0) {
         const currentId = nodesToVisit.pop();
         ids.push(currentId);
-        const currentNode = nodes[currentId];
+        const currentNode = tree[currentId];
         if (currentNode.childrenIds) {
           nodesToVisit.push(...currentNode.childrenIds);
         } else {
@@ -218,12 +223,13 @@ function Node({
         }
       }
       for (const id of ids) {
-        if (nodes[id].childrenIds) {
-          newNodes[id] = { ...nodes[id], collapsed: false };
+        if (tree[id].childrenIds) {
+          nodesRef.current[id].collapsed = false;
         } else {
-          newNodes[id] = { ...nodes[id], checked: newChecked };
+          nodesRef.current[id].checked = newChecked;
         }
       }
+      updateTree(uuids);
       // setNodes((nodes) => {
       //   const ids = [];
       //   let newChecked = false; //if all notes are checked, we'll uncheck
@@ -279,7 +285,7 @@ function Folder({
   node,
   nodesRef,
   updateTree,
-  setcurrentNodeUuid,
+  setCurrentNodeUuid,
   setRenameValue,
   handleAdd,
 }) {
@@ -301,7 +307,7 @@ function Folder({
       </button>
       <div
         className={nameClassName}
-        onClick={() => setcurrentNodeUuid(node.id)}
+        onClick={() => setCurrentNodeUuid(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
@@ -329,7 +335,7 @@ function Note({
   node,
   nodesRef,
   updateTree,
-  setcurrentNodeUuid,
+  setCurrentNodeUuid,
   setRenameValue,
 }) {
   function handleCheck() {
@@ -360,7 +366,7 @@ function Note({
       </button>
       <div
         className={`${nameClassName} ${node.inContext ? "font-bold" : ""}`}
-        onClick={() => setcurrentNodeUuid(node.id)}
+        onClick={() => setCurrentNodeUuid(node.id)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
@@ -380,3 +386,12 @@ function Note({
 }
 
 export default SideBar;
+
+function getDisplayNodes(tree) {
+  const displayNodes = [];
+  const nodesToVisit = [tree[0]];
+  for (const node of tree) {
+    displayNodes.push(node);
+  }
+  return displayNodes;
+}

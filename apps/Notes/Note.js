@@ -26,7 +26,7 @@ escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
 
-function Note({ appState, currentNodeUuid, setcurrentNodeUuid, nodesRef }) {
+function Note({ appState, currentNodeUuid, setCurrentNodeUuid, nodesRef }) {
   const [editorState, setEditorState] = useState(() => {
     const historyPlugin = history();
     return EditorState.create({
@@ -167,7 +167,7 @@ function Note({ appState, currentNodeUuid, setcurrentNodeUuid, nodesRef }) {
     nodesRef.current[id].content = content;
     nodesRef.current[id].newContent = undefined;
     if (id !== currentNodeUuid) {
-      setcurrentNodeUuid(id);
+      setCurrentNodeUuid(id);
     }
     requestPutData(id, { content }).catch(handlePutDataError);
   }
@@ -176,7 +176,7 @@ function Note({ appState, currentNodeUuid, setcurrentNodeUuid, nodesRef }) {
     const content = nodesRef.current[id].content;
     nodesRef.current[id].newContent = newContent;
     if (id !== currentNodeUuid) {
-      setcurrentNodeUuid(id);
+      setCurrentNodeUuid(id);
     } else {
       createDiff(content, newContent);
     }
