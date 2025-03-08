@@ -1,29 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
 
-function Search({
-  tree,
-  nodesRef,
-  setShowSearch,
-  searchQuery,
-  setSearchQuery,
-  searchResults,
-  setSearchResults,
-  setCurrentNodeUuid,
-}) {
+function Search({ notesState, setShowSearch }) {
   return (
     <ModalOverlay
-      modal={
-        <SearchInner
-          tree={tree}
-          nodesRef={nodesRef}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchResults={searchResults}
-          setSearchResults={setSearchResults}
-          setCurrentNodeUuid={setCurrentNodeUuid}
-        />
-      }
+      modal={<SearchInner notesState={notesState} />}
       onClose={() => {
         setShowSearch(false);
       }}
@@ -32,23 +13,17 @@ function Search({
   );
 }
 
-function SearchInner({
-  tree,
-  nodesRef,
-  searchQuery,
-  setSearchQuery,
-  searchResults,
-  setSearchResults,
-  setCurrentNodeUuid,
-}) {
+function SearchInner({ notesState }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+
   function handleSearch(e) {
     e.preventDefault();
     const searchTerms = searchQuery.toLowerCase().split(" ");
     const newSearchResults = [];
-    Object.values(tree).forEach((node) => {
-      const content = nodesRef.current[node.uuid].content;
-      if (!content) return; // Only search notes, not folders
-      const searchText = `${content} ${node.name}`.toLowerCase();
+    Object.values(notesState.nodes).forEach((node) => {
+      if (node.type !== "note") return; // Only search notes, not folders
+      const searchText = `${node.content} ${node.name}`.toLowerCase();
       const matches = searchTerms
         .map((term) => {
           const indexes = [];
@@ -61,7 +36,7 @@ function SearchInner({
         })
         .filter(Boolean);
       if (matches.length === searchTerms.length) {
-        newSearchResults.push({ ...node, matches, content });
+        newSearchResults.push({ ...node, matches });
       }
     });
     setSearchResults(newSearchResults);
@@ -96,7 +71,7 @@ function SearchInner({
               <SearchResult
                 key={note.uuid}
                 note={note}
-                setCurrentNodeUuid={setCurrentNodeUuid}
+                notesState={notesState}
               />
             ))
           )}
@@ -106,7 +81,7 @@ function SearchInner({
   );
 }
 
-function SearchResult({ note, setCurrentNodeUuid }) {
+function SearchResult({ note, notesState }) {
   const path = [
     ...note.ancestorNames.slice(1), //exclude root
     note.name,
@@ -150,7 +125,7 @@ function SearchResult({ note, setCurrentNodeUuid }) {
   return (
     <div
       className="mb-4 rounded border p-3 hover:bg-gray-50"
-      onClick={() => setCurrentNodeUuid(note.uuid)}
+      onClick={() => notesState.setCurrentNodeUuid(note.uuid)}
     >
       <div className="mb-1 font-medium">{path}</div>
       <div className="line-clamp-2 text-sm text-gray-600">{segments}</div>

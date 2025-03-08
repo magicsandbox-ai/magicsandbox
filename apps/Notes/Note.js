@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useSyncExternalStore, useState, useEffect } from "react";
 import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
@@ -26,130 +26,127 @@ escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
 
-function Note({ appState, currentNodeUuid, setCurrentNodeUuid, nodesRef }) {
-  const [editorState, setEditorState] = useState(() => {
-    const historyPlugin = history();
-    return EditorState.create({
-      doc: defaultMarkdownParser.parse(
-        nodesRef.current[currentNodeUuid].content || "",
-      ),
-      plugins: [
-        reactKeys(),
-        ...exampleSetup({
-          schema,
-          menuBar: false,
-          mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" }, //indenting lists
-          history: false, //set up manually so we can pass to diffPlugin
-        }),
-        historyPlugin,
-        diffPlugin(historyPlugin),
-      ],
-    });
-  });
+function Note({ notesState }) {
+  const contents = useSyncExternalStore(
+    notesState.subscribeToContents,
+    notesState.getContents,
+  );
+
+  const [editorState, setEditorState] = useState(null);
   const [diff, setDiff] = useState(null);
 
   useEffect(() => {
-    createDiff(
-      nodesRef.current[currentNodeUuid].content,
-      nodesRef.current[currentNodeUuid].newContent,
-    );
-  }, []);
-
-  function createDiff(originalContent, newContent) {
-    if (originalContent === newContent) return;
-    const diff = diffArrays(
-      originalContent.split("\n\n"),
-      newContent.split("\n\n"),
-      { oneChangePerToken: true },
-    );
-    const diffedContent = diff
-      .map((change) => {
-        if (change.added) {
-          return `%%added%%\n\n${change.value}`;
-        } else if (change.removed) {
-          return `%%removed%%\n\n${change.value}`;
-        } else {
-          return change.value;
-        }
-      })
-      .join("\n\n");
-    const newDoc = defaultMarkdownParser.parse(diffedContent);
-    let prevNode;
-    const decorations = [];
-    const deletes = [];
-    newDoc.content.forEach((node, pos) => {
-      if (prevNode) {
-        decorations.push({
-          from: pos,
-          to: pos + node.nodeSize,
-          attrs: {
-            class: prevNode,
-          },
-        });
-        prevNode = null;
-      } else if (
-        node.textContent === "%%added%%" ||
-        node.textContent === "%%removed%%"
-      ) {
-        deletes.push({
-          from: pos,
-          to: pos + node.nodeSize,
-        });
-        if (node.textContent === "%%added%%") {
-          prevNode = "added";
-        } else {
-          prevNode = "removed";
-        }
-      } else {
-        prevNode = null;
-      }
-    });
-    const transform = new Transform(newDoc);
-    for (const d of deletes) {
-      transform.delete(
-        transform.mapping.map(d.from),
-        transform.mapping.map(d.to),
+    const { content, prevContent } = contents;
+    let newDoc;
+    if (prevContent === null || content === prevContent) {
+      newDoc = defaultMarkdownParser.parse(content);
+    } else {
+      const diff = diffArrays(
+        prevContent.split("\n\n"),
+        content.split("\n\n"),
+        { oneChangePerToken: true },
       );
-    }
-    const decorationSet = DecorationSet.create(
-      transform.doc,
-      decorations.map((d) =>
-        Decoration.node(
+      const diffedContent = diff
+        .map((change) => {
+          if (change.added) {
+            return `%%added%%\n\n${change.value}`;
+          } else if (change.removed) {
+            return `%%removed%%\n\n${change.value}`;
+          } else {
+            return change.value;
+          }
+        })
+        .join("\n\n");
+      newDoc = defaultMarkdownParser.parse(diffedContent);
+      let prevNode;
+      const decorations = [];
+      const deletes = [];
+      newDoc.content.forEach((node, pos) => {
+        if (prevNode) {
+          decorations.push({
+            from: pos,
+            to: pos + node.nodeSize,
+            attrs: {
+              class: prevNode,
+            },
+          });
+          prevNode = null;
+        } else if (
+          node.textContent === "%%added%%" ||
+          node.textContent === "%%removed%%"
+        ) {
+          deletes.push({
+            from: pos,
+            to: pos + node.nodeSize,
+          });
+          if (node.textContent === "%%added%%") {
+            prevNode = "added";
+          } else {
+            prevNode = "removed";
+          }
+        } else {
+          prevNode = null;
+        }
+      });
+      const transform = new Transform(newDoc);
+      for (const d of deletes) {
+        transform.delete(
           transform.mapping.map(d.from),
           transform.mapping.map(d.to),
-          d.attrs,
+        );
+      }
+      newDoc = transform.doc;
+      const decorationSet = DecorationSet.create(
+        newDoc,
+        decorations.map((d) =>
+          Decoration.node(
+            transform.mapping.map(d.from),
+            transform.mapping.map(d.to),
+            d.attrs,
+          ),
         ),
-      ),
-    );
-    const transaction = editorState.tr.replace(
-      0,
-      editorState.doc.content.size,
-      new Slice(transform.doc.content, 0, 0),
-    );
-    transaction.step(
-      new DiffStep("create", () =>
-        setDiff({
-          originalContent,
-          newContent,
-          decorationSet,
+      );
+      setDiff({
+        prevContent,
+        content,
+        decorationSet,
+      });
+    }
+    if (editorState === null) {
+      const historyPlugin = history();
+      setEditorState(
+        EditorState.create({
+          doc: newDoc,
+          plugins: [
+            reactKeys(),
+            ...exampleSetup({
+              schema,
+              menuBar: false,
+              mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" }, //indenting lists
+              history: false, //set up manually so we can pass to diffPlugin
+            }),
+            historyPlugin,
+            diffPlugin(historyPlugin),
+          ],
         }),
-      ),
-    );
-    setEditorState((s) => s.apply(transaction));
-    setDiff({
-      originalContent,
-      newContent,
-      decorationSet,
-    });
-  }
+      );
+    } else {
+      const transaction = editorState.tr.replace(
+        0,
+        editorState.doc.content.size,
+        new Slice(newDoc.content, 0, 0),
+      );
+      setEditorState((s) => s.apply(transaction));
+    }
+  }, [contents]);
 
   // function handleDiff(approve) {
   //   if (diff === null) return;
   //   let content;
   //   if (approve) {
-  //     content = diff.newContent;
+  //     content = diff.content;
   //   } else {
-  //     content = diff.originalContent;
+  //     content = diff.prevContent;
   //   }
   //   const newDoc = defaultMarkdownParser.parse(content);
   //   const tr = editorState.tr.replace(
@@ -163,43 +160,16 @@ function Note({ appState, currentNodeUuid, setCurrentNodeUuid, nodesRef }) {
   //   updateContent(currentNodeUuid, content);
   // }
 
-  function updateContent(id, content) {
-    nodesRef.current[id].content = content;
-    nodesRef.current[id].newContent = undefined;
-    if (id !== currentNodeUuid) {
-      setCurrentNodeUuid(id);
-    }
-    requestPutData(id, { content }).catch(handlePutDataError);
-  }
-
-  function updateNewContent(id, newContent) {
-    const content = nodesRef.current[id].content;
-    nodesRef.current[id].newContent = newContent;
-    if (id !== currentNodeUuid) {
-      setCurrentNodeUuid(id);
-    } else {
-      createDiff(content, newContent);
-    }
-    requestPutData(id, {
-      content,
-      newContent,
-    }).catch(handlePutDataError);
-  }
-
-  function handlePutDataError(error) {
-    console.error(error); //todo
-  }
-
-  appState.updateContent = updateContent;
-  appState.updateNewContent = updateNewContent;
-
   return (
     <ProseMirror
       state={editorState}
       dispatchTransaction={(tr) => {
         const newState = editorState.apply(tr);
         setEditorState(newState);
-        updateContent(currentNodeUuid, serialize(newState.doc));
+        notesState.updateNode({
+          uuid: notesState.currentNodeUuid,
+          content: serialize(newState.doc),
+        });
       }}
       decorations={() => diff?.decorationSet}
       editable={() => !diff}

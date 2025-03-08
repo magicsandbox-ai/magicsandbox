@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { usePersistentState } from "@magicsandbox.ai/hooks";
 import { Toasts } from "@components/Toasts.js";
@@ -8,7 +8,6 @@ import Note from "./Note.js";
 import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 import { context as _context } from "./context.js";
-import { addNote as _addNote } from "./api.js";
 import NotesState from "./NotesState.js";
 
 /*
@@ -61,41 +60,32 @@ Use NotesState to manage all state. It has methods:
 NotesState also implements the API. See context.js
 */
 
+let notesState;
+
 async function init() {
   const allData = await requestGetAllData();
   const { currentNodeUuid, ...nodes } = allData;
+  notesState = new NotesState(nodes, currentNodeUuid);
   createRoot(document.getElementById("root")).render(
     <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,
   );
   return context();
 }
 
-function App({ initcurrentNodeUuid, initNodes }) {
-  const [currentNodeUuid, setCurrentNodeUuid] = usePersistentState(
+function App({ initcurrentNodeUuid }) {
+  const [currentNodeUuid, _setCurrentNodeUuid] = usePersistentState(
     "currentNodeUuid",
     initcurrentNodeUuid,
   );
-  const [tree, setTree] = useState([]);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteUuid, setDeleteUuid] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState(null);
 
-  const notesStateRef = useRef(null);
   const toastsRef = useRef(null);
 
-  useEffect(() => {
-    if (notesStateRef.current === null) {
-      notesStateRef.current = new NotesState(
-        initNodes,
-        initcurrentNodeUuid,
-        setCurrentNodeUuid,
-        setTree,
-        //putErrorHandler //todo, need to debounce in case many errors at once //toastsRef.current.addToast("Error saving notes", "error");
-      );
-    }
-  }, []);
+  notesState._setCurrentNodeUuid = _setCurrentNodeUuid;
+  //putErrorHandler //todo, need to debounce in case many errors at once //toastsRef.current.addToast("Error saving notes", "error");
+  //maybe just pass in toastsRef itself?
 
   let modalComponent;
   if (deleteUuid) {
@@ -104,9 +94,7 @@ function App({ initcurrentNodeUuid, initNodes }) {
         {...{
           deleteUuid,
           setDeleteUuid,
-          nodesRef,
-          updateTree,
-          toastsRef,
+          notesState,
         }}
       />
     );
@@ -114,14 +102,8 @@ function App({ initcurrentNodeUuid, initNodes }) {
     modalComponent = (
       <Search
         {...{
-          tree,
-          nodesRef,
+          notesState,
           setShowSearch,
-          searchQuery,
-          setSearchQuery,
-          searchResults,
-          setSearchResults,
-          setCurrentNodeUuid,
         }}
       />
     );
@@ -133,24 +115,19 @@ function App({ initcurrentNodeUuid, initNodes }) {
     <div className="flex h-screen w-screen">
       <SideBar
         {...{
-          tree,
-          nodesRef,
-          updateTree,
+          notesState,
           currentNodeUuid,
-          setCurrentNodeUuid,
           setShowInfo,
           setDeleteUuid,
           setShowSearch,
         }}
       />
-      {!("childrenUuids" in nodesRef.current[currentNodeUuid]) && (
+      {notesState.nodes[currentNodeUuid].type === "note" && (
         <Note
           key={currentNodeUuid}
           {...{
-            appState,
+            notesState,
             currentNodeUuid,
-            setCurrentNodeUuid,
-            nodesRef,
           }}
         />
       )}
@@ -161,13 +138,17 @@ function App({ initcurrentNodeUuid, initNodes }) {
 }
 
 function context() {
-  return _context(appState);
+  return _context(notesState);
 }
 
 const api = {
-  addNote(parentId, note) {
-    _addNote(appState, parentId, note);
-  },
+  addNote: notesState.apiAddNote,
+  appendToNote: notesState.apiAppendToNote,
+  replaceNote: notesState.apiReplaceNote,
+  editNote: notesState.apiEditNote,
+  renameNode: notesState.apiRenameNode,
+  moveNodes: notesState.apiMoveNodes,
+  deleteNodes: notesState.apiDeleteNodes,
 };
 
 export { init, context, api };
