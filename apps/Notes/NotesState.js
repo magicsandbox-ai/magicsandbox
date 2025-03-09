@@ -102,28 +102,48 @@ class NotesState {
       Object.entries(nodes).map(([uuid, node]) => [uuid, new Node(node)]),
     );
     this.currentNodeUuid = currentNodeUuid;
-    this._setCurrentNodeUuid = () => {};
-    this._treeSubscribers = [];
-    this.putErrorHandler = (error) => {
-      console.error(error);
+    this.contents = {
+      content: this.nodes[currentNodeUuid].content,
+      prevContent: this.nodes[currentNodeUuid].prevContent,
     };
+    this.putErrorHandler = (error) => {
+      console.error(error); //todo use toastsRef and debounce
+    };
+    this._subscribers = {};
     this._createTree();
+  }
+  subscribe(prop) {
+    return (callback) => {
+      if (!this._subscribers[prop]) {
+        this._subscribers[prop] = [];
+      }
+      this._subscribers[prop].push(callback);
+      return () => {
+        this._subscribers[prop] = this._subscribers[prop].filter(
+          (subscriber) => subscriber !== callback,
+        );
+      };
+    };
+  }
+  getSnapshot(prop) {
+    return () => {
+      return this[prop];
+    };
+  }
+  set(prop, value) {
+    this[prop] = value;
+    this._subscribers[prop]?.forEach((subscriber) => subscriber());
   }
   setCurrentNodeUuid(newCurrentNodeUuid) {
     this.currentNodeUuid = newCurrentNodeUuid;
-    this._setCurrentNodeUuid(newCurrentNodeUuid);
+    this.set("contents", {
+      content: this.nodes[newCurrentNodeUuid].content,
+      prevContent: this.nodes[newCurrentNodeUuid].prevContent,
+    });
+    requestPutData("currentNodeUuid", newCurrentNodeUuid).catch(
+      this.putErrorHandler,
+    );
     this._scheduleUpdateInContext(); //depends on currentNodeUuid
-  }
-  subscribeToTree(callback) {
-    this._treeSubscribers.push(callback);
-    return () => {
-      this._treeSubscribers = this._treeSubscribers.filter(
-        (subscriber) => subscriber !== callback,
-      );
-    };
-  }
-  getTree() {
-    return this.tree;
   }
   _createTree() {
     //add childrenUuids to parent nodes
@@ -197,19 +217,19 @@ class NotesState {
         node.inContext = true;
       }
     });
-    this._treeSubscribers.forEach((subscriber) => subscriber());
+    this.set("tree", this.tree);
   }
   _scheduleUpdateTree() {
     //debounce to try to update once per synchronous batch of node updates
-    clearTimeout(this.updateTreeTimeoutId);
-    this.updateTreeTimeoutId = setTimeout(() => {
+    clearTimeout(this._updateTreeTimeoutId);
+    this._updateTreeTimeoutId = setTimeout(() => {
       this._createTree();
     }, 0);
   }
   _scheduleUpdateInContext() {
     //debounce to try to update once per synchronous batch of node updates
-    clearTimeout(this.updateInContextTimeoutId);
-    this.updateInContextTimeoutId = setTimeout(() => {
+    clearTimeout(this._updateInContextTimeoutId);
+    this._updateInContextTimeoutId = setTimeout(() => {
       this._updateInContext();
     }, 0);
   }
@@ -288,39 +308,25 @@ class NotesState {
   }
   apiAppendToNote(id, content) {
     const note = this._getNote(id);
-    this.updateNode({
-      uuid: note.uuid,
-      prevContent: note.content,
-      content:
-        (note.content?.trimEnd?.() || note.content) +
+    this._handleEdit(
+      note.uuid,
+      note.content,
+      (note.content?.trimEnd?.() || note.content) +
         "\n\n" +
         (content?.trimStart?.() || content),
-    });
-    if (note.uuid !== this.currentNodeUuid) {
-      this.setCurrentNodeUuid(note.uuid);
-    }
+    );
   }
   apiReplaceNote(id, content) {
     const note = this._getNote(id);
-    this.updateNode({
-      uuid: note.uuid,
-      prevContent: note.content,
-      content,
-    });
-    if (note.uuid !== this.currentNodeUuid) {
-      this.setCurrentNodeUuid(note.uuid);
-    }
+    this._handleEdit(note.uuid, note.content, content);
   }
   apiEditNote(id, find, replace) {
     const note = this._getNote(id);
-    this.updateNode({
-      uuid: note.uuid,
-      prevContent: note.content,
-      content: note.content.replaceAll(find, replace),
-    });
-    if (note.uuid !== this.currentNodeUuid) {
-      this.setCurrentNodeUuid(note.uuid);
-    }
+    this._handleEdit(
+      note.uuid,
+      note.content,
+      note.content.replaceAll(find, replace),
+    );
   }
   apiRenameNode(id, name) {
     const node = this._getNode(id);
@@ -379,6 +385,14 @@ class NotesState {
       throw new Error(`id ${id} is a folder, not a note`);
     }
     return note;
+  }
+  _handleEdit(uuid, prevContent, content) {
+    this.updateNode({
+      uuid,
+      prevContent,
+      content,
+    });
+    this.setCurrentNodeUuid(uuid);
   }
   _getNode(id) {
     const node = this.tree[id];

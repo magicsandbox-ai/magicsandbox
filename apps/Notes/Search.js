@@ -23,7 +23,8 @@ function SearchInner({ notesState }) {
     const newSearchResults = [];
     Object.values(notesState.nodes).forEach((node) => {
       if (node.type !== "note") return; // Only search notes, not folders
-      const searchText = `${node.content} ${node.name}`.toLowerCase();
+      const searchText =
+        `${node.content} ${node.prevContent || ""} ${node.name}`.toLowerCase();
       const matches = searchTerms
         .map((term) => {
           const indexes = [];

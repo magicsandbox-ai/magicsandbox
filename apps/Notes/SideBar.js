@@ -17,16 +17,10 @@ import {
 todo drag and drop?
 */
 
-function SideBar({
-  notesState,
-  currentNodeUuid,
-  setShowInfo,
-  setDeleteUuid,
-  setShowSearch,
-}) {
+function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
   const tree = useSyncExternalStore(
-    notesState.subscribeToTree,
-    notesState.getTree,
+    notesState.subscribe("tree"),
+    notesState.getSnapshot("tree"),
   );
 
   const [show, setShow] = useState(window.innerWidth > 768);
@@ -56,7 +50,7 @@ function SideBar({
           <button onClick={() => handleSearch()}>
             <Search />
           </button>
-          <button onClick={() => handleDelete(currentNodeUuid)}>
+          <button onClick={() => handleDelete(notesState.currentNodeUuid)}>
             <Trash2 />
           </button>
           <button onClick={() => handleAdd("0", "folder")}>
@@ -75,7 +69,6 @@ function SideBar({
                 {...{
                   notesState,
                   node,
-                  currentNodeUuid,
                   handleAdd,
                   handleDelete,
                 }}
@@ -95,7 +88,7 @@ function SideBar({
   }
 }
 
-function Node({ notesState, node, currentNodeUuid, handleAdd, handleDelete }) {
+function Node({ notesState, node, handleAdd, handleDelete }) {
   const [renameValue, setRenameValue] = useState(null);
 
   function handleRename(e) {
@@ -113,7 +106,7 @@ function Node({ notesState, node, currentNodeUuid, handleAdd, handleDelete }) {
   const nodeClassName =
     baseClassName +
     `group cursor-pointer flex items-center gap-2 hover:bg-stone-300 ${
-      currentNodeUuid === node.uuid
+      notesState.currentNodeUuid === node.uuid
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;

@@ -1,4 +1,9 @@
-import React, { useSyncExternalStore, useState, useEffect } from "react";
+import React, {
+  useSyncExternalStore,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
@@ -28,15 +33,19 @@ pasting images?
 
 function Note({ notesState }) {
   const contents = useSyncExternalStore(
-    notesState.subscribeToContents,
-    notesState.getContents,
+    notesState.subscribe("contents"),
+    notesState.getSnapshot("contents"),
   );
 
   const [editorState, setEditorState] = useState(null);
   const [diff, setDiff] = useState(null);
 
+  const currentNodeUuidRef = useRef(notesState.currentNodeUuid);
+  const editorStateRef = useRef({});
+
   useEffect(() => {
     const { content, prevContent } = contents;
+    if (content === undefined) return; //folder
     let newDoc;
     if (prevContent === null || content === prevContent) {
       newDoc = defaultMarkdownParser.parse(content);
@@ -112,7 +121,21 @@ function Note({ notesState }) {
         decorationSet,
       });
     }
-    if (editorState === null) {
+    let newEditorState;
+    if (notesState.currentNodeUuid === currentNodeUuidRef.current) {
+      newEditorState = editorState;
+    } else {
+      editorStateRef.current[currentNodeUuidRef.current] = editorState; //save current state
+      newEditorState = editorStateRef.current[notesState.currentNodeUuid]; //get new state
+    }
+    if (newEditorState) {
+      const transaction = editorState.tr.replace(
+        0,
+        editorState.doc.content.size,
+        new Slice(newDoc.content, 0, 0),
+      );
+      setEditorState(newEditorState.apply(transaction));
+    } else {
       const historyPlugin = history();
       setEditorState(
         EditorState.create({
@@ -123,21 +146,15 @@ function Note({ notesState }) {
               schema,
               menuBar: false,
               mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" }, //indenting lists
-              history: false, //set up manually so we can pass to diffPlugin
+              history: false, //set up manually so we can reference it
             }),
             historyPlugin,
             diffPlugin(historyPlugin),
           ],
         }),
       );
-    } else {
-      const transaction = editorState.tr.replace(
-        0,
-        editorState.doc.content.size,
-        new Slice(newDoc.content, 0, 0),
-      );
-      setEditorState((s) => s.apply(transaction));
     }
+    currentNodeUuidRef.current = notesState.currentNodeUuid;
   }, [contents]);
 
   // function handleDiff(approve) {
@@ -159,7 +176,8 @@ function Note({ notesState }) {
   //   setDiff(null);
   //   updateContent(currentNodeUuid, content);
   // }
-
+  if (contents.content === undefined) return null; //folder
+  if (editorState === null) return null; //null on initial render
   return (
     <ProseMirror
       state={editorState}

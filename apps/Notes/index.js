@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { usePersistentState } from "@magicsandbox.ai/hooks";
 import { Toasts } from "@components/Toasts.js";
 import SideBar from "./SideBar.js";
 import Info from "./Info.js";
@@ -72,20 +71,14 @@ async function init() {
   return context();
 }
 
-function App({ initcurrentNodeUuid }) {
-  const [currentNodeUuid, _setCurrentNodeUuid] = usePersistentState(
-    "currentNodeUuid",
-    initcurrentNodeUuid,
-  );
+function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [deleteUuid, setDeleteUuid] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
 
   const toastsRef = useRef(null);
 
-  notesState._setCurrentNodeUuid = _setCurrentNodeUuid;
-  //putErrorHandler //todo, need to debounce in case many errors at once //toastsRef.current.addToast("Error saving notes", "error");
-  //maybe just pass in toastsRef itself?
+  notesState._toastsRef = toastsRef;
 
   let modalComponent;
   if (deleteUuid) {
@@ -116,21 +109,16 @@ function App({ initcurrentNodeUuid }) {
       <SideBar
         {...{
           notesState,
-          currentNodeUuid,
           setShowInfo,
           setDeleteUuid,
           setShowSearch,
         }}
       />
-      {notesState.nodes[currentNodeUuid].type === "note" && (
-        <Note
-          key={currentNodeUuid}
-          {...{
-            notesState,
-            currentNodeUuid,
-          }}
-        />
-      )}
+      <Note
+        {...{
+          notesState,
+        }}
+      />
       {modalComponent}
       <Toasts className="top-2" ref={toastsRef} />
     </div>
