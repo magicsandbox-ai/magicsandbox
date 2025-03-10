@@ -9,7 +9,8 @@
         "--inspect-brk",
         "--experimental-vm-modules",
         "${workspaceRoot}/node_modules/jest/bin/jest.js",
-        "--runInBand"
+        "--runInBand",
+        "${fileBasename}"
       ]
     }
   ]

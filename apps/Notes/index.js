@@ -16,17 +16,17 @@ The database has keys:
 - [uuid] (object): all other keys map uuids to Node objects with keys:
   - uuid (string)
   - type ("folder" | "note")
-  - state? ("new" | "edited" | "renamed" | "moved" | "deleted")
+  - state? ("new" | "deleted")
   - name (string)
-  - prevName? (string)
+  - prevName? (string) //renamed state
   - parentUuid? (string) //populated for all but root
-  - prevParentUuid? (string)
+  - prevParentUuid? (string) //moved state
   - order (number) //position within parent
   For folders:
   - collapsed (boolean)
   For notes:
   - content (string)
-  - prevContent? (string)
+  - prevContent? (string) //edited state
   - checked (boolean)
   - starred (boolean)
 

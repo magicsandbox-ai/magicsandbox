@@ -70,11 +70,38 @@ class Node {
         checked: this.checked,
         starred: this.starred,
       }).catch(this.notesState.putErrorHandler);
-    }, 250);
+    }, 300);
   }
   delete() {
     clearTimeout(this.timeoutId);
     requestDeleteData(this.uuid).catch(this.notesState.putErrorHandler);
+  }
+  approve() {
+    if (!this.state) return;
+    if (this.state === "deleted") {
+      this.delete();
+    } else {
+      this.state = null;
+      this.prevParentUuid = null;
+      this.prevName = null;
+      this.prevContent = null;
+      this.save();
+    }
+  }
+  reject() {
+    if (!this.state) return;
+    if (this.state === "new") {
+      this.delete();
+    } else {
+      this.state = null;
+      this.parentUuid = this.prevParentUuid || this.parentUuid;
+      this.prevParentUuid = null;
+      this.name = this.prevName || this.name;
+      this.prevName = null;
+      this.content = this.prevContent || this.content;
+      this.prevContent = null;
+      this.save();
+    }
   }
 }
 
@@ -99,7 +126,10 @@ class NotesState {
       currentNodeUuid = uuid;
     }
     this.nodes = Object.fromEntries(
-      Object.entries(nodes).map(([uuid, node]) => [uuid, new Node(node)]),
+      Object.entries(nodes).map(([uuid, node]) => [
+        uuid,
+        new Node({ notesState: this, ...node }),
+      ]),
     );
     this.currentNodeUuid = currentNodeUuid;
     this.contents = {
@@ -110,6 +140,7 @@ class NotesState {
       console.error(error); //todo use toastsRef and debounce
     };
     this._subscribers = {};
+    this._update = null;
     this._createTree();
   }
   subscribe(prop) {
@@ -134,32 +165,42 @@ class NotesState {
     this[prop] = value;
     this._subscribers[prop]?.forEach((subscriber) => subscriber());
   }
-  setCurrentNodeUuid(newCurrentNodeUuid) {
+  setCurrentNodeUuid(newCurrentNodeUuid, scheduleUpdate = true) {
     this.currentNodeUuid = newCurrentNodeUuid;
     this.set("contents", {
       content: this.nodes[newCurrentNodeUuid].content,
       prevContent: this.nodes[newCurrentNodeUuid].prevContent,
     });
-    requestPutData("currentNodeUuid", newCurrentNodeUuid).catch(
-      this.putErrorHandler,
-    );
-    this._scheduleUpdateInContext(); //depends on currentNodeUuid
+    clearTimeout(this._putCurrentNodeUuidTimeoutId);
+    this._putCurrentNodeUuidTimeoutId = setTimeout(() => {
+      requestPutData("currentNodeUuid", newCurrentNodeUuid).catch(
+        this.putErrorHandler,
+      );
+    }, 300);
+    if (scheduleUpdate) {
+      this._scheduleUpdate("inContext"); //depends on currentNodeUuid
+    }
   }
   _createTree() {
+    //init children array
+    Object.values(this.nodes).forEach((node) => {
+      if (node.type === "folder") {
+        node.childrenUuids = [];
+      }
+    });
+
     //add childrenUuids to parent nodes
     Object.entries(this.nodes).forEach(([uuid, node]) => {
       if (uuid === "0") return; //skip root
       const parentNode = this.nodes[node.parentUuid];
-      if (parentNode) {
-        if (parentNode.childrenUuids) {
-          parentNode.childrenUuids.push(uuid);
-        } else if (parentNode.type === "folder") {
-          parentNode.childrenUuids = [uuid];
-        } else {
-          this.nodes[uuid].parentUuid = "0"; //assign to root if its parent is not a folder
-        }
+      if (parentNode?.type === "folder") {
+        parentNode.childrenUuids.push(uuid);
       } else {
-        this.nodes[uuid].parentUuid = "0"; //assign to root if its parent is missing
+        //assign to root if its parent is missing (or not a folder somehow)
+        //this can happen if the user approves parent deletion and rejects a child move
+        this.nodes[uuid].parentUuid = "0";
+        this.nodes["0"].childrenUuids.push(uuid);
+        //todo toast to let user know
       }
     });
 
@@ -204,6 +245,16 @@ class NotesState {
     return tree;
   }
   _updateInContext() {
+    if (!(this.currentNodeUuid in this.nodes)) {
+      //maybe deleted current node, set a new one
+      let newCurrentNodeUuid;
+      if (this.tree.length > 1) {
+        newCurrentNodeUuid = this.tree[1].uuid; //set to first child of root
+      } else {
+        newCurrentNodeUuid = "0"; //set to root if no children
+      }
+      this.setCurrentNodeUuid(newCurrentNodeUuid, false);
+    }
     const currentNode = this.nodes[this.currentNodeUuid];
     const currentNodeParents = new Set(currentNode.ancestorUuids);
     this.tree.forEach((node, id) => {
@@ -217,21 +268,30 @@ class NotesState {
         node.inContext = true;
       }
     });
-    this.set("tree", this.tree);
+    this.set("tree", [...this.tree]);
   }
-  _scheduleUpdateTree() {
-    //debounce to try to update once per synchronous batch of node updates
-    clearTimeout(this._updateTreeTimeoutId);
-    this._updateTreeTimeoutId = setTimeout(() => {
+  _scheduleUpdate(update) {
+    //updating the tree takes precedence over updating inContext
+    if (this._update === "tree") {
+      return; //already scheduled
+    } else if (this._update === "inContext") {
+      if (update === "tree") {
+        this._update = update; //override scheduled inContext update with tree update
+      }
+    } else if (this._update === null) {
+      this._update = update;
+      setTimeout(() => {
+        this._runUpdate();
+      }, 0);
+    }
+  }
+  _runUpdate() {
+    if (this._update === "tree") {
       this._createTree();
-    }, 0);
-  }
-  _scheduleUpdateInContext() {
-    //debounce to try to update once per synchronous batch of node updates
-    clearTimeout(this._updateInContextTimeoutId);
-    this._updateInContextTimeoutId = setTimeout(() => {
+    } else if (this._update === "inContext") {
       this._updateInContext();
-    }, 0);
+    }
+    this._update = null;
   }
   /**
    * getDescendants(uuid) => Node[]
@@ -245,7 +305,9 @@ class NotesState {
       const currentUuid = nodesToVisit.pop();
       const node = this.nodes[currentUuid];
       descendants.push(node);
-      nodesToVisit.push(...node.childrenUuids);
+      if (node.type === "folder") {
+        nodesToVisit.push(...node.childrenUuids);
+      }
     }
     return descendants;
   }
@@ -257,11 +319,11 @@ class NotesState {
   updateNode(node) {
     this.nodes[node.uuid].update(node);
     const keysThatUpdateTree = ["name", "parentUuid", "order", "collapsed"];
-    const keysThatUpdateInContext = ["checked", "starred"];
+    const keysThatUpdateInContext = ["state", "checked", "starred"];
     if (keysThatUpdateTree.some((key) => key in node)) {
-      this._scheduleUpdateTree();
+      this._scheduleUpdate("tree");
     } else if (keysThatUpdateInContext.some((key) => key in node)) {
-      this._scheduleUpdateInContext();
+      this._scheduleUpdate("inContext");
     }
   }
   /**
@@ -276,9 +338,16 @@ class NotesState {
       throw new Error(`Invalid parentUuid ${parentUuid}`);
     }
     if (!("order" in node)) {
-      const sibling =
-        this.nodes[parent.childrenUuids[parent.childrenUuids.length - 1]];
-      node.order = sibling ? sibling.order + 1000 : 0;
+      if (!parent.childrenUuids) {
+        //parent may have just been added and hasn't had childrenUuids set yet
+        parent.childrenUuids = [];
+        node.order = 0;
+      } else {
+        const sibling =
+          this.nodes[parent.childrenUuids[parent.childrenUuids.length - 1]];
+        node.order = sibling ? sibling.order + 1000 : 0;
+        parent.childrenUuids.push(node.uuid);
+      }
     }
     if (!("uuid" in node)) {
       node.uuid = generateUuid();
@@ -287,12 +356,13 @@ class NotesState {
       notesState: this,
       ...node,
     });
-    this._scheduleUpdateTree();
+    this._scheduleUpdate("tree");
   }
   deleteNode(uuid) {
+    if (uuid === "0") return; //can't delete root
     this.nodes[uuid].delete();
     delete this.nodes[uuid];
-    this._scheduleUpdateTree();
+    this._scheduleUpdate("tree");
   }
   apiAddNote(parentId, name, content, folders) {
     const finalParentId = this._getAndCreateFolders(parentId, folders);
@@ -300,6 +370,7 @@ class NotesState {
     this.addNode({
       uuid,
       type: "note",
+      state: "new",
       name,
       parentUuid: finalParentId,
       content,
@@ -350,7 +421,10 @@ class NotesState {
   apiDeleteNodes(ids) {
     for (const id of ids) {
       const node = this._getNode(id);
-      this.deleteNode(node.uuid);
+      this.updateNode({
+        uuid: node.uuid,
+        state: "deleted",
+      });
     }
   }
   _getAndCreateFolders(parentId, folders) {
@@ -361,7 +435,7 @@ class NotesState {
     if (parent.type !== "folder") {
       throw new Error(`parentId ${parentId} is a note, not a folder`);
     }
-    if (folders.length > 0) {
+    if (folders?.length > 0) {
       const newFolderUuids = folders.map(() => generateUuid());
       for (let i = 0; i < folders.length; i++) {
         this.addNode({
