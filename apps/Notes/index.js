@@ -6,7 +6,6 @@ import Info from "./Info.js";
 import Note from "./Note.js";
 import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
-import { context as _context } from "./context.js";
 import NotesState from "./NotesState.js";
 import { nodes, currentNodeUuid } from "./__tests__/testUtils.js";
 
@@ -88,7 +87,7 @@ async function init() {
   createRoot(document.getElementById("root")).render(
     <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,
   );
-  return context();
+  return notesState.context(true);
 }
 
 function App() {
@@ -146,7 +145,7 @@ function App() {
 }
 
 function context() {
-  return _context(notesState);
+  return notesState.context();
 }
 
 export { init, context, api };

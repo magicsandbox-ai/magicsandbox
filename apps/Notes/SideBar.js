@@ -39,6 +39,7 @@ function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
   }
 
   if (show) {
+    const anyChanges = tree.some((node) => getChanges(node));
     return (
       <div className="absolute flex h-full w-64 flex-col border-r-2 border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
@@ -76,13 +77,15 @@ function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
               />
             ))}
         </div>
-        <Approve
-          containerClassName="flex-col gap-1.5 pb-3"
-          approveText="Approve all changes"
-          approveOnClick={() => notesState.approveAllChanges()}
-          rejectText="Reject all changes"
-          rejectOnClick={() => notesState.rejectAllChanges()}
-        />
+        {anyChanges && (
+          <Approve
+            containerClassName="flex-col gap-1.5 pb-3"
+            approveText="Approve all changes"
+            approveOnClick={() => notesState.approveAllChanges()}
+            rejectText="Reject all changes"
+            rejectOnClick={() => notesState.rejectAllChanges()}
+          />
+        )}
       </div>
     );
   } else {
@@ -120,7 +123,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;
-  const nameClassName = "grow truncate text-left";
+  let nameClassName = "grow truncate text-left";
   const iconClassName = "w-4 h-4";
   const hoverButtonClassName =
     "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
@@ -140,6 +143,44 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
       </form>
     );
   }
+  const changes = getChanges(node);
+  let changesComponent, changesText;
+  if (changes) {
+    const changesClassName = `font-bold font-mono `;
+    changesText = [];
+    if (changes.new) {
+      changesComponent = (
+        <span className={changesClassName + "text-green-500"}>N</span>
+      );
+      changesText.push("new");
+    }
+    if (changes.moved) {
+      changesComponent = (
+        <span className={changesClassName + "text-purple-500"}>M</span>
+      );
+      changesText.push("moved");
+    }
+    if (changes.renamed) {
+      changesComponent = (
+        <span className={changesClassName + "text-amber-500"}>R</span>
+      );
+      changesText.push("renamed");
+    }
+    if (changes.edited) {
+      changesComponent = (
+        <span className={changesClassName + "text-blue-500"}>E</span>
+      );
+      changesText.push("edited");
+    }
+    if (changes.deleted) {
+      changesComponent = (
+        <span className={changesClassName + "text-red-500"}>D</span>
+      );
+      changesText.push("deleted");
+      nameClassName += " line-through";
+    }
+    changesText = changesText.join(", ");
+  }
   let component;
   if (node.type === "folder") {
     component = (
@@ -152,6 +193,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
           node,
           setRenameValue,
           handleAdd,
+          changesComponent,
         }}
       />
     );
@@ -165,6 +207,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
           hoverButtonClassName,
           node,
           setRenameValue,
+          changesComponent,
         }}
       />
     );
@@ -205,7 +248,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     <div
       style={style}
       className={nodeClassName}
-      title={node.name}
+      title={`${node.name}${changesText ? ` (${changesText})` : ""}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
@@ -222,6 +265,7 @@ function Folder({
   node,
   setRenameValue,
   handleAdd,
+  changesComponent,
 }) {
   function handleCollapse() {
     notesState.updateNode({
@@ -244,6 +288,8 @@ function Folder({
         onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
+        {changesComponent}
+        {changesComponent && " "}
         {node.name}
       </button>
       <button
@@ -269,6 +315,7 @@ function Note({
   hoverButtonClassName,
   node,
   setRenameValue,
+  changesComponent,
 }) {
   function handleCheck() {
     notesState.updateNode({
@@ -301,6 +348,8 @@ function Note({
         onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
+        {changesComponent}
+        {changesComponent && " "}
         {node.name}
       </button>
       <button
@@ -318,3 +367,21 @@ function Note({
 }
 
 export default SideBar;
+
+function getChanges(node) {
+  const changes = {};
+  if (node.state === "new") {
+    changes.new = true;
+  } else if (node.state === "deleted") {
+    changes.deleted = true;
+  } else if (node.prevName) {
+    changes.renamed = true;
+  } else if (node.prevParentUuid) {
+    changes.moved = true;
+  } else if (node.prevContent) {
+    changes.edited = true;
+  }
+  if (Object.keys(changes).length > 0) {
+    return changes;
+  }
+}

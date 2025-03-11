@@ -245,6 +245,7 @@ class NotesState {
     this.tree.forEach((node, id) => {
       node.id = id; //add id here to save us an iteration through the tree in _createTree
       node.inContext = false;
+      if (node.type === "folder") return;
       if (node.uuid === currentNode.uuid) {
         node.inContext = true;
       } else if (node.checked) {
@@ -259,12 +260,16 @@ class NotesState {
     });
   }
   _scheduleUpdate(update) {
-    //updating the tree takes precedence over updating inContext
+    //priority: tree > inContext > setTree
     if (this._update === "tree") {
       return; //already scheduled
     } else if (this._update === "inContext") {
       if (update === "tree") {
-        this._update = update; //override scheduled inContext update with tree update
+        this._update = update; //override scheduled inContext update
+      }
+    } else if (this._update === "setTree") {
+      if (update === "tree" || update === "inContext") {
+        this._update = update; //override scheduled setTree update
       }
     } else if (this._update === null) {
       this._update = update;
@@ -278,6 +283,8 @@ class NotesState {
       this._createTree();
     } else if (this._update === "inContext") {
       this._updateInContext();
+    } else if (this._update === "setTree") {
+      this.set("tree", [...this.tree]);
     }
     this._update = null;
   }
@@ -306,20 +313,28 @@ class NotesState {
    */
   updateNode(node) {
     this.nodes[node.uuid].update(node);
-    const keysThatUpdateTree = [
-      "name",
-      "prevName",
+    const keysThatRebuildTree = [
+      "name", //path
       "parentUuid",
-      "prevParentUuid",
       "order",
-      "collapsed",
+      "collapsed", //display
     ];
-    const keysThatUpdateInContext = ["state", "checked", "starred"];
-    if (keysThatUpdateTree.some((key) => key in node)) {
+    const keysThatUpdateInContext = ["checked", "starred"];
+    const keysThatSetTree = [
+      "state",
+      "prevName",
+      "prevParentUuid",
+      "prevContent",
+    ];
+    if (keysThatRebuildTree.some((key) => key in node)) {
       this._scheduleUpdate("tree");
     } else if (keysThatUpdateInContext.some((key) => key in node)) {
       this._scheduleUpdate("inContext");
-    } else if (this.currentNodeUuid === node.uuid) {
+    } else if (keysThatSetTree.some((key) => key in node)) {
+      //don't need to rebuild tree or update inContext, but we do need to set it for subscribers
+      this._scheduleUpdate("setTree");
+    }
+    if (this.currentNodeUuid === node.uuid) {
       this.set("currentNode", {
         ...this.nodes[node.uuid],
       });
@@ -434,6 +449,141 @@ class NotesState {
     Object.values(this.nodes).forEach((node) => {
       this.rejectChange(node.uuid);
     });
+  }
+  context(init = false) {
+    const currentContext = this._context(init);
+    return `# magicsandbox.Notes
+
+magicsandbox.Notes lets users take notes in a hierarchical folder structure.
+
+## Context Management
+
+The user can manage which notes appear in the context by:
+- Clicking the checkbox next to a note in the sidebar
+- Using Ctrl+Click in the sidebar to select notes and folders
+- Starring a note by clicking the star icon next to it in the sidebar. Starred notes are included in the context when:
+  - They are in the same folder as the current note the user has open
+  - They are in any parent folder above the current note the user has open
+
+Notes that are included in the context are shown in bold in the sidebar.
+
+Note that the user may not be aware that they can manage the context. They can see these instructions by clicking the Info icon in the sidebar.
+
+## Context
+
+${currentContext}
+
+## API
+
+### app.api.addNote(parentId: number, name: string, content: string, folders?: string[])
+
+Add a new note.
+
+- \`parentId\`: ID of the parent folder (use 0 for the root folder)
+- \`name\`: Name of the new note
+- \`content\`: Content of the new note
+- \`folders\`: (Optional) Array of folder names to create as a path to the note. If provided, the note will be created in the last folder in this path.
+
+Returns: If \`folders\` is provided, returns the ID of the last folder created in the path.
+
+Examples:
+- \`addNote(0, "New Note", "content")\` Creates a note named "New Note" in the root folder
+- \`addNote(2, "New Note", "content")\` Creates a note named "New Note" in the folder with ID 2
+- \`addNote(2, "New Note", "content", ["New Folder"])\` Creates a folder named "New Folder" in the folder with ID 2, then creates a note named "New Note" in the new folder
+- \`addNote(2, "New Note", "content", ["Folder 1", "Folder 2"])\` Creates a folder named "Folder 1" in the folder with ID 2, then creates a folder named "Folder 2" in "Folder 1", then creates a note named "New Note" in "Folder 2"
+
+To create a folder and add multiple notes to it, use the returned folder ID:
+
+~~~javascript
+const newFolderId = app.api.addNote(0, "Note 1", "Content 1", ["New Folder"]);
+app.api.addNote(newFolderId, "Note 2", "Content 2")
+~~~
+
+### app.api.appendToNote(id: number, content: string)
+
+Append content to an existing note.
+
+### app.api.replaceNote(id: number, content: string)
+
+Replace an existing note, completely overwriting the existing content.
+
+### app.api.editNote(id: number, find: string, replace: string)
+
+Edit an existing note. The \`find\` string must exactly match a portion of the existing content, character for character, including whitespace. All occurrences of the \`find\` string will be replaced with the \`replace\` string.
+
+### app.api.renameNode(id: number, name: string)
+
+Rename an existing note or folder.
+
+### app.api.moveNodes(ids: number[], parentId: number, folders?: string[])
+
+Move existing notes or folders to a new parent folder. Note that when a folder is moved, all of its children are also moved, so you don't need to specify their ids.
+
+- \`ids\`: Array of IDs of notes or folders to move
+- \`parentId\`: ID of the destination parent folder (use 0 for the root folder)
+- \`folders\`: (Optional) Array of folder names to create as a path to the destination. If provided, the nodes will be moved to the last folder in this path.
+
+Returns: If \`folders\` is provided, returns the ID of the last folder created in the path.
+
+Examples:
+- \`moveNodes([5, 6], 0)\`: Moves nodes with IDs 5 and 6 to the root folder
+- \`moveNodes([5, 6], 2)\`: Moves nodes with IDs 5 and 6 to the folder with ID 2
+- \`moveNodes([5, 6], 2, ["New Folder"])\`: Creates a folder named "New Folder" in the folder with ID 2, then moves nodes with IDs 5 and 6 to the new folder
+- \`moveNodes([5, 6], 2, ["Folder 1", "Folder 2"])\`: Creates a folder named "Folder 1" in the folder with ID 2, then creates a folder named "Folder 2" in "Folder 1", then moves nodes with IDs 5 and 6 to "Folder 2"
+
+### app.api.deleteNodes(ids: number[])
+
+Delete existing notes or folders. Note that when a folder is deleted, all of its children are also deleted, so you don't need to specify their ids.
+
+## Instructions
+
+- Only use the API if the user specifically asked you to make a change to their notes. Otherwise, answer the user's question using their notes as context.
+- If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
+- Try to solve the user's request given the context provided. However, if it would be more helpful if you had more context, at the end of your response, suggest that the user add notes to the context and explain how they can do so.
+`;
+  }
+  _context(init) {
+    const sections = [];
+    const treeString = this.tree
+      .slice(1)
+      .map((node) => {
+        return `${" ".repeat((node.depth - 1) * 2)}- (${node.id}) (${node.type}) ${node.name}`;
+      })
+      .join("\n");
+    if (treeString) {
+      sections.push(`The user's folder and note structure is shown below. The indentation level indicates the folder hierarchy. Each entry includes the node's ID in parentheses, the type (folder or note) in parentheses, and the node's name. So the entry "- (1) (note) New Note" indicates a note named "New Note" with ID 1.
+
+<structure>
+${treeString}
+</structure>
+`);
+    } else {
+      return "The user does not currently have any notes.";
+    }
+    if (init) return sections.join("\n\n"); //no additional context for init
+    const currentNote = this.nodes[this.currentNodeUuid].type === "note";
+    const notesInContext = currentNote
+      ? [this.nodes[this.currentNodeUuid]]
+      : [];
+    notesInContext.push(
+      ...this.tree.filter(
+        (node) => node.inContext && node.uuid !== this.currentNodeUuid,
+      ),
+    );
+    const contextString = notesInContext
+      .map((node) => {
+        return `<(${node.id}) ${node.name}>
+${node.content}
+</(${node.id}) ${node.name}>`;
+      })
+      .join("\n");
+    sections.push(`The notes currently in context are shown below. Each note is enclosed in an XML tag and labeled with its ID in parentheses.${currentNote ? " The current note that the user has open is listed first." : ""}
+
+<context>
+${contextString}
+</context>
+`);
+    return sections.join("\n\n");
   }
   apiAddNote(parentId, name, content, folders) {
     const finalParentUuid = this._getAndCreateFolders(parentId, folders);
