@@ -100,9 +100,11 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     setRenameValue(null);
   }
 
+  const style = { marginLeft: `${(node.depth - 1) * 16}px` };
+
   const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
   const renameClassName =
-    baseClassName + "w-full border border-stone-500 bg-white";
+    baseClassName + "grow border border-stone-500 bg-white";
   const nodeClassName =
     baseClassName +
     `group cursor-pointer flex items-center gap-2 hover:bg-stone-300 ${
@@ -110,15 +112,16 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;
-  const nameClassName = "grow truncate";
+  const nameClassName = "grow truncate text-left";
   const iconClassName = "w-4 h-4";
   const hoverButtonClassName =
     "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
 
   if (renameValue !== null) {
     return (
-      <form onSubmit={handleRename} className="w-full">
+      <form onSubmit={handleRename} className="flex">
         <input
+          style={style}
           className={renameClassName}
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
@@ -192,8 +195,8 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
 
   return (
     <div
+      style={style}
       className={nodeClassName}
-      style={{ marginLeft: `${(node.depth - 1) * 16}px` }}
       title={node.name}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -228,13 +231,13 @@ function Folder({
           <ChevronDown className={iconClassName} />
         )}
       </button>
-      <div
+      <button
         className={nameClassName}
         onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
-      </div>
+      </button>
       <button
         className={hoverButtonClassName}
         onClick={() => handleAdd(node.uuid, "folder")}
@@ -285,13 +288,13 @@ function Note({
           <Square className={iconClassName} />
         )}
       </button>
-      <div
+      <button
         className={`${nameClassName} ${node.inContext ? "font-bold" : ""}`}
         onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
         onDoubleClick={() => setRenameValue(node.name)}
       >
         {node.name}
-      </div>
+      </button>
       <button
         className={node.starred ? "" : hoverButtonClassName}
         onClick={handleStar}

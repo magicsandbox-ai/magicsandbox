@@ -94,11 +94,6 @@ function SearchResult({ note, notesState, setShowSearch }) {
     setShowSearch(false);
   }
 
-  const path = [
-    ...note.ancestorNames.slice(1), //exclude root
-    note.name,
-  ].join("/");
-
   const matches = [];
   for (const { term, indexes } of note.matches) {
     for (const index of indexes) {
@@ -160,7 +155,7 @@ function SearchResult({ note, notesState, setShowSearch }) {
       className="mb-4 cursor-pointer rounded border border-stone-200 p-3 hover:bg-stone-50"
       onClick={handleClick}
     >
-      <div className="mb-1 font-medium">{path}</div>
+      <div className="mb-1 font-medium">{note.path}</div>
       <div>
         {displayMatches.map((displayMatch, index) => (
           <DisplayMatch key={index} displayMatch={displayMatch} />

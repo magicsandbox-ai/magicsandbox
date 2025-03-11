@@ -96,7 +96,7 @@ describe("NotesState", () => {
     expect(tree[5].inContext).toBeFalsy(); //starred, but not above current
     expect(tree[6].uuid).toBe("104");
     expect(tree[6].inContext).toBe(true); //checked
-    expect(tree[6].ancestorNames).toEqual(["root", "folder 2"]);
+    expect(tree[6].path).toEqual("folder 2/note 4");
   });
   test("setCurrentNodeUuid", async () => {
     const prevTree = notesState.tree;

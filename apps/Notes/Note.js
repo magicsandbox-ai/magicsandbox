@@ -32,23 +32,30 @@ pasting images?
 */
 
 function Note({ notesState }) {
-  const contents = useSyncExternalStore(
-    notesState.subscribe("contents"),
-    notesState.getSnapshot("contents"),
+  const currentNode = useSyncExternalStore(
+    notesState.subscribe("currentNode"),
+    notesState.getSnapshot("currentNode"),
   );
 
   const [editorState, setEditorState] = useState(null);
   const [diff, setDiff] = useState(null);
 
-  const currentNodeUuidRef = useRef(notesState.currentNodeUuid);
+  const currentNodeRef = useRef(null);
   const editorStateRef = useRef({});
 
   useEffect(() => {
-    const { content, prevContent } = contents;
-    if (content === undefined) return; //folder
+    if (currentNode.type !== "note") return;
+    const { content, prevContent } = currentNode;
+    if (
+      content === currentNodeRef.current?.content &&
+      prevContent === currentNodeRef.current?.prevContent
+    ) {
+      return;
+    }
     let newDoc;
     if (prevContent === null || content === prevContent) {
       newDoc = defaultMarkdownParser.parse(content);
+      setDiff(null);
     } else {
       const diff = diffArrays(
         prevContent.split("\n\n"),
@@ -122,11 +129,13 @@ function Note({ notesState }) {
       });
     }
     let newEditorState;
-    if (notesState.currentNodeUuid === currentNodeUuidRef.current) {
+    if (currentNode.uuid === currentNodeRef.current?.uuid) {
       newEditorState = editorState;
     } else {
-      editorStateRef.current[currentNodeUuidRef.current] = editorState; //save current state
-      newEditorState = editorStateRef.current[notesState.currentNodeUuid]; //get new state
+      if (currentNodeRef.current?.uuid) {
+        editorStateRef.current[currentNodeRef.current.uuid] = editorState; //save current state
+      }
+      newEditorState = editorStateRef.current[currentNode.uuid]; //get new state
     }
     if (newEditorState) {
       const transaction = newEditorState.tr.replace(
@@ -134,6 +143,14 @@ function Note({ notesState }) {
         newEditorState.doc.content.size,
         new Slice(newDoc.content, 0, 0),
       );
+      if (
+        prevContent === null &&
+        currentNodeRef.current &&
+        currentNodeRef.current.prevContent !== null
+      ) {
+        //we are either accepting or rejecting a diff - apply a DiffStep so we can reverse it if needed
+        transaction.step(new DiffStep("apply", () => setDiff(diff)));
+      }
       setEditorState(newEditorState.apply(transaction));
     } else {
       const historyPlugin = history();
@@ -154,51 +171,41 @@ function Note({ notesState }) {
         }),
       );
     }
-    currentNodeUuidRef.current = notesState.currentNodeUuid;
-  }, [contents]);
+    currentNodeRef.current = currentNode;
+  }, [currentNode]);
 
-  // function handleDiff(approve) {
-  //   if (diff === null) return;
-  //   let content;
-  //   if (approve) {
-  //     content = diff.content;
-  //   } else {
-  //     content = diff.prevContent;
-  //   }
-  //   const newDoc = defaultMarkdownParser.parse(content);
-  //   const tr = editorState.tr.replace(
-  //     0,
-  //     editorState.doc.content.size,
-  //     new Slice(newDoc.content, 0, 0),
-  //   );
-  //   tr.step(new DiffStep("apply", () => setDiff(diff)));
-  //   setEditorState((s) => s.apply(tr));
-  //   setDiff(null);
-  //   updateContent(currentNodeUuid, content);
-  // }
-  if (contents.content === undefined) return null; //folder
+  if (currentNode.type !== "note") return null;
   if (editorState === null) return null; //null on initial render
   return (
-    <ProseMirror
-      state={editorState}
-      dispatchTransaction={(tr) => {
-        const newState = editorState.apply(tr);
-        setEditorState(newState);
-        notesState.updateNode({
-          uuid: notesState.currentNodeUuid,
-          content: serialize(newState.doc),
-        });
-      }}
-      decorations={() => diff?.decorationSet}
-      editable={() => !diff}
-    >
-      <ProseMirrorDoc />
-      {/* {diff && (
+    <div className="flex grow flex-col p-3">
+      <h1 className="mb-2 border-b border-stone-300 pb-1 text-2xl font-bold leading-none">
+        {currentNode.path}
+      </h1>
+      <ProseMirror
+        state={editorState}
+        dispatchTransaction={(tr) => {
+          const newState = editorState.apply(tr);
+          setEditorState(newState);
+          const content = serialize(newState.doc);
+          //the call to updateNode will update currentNode, but we want to ignore it because we already applied the change
+          //so set currentNodeRef.content, which is used to return early from the useEffect if the change is already applied
+          currentNodeRef.current.content = content;
+          notesState.updateNode({
+            uuid: currentNode.uuid,
+            content,
+          });
+        }}
+        decorations={() => diff?.decorationSet}
+        editable={() => !diff}
+      >
+        <ProseMirrorDoc />
+        {/* {diff && (
         <div>
           <button onClick={approveDiff}>Approve</button>
         </div>
       )} */}
-    </ProseMirror>
+      </ProseMirror>
+    </div>
   );
 }
 

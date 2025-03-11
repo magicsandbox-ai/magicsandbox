@@ -5,9 +5,9 @@ function DeleteConfirm({ deleteUuid, setDeleteUuid, notesState }) {
   const deleteNode = notesState.nodes[deleteUuid];
   let header;
   if (deleteNode.type === "folder") {
-    header = `Are you sure you want to delete folder "${deleteNode.name}" and all its contents?`;
+    header = `Are you sure you want to delete folder "${deleteNode.path}" and all its contents?`;
   } else {
-    header = `Are you sure you want to delete note "${deleteNode.name}"?`;
+    header = `Are you sure you want to delete note "${deleteNode.path}"?`;
   }
   const buttons = [
     {
