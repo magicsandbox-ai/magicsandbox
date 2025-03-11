@@ -153,9 +153,7 @@ async function requestHandler({
         //in case we don't find data with e.g. getData, set options.app for the call to requestSandbox
         data.options.app = `${appObjRef.current.author}.${appObjRef.current.name}`;
       }
-      const app =
-        data.options.app ||
-        `${appObjRef.current.author}.${appObjRef.current.name}`;
+      const app = data.options.app;
       if (requestDataRef.current[app] === undefined) {
         //initialize requestDataRef[app]
         try {

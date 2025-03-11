@@ -107,7 +107,7 @@ class Node {
 
 class NotesState {
   constructor(nodes, currentNodeUuid) {
-    if (!nodes) {
+    if (!nodes || Object.keys(nodes).length === 0) {
       const uuid = generateUuid();
       nodes = {
         ["0"]: new Node({
@@ -133,8 +133,8 @@ class NotesState {
     );
     this.currentNodeUuid = currentNodeUuid;
     this.contents = {
-      content: this.nodes[currentNodeUuid].content,
-      prevContent: this.nodes[currentNodeUuid].prevContent,
+      content: this.nodes[currentNodeUuid]?.content,
+      prevContent: this.nodes[currentNodeUuid]?.prevContent,
     };
     this.putErrorHandler = (error) => {
       console.error(error); //todo use toastsRef and debounce

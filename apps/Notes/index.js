@@ -59,12 +59,21 @@ Use NotesState to manage all state. It has methods:
 NotesState also implements the API. See context.js
 */
 
-let notesState;
+let api, notesState;
 
 async function init() {
   const allData = await requestGetAllData();
   const { currentNodeUuid, ...nodes } = allData;
   notesState = new NotesState(nodes, currentNodeUuid);
+  api = {
+    addNote: notesState.apiAddNote,
+    appendToNote: notesState.apiAppendToNote,
+    replaceNote: notesState.apiReplaceNote,
+    editNote: notesState.apiEditNote,
+    renameNode: notesState.apiRenameNode,
+    moveNodes: notesState.apiMoveNodes,
+    deleteNodes: notesState.apiDeleteNodes,
+  };
   createRoot(document.getElementById("root")).render(
     <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,
   );
@@ -128,15 +137,5 @@ function App() {
 function context() {
   return _context(notesState);
 }
-
-const api = {
-  addNote: notesState.apiAddNote,
-  appendToNote: notesState.apiAppendToNote,
-  replaceNote: notesState.apiReplaceNote,
-  editNote: notesState.apiEditNote,
-  renameNode: notesState.apiRenameNode,
-  moveNodes: notesState.apiMoveNodes,
-  deleteNodes: notesState.apiDeleteNodes,
-};
 
 export { init, context, api };

@@ -129,9 +129,9 @@ function Note({ notesState }) {
       newEditorState = editorStateRef.current[notesState.currentNodeUuid]; //get new state
     }
     if (newEditorState) {
-      const transaction = editorState.tr.replace(
+      const transaction = newEditorState.tr.replace(
         0,
-        editorState.doc.content.size,
+        newEditorState.doc.content.size,
         new Slice(newDoc.content, 0, 0),
       );
       setEditorState(newEditorState.apply(transaction));
