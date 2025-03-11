@@ -24,7 +24,7 @@ class Node {
     this.notesState = notesState;
     this.uuid = uuid || generateUuid();
     this.type = type;
-    this.state = state;
+    this.state = state || null;
     this.prevName = prevName || null;
     if (uuid !== "0") {
       //root node doesn't have a parent
@@ -136,6 +136,9 @@ class NotesState {
     this._subscribers[prop]?.forEach((subscriber) => subscriber());
   }
   setCurrentNodeUuid(newCurrentNodeUuid, scheduleUpdate = true) {
+    if (!(newCurrentNodeUuid in this.nodes)) {
+      throw new Error(`Node with uuid ${newCurrentNodeUuid} not found`);
+    }
     /*
     if the user navigates away from a new node, we mark it as no longer new
     but if apiAddNote is called twice in a batch, setCurrentNodeUuid is called twice
@@ -160,6 +163,7 @@ class NotesState {
     if (scheduleUpdate) {
       this._scheduleUpdate("inContext"); //depends on currentNodeUuid
     }
+    this._uncollapseAncestors(newCurrentNodeUuid);
   }
   _createTree() {
     //init children array
@@ -432,16 +436,17 @@ class NotesState {
     });
   }
   apiAddNote(parentId, name, content, folders) {
-    const finalParentId = this._getAndCreateFolders(parentId, folders);
+    const finalParentUuid = this._getAndCreateFolders(parentId, folders);
     const uuid = generateUuid();
     this.addNode({
       uuid,
       type: "note",
       state: "new",
       name,
-      parentUuid: finalParentId,
+      parentUuid: finalParentUuid,
       content,
     });
+    return finalParentUuid;
   }
   apiAppendToNote(id, content) {
     const note = this._getNote(id);
@@ -472,17 +477,20 @@ class NotesState {
       prevName: node.name,
       name,
     });
+    this._uncollapseAncestors(node.uuid);
   }
   apiMoveNodes(ids, parentId, folders) {
-    const finalParentId = this._getAndCreateFolders(parentId, folders);
+    const finalParentUuid = this._getAndCreateFolders(parentId, folders);
     for (const id of ids) {
       const node = this._getNode(id);
       this.updateNode({
         uuid: node.uuid,
         prevParentUuid: node.parentUuid,
-        parentUuid: finalParentId,
+        parentUuid: finalParentUuid,
       });
+      this._uncollapseAncestors(node.uuid);
     }
+    return finalParentUuid;
   }
   apiDeleteNodes(ids) {
     for (const id of ids) {
@@ -491,10 +499,20 @@ class NotesState {
         uuid: node.uuid,
         state: "deleted",
       });
+      this._uncollapseAncestors(node.uuid);
     }
   }
   _getAndCreateFolders(parentId, folders) {
-    const parent = this.tree[parentId];
+    let parent;
+    if (typeof parentId === "string") {
+      /*
+      apiAddNote and apiMoveNodes return the parentUuid because a newly created parent node doesn't have an id yet
+      so this method needs to accept a uuid as well
+      */
+      parent = this.nodes[parentId];
+    } else {
+      parent = this.tree[parentId];
+    }
     if (!parent) {
       throw new Error(`Parent with id ${parentId} not found`);
     }
@@ -544,6 +562,18 @@ class NotesState {
       throw new Error(`Node with id ${id} not found`);
     }
     return node;
+  }
+  _uncollapseAncestors(uuid) {
+    //this can be called when a node is added and ancestorUuids is not yet populated, so can only use parentUuid
+    while (uuid !== "0") {
+      if (this.nodes[uuid].collapsed) {
+        this.updateNode({
+          uuid,
+          collapsed: false,
+        });
+      }
+      uuid = this.nodes[uuid].parentUuid;
+    }
   }
 }
 

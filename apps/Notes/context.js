@@ -49,11 +49,20 @@ Add a new note.
 - \`content\`: Content of the new note
 - \`folders\`: (Optional) Array of folder names to create as a path to the note. If provided, the note will be created in the last folder in this path.
 
+Returns: If \`folders\` is provided, returns the ID of the last folder created in the path.
+
 Examples:
 - \`addNote(0, "New Note", "content")\` Creates a note named "New Note" in the root folder
 - \`addNote(2, "New Note", "content")\` Creates a note named "New Note" in the folder with ID 2
 - \`addNote(2, "New Note", "content", ["New Folder"])\` Creates a folder named "New Folder" in the folder with ID 2, then creates a note named "New Note" in the new folder
 - \`addNote(2, "New Note", "content", ["Folder 1", "Folder 2"])\` Creates a folder named "Folder 1" in the folder with ID 2, then creates a folder named "Folder 2" in "Folder 1", then creates a note named "New Note" in "Folder 2"
+
+To create a folder and add multiple notes to it, use the returned folder ID:
+
+~~~javascript
+const newFolderId = app.api.addNote(0, "Note 1", "Content 1", ["New Folder"]);
+app.api.addNote(newFolderId, "Note 2", "Content 2")
+~~~
 
 ### app.api.appendToNote(id: number, content: string)
 
@@ -78,6 +87,8 @@ Move existing notes or folders to a new parent folder. Note that when a folder i
 - \`ids\`: Array of IDs of notes or folders to move
 - \`parentId\`: ID of the destination parent folder (use 0 for the root folder)
 - \`folders\`: (Optional) Array of folder names to create as a path to the destination. If provided, the nodes will be moved to the last folder in this path.
+
+Returns: If \`folders\` is provided, returns the ID of the last folder created in the path.
 
 Examples:
 - \`moveNodes([5, 6], 0)\`: Moves nodes with IDs 5 and 6 to the root folder

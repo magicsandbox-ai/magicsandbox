@@ -21,6 +21,7 @@ import {
   reactKeys,
 } from "@handlewithcare/react-prosemirror";
 import { diffArrays } from "diff";
+import Approve from "./Approve.js";
 
 /*
 menu? need prosemirror-view/style/prosemirror.css? just need container relative?
@@ -30,6 +31,8 @@ plugin to display ctrl+enter to exit code block when selection is in code block 
 escaping/deleting blocks in general can be kind of annoying
 pasting images?
 */
+
+let diffPlugin;
 
 function Note({ notesState }) {
   const currentNode = useSyncExternalStore(
@@ -52,10 +55,10 @@ function Note({ notesState }) {
     ) {
       return;
     }
-    let newDoc;
+    let newDoc, newDiff;
     if (prevContent === null || content === prevContent) {
       newDoc = defaultMarkdownParser.parse(content);
-      setDiff(null);
+      newDiff = null;
     } else {
       const diff = diffArrays(
         prevContent.split("\n\n"),
@@ -122,12 +125,13 @@ function Note({ notesState }) {
           ),
         ),
       );
-      setDiff({
+      newDiff = {
         prevContent,
         content,
         decorationSet,
-      });
+      };
     }
+    setDiff(newDiff);
     let newEditorState;
     if (currentNode.uuid === currentNodeRef.current?.uuid) {
       newEditorState = editorState;
@@ -143,17 +147,24 @@ function Note({ notesState }) {
         newEditorState.doc.content.size,
         new Slice(newDoc.content, 0, 0),
       );
-      if (
+      if (newDiff) {
+        //creating a diff
+        //the document is a mishmash of content and prevContent
+        //DiffStep essentially flags the transaction and ensures we don't call updateNode with content set to a mishmash
+        transaction.step(new DiffStep("create", newDiff));
+      } else if (
         prevContent === null &&
         currentNodeRef.current &&
         currentNodeRef.current.prevContent !== null
       ) {
-        //we are either accepting or rejecting a diff - apply a DiffStep so we can reverse it if needed
-        transaction.step(new DiffStep("apply", () => setDiff(diff)));
+        //either accepting or rejecting a diff
+        //apply a DiffStep so we can reverse it if needed
+        transaction.step(new DiffStep("apply", diff));
       }
       setEditorState(newEditorState.apply(transaction));
     } else {
       const historyPlugin = history();
+      diffPlugin = createDiffPlugin(historyPlugin);
       setEditorState(
         EditorState.create({
           doc: newDoc,
@@ -166,7 +177,7 @@ function Note({ notesState }) {
               history: false, //set up manually so we can reference it
             }),
             historyPlugin,
-            diffPlugin(historyPlugin),
+            diffPlugin,
           ],
         }),
       );
@@ -178,7 +189,7 @@ function Note({ notesState }) {
   if (editorState === null) return null; //null on initial render
   return (
     <div className="flex grow flex-col p-3">
-      <h1 className="mb-2 border-b border-stone-300 pb-1 text-2xl font-bold leading-none">
+      <h1 className="mb-2 cursor-default border-b border-stone-300 pb-1 text-2xl font-bold leading-none">
         {currentNode.path}
       </h1>
       <ProseMirror
@@ -186,25 +197,39 @@ function Note({ notesState }) {
         dispatchTransaction={(tr) => {
           const newState = editorState.apply(tr);
           setEditorState(newState);
-          const content = serialize(newState.doc);
+          let content, prevContent;
+          const diffState = diffPlugin.getState(newState);
+          if (diffState) {
+            setDiff(diffState);
+            ({ content, prevContent } = diffState);
+          } else {
+            content = serialize(newState.doc);
+            prevContent = null;
+          }
           //the call to updateNode will update currentNode, but we want to ignore it because we already applied the change
-          //so set currentNodeRef.content, which is used to return early from the useEffect if the change is already applied
+          //so set currentNodeRef, which is used to return early from the useEffect if the change is already applied
           currentNodeRef.current.content = content;
+          currentNodeRef.current.prevContent = prevContent;
           notesState.updateNode({
             uuid: currentNode.uuid,
             content,
+            prevContent,
           });
         }}
         decorations={() => diff?.decorationSet}
         editable={() => !diff}
       >
         <ProseMirrorDoc />
-        {/* {diff && (
-        <div>
-          <button onClick={approveDiff}>Approve</button>
-        </div>
-      )} */}
       </ProseMirror>
+      {diff && (
+        <Approve
+          containerClassName="gap-6"
+          approveText="Approve changes to this note"
+          approveOnClick={() => notesState.approveChange(currentNode.uuid)}
+          rejectText="Reject changes to this note"
+          rejectOnClick={() => notesState.rejectChange(currentNode.uuid)}
+        />
+      )}
     </div>
   );
 }
@@ -231,7 +256,7 @@ function serialize(doc) {
   return defaultMarkdownSerializer.serialize(transform.doc);
 }
 
-function diffPlugin(historyPlugin) {
+function createDiffPlugin(historyPlugin) {
   return new Plugin({
     state: {
       init() {
@@ -245,7 +270,7 @@ function diffPlugin(historyPlugin) {
           (diffStep.type === "create" && redo) ||
           (diffStep.type === "apply" && !redo)
         ) {
-          diffStep?.callback();
+          return diffStep.state;
         }
       },
     },
@@ -253,10 +278,10 @@ function diffPlugin(historyPlugin) {
 }
 
 class DiffStep extends Step {
-  constructor(type, callback) {
+  constructor(type, state) {
     super();
     this.type = type;
-    this.callback = callback;
+    this.state = state;
   }
   apply(doc) {
     return StepResult.ok(doc);

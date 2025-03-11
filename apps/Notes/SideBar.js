@@ -12,6 +12,7 @@ import {
   Check,
   Star,
 } from "lucide-react";
+import Approve from "./Approve.js";
 
 /*
 todo drag and drop?
@@ -75,6 +76,13 @@ function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
               />
             ))}
         </div>
+        <Approve
+          containerClassName="flex-col gap-1.5 pb-3"
+          approveText="Approve all changes"
+          approveOnClick={() => notesState.approveAllChanges()}
+          rejectText="Reject all changes"
+          rejectOnClick={() => notesState.rejectAllChanges()}
+        />
       </div>
     );
   } else {

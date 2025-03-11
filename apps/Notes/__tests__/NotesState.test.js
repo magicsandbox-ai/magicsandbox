@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach } from "@jest/globals";
 import NotesState from "../NotesState.js";
+import { nodes, currentNodeUuid } from "./testUtils.js";
 
 /*
 npm run jest -- apps/Notes
@@ -11,65 +12,6 @@ global.requestDeleteData = () => Promise.resolve(true);
 //wait for _scheduleUpdate
 const flushTimeouts = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const nodes = {
-  ["0"]: {
-    uuid: "0",
-    type: "folder",
-    name: "root",
-    parentUuid: null,
-    order: 0,
-  },
-  ["101"]: {
-    uuid: "101",
-    type: "note",
-    name: "note 1",
-    parentUuid: "0",
-    order: 0,
-    content: "content 1",
-    starred: true,
-  },
-  ["201"]: {
-    uuid: "201",
-    type: "folder",
-    name: "folder 1",
-    parentUuid: "0",
-    order: 1000,
-  },
-  ["102"]: {
-    uuid: "102",
-    type: "note",
-    name: "note 2",
-    parentUuid: "201",
-    order: 0,
-    content: "content 2",
-  },
-  ["202"]: {
-    uuid: "202",
-    type: "folder",
-    name: "folder 2",
-    parentUuid: "0",
-    order: 2000,
-  },
-  ["103"]: {
-    uuid: "103",
-    type: "note",
-    name: "note 3",
-    parentUuid: "202",
-    order: 0,
-    content: "content 3",
-    starred: true,
-  },
-  ["104"]: {
-    uuid: "104",
-    type: "note",
-    name: "note 4",
-    parentUuid: "202",
-    order: 1000,
-    content: "content 4",
-    checked: true,
-  },
-};
-const currentNodeUuid = "102";
 let notesState;
 
 beforeEach(() => {
@@ -228,11 +170,41 @@ describe("NotesState", () => {
       subFolder.childrenUuids[subFolder.childrenUuids.length - 1];
     const newNote = notesState.nodes[newNoteUuid];
     expect(notesState.tree.length).toBe(prevTreeLength + 3);
+    expect(newFolder.name).toBe("New Folder");
+    expect(newFolder.state).toBe("new");
+    expect(newFolder.parentUuid).toBe(parent.uuid);
+    expect(newFolder.childrenUuids).toEqual([subFolderUuid]);
+    expect(subFolder.parentUuid).toBe(newFolder.uuid);
     expect(newNote.parentUuid).toBe(subFolder.uuid);
     expect(newNote.state).toBe("new");
     expect(newNote.name).toBe("Nested Note");
     expect(newNote.content).toBe("Nested Content");
     expect(notesState.currentNodeUuid).toBe(newNote.uuid);
+  });
+  test("apiAddNote multiple to a new folder", async () => {
+    const prevTreeLength = notesState.tree.length;
+    const parent = notesState.nodes["0"];
+    const newFolderId = notesState.apiAddNote(
+      parent.id,
+      "Note 1",
+      "Content 1",
+      ["New Folder"],
+    );
+    notesState.apiAddNote(newFolderId, "Note 2", "Content 2");
+    await flushTimeouts();
+    const newFolderUuid = parent.childrenUuids[parent.childrenUuids.length - 1];
+    const newFolder = notesState.nodes[newFolderUuid];
+    const note1Uuid = newFolder.childrenUuids[0];
+    const note1 = notesState.nodes[note1Uuid];
+    const note2Uuid = newFolder.childrenUuids[1];
+    const note2 = notesState.nodes[note2Uuid];
+    expect(notesState.tree.length).toBe(prevTreeLength + 3);
+    expect(note1.parentUuid).toBe(newFolder.uuid);
+    expect(note1.name).toBe("Note 1");
+    expect(note1.content).toBe("Content 1");
+    expect(note2.parentUuid).toBe(newFolder.uuid);
+    expect(note2.name).toBe("Note 2");
+    expect(note2.content).toBe("Content 2");
   });
   test("apiAppendToNote", async () => {
     const note = notesState.nodes["102"];
@@ -301,5 +273,39 @@ describe("NotesState", () => {
     notesState.apiDeleteNodes([note.id]);
     await flushTimeouts();
     expect(note.state).toBe("deleted");
+  });
+  test("uncollapseAncestors", async () => {
+    const parent = notesState.nodes["202"];
+    const child = notesState.nodes["103"];
+    notesState.updateNode({
+      uuid: parent.uuid,
+      collapsed: true,
+    });
+    await flushTimeouts();
+    expect(parent.collapsed).toBe(true);
+    notesState.setCurrentNodeUuid(child.uuid); //should trigger ancestors to uncollapse
+    await flushTimeouts();
+    expect(parent.collapsed).toBe(false);
+  });
+  test("approveAllChanges", async () => {
+    notesState.approveAllChanges();
+    await flushTimeouts();
+    expect(notesState.nodes["101"].state).toBe(null);
+    expect(notesState.nodes["201"].prevName).toBe(null);
+    expect(notesState.nodes["102"]).toBeUndefined();
+    expect(notesState.nodes["103"].prevParentUuid).toBe(null);
+    expect(notesState.nodes["104"].prevContent).toBe(null);
+  });
+  test("rejectAllChanges", async () => {
+    notesState.rejectAllChanges();
+    await flushTimeouts();
+    expect(notesState.nodes["101"]).toBeUndefined();
+    expect(notesState.nodes["201"].name).toBe("previous folder 1");
+    expect(notesState.nodes["201"].prevName).toBe(null);
+    expect(notesState.nodes["102"].state).toBe(null);
+    expect(notesState.nodes["103"].parentUuid).toBe("0");
+    expect(notesState.nodes["103"].prevParentUuid).toBe(null);
+    expect(notesState.nodes["104"].content).toBe("previous content 4");
+    expect(notesState.nodes["104"].prevContent).toBe(null);
   });
 });

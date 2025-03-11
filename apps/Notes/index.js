@@ -8,6 +8,7 @@ import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 import { context as _context } from "./context.js";
 import NotesState from "./NotesState.js";
+import { nodes, currentNodeUuid } from "./__tests__/testUtils.js";
 
 /*
 The database has keys:
@@ -72,8 +73,8 @@ NotesState also implements context and API. See NotesState.context
 let api, notesState;
 
 async function init() {
-  const allData = await requestGetAllData();
-  const { currentNodeUuid, ...nodes } = allData;
+  // const allData = await requestGetAllData();
+  // const { currentNodeUuid, ...nodes } = allData;
   notesState = new NotesState(nodes, currentNodeUuid);
   api = {
     addNote: notesState.apiAddNote,

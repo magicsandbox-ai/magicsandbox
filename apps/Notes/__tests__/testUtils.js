@@ -1,0 +1,66 @@
+const nodes = {
+  ["0"]: {
+    uuid: "0",
+    type: "folder",
+    name: "root",
+    parentUuid: null,
+    order: 0,
+  },
+  ["101"]: {
+    uuid: "101",
+    type: "note",
+    state: "new",
+    name: "note 1",
+    parentUuid: "0",
+    order: 0,
+    content: "content 1",
+    starred: true,
+  },
+  ["201"]: {
+    uuid: "201",
+    type: "folder",
+    name: "folder 1",
+    prevName: "previous folder 1",
+    parentUuid: "0",
+    order: 1000,
+  },
+  ["102"]: {
+    uuid: "102",
+    type: "note",
+    state: "deleted",
+    name: "note 2",
+    parentUuid: "201",
+    order: 0,
+    content: "content 2",
+  },
+  ["202"]: {
+    uuid: "202",
+    type: "folder",
+    name: "folder 2",
+    parentUuid: "0",
+    order: 2000,
+  },
+  ["103"]: {
+    uuid: "103",
+    type: "note",
+    name: "note 3",
+    parentUuid: "202",
+    prevParentUuid: "0",
+    order: 0,
+    content: "content 3",
+    starred: true,
+  },
+  ["104"]: {
+    uuid: "104",
+    type: "note",
+    name: "note 4",
+    parentUuid: "202",
+    order: 1000,
+    content: "content 4",
+    prevContent: "previous content 4",
+    checked: true,
+  },
+};
+const currentNodeUuid = "102";
+
+export { nodes, currentNodeUuid };
