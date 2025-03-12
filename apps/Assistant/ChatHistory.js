@@ -8,11 +8,12 @@ const ChatHistory = memo(function ChatHistory({
   model,
   setModel,
   assistantRef,
+  setShowSearch,
 }) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
   function handleSearch() {
-    console.log("search");
+    setShowSearch(true);
   }
 
   function handleDelete() {

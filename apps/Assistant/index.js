@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.js";
+import AssistantSearch from "./AssistantSearch.js";
 import RiskConfirm from "./RiskConfirm.js";
 import { Toasts } from "@components/Toasts.js";
 import { Assistant } from "./Assistant.js";
@@ -63,6 +64,7 @@ function App({ user, urlParams }) {
   const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
+  const [showSearch, setShowSearch] = useState(false);
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -242,6 +244,8 @@ function App({ user, urlParams }) {
     modalComponent = <AssistantConfirm confirm={confirm} />;
   } else if (risk) {
     modalComponent = <RiskConfirm risk={risk} />;
+  } else if (showSearch) {
+    modalComponent = <AssistantSearch setShowSearch={setShowSearch} />;
   }
 
   return (
@@ -254,6 +258,7 @@ function App({ user, urlParams }) {
             model,
             setModel,
             assistantRef,
+            setShowSearch,
           }}
         />
       )}
