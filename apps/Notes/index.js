@@ -40,6 +40,8 @@ NotesState constructs a tree from the node objects and adds the following keys:
 - ancestorUuids (string[]) //parent, grandparent, etc.
 - display (boolean) //whether to display the node (i.e. are any of its parents collapsed?)
 - inContext (boolean) //see Info.js
+- change? ("deleted" | "edited" | "renamed" | "moved" | "new") //only one change, ranked by priority
+- changeDetails? (string) //all changes
 For folders:
 - childrenUuids (string[]) //just children (not grandchildren, etc.)
 
@@ -91,6 +93,7 @@ async function init() {
 }
 
 function App() {
+  const [showSideBar, setShowSideBar] = useState(window.innerWidth > 768);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteUuid, setDeleteUuid] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -128,6 +131,8 @@ function App() {
       <SideBar
         {...{
           notesState,
+          showSideBar,
+          setShowSideBar,
           setShowInfo,
           setDeleteUuid,
           setShowSearch,
@@ -136,6 +141,7 @@ function App() {
       <Note
         {...{
           notesState,
+          showSideBar,
         }}
       />
       {modalComponent}

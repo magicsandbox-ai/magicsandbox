@@ -2,7 +2,7 @@ const nodes = {
   ["0"]: {
     uuid: "0",
     type: "folder",
-    name: "root",
+    name: "Root Folder",
     parentUuid: null,
     order: 0,
   },

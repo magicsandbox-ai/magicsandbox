@@ -34,7 +34,7 @@ pasting images?
 
 let diffPlugin;
 
-function Note({ notesState }) {
+function Note({ notesState, showSideBar }) {
   const currentNode = useSyncExternalStore(
     notesState.subscribe("currentNode"),
     notesState.getSnapshot("currentNode"),
@@ -47,7 +47,14 @@ function Note({ notesState }) {
   const editorStateRef = useRef({});
 
   useEffect(() => {
-    if (currentNode.type !== "note") return;
+    if (currentNode.type !== "note") {
+      if (currentNodeRef.current?.uuid) {
+        editorStateRef.current[currentNodeRef.current.uuid] = editorState; //save current state
+      }
+      setEditorState(null);
+      currentNodeRef.current = currentNode;
+      return;
+    }
     const { content, prevContent } = currentNode;
     if (
       content === currentNodeRef.current?.content &&
@@ -164,7 +171,7 @@ function Note({ notesState }) {
       setEditorState(newEditorState.apply(transaction));
     } else {
       const historyPlugin = history();
-      diffPlugin = createDiffPlugin(historyPlugin);
+      diffPlugin = createDiffPlugin(newDiff, historyPlugin);
       setEditorState(
         EditorState.create({
           doc: newDoc,
@@ -185,48 +192,69 @@ function Note({ notesState }) {
     currentNodeRef.current = currentNode;
   }, [currentNode]);
 
-  if (currentNode.type !== "note") return null;
-  if (editorState === null) return null; //null on initial render
   return (
     <div className="flex grow flex-col p-3">
-      <h1 className="mb-2 cursor-default border-b border-stone-300 pb-1 text-2xl font-bold leading-none">
-        {currentNode.path}
-      </h1>
-      <ProseMirror
-        state={editorState}
-        dispatchTransaction={(tr) => {
-          const newState = editorState.apply(tr);
-          setEditorState(newState);
-          let content, prevContent;
-          const diffState = diffPlugin.getState(newState);
-          if (diffState) {
-            setDiff(diffState);
-            ({ content, prevContent } = diffState);
-          } else {
-            content = serialize(newState.doc);
-            prevContent = null;
-          }
-          //the call to updateNode will update currentNode, but we want to ignore it because we already applied the change
-          //so set currentNodeRef, which is used to return early from the useEffect if the change is already applied
-          currentNodeRef.current.content = content;
-          currentNodeRef.current.prevContent = prevContent;
-          notesState.updateNode({
-            uuid: currentNode.uuid,
-            content,
-            prevContent,
-          });
-        }}
-        decorations={() => diff?.decorationSet}
-        editable={() => !diff}
+      <div
+        className={`mb-2 flex cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
-        <ProseMirrorDoc />
-      </ProseMirror>
-      {diff && (
+        <h1 className="text-2xl font-bold leading-none">{currentNode.path}</h1>
+        {currentNode.changeDetails && (
+          <span className="italic leading-none text-stone-500">
+            ({currentNode.changeDetails})
+          </span>
+        )}
+      </div>
+      {editorState ? (
+        <ProseMirror
+          state={editorState}
+          dispatchTransaction={(tr) => {
+            const newState = editorState.apply(tr);
+            setEditorState(newState);
+            let content, prevContent;
+            const diffState = diffPlugin.getState(newState);
+            if (diffState) {
+              setDiff(diffState);
+              ({ content, prevContent } = diffState);
+            } else {
+              content = serialize(newState.doc);
+              prevContent = null;
+            }
+            /*
+            we need to call updateNode to save any edits
+            but a transaction can be just a change in selected text, so first we check if content or prevContent are actually changing
+            when we call updateNode, it will update currentNode, but we want to ignore it because we already applied the change
+            so we'll update currentNodeRef before calling updateNode
+            since we check currentNodeRef in the useEffect and use it to return early
+            */
+            const newNode = {
+              uuid: currentNode.uuid,
+            };
+            if (content !== currentNodeRef.current?.content) {
+              newNode.content = content;
+              currentNodeRef.current.content = content;
+            }
+            if (prevContent !== currentNodeRef.current?.prevContent) {
+              newNode.prevContent = prevContent;
+              currentNodeRef.current.prevContent = prevContent;
+            }
+            if (Object.keys(newNode).length > 1) {
+              notesState.updateNode(newNode);
+            }
+          }}
+          decorations={() => diff?.decorationSet}
+          editable={() => !diff}
+        >
+          <ProseMirrorDoc />
+        </ProseMirror>
+      ) : (
+        <div className="grow"></div>
+      )}
+      {currentNode.change && (
         <Approve
-          containerClassName="gap-6"
-          approveText="Approve changes to this note"
+          containerClassName="flex-col gap-1.5 md:flex-row md:gap-6"
+          approveText={`Approve changes to this ${currentNode.type}`}
           approveOnClick={() => notesState.approveChange(currentNode.uuid)}
-          rejectText="Reject changes to this note"
+          rejectText={`Reject changes to this ${currentNode.type}`}
           rejectOnClick={() => notesState.rejectChange(currentNode.uuid)}
         />
       )}
@@ -256,13 +284,17 @@ function serialize(doc) {
   return defaultMarkdownSerializer.serialize(transform.doc);
 }
 
-function createDiffPlugin(historyPlugin) {
+function createDiffPlugin(initState, historyPlugin) {
   return new Plugin({
     state: {
       init() {
-        return;
+        return initState;
       },
-      apply(tr) {
+      apply(tr, value) {
+        if (!tr.steps?.length) {
+          //document is not changing (probably just a selection) - return the previous state
+          return value;
+        }
         const diffStep = tr.steps.find((step) => step instanceof DiffStep);
         if (!diffStep) return;
         const { redo = true } = tr.getMeta(historyPlugin) || {};

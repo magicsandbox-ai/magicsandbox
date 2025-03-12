@@ -44,13 +44,49 @@ class Node {
     } else {
       throw new Error("Invalid Node type");
     }
+    this.updateChange();
     this.save();
   }
   update(node) {
     Object.entries(node).forEach(([key, value]) => {
       this[key] = value;
     });
+    this.updateChange();
     this.save();
+  }
+  updateChange() {
+    let change = null;
+    const changeDetails = [];
+    if (this.state === "new") {
+      change = "new";
+      changeDetails.push("New");
+    }
+    if (
+      this.prevParentUuid !== null &&
+      this.prevParentUuid !== this.parentUuid
+    ) {
+      change = "moved";
+      const prevParent = this.notesState.nodes[this.prevParentUuid];
+      changeDetails.push(
+        prevParent.name ? `Moved from ${prevParent.name}` : "Moved",
+      );
+    }
+    if (this.prevName !== null && this.prevName !== this.name) {
+      change = "renamed";
+      changeDetails.push(
+        this.prevName ? `Renamed from ${this.prevName}` : "Renamed",
+      );
+    }
+    if (this.prevContent !== null && this.prevContent !== this.content) {
+      change = "edited";
+      changeDetails.push("Edited");
+    }
+    if (this.state === "deleted") {
+      change = "deleted";
+      changeDetails.push("Deleted");
+    }
+    this.change = change;
+    this.changeDetails = `${changeDetails.reverse().join(", ")}`;
   }
   save() {
     clearTimeout(this.timeoutId);
@@ -87,7 +123,7 @@ class NotesState {
           notesState: this,
           uuid: "0",
           type: "folder",
-          name: "root",
+          name: "Root Folder",
           parentUuid: null,
         }),
         [uuid]: new Node({
@@ -98,6 +134,7 @@ class NotesState {
       };
       currentNodeUuid = uuid;
     }
+    this.nodes = nodes; //this is referenced by the Node constructor, so we need to assign it first
     this.nodes = Object.fromEntries(
       Object.entries(nodes).map(([uuid, node]) => [
         uuid,
@@ -107,7 +144,19 @@ class NotesState {
     this.currentNodeUuid = currentNodeUuid;
     this.currentNode = this.nodes[currentNodeUuid];
     this.putErrorHandler = (error) => {
-      console.error(error); //todo use toastsRef and debounce
+      console.error(error);
+      if (this._toastsRef && !this._putErrorHandled) {
+        let message = "Unexpected error saving notes";
+        if (error.message === "Database size limit exceeded") {
+          message =
+            "Error saving notes: maximum storage limit reached. Delete some notes to free up space.";
+        }
+        this._toastsRef.current.addToast(message, "error");
+        this._putErrorHandled = true; //avoid displaying too many toasts
+        setTimeout(() => {
+          this._putErrorHandled = false;
+        }, 5000);
+      }
     };
     this._subscribers = {};
     this._update = null;

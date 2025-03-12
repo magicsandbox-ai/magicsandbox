@@ -18,13 +18,18 @@ import Approve from "./Approve.js";
 todo drag and drop?
 */
 
-function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
+function SideBar({
+  notesState,
+  showSideBar,
+  setShowSideBar,
+  setShowInfo,
+  setDeleteUuid,
+  setShowSearch,
+}) {
   const tree = useSyncExternalStore(
     notesState.subscribe("tree"),
     notesState.getSnapshot("tree"),
   );
-
-  const [show, setShow] = useState(window.innerWidth > 768);
 
   function handleSearch() {
     setShowSearch(true);
@@ -38,12 +43,12 @@ function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
     notesState.addNode({ parentUuid, type });
   }
 
-  if (show) {
-    const anyChanges = tree.some((node) => getChanges(node));
+  if (showSideBar) {
+    const anyChanges = tree.some((node) => node.change);
     return (
       <div className="absolute flex h-full w-64 flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
-          <button onClick={() => setShow(!show)}>
+          <button onClick={() => setShowSideBar(!showSideBar)}>
             <Menu />
           </button>
           <button onClick={() => setShowInfo(true)}>
@@ -90,8 +95,8 @@ function SideBar({ notesState, setShowInfo, setDeleteUuid, setShowSearch }) {
     );
   } else {
     return (
-      <div className="m-3 flex flex-col">
-        <button onClick={() => setShow(!show)}>
+      <div className="absolute ml-3 mt-3">
+        <button onClick={() => setShowSideBar(!showSideBar)}>
           <Menu />
         </button>
       </div>
@@ -143,43 +148,29 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
       </form>
     );
   }
-  const changes = getChanges(node);
-  let changesComponent, changesText;
-  if (changes) {
-    const changesClassName = `font-bold font-mono `;
-    changesText = [];
-    if (changes.new) {
-      changesComponent = (
-        <span className={changesClassName + "text-green-500"}>N</span>
-      );
-      changesText.push("new");
-    }
-    if (changes.moved) {
-      changesComponent = (
-        <span className={changesClassName + "text-purple-500"}>M</span>
-      );
-      changesText.push("moved");
-    }
-    if (changes.renamed) {
-      changesComponent = (
-        <span className={changesClassName + "text-amber-500"}>R</span>
-      );
-      changesText.push("renamed");
-    }
-    if (changes.edited) {
-      changesComponent = (
-        <span className={changesClassName + "text-blue-500"}>E</span>
-      );
-      changesText.push("edited");
-    }
-    if (changes.deleted) {
-      changesComponent = (
-        <span className={changesClassName + "text-red-500"}>D</span>
-      );
-      changesText.push("deleted");
-      nameClassName += " line-through";
-    }
-    changesText = changesText.join(", ");
+  let changesComponent;
+  const changesClassName = `font-bold font-mono `;
+  if (node.change === "new") {
+    changesComponent = (
+      <span className={changesClassName + "text-green-500"}>N</span>
+    );
+  } else if (node.change === "moved") {
+    changesComponent = (
+      <span className={changesClassName + "text-purple-500"}>M</span>
+    );
+  } else if (node.change === "renamed") {
+    changesComponent = (
+      <span className={changesClassName + "text-amber-500"}>R</span>
+    );
+  } else if (node.change === "edited") {
+    changesComponent = (
+      <span className={changesClassName + "text-blue-500"}>E</span>
+    );
+  } else if (node.change === "deleted") {
+    changesComponent = (
+      <span className={changesClassName + "text-red-500"}>D</span>
+    );
+    nameClassName += " line-through";
   }
   let component;
   if (node.type === "folder") {
@@ -248,7 +239,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     <div
       style={style}
       className={nodeClassName}
-      title={`${node.name}${changesText ? ` (${changesText})` : ""}`}
+      title={`${node.name}${node.changeDetails ? ` (${node.changeDetails})` : ""}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
@@ -367,21 +358,3 @@ function Note({
 }
 
 export default SideBar;
-
-function getChanges(node) {
-  const changes = {};
-  if (node.state === "new") {
-    changes.new = true;
-  } else if (node.state === "deleted") {
-    changes.deleted = true;
-  } else if (node.prevName) {
-    changes.renamed = true;
-  } else if (node.prevParentUuid) {
-    changes.moved = true;
-  } else if (node.prevContent) {
-    changes.edited = true;
-  }
-  if (Object.keys(changes).length > 0) {
-    return changes;
-  }
-}
