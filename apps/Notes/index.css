@@ -6,6 +6,10 @@ body {
   @apply text-stone-700;
 }
 
+.lucide {
+  @apply -m-0.5 box-content rounded-lg p-0.5 hover:bg-stone-300;
+}
+
 .ProseMirror {
   @apply grow whitespace-pre-wrap focus:outline-none;
 

@@ -48,7 +48,7 @@ document
   });
 
 document.addEventListener("click", (e) => {
-  if (e.target.href) {
+  if (e.target.href && !e.ctrlKey && !e.shiftKey) {
     e.preventDefault();
     const url = new URL(e.target.href);
     const app = url.searchParams.get("_app");

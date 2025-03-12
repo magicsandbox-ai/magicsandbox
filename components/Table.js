@@ -1,5 +1,7 @@
 /*
 "lucide-react": "^0.408.0",
+
+todo careful with lucide styling
 */
 import React, { useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";

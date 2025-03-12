@@ -321,12 +321,7 @@ class Assistant {
         ],
       });
       const userMessage = newMessages[newMessages.length - 1];
-      if (messages.length === 0) {
-        userMessage.tags.push({
-          tag: "favorited_apps",
-          content: formatFavoritedApps(Object.values(this.appDataRef.current)),
-        });
-      } else if (!initContext && this.app) {
+      if (!initContext && this.app) {
         let context, selection;
         try {
           ({ context, selection } = await this.sandboxRef.current.getContext(
@@ -347,6 +342,11 @@ class Assistant {
             content: `\n${selection}\n`,
           });
         }
+      } else if (messages.length === 0) {
+        userMessage.tags.push({
+          tag: "favorited_apps",
+          content: formatFavoritedApps(Object.values(this.appDataRef.current)),
+        });
       }
       const llmBudget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
@@ -396,7 +396,6 @@ class Assistant {
       };
       let summary = "";
       const chunkProcessor = (chunk) => {
-        console.log(chunk);
         const { model, content, index } = chunk.result || {};
         if (index === 1) {
           summary += content;

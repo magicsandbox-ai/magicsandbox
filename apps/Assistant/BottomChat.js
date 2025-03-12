@@ -92,7 +92,7 @@ function BottomChat({
 
   return (
     <>
-      <div className="flex flex-none items-center justify-center gap-2 border-t-2 border-stone-500 bg-stone-100">
+      <div className="flex flex-none items-center justify-center gap-2 border-t border-stone-500 bg-stone-100">
         <div className="flex-1" /> {/* spacer */}
         <div className="flex h-12 w-full max-w-screen-lg flex-initial items-center">
           <div className="relative h-full w-full">
@@ -132,8 +132,8 @@ function BottomChat({
               )}
               <div className="flex items-center">
                 <ChatInput
-                  className={`mx-1 max-h-[148px] grow resize-none px-1 ${
-                    collapsed ? "outline-0" : ""
+                  className={`max-h-[148px] grow resize-none px-1 ${
+                    collapsed ? "mx-1 outline-0" : "mx-2"
                   }`}
                   input={input}
                   setInput={setInput}
