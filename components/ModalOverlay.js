@@ -31,7 +31,7 @@ function ModalOverlay({ modal, onClose, fullScreen }) {
   }
 
   function handleClose() {
-    if (Date.now() - mountTimeRef.current >= 300) {
+    if (Date.now() - mountTimeRef.current >= (navigator.webdriver ? 0 : 300)) {
       onClose();
     }
   }

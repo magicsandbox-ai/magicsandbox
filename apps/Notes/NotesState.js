@@ -694,11 +694,14 @@ ${contextString}
   apiDeleteNodes(ids) {
     for (const id of ids) {
       const node = this._getNode(id);
-      this.updateNode({
-        uuid: node.uuid,
-        state: "deleted",
-      });
-      this._uncollapseAncestors(node.uuid);
+      const descendants = this.getDescendants(node.uuid);
+      for (const descendant of descendants) {
+        this.updateNode({
+          uuid: descendant.uuid,
+          state: "deleted",
+        });
+        this._uncollapseAncestors(descendant.uuid);
+      }
     }
   }
   _getAndCreateFolders(parentId, folders) {

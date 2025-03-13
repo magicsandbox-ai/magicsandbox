@@ -46,25 +46,31 @@ function SideBar({
   if (showSideBar) {
     const anyChanges = tree.some((node) => node.change);
     return (
-      <div className="absolute flex h-full w-64 flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
+      <nav className="absolute flex h-full w-64 flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
-          <button onClick={() => setShowSideBar(!showSideBar)}>
+          <button onClick={() => setShowSideBar(false)}>
             <Menu />
+            <span className="sr-only">Close menu</span>
           </button>
           <button onClick={() => setShowInfo(true)}>
             <Info />
+            <span className="sr-only">Show info</span>
           </button>
           <button onClick={() => handleSearch()}>
             <Search />
+            <span className="sr-only">Search</span>
           </button>
           <button onClick={() => handleDelete(notesState.currentNodeUuid)}>
             <Trash2 />
+            <span className="sr-only">Delete</span>
           </button>
           <button onClick={() => handleAdd("0", "folder")}>
             <FolderPlus />
+            <span className="sr-only">Add folder</span>
           </button>
           <button onClick={() => handleAdd("0", "note")}>
             <Plus />
+            <span className="sr-only">Add note</span>
           </button>
         </div>
         <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
@@ -91,13 +97,14 @@ function SideBar({
             rejectOnClick={() => notesState.rejectAllChanges()}
           />
         )}
-      </div>
+      </nav>
     );
   } else {
     return (
       <div className="absolute ml-3 mt-3">
         <button onClick={() => setShowSideBar(!showSideBar)}>
           <Menu />
+          <span className="sr-only">Open menu</span>
         </button>
       </div>
     );
@@ -144,6 +151,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
           onBlur={handleRename}
           autoFocus
           onFocus={(e) => e.target.select()}
+          aria-label="Rename"
         />
       </form>
     );
@@ -269,9 +277,15 @@ function Folder({
     <>
       <button onClick={handleCollapse}>
         {node.collapsed ? (
-          <ChevronRight className={iconClassName} />
+          <>
+            <ChevronRight className={iconClassName} />
+            <span className="sr-only">Expand folder</span>
+          </>
         ) : (
-          <ChevronDown className={iconClassName} />
+          <>
+            <ChevronDown className={iconClassName} />
+            <span className="sr-only">Collapse folder</span>
+          </>
         )}
       </button>
       <button
@@ -288,12 +302,14 @@ function Folder({
         onClick={() => handleAdd(node.uuid, "folder")}
       >
         <FolderPlus className={iconClassName} />
+        <span className="sr-only">Add folder</span>
       </button>
       <button
         className={hoverButtonClassName}
         onClick={() => handleAdd(node.uuid, "note")}
       >
         <Plus className={iconClassName} />
+        <span className="sr-only">Add note</span>
       </button>
     </>
   );
@@ -329,9 +345,15 @@ function Note({
         onClick={handleCheck}
       >
         {node.checked ? (
-          <Check className={iconClassName} />
+          <>
+            <Check className={iconClassName} />
+            <span className="sr-only">Uncheck note</span>
+          </>
         ) : (
-          <Square className={iconClassName} />
+          <>
+            <Square className={iconClassName} />
+            <span className="sr-only">Check note</span>
+          </>
         )}
       </button>
       <button
@@ -347,11 +369,17 @@ function Note({
         className={node.starred ? "" : hoverButtonClassName}
         onClick={handleStar}
       >
-        <Star
-          className={`${iconClassName} ${
-            node.starred ? "fill-yellow-500" : ""
-          }`}
-        />
+        {node.starred ? (
+          <>
+            <Star className={iconClassName + " fill-yellow-500"} />
+            <span className="sr-only">Unstar note</span>
+          </>
+        ) : (
+          <>
+            <Star className={iconClassName} />
+            <span className="sr-only">Star note</span>
+          </>
+        )}
       </button>
     </>
   );

@@ -7,7 +7,6 @@ import Note from "./Note.js";
 import DeleteConfirm from "./DeleteConfirm.js";
 import Search from "./Search.js";
 import NotesState from "./NotesState.js";
-import { nodes, currentNodeUuid } from "./__tests__/testUtils.js";
 
 /*
 The database has keys:
@@ -74,17 +73,17 @@ NotesState also implements context and API. See NotesState.context
 let api, notesState;
 
 async function init() {
-  // const allData = await requestGetAllData();
-  // const { currentNodeUuid, ...nodes } = allData;
+  const allData = await requestGetAllData();
+  const { currentNodeUuid, ...nodes } = allData;
   notesState = new NotesState(nodes, currentNodeUuid);
   api = {
-    addNote: notesState.apiAddNote,
-    appendToNote: notesState.apiAppendToNote,
-    replaceNote: notesState.apiReplaceNote,
-    editNote: notesState.apiEditNote,
-    renameNode: notesState.apiRenameNode,
-    moveNodes: notesState.apiMoveNodes,
-    deleteNodes: notesState.apiDeleteNodes,
+    addNote: (...args) => notesState.apiAddNote(...args),
+    appendToNote: (...args) => notesState.apiAppendToNote(...args),
+    replaceNote: (...args) => notesState.apiReplaceNote(...args),
+    editNote: (...args) => notesState.apiEditNote(...args),
+    renameNode: (...args) => notesState.apiRenameNode(...args),
+    moveNodes: (...args) => notesState.apiMoveNodes(...args),
+    deleteNodes: (...args) => notesState.apiDeleteNodes(...args),
   };
   createRoot(document.getElementById("root")).render(
     <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,

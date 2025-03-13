@@ -193,7 +193,7 @@ function Note({ notesState, showSideBar }) {
   }, [currentNode]);
 
   return (
-    <div className="flex grow flex-col p-3">
+    <main className="flex grow flex-col p-3">
       <div
         className={`mb-2 flex cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
@@ -258,7 +258,7 @@ function Note({ notesState, showSideBar }) {
           rejectOnClick={() => notesState.rejectChange(currentNode.uuid)}
         />
       )}
-    </div>
+    </main>
   );
 }
 

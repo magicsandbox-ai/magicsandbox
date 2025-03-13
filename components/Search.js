@@ -71,6 +71,7 @@ function SearchInner({ nodes, onClickResult, placeholder }) {
             placeholder={placeholder}
             className="flex-1 rounded border border-stone-200 p-2"
             autoFocus
+            aria-label={placeholder}
           />
           <button
             type="submit"
@@ -163,9 +164,10 @@ function SearchResult({ node, onClickResult }) {
   }
 
   return (
-    <div
-      className="mb-4 cursor-pointer rounded border border-stone-200 p-3 hover:bg-stone-50"
+    <button
+      className="mb-4 w-full cursor-pointer rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
       onClick={handleClick}
+      aria-label={node.name}
     >
       <div className="mb-1 font-medium">{node.name}</div>
       <div>
@@ -173,7 +175,7 @@ function SearchResult({ node, onClickResult }) {
           <DisplayMatch key={index} displayMatch={displayMatch} />
         ))}
       </div>
-    </div>
+    </button>
   );
 }
 

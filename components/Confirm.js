@@ -6,7 +6,8 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
 
   function handleClick(onClick, closeOnClick = true) {
     //ignore super fast clicks to prevent Apps from tricking users into confirming something
-    if (Date.now() - mountTimeRef.current < 300) return;
+    if (Date.now() - mountTimeRef.current < (navigator.webdriver ? 0 : 300))
+      return;
     if (onClick) {
       onClick();
     }
