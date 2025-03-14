@@ -134,4 +134,4 @@ function serialize(doc) {
   return serialized.replace(/\n\n\u200B?/g, "\n");
 }
 
-export { parse, serialize };
+export { parse, serialize, markdownSchema as schema };

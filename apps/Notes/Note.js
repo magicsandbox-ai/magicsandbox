@@ -8,8 +8,7 @@ import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
 import { Slice } from "prosemirror-model";
-import { schema } from "prosemirror-markdown";
-import { parse, serialize } from "./prosemirrorMarkdown.js";
+import { parse, serialize, schema } from "./prosemirrorMarkdown.js";
 import { exampleSetup } from "prosemirror-example-setup";
 import { history } from "prosemirror-history";
 import {

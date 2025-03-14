@@ -19,7 +19,17 @@ const initConversation = {
   lastUpdated: Date.now(),
 };
 
-function App({ user, urlParams }) {
+async function init({ user } = {}) {
+  const urlParams = await requestUrlParams();
+  const initData = await requestGetAllData({
+    app: "magicsandbox.Assistant",
+  });
+  createRoot(document.getElementById("root")).render(
+    <App user={user} urlParams={urlParams} initData={initData} />,
+  );
+}
+
+function App({ user, urlParams, initData }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
@@ -79,15 +89,10 @@ function App({ user, urlParams }) {
 
   useEffect(() => {
     async function init() {
-      let appData = await requestGetData("appData", {
-        app: "magicsandbox.Assistant",
-      });
-      appData = appData || {};
+      const appData = initData.appData || {};
       appDataRef.current = appData;
       setAppData(appData);
-      const model = await requestGetData("selectedModel", {
-        app: "magicsandbox.Assistant",
-      });
+      const model = initData.selectedModel || "auto";
       modelRef.current = model;
       setModel(model);
       assistantRef.current = new Assistant({
@@ -158,13 +163,10 @@ function App({ user, urlParams }) {
           assistantRef.current.handleApp({ app: app.app, maxCost });
         }
       }
-      const conversationData = await requestGetAllData({
-        app: "magicsandbox.Assistant",
-      });
       conversationsRef.current = {
         ...conversationsRef.current, //keep initConversation
         ...Object.fromEntries(
-          Object.entries(conversationData).filter(([, v]) => v.conversationId),
+          Object.entries(initData).filter(([, v]) => v.conversationId),
         ),
       };
       setConversationSummaries(
@@ -305,13 +307,6 @@ function App({ user, urlParams }) {
         <Toasts className="top-2" ref={toastsRef} />
       </div>
     </div>
-  );
-}
-
-async function init({ user } = {}) {
-  const urlParams = await requestUrlParams();
-  createRoot(document.getElementById("root")).render(
-    <App user={user} urlParams={urlParams} />,
   );
 }
 

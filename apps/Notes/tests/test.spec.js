@@ -2,6 +2,8 @@ import { test, expect } from "@magicsandbox.ai/test";
 
 /*
 npm run test notes
+
+todo test input rules
 */
 
 test("Notes", async ({ app }) => {
