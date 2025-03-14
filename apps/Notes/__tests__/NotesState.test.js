@@ -3,7 +3,7 @@ import NotesState from "../NotesState.js";
 import { nodes, currentNodeUuid } from "./testUtils.js";
 
 /*
-npm run jest -- apps/Notes
+npm run jest -- apps/Notes/__tests__/NotesState.test.js
 */
 
 global.requestPutData = () => Promise.resolve(true);
@@ -37,7 +37,7 @@ describe("NotesState", () => {
     expect(tree[5].uuid).toBe("103");
     expect(tree[5].inContext).toBeFalsy(); //starred, but not above current
     expect(tree[6].uuid).toBe("104");
-    expect(tree[6].inContext).toBe(true); //checked
+    expect(tree[6].inContext).toBe(false); //checked set to false on init
     expect(tree[6].path).toEqual("folder 2/note 4");
   });
   test("setCurrentNodeUuid", async () => {

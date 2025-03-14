@@ -1,7 +1,8 @@
 {
+  author: "magicsandbox",
   name: "Notes",
   version: "0.1.0",
-  description: "Take notes, to-do lists, and more",
+  description: "Take notes, create to-do lists, organize documents, and more",
   dependencies: {
     react: "^18.0.0",
     "react-dom": "^18.0.0",

@@ -138,7 +138,11 @@ class NotesState {
     this.nodes = Object.fromEntries(
       Object.entries(nodes).map(([uuid, node]) => [
         uuid,
-        new Node({ notesState: this, ...node }),
+        new Node({
+          notesState: this,
+          ...node,
+          checked: false, //reset checked when starting a new session
+        }),
       ]),
     );
     this.currentNodeUuid = currentNodeUuid;
@@ -500,7 +504,11 @@ class NotesState {
     });
   }
   context(init = false) {
+    this._init = init;
     const currentContext = this._context(init);
+    const logNotesInstruction = init
+      ? "Because the app has just launched, there are no notes in context. First, run a script that uses `app.api.logNotes` to log notes that are relevant to the user's request. Then, use the notes you logged as context to solve the user's request."
+      : "Use `app.api.logNotes` sparingly and try to solve the user's request given the context provided. Only use `app.api.logNotes` if it's clear that the user expects you to reference a note that's not currently in context.";
     return `# magicsandbox.Notes
 
 magicsandbox.Notes lets users take notes in a hierarchical folder structure.
@@ -516,7 +524,7 @@ The user can manage which notes appear in the context by:
 
 Notes that are included in the context are shown in bold in the sidebar.
 
-Note that the user may not be aware that they can manage the context. They can see these instructions by clicking the Info icon in the sidebar.
+The user may not be aware that they can manage the context. They can see these instructions by clicking the Info icon in the sidebar.
 
 ## Context
 
@@ -584,11 +592,15 @@ Examples:
 
 Delete existing notes or folders. Note that when a folder is deleted, all of its children are also deleted, so you don't need to specify their ids.
 
+### app.api.logNotes(ids: number[])
+
+Logs the content of existing notes so that you can reference them in your next message.
+
 ## Instructions
 
 - Only use the API if the user specifically asked you to make a change to their notes. Otherwise, answer the user's question using their notes as context.
 - If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
-- Try to solve the user's request given the context provided. However, if it would be more helpful if you had more context, at the end of your response, suggest that the user add notes to the context and explain how they can do so.
+- ${logNotesInstruction}
 `;
   }
   _context(init) {
@@ -653,7 +665,7 @@ ${contextString}
       note.uuid,
       note.content,
       (note.content?.trimEnd?.() || note.content) +
-        "\n\n" +
+        "\n" +
         (content?.trimStart?.() || content),
     );
   }
@@ -702,6 +714,17 @@ ${contextString}
         });
         this._uncollapseAncestors(descendant.uuid);
       }
+    }
+  }
+  apiLogNotes(ids) {
+    for (const id of ids) {
+      const note = this._getNote(id);
+      assistant.full(`<(${note.id}) ${note.name}>
+${note.content}
+</(${note.id}) ${note.name}>`);
+    }
+    if (this._init) {
+      this.setCurrentNodeUuid(ids[0]);
     }
   }
   _getAndCreateFolders(parentId, folders) {

@@ -367,7 +367,7 @@ async def handle_stream_result(result, index=None):
     model = result['model']
     expected_cost = result['expected_cost']
     buffer = '' # buffer to reduce overhead to json and length prefixes
-    buffer_size = 20
+    buffer_size = 5
     first_chunk = True
     finish_reason = None
     async for chunk in response:

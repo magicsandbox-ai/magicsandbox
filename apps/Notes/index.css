@@ -11,7 +11,7 @@ body {
 }
 
 .ProseMirror {
-  @apply grow whitespace-pre-wrap focus:outline-none;
+  @apply grow overflow-y-auto whitespace-pre-wrap focus:outline-none;
 
   h1,
   h2,
@@ -54,6 +54,9 @@ body {
   }
   strong {
     @apply font-bold;
+  }
+  a {
+    @apply underline hover:font-medium;
   }
   .added {
     @apply bg-green-100;

@@ -8,11 +8,8 @@ import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
 import { Slice } from "prosemirror-model";
-import {
-  schema,
-  defaultMarkdownParser,
-  defaultMarkdownSerializer,
-} from "prosemirror-markdown";
+import { schema } from "prosemirror-markdown";
+import { parse, serialize } from "./prosemirrorMarkdown.js";
 import { exampleSetup } from "prosemirror-example-setup";
 import { history } from "prosemirror-history";
 import {
@@ -45,6 +42,7 @@ function Note({ notesState, showSideBar }) {
 
   const currentNodeRef = useRef(null);
   const editorStateRef = useRef({});
+  const transactionTimeoutIdRef = useRef(null);
 
   useEffect(() => {
     if (currentNode.type !== "note") {
@@ -64,26 +62,24 @@ function Note({ notesState, showSideBar }) {
     }
     let newDoc, newDiff;
     if (prevContent === null || content === prevContent) {
-      newDoc = defaultMarkdownParser.parse(content);
+      newDoc = parse(content);
       newDiff = null;
     } else {
-      const diff = diffArrays(
-        prevContent.split("\n\n"),
-        content.split("\n\n"),
-        { oneChangePerToken: true },
-      );
+      const diff = diffArrays(prevContent.split("\n"), content.split("\n"), {
+        oneChangePerToken: true,
+      });
       const diffedContent = diff
         .map((change) => {
           if (change.added) {
-            return `%%added%%\n\n${change.value}`;
+            return `%%added%%\n${change.value}`;
           } else if (change.removed) {
-            return `%%removed%%\n\n${change.value}`;
+            return `%%removed%%\n${change.value}`;
           } else {
             return change.value;
           }
         })
-        .join("\n\n");
-      newDoc = defaultMarkdownParser.parse(diffedContent);
+        .join("\n");
+      newDoc = parse(diffedContent);
       let prevNode;
       const decorations = [];
       const deletes = [];
@@ -149,11 +145,14 @@ function Note({ notesState, showSideBar }) {
       newEditorState = editorStateRef.current[currentNode.uuid]; //get new state
     }
     if (newEditorState) {
-      const transaction = newEditorState.tr.replace(
-        0,
-        newEditorState.doc.content.size,
-        new Slice(newDoc.content, 0, 0),
-      );
+      const transaction = newEditorState.tr;
+      if (!newEditorState.doc.eq(newDoc)) {
+        transaction.replace(
+          0,
+          newEditorState.doc.content.size,
+          new Slice(newDoc.content, 0, 0),
+        );
+      }
       if (newDiff) {
         //creating a diff
         //the document is a mishmash of content and prevContent
@@ -192,6 +191,38 @@ function Note({ notesState, showSideBar }) {
     currentNodeRef.current = currentNode;
   }, [currentNode]);
 
+  function handleTransaction(newState) {
+    let content, prevContent;
+    const diffState = diffPlugin.getState(newState);
+    if (diffState) {
+      setDiff(diffState);
+      ({ content, prevContent } = diffState);
+    } else {
+      content = serialize(newState.doc);
+      prevContent = null;
+    }
+    /*
+    we need to call updateNode to save any edits
+    but a transaction can be just a change in selected text, so first we check if content or prevContent are actually changing
+    when we call updateNode, it will update currentNode, but we want to ignore it because we already applied the change
+    so we'll update currentNodeRef before calling updateNode
+    since we check currentNodeRef in the useEffect and use it to return early
+    */
+    const newNode = {
+      uuid: currentNode.uuid,
+    };
+    if (content !== currentNodeRef.current?.content) {
+      newNode.content = content;
+      currentNodeRef.current.content = content;
+    }
+    if (prevContent !== currentNodeRef.current?.prevContent) {
+      newNode.prevContent = prevContent;
+      currentNodeRef.current.prevContent = prevContent;
+    }
+    if (Object.keys(newNode).length > 1) {
+      notesState.updateNode(newNode);
+    }
+  }
   return (
     <main className="flex grow flex-col p-3">
       <div
@@ -210,39 +241,17 @@ function Note({ notesState, showSideBar }) {
           dispatchTransaction={(tr) => {
             const newState = editorState.apply(tr);
             setEditorState(newState);
-            let content, prevContent;
-            const diffState = diffPlugin.getState(newState);
-            if (diffState) {
-              setDiff(diffState);
-              ({ content, prevContent } = diffState);
-            } else {
-              content = serialize(newState.doc);
-              prevContent = null;
-            }
-            /*
-            we need to call updateNode to save any edits
-            but a transaction can be just a change in selected text, so first we check if content or prevContent are actually changing
-            when we call updateNode, it will update currentNode, but we want to ignore it because we already applied the change
-            so we'll update currentNodeRef before calling updateNode
-            since we check currentNodeRef in the useEffect and use it to return early
-            */
-            const newNode = {
-              uuid: currentNode.uuid,
-            };
-            if (content !== currentNodeRef.current?.content) {
-              newNode.content = content;
-              currentNodeRef.current.content = content;
-            }
-            if (prevContent !== currentNodeRef.current?.prevContent) {
-              newNode.prevContent = prevContent;
-              currentNodeRef.current.prevContent = prevContent;
-            }
-            if (Object.keys(newNode).length > 1) {
-              notesState.updateNode(newNode);
-            }
+            //avoid serializing the potentially large doc too frequently
+            clearTimeout(transactionTimeoutIdRef.current);
+            transactionTimeoutIdRef.current = setTimeout(() => {
+              handleTransaction(newState);
+            }, 100);
           }}
           decorations={() => diff?.decorationSet}
           editable={() => !diff}
+          clipboardTextSerializer={(slice) => {
+            return slice.content.textBetween(0, slice.content.size, "\n");
+          }}
         >
           <ProseMirrorDoc />
         </ProseMirror>
@@ -263,26 +272,6 @@ function Note({ notesState, showSideBar }) {
 }
 
 export default Note;
-
-/**
- * Serialize a Prosemirror document to a markdown string
- *
- * Prosemirror's markdown serializer and parser don't preserve empty lines,
- * so first replace all empty paragraphs in the doc with a zero width space
- */
-function serialize(doc) {
-  const emptyParagraphs = [];
-  doc.descendants((node, pos) => {
-    if (node.type.name === "paragraph" && node.textContent === "") {
-      emptyParagraphs.push(pos);
-    }
-  });
-  const transform = new Transform(doc);
-  for (const pos of emptyParagraphs) {
-    transform.insert(transform.mapping.map(pos), schema.text("\u200B"));
-  }
-  return defaultMarkdownSerializer.serialize(transform.doc);
-}
 
 function createDiffPlugin(initState, historyPlugin) {
   return new Plugin({
