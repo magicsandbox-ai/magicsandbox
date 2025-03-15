@@ -7,7 +7,7 @@
     react: "^18.0.0",
     "react-dom": "^18.0.0",
     "lucide-react": "^0.408.0",
-    "@handlewithcare/react-prosemirror": "^2.2.4",
+    "@handlewithcare/react-prosemirror": "^2.3.3",
     "prosemirror-markdown": "^1.13.1",
     "prosemirror-example-setup": "^1.2.3",
     diff: "^7.0.0",

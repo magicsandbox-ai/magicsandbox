@@ -1,90 +1,9 @@
 import {
   schema,
-  MarkdownParser,
+  defaultMarkdownParser,
   defaultMarkdownSerializer,
 } from "prosemirror-markdown";
 import { Transform } from "prosemirror-transform";
-import { Schema } from "prosemirror-model";
-import MarkdownIt from "markdown-it";
-
-/*
-creating custom markdownParser, see: https://github.com/handlewithcarecollective/react-prosemirror/issues/44
-this code is modified from: https://github.com/ProseMirror/prosemirror-markdown/blob/master/src/from_markdown.ts
-*/
-
-function listIsTight(tokens, i) {
-  while (++i < tokens.length)
-    if (tokens[i].type != "list_item_open") return tokens[i].hidden;
-  return false;
-}
-
-let marks = schema.spec.marks;
-const link = marks.get("link");
-marks = marks.remove("link");
-marks = marks.addToStart("link", {
-  ...link,
-  toDOM(node) {
-    let { href, title } = node.attrs;
-    return ["a", { href, title }, 0];
-  },
-});
-
-const markdownSchema = new Schema({
-  nodes: schema.spec.nodes,
-  marks,
-});
-
-const markdownParser = new MarkdownParser(
-  markdownSchema,
-  MarkdownIt("commonmark", { html: false }),
-  {
-    blockquote: { block: "blockquote" },
-    paragraph: { block: "paragraph" },
-    list_item: { block: "list_item" },
-    bullet_list: {
-      block: "bullet_list",
-      getAttrs: (_, tokens, i) => ({ tight: listIsTight(tokens, i) }),
-    },
-    ordered_list: {
-      block: "ordered_list",
-      getAttrs: (tok, tokens, i) => ({
-        order: +tok.attrGet("start") || 1,
-        tight: listIsTight(tokens, i),
-      }),
-    },
-    heading: {
-      block: "heading",
-      getAttrs: (tok) => ({ level: +tok.tag.slice(1) }),
-    },
-    code_block: { block: "code_block", noCloseToken: true },
-    fence: {
-      block: "code_block",
-      getAttrs: (tok) => ({ params: tok.info || "" }),
-      noCloseToken: true,
-    },
-    hr: { node: "horizontal_rule" },
-    image: {
-      node: "image",
-      getAttrs: (tok) => ({
-        src: tok.attrGet("src"),
-        title: tok.attrGet("title") || null,
-        alt: (tok.children[0] && tok.children[0].content) || null,
-      }),
-    },
-    hardbreak: { node: "hard_break" },
-
-    em: { mark: "em" },
-    strong: { mark: "strong" },
-    link: {
-      mark: "link",
-      getAttrs: (tok) => ({
-        href: tok.attrGet("href"),
-        title: tok.attrGet("title") || null,
-      }),
-    },
-    code_inline: { mark: "code", noCloseToken: true },
-  },
-);
 
 /**
  * Parse a markdown string into a Prosemirror document
@@ -109,7 +28,7 @@ function parse(content) {
     }
     prevIndex = index + 1;
   }
-  return markdownParser.parse(finalContent);
+  return defaultMarkdownParser.parse(finalContent);
 }
 
 /**
@@ -134,4 +53,4 @@ function serialize(doc) {
   return serialized.replace(/\n\n\u200B?/g, "\n");
 }
 
-export { parse, serialize, markdownSchema as schema };
+export { parse, serialize, schema };
