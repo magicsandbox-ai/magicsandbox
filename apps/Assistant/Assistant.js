@@ -380,7 +380,7 @@ class Assistant {
           maxCost,
         },
       ];
-      if (!messages.some((message) => message.role === "user")) {
+      if (!this.conversationsRef.current[conversationId].summary) {
         const summaryArgs = createSummaryArgs(userMessage);
         llmArgs.push(summaryArgs);
         maxCost += summaryArgs.maxCost;

@@ -12,24 +12,39 @@ import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars } from "./utils.js";
 
-const initConversation = {
-  conversationId: Date.now(),
-  messages: [],
-  summary: null,
-  lastUpdated: Date.now(),
-};
-
 async function init({ user } = {}) {
   const urlParams = await requestUrlParams();
   const initData = await requestGetAllData({
     app: "magicsandbox.Assistant",
   });
+  const initConversation = {
+    conversationId: Date.now(),
+    messages: [],
+    summary: null,
+    lastUpdated: Date.now(),
+  };
+  if (Object.keys(initData).length === 0) {
+    initConversation.messages.push({
+      role: "assistant",
+      tags: [{ content: "Welcome to Magic Sandbox!" }],
+    });
+    initConversation.summary = "Welcome to Magic Sandbox!";
+    initConversation.welcome = true;
+    requestPutData(initConversation.conversationId, initConversation, {
+      app: "magicsandbox.Assistant",
+    }).catch(console.error);
+  }
   createRoot(document.getElementById("root")).render(
-    <App user={user} urlParams={urlParams} initData={initData} />,
+    <App
+      user={user}
+      urlParams={urlParams}
+      initData={initData}
+      initConversation={initConversation}
+    />,
   );
 }
 
-function App({ user, urlParams, initData }) {
+function App({ user, urlParams, initData, initConversation }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
@@ -38,9 +53,10 @@ function App({ user, urlParams, initData }) {
   - messages: see below
   - summary: summary of the first user message
   - lastUpdated: timestamp of the last message
+  - welcome: boolean
 
   messages is an array of objects with keys:
-  - role: "user", "assistant", or "display"
+  - role: "user", "assistant", "display"
   - tags: an array of objects [{tag?: string, content: string}] representing a message
     - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
