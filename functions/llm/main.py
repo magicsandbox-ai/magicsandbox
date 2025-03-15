@@ -98,16 +98,6 @@ supported_models = {
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'multimodal_disabled': True,
-    },
-    'gemini-1.5-flash-8b-001': {
-        'api_name': 'gemini/gemini-1.5-flash-8b-001',
-        'max_input_tokens': 128000, # actually 1048576, but pricing doubles after 128K, so should just use flash-lite
-        'max_output_tokens': 8192,
-        'input_cost_per_token': 0.0375 / 1000000,
-        'output_cost_per_token': 0.15 / 1000000,
-        'tokenizer': gemini_tokenizer, # note: 8b not yet included in get_tokenizer_for_model. assume same as flash-002
-        'max_vision_tokens': 0,
-        'multimodal_disabled': True,
     }
 }
 
@@ -174,13 +164,14 @@ def process_messages(model, args):
 
 def find_model(args: LlmArgs, maxCost: float):
     model = args.model
+    supported_models_list = list(supported_models.keys())
     if model is not None and model not in supported_models:
         raise HTTPException(status_code=400, detail=f'Model {model} not supported')
-    if model in supported_models:
-        models = [model]
+    elif model is not None:
+        model_index = supported_models_list.index(model)
+        models = supported_models_list[model_index:]
     else:
-        models = []
-    models += [m for m in supported_models.keys() if m != model]
+        models = supported_models_list
     token_counts = {}
     for model in models:
         model_info = supported_models[model]

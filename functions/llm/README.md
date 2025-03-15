@@ -20,9 +20,6 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
   - `gemini-2.0-flash-lite-001`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
-  - `gemini-1.5-flash-8b-001`
-    - Prompt caching is not supported
-    - Multimodal inputs (images, audio, video) are not supported
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
 - `response_format`
 - `temperature`

@@ -88,7 +88,7 @@ function createSummaryArgs(userMessage) {
       { role: "assistant", content: "Renewable energy presentation" },
       { role: "user", content: userRequest },
     ],
-    model: "gemini-1.5-flash-8b-001",
+    model: "gemini-2.0-flash-lite-001",
     max_completion_tokens: 20,
     maxCost: 0.0001,
   };
