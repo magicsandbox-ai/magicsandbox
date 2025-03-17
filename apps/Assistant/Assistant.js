@@ -489,8 +489,8 @@ class Assistant {
       }
       const handleAppResult = async (result) => {
         this.setDisplayMessage(`${result.metadata.id} loaded`);
-        requestUrlParams({ _app: result.metadata.id }).catch(console.error);
         const app = result.metadata.id.split("@")[0];
+        requestUrlParams({ _app: app }).catch(console.error);
         const appData = {
           ...this.appDataRef.current[app],
           id: result.metadata.id,
