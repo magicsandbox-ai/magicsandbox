@@ -2,7 +2,7 @@
 
 **I'm your AI assistant.** Magic Sandbox gives me some **unique abilities** - here's what I can help you with:
 
-- **I can chat** - ask me anything! With Magic Sandbox, you can chat with all of the top AI models in one place, like **ChatGPT, Claude**, and **Gemini**.
+- **I can chat** - ask me anything! With Magic Sandbox, you can chat with all of the latest AI models in one place, like **ChatGPT**, **Claude**, and **Gemini**.
 - **I can open and interact with apps** - that means I can handle tasks for you!
 - **I can answer questions related to the app you have open** - I automatically understand what you're working on. No more copy/pasting!
 

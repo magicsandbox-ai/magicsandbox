@@ -2,7 +2,7 @@
 import markdown from "../index.md";
 
 const navLinks = Object.fromEntries(
-  Array.from(document.querySelectorAll("#nav a")).map((a) => {
+  Array.from(document.querySelectorAll("nav a")).map((a) => {
     const url = new URL(a.href);
     const id = url.searchParams.get("id");
     return [id, a];
@@ -41,7 +41,7 @@ const observer = new IntersectionObserver(
 );
 
 document
-  .getElementById("main")
+  .querySelector("main")
   .querySelectorAll("h1, h2, h3") //this should match maxDepth in remarkToc
   .forEach((h) => {
     observer.observe(h);

@@ -31,8 +31,8 @@ function RiskConfirm({ risk }) {
   );
   const header =
     riskResponses.length > 1
-      ? `Approve ${riskResponses.length} Sandbox Requests?`
-      : "Approve Sandbox Request?";
+      ? `Approve ${riskResponses.length} Requests?`
+      : "Approve Request?";
   const buttons = [
     {
       text: "Approve",

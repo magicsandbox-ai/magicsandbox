@@ -70,7 +70,7 @@ async function handleMagicJson(folder) {
       obj.htmlFile = obj.htmlFile || "dist/index.html";
       obj.styleFile = obj.styleFile || "dist/index.css";
       obj.prebuild =
-        obj.prebuild || "npx magicsandbox docs ${path.basename(folder)}";
+        obj.prebuild || `npx magicsandbox docs ${path.basename(folder)}`;
       obj.esbuildOptions = {
         ...obj.esbuildOptions,
         loader: {

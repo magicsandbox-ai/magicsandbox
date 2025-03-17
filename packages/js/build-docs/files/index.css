@@ -31,29 +31,29 @@
   }
 }
 
-#main a {
+main a {
   @apply underline hover:font-medium;
 }
-#main ol {
+main ol {
   @apply list-inside list-decimal;
 }
-#main ul {
+main ul {
   @apply list-inside list-disc;
 }
-#main li {
+main li {
   @apply my-2 ml-6;
 }
-#main > *:not(h1):not(h2):not(h3):not(h4) {
+main > *:not(h1):not(h2):not(h3):not(h4) {
   @apply ml-4 mt-4;
 }
-#main > h1:not(:first-child),
-#main > h2:not(:first-child),
-#main > h3:not(:first-child),
-#main > h4:not(:first-child) {
+main > h1:not(:first-child),
+main > h2:not(:first-child),
+main > h3:not(:first-child),
+main > h4:not(:first-child) {
   @apply mt-[1.5em];
 }
 
-#nav a {
+nav a {
   @apply hover:underline;
 }
 .text-shadow {
