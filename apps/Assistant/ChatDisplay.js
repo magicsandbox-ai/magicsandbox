@@ -9,8 +9,24 @@ function ChatDisplay({
   innerClassName = "",
   messages,
   assistantRef,
+  setShowDiscover,
 }) {
   const ref = useRef(null);
+
+  const handleClick = (e) => {
+    const link = e.target.closest("a");
+    if (!link?.href) return;
+    e.preventDefault();
+    if (link.href.startsWith("assistant://")) {
+      const action = link.href.slice("assistant://".length);
+      if (action === "discover") {
+        setShowDiscover(true);
+        return;
+      }
+      return;
+    }
+    requestOpenUrl(link.href);
+  };
 
   let scrollToBottom = false;
   if (!ref.current) {
@@ -34,7 +50,11 @@ function ChatDisplay({
   }
 
   return (
-    <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>
+    <div
+      ref={ref}
+      className={`overflow-y-auto ${outerClassName}`}
+      onClick={handleClick}
+    >
       <div className={`mb-4 flex flex-col gap-5 ${innerClassName}`}>
         {messages.map((message, i) => (
           <Message

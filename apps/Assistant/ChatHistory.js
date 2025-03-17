@@ -22,19 +22,23 @@ const ChatHistory = memo(function ChatHistory({
 
   if (show) {
     return (
-      <div className="absolute flex h-full w-64 flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
+      <nav className="absolute flex h-full w-64 flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />
+            <span className="sr-only">Close menu</span>
           </button>
           <button onClick={() => handleSearch()}>
             <Search />
+            <span className="sr-only">Search</span>
           </button>
           <button onClick={() => handleDelete()}>
             <Trash2 />
+            <span className="sr-only">Delete</span>
           </button>
           <button onClick={() => assistantRef.current.handleNewConversation()}>
             <Plus />
+            <span className="sr-only">New chat</span>
           </button>
         </div>
         <div className="mx-3">
@@ -60,12 +64,13 @@ const ChatHistory = memo(function ChatHistory({
               </button>
             ))}
         </div>
-      </div>
+      </nav>
     );
   } else {
     return (
       <button className="absolute ml-3 mt-3" onClick={() => setShow(!show)}>
         <Menu />
+        <span className="sr-only">Open menu</span>
       </button>
     );
   }

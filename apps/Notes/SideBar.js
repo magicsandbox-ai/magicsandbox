@@ -130,7 +130,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     baseClassName + "grow border border-stone-500 bg-white";
   const nodeClassName =
     baseClassName +
-    `group cursor-pointer flex items-center gap-2 hover:bg-stone-300 ${
+    `group flex items-center gap-2 hover:bg-stone-300 ${
       notesState.currentNodeUuid === node.uuid
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""

@@ -11,6 +11,8 @@ import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars } from "./utils.js";
+import welcomeMessage from "./welcomeMessage.md";
+import Discover from "./Discover.js";
 
 async function init({ user } = {}) {
   const urlParams = await requestUrlParams();
@@ -26,7 +28,7 @@ async function init({ user } = {}) {
   if (Object.keys(initData).length === 0) {
     initConversation.messages.push({
       role: "assistant",
-      tags: [{ content: "Welcome to Magic Sandbox!" }],
+      tags: [{ content: welcomeMessage }],
     });
     initConversation.summary = "Welcome to Magic Sandbox!";
     initConversation.welcome = true;
@@ -91,6 +93,7 @@ function App({ user, urlParams, initData, initConversation }) {
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
   const [showSearch, setShowSearch] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -105,7 +108,17 @@ function App({ user, urlParams, initData, initConversation }) {
 
   useEffect(() => {
     async function init() {
-      const appData = initData.appData || {};
+      const appData = initData.appData || {
+        "magicsandbox.Notes": {
+          //id not needed?
+          app: "magicsandbox.Notes",
+          description:
+            "Take notes, create to-do lists, organize documents, and more",
+          minCost: 0.001,
+          status: "active",
+          favorited: Date.now(),
+        },
+      };
       appDataRef.current = appData;
       setAppData(appData);
       const model = initData.selectedModel || "auto";
@@ -140,7 +153,7 @@ function App({ user, urlParams, initData, initConversation }) {
           "The link you opened includes a request to open this App",
         ];
         if (app.blocked) {
-          messages.push(`${app} costs ${formatAsDollars(app.minCost)}`);
+          messages.push(`${app.app} costs ${formatAsDollars(app.minCost)}`);
           messages.push("This App is blocked");
         } else if (app.favorited || app.published) {
           messages = []; //no need to confirma
@@ -156,7 +169,7 @@ function App({ user, urlParams, initData, initConversation }) {
           maxCost = app.minCost;
           //todo if app's minCost has increased, requestApp will throw and the user will be shown the new cost
           //but without any explanation, which is confusing
-          messages.push(`${app} costs ${formatAsDollars(app.minCost)}`);
+          messages.push(`${app.app} costs ${formatAsDollars(app.minCost)}`);
         } else {
           //don't know the cost, leave messages as is
           //todo look up cost here rather than requestApp throwing and showing another confirmation?
@@ -212,7 +225,7 @@ function App({ user, urlParams, initData, initConversation }) {
       assistantRef.current.handleRequest(event);
     }
     sandboxRef.current.addListener(handleRequest);
-    return () => sandboxRef.current.removeListener(handleRequest);
+    return () => sandboxRef.current?.removeListener(handleRequest);
   }, []);
 
   useEffect(() => {
@@ -263,11 +276,19 @@ function App({ user, urlParams, initData, initConversation }) {
   } else if (risk) {
     modalComponent = <RiskConfirm risk={risk} />;
   } else if (showSearch) {
-    modalComponent = <AssistantSearch setShowSearch={setShowSearch} />;
+    modalComponent = (
+      <AssistantSearch
+        setShowSearch={setShowSearch}
+        assistantRef={assistantRef}
+        conversationsRef={conversationsRef}
+      />
+    );
+  } else if (showDiscover) {
+    modalComponent = <Discover setShowDiscover={setShowDiscover} />;
   }
 
   return (
-    <div className="flex h-screen">
+    <main className="flex h-screen">
       {app === null && (
         <ChatHistory
           {...{
@@ -298,6 +319,7 @@ function App({ user, urlParams, initData, initConversation }) {
             innerClassName="w-full max-w-screen-lg"
             messages={messages}
             assistantRef={assistantRef}
+            setShowDiscover={setShowDiscover}
           />
         )}
         <Sandbox
@@ -322,7 +344,7 @@ function App({ user, urlParams, initData, initConversation }) {
         {modalComponent}
         <Toasts className="top-2" ref={toastsRef} />
       </div>
-    </div>
+    </main>
   );
 }
 

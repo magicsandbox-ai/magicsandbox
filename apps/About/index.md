@@ -1,40 +1,39 @@
 # Magic Sandbox
 
-todo
-User who published the Function. Functions can be referred to by their fully qualified name author.name@version, for example: magicsandbox.Chat@0.1.0. Using just author.name, like magicsandbox.Chat, will resolve to the latest published version.
+Magic Sandbox provides an AI assistant with unique abilities - not only can you chat with your assistant, but your assistant can interact with apps on your behalf, helping you get things done. Check out the 1 minute [demo video](https://www.youtube.com/watch?v=dQw4w9WgXcQ) to see how it works.
 
-## Overview
+1. [Assistant](#assistant)
+2. [Payments](#payments)
+3. [Privacy and Security](#privacy-and-security)
+
+Write code? Check out the [docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for more details.
+
+Still need help? Send us an email at [help@magicsandbox.ai](mailto:help@magicsandbox.ai).
+
+## Assistant
+
+- opening apps, favoriting/blocking
+- scripts? context? prompt to continue, retrying?
+- auto model?
 
 ## Payments
 
-## Sandbox
+- plans/free trial
+- reloading
+- apps, functions, assistant, chat
 
-For security purposes, Magic Apps run in an environment called the Sandbox, which protects you by:
+## Privacy and Security
 
-- Limiting how much money Magic Apps can spend
-- Controlling whether Magic Apps can access or modify data belonging to other Magic Apps
-- Preventing Magic Apps from taking actions you don't want, like downloading files
+- trust apps
+- risk of changing assistant
+- never password, cc
+- sandbox? risks/confirm
 
-When you type or click on something in the Sandbox, you may see a Sandbox request pop up...
+## FAQs
 
-- How do I know whether to approve a Sandbox request?
-- Why when I click on a link do I only sometimes need to approve a Sandbox request? We track how much you've interacted with the App to decide whether you need to approve the request. For example, if you've just opened the App and clicked on a link, it's not possible for there to be any personal data available for the App to misuse, so we don't bother you to approve the request. On the other hand, if you've typed a lot of characters since opening the App, we require you to approve the request to ensure that any data you've input is secure.
-- How does it work? Sandbox uses technology provided by your web browser to create a secure environment in which to run Magic Apps. We also leverage user reports to identify Magic Apps that are making misleading or malicious Sandbox requests, so please don't hesitate to report anything unusual.
-
-## Assistants
-
-how to change
-
-## Privacy
-
-todo warn about input not private
-
-todo anonymity, risk of URLs
-
-## Magic Bang (!magic)
-
-## Bangs
-
-## Still Need Help?
-
-Please send an email to help@magicsandbox.ai. We want to know how to fix your problem!
+- variable costs
+- naming convention?
+- naming convention. functions?
+- data not synced, incognito
+- deprecated?
+- can't pay yourself

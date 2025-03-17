@@ -598,8 +598,10 @@ Logs the content of existing notes so that you can reference them in your next m
 
 ## Instructions
 
-- Only use the API if the user specifically asked you to make a change to their notes. Otherwise, answer the user's question using their notes as context.
+- If the user is simply asking a question about their notes, just answer it.
+- If you're suggesting a change to a note, use the API. The user can view a diff of the changes and approve or reject them.
 - If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
+- Avoid making changes to many notes or renaming/moving/deleting nodes unless the user specifically asks (e.g. "reorganize all my notes").
 - ${logNotesInstruction}
 `;
   }

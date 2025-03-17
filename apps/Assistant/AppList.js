@@ -33,13 +33,7 @@ function AppList({ appData, setAppData, assistantRef }) {
       "Blocked apps don't appear in searches and can't be launched without approval";
   }
 
-  let filter;
-  if (state === "recent") {
-    filter = () => true;
-  } else {
-    filter = (app) => app[state];
-  }
-  const displayApps = Object.values(appData).filter(filter);
+  const displayApps = Object.values(appData).filter((app) => app[state]);
 
   let sort;
   if (state === "recent") {
@@ -207,11 +201,13 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
       {favoritable && (
         <button onClick={() => assistantRef.current.handleFavorite(app)}>
           <Star className={app.favorited ? "fill-yellow-500" : ""} />
+          <span className="sr-only">Favorite</span>
         </button>
       )}
       {blockable && (
         <button onClick={() => assistantRef.current.handleBlock(app)}>
           <Ban className={app.blocked ? "text-red-500" : ""} />
+          <span className="sr-only">Block</span>
         </button>
       )}
       {sortable && (
@@ -221,6 +217,7 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
           {...listeners}
         >
           <MoveVertical />
+          <span className="sr-only">Drag to reorder</span>
         </button>
       )}
     </div>

@@ -21,6 +21,7 @@ function BottomChat({
   app,
   model,
   setModel,
+  setShowDiscover,
 }) {
   const [input, setInput] = useState("");
 
@@ -73,6 +74,7 @@ function BottomChat({
         onClick={handleMaximize}
       >
         <Maximize2 />
+        <span className="sr-only">{collapsed ? "Expand" : "Collapse"}</span>
       </button>
     );
   }
@@ -118,6 +120,7 @@ function BottomChat({
                         }
                       >
                         <Plus />
+                        <span className="sr-only">New chat</span>
                       </button>
                       {maximizeComponent}
                     </div>
@@ -126,6 +129,7 @@ function BottomChat({
                     outerClassName="max-h-[80vh]"
                     messages={messages}
                     assistantRef={assistantRef}
+                    setShowDiscover={setShowDiscover}
                   />
                   <hr className="mx-2 border-stone-300" />
                 </>
@@ -148,22 +152,30 @@ function BottomChat({
         <div className="mr-2 flex flex-1 items-center justify-start gap-2">
           <button onClick={() => handleInput(input)}>
             {chatLoading ? (
-              <OctagonPause
-                onClick={() => {
-                  assistantRef.current.handleStopConversation();
-                }}
-              />
+              <>
+                <OctagonPause
+                  onClick={() => {
+                    assistantRef.current.handleStopConversation();
+                  }}
+                />
+                <span className="sr-only">Stop</span>
+              </>
             ) : (
-              <CircleArrowUp />
+              <>
+                <CircleArrowUp />
+                <span className="sr-only">Submit</span>
+              </>
             )}
           </button>
           {app && (
             <>
               <button onClick={() => assistantRef.current.handleFavorite(app)}>
                 <Star className={app.favorited ? "fill-yellow-500" : ""} />
+                <span className="sr-only">Favorite</span>
               </button>
               <button onClick={() => assistantRef.current.handleBlock(app)}>
                 <Ban className={app.blocked ? "text-red-500" : ""} />
+                <span className="sr-only">Block</span>
               </button>
             </>
           )}

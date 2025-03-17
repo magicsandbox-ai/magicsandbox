@@ -107,7 +107,7 @@ As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some 
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 
-Let's look at a simple example.Notes App and walk through its lifecycle:
+Let's look at a simple app, example.Notes, and walk through its lifecycle:
 
 ```javascript
 import React, { useState, useEffect } from "react";
@@ -115,7 +115,6 @@ import { createRoot } from "react-dom/client";
 
 async function init() {
   // get the notes here so they're available in the initial context call
-  // if we used a useEffect inside App, they wouldn't be available
   const initNotes = await requestGetData("notes");
   api.notes = initNotes;
   createRoot(document.getElementById("root")).render(

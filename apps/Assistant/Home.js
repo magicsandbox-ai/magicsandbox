@@ -33,6 +33,7 @@ function Home({ toastsRef, assistantRef, chatLoading, appData, setAppData }) {
           />
           <button className="mr-1" onClick={() => handleInput(input)}>
             <CircleArrowUp />
+            <span className="sr-only">Submit</span>
           </button>
         </div>
       </div>
