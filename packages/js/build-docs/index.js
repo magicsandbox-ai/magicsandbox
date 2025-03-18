@@ -8,7 +8,7 @@ import { toc } from "mdast-util-toc";
 import { visit, SKIP } from "unist-util-visit";
 import { visitParents } from "unist-util-visit-parents";
 import { promises as fs } from "fs";
-import { updateMagicJson } from "@magicsandbox.ai/dev";
+import { updateMagicJson, readMagicJson } from "@magicsandbox.ai/dev";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -51,79 +51,31 @@ function rehypeCode() {
   };
 }
 
-function rehypeLinks() {
-  return (tree) => {
-    visit(tree, "element", (node) => {
-      if (node.tagName === "a" && node.properties.href.startsWith("#")) {
-        node.properties.href =
-          "https://magicsandbox.ai/?_app=magicsandbox.Docs&id=" +
-          node.properties.href.slice(1); //remove leading #
-      }
-    });
-  };
-}
-
 async function handleMagicJson(folder) {
-  try {
-    await updateMagicJson(folder, (obj) => {
-      obj.scriptFile = obj.scriptFile || "dist/index.js";
-      obj.htmlFile = obj.htmlFile || "dist/index.html";
-      obj.styleFile = obj.styleFile || "dist/index.css";
-      obj.prebuild =
-        obj.prebuild || `npx magicsandbox docs ${path.basename(folder)}`;
-      obj.esbuildOptions = {
-        ...obj.esbuildOptions,
-        loader: {
-          ".md": "text",
-          ...obj.esbuildOptions?.loader,
-        },
-      };
-    });
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      const defaultMagicJson = `{
-  name: "${path.basename(folder)}",
-  version: "0.0.1",
-  scriptFile: "dist/index.js",
-  htmlFile: "dist/index.html",
-  styleFile: "dist/index.css",
-  prebuild: "npx magicsandbox docs ${path.basename(folder)}",
-  esbuildOptions: {
-    loader: { ".md": "text" },
-  },
-}`;
-      await fs.writeFile(
-        path.join(folder, "magic.json5"),
-        defaultMagicJson,
-        "utf8",
-      );
-    } else {
-      throw error;
-    }
+  await updateMagicJson(folder, (obj) => {
+    obj.scriptFile = obj.scriptFile || "dist/index.js";
+    obj.htmlFile = obj.htmlFile || "dist/index.html";
+    obj.styleFile = obj.styleFile || "dist/index.css";
+    obj.prebuild =
+      obj.prebuild || `npx magicsandbox docs ${path.basename(folder)}`;
+    obj.esbuildOptions = {
+      ...obj.esbuildOptions,
+      loader: {
+        ".md": "text",
+        ...obj.esbuildOptions?.loader,
+      },
+    };
+  });
+  const magicJson = await readMagicJson(folder);
+  if (!magicJson.author) {
+    throw new Error("magic.json5 must contain an author key");
   }
+  return `${magicJson.author}/${magicJson.name}@${magicJson.version}`;
 }
 
-async function handleMarkdown(folder) {
-  let markdown;
-  try {
-    markdown = await fs.readFile(path.join(folder, "index.md"), "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      markdown = `# Sample Documentation
-      
-This file was automatically generated. Edit your documentation here!
-`;
-      await fs.writeFile(path.join(folder, "index.md"), markdown, "utf8");
-    } else {
-      throw error;
-    }
-  }
-  return markdown;
-}
-
-async function handleHtml(folder) {
+async function handleHtml(folder, app) {
   const [markdown, html] = await Promise.all([
-    handleMarkdown(folder),
+    fs.readFile(path.join(folder, "index.md"), "utf8"),
     fs.readFile(path.join(__dirname, "files", "index.html"), "utf8"),
   ]);
   const [main, nav] = await Promise.all([
@@ -133,7 +85,6 @@ async function handleHtml(folder) {
       .use(rehypeSlug)
       .use(rehypeCode)
       .use(rehypeHighlight)
-      .use(rehypeLinks)
       .use(rehypeStringify)
       .process(markdown),
     unified()
@@ -141,12 +92,12 @@ async function handleHtml(folder) {
       .use(remarkToc)
       .use(remarkRehype)
       .use(rehypeIndentNav)
-      .use(rehypeLinks)
       .use(rehypeStringify)
       .process(markdown),
   ]);
   let finalHtml = html.replace("%%MAIN%%", main);
   finalHtml = finalHtml.replace("%%NAV%%", nav);
+  finalHtml = finalHtml.replace("%%APP%%", app);
   await fs.writeFile(
     path.join(folder, "dist", "index.html"),
     finalHtml,
@@ -155,10 +106,10 @@ async function handleHtml(folder) {
 }
 
 async function buildDocs(folder) {
+  const app = await handleMagicJson(folder);
   await fs.mkdir(path.join(folder, "dist"), { recursive: true });
   await Promise.all([
-    handleMagicJson(folder),
-    handleHtml(folder),
+    handleHtml(folder, app),
     fs.copyFile(
       path.join(__dirname, "files", "index.js"),
       path.join(folder, "dist", "index.js"),

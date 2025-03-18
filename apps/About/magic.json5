@@ -1,11 +1,12 @@
 {
+  author: "magicsandbox",
   name: "About",
   version: "0.1.0",
   description: "About Magic Sandbox",
   scriptFile: "dist/index.js",
   htmlFile: "dist/index.html",
   styleFile: "dist/index.css",
-  prebuild: "npx magicsandbox docs apps/About",
+  prebuild: "npx magicsandbox docs apps/About && node cursorrules.js",
   esbuildOptions: {
     loader: {
       ".md": "text",

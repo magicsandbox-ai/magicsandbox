@@ -1,4 +1,5 @@
 {
+  author: "magicsandbox",
   name: "Docs",
   version: "0.1.0",
   description: "Magic Sandbox documentation",
@@ -8,7 +9,7 @@
   styleFile: "dist/index.css",
   esbuildOptions: {
     loader: {
-      ".md": "text"
-    }
+      ".md": "text",
+    },
   },
 }

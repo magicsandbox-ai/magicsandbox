@@ -15,4 +15,4 @@
 - [**Write code? Check out the docs**](https://magicsandbox.ai/?_app=magicsandbox.Docs) to publish your own Magic Sandbox app (it's free, and you earn money when others use it!)
 - [**Create a free account**](https://magicsandbox.ai/login) to unlock a higher account balance and more features
 
-_Make sure you agree with the [Terms of Use](https://magicsandbox.ai/terms) and [Privacy Policy](https://magicsandbox.ai/privacy) before continuing._
+_By continuing, you acknowledge that you have read and agree to our [Terms of Use](https://magicsandbox.ai/terms) and [Privacy Policy](https://magicsandbox.ai/privacy)._

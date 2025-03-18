@@ -9,7 +9,7 @@ Each section below provides more details on how Magic Sandbox works:
 3. [Privacy and Security](#privacy-and-security)
 4. [FAQs](#faqs)
 
-Write code? Check out the [docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for more details.
+Write code? Check out the [docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on creating your own apps and earning money when others use them.
 
 Still need help? Send us an email at [help@magicsandbox.ai](mailto:help@magicsandbox.ai).
 

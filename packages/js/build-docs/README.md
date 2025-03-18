@@ -6,13 +6,13 @@
 
 `npm install "@magicsandbox.ai/build-docs"`
 
-Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on the `magic.json` file and Magic Sandbox in general.
+Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on the `magic.json5` file and Magic Sandbox in general.
 
 `@magicsandbox.ai/build-docs` installs [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) as a dependency.
 
 ## Usage
 
-Set up a folder structured like so, where `index.md` is your documentation Markdown file. `@magicsandbox.ai/build-docs` will initialize these files for you if needed:
+Set up a folder structured like so, where `index.md` is your documentation Markdown file. For your links to work correctly, `magic.json5` must contain an `author` key with your username. `@magicsandbox.ai/build-docs` will throw an error if the `author` key is missing.
 
 ```
 MyDocsApp/

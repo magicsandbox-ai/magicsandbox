@@ -3,4 +3,4 @@ export { dev, isRunning } from "./dev.js";
 export { publish } from "./publish.js";
 export { install } from "./install.js";
 export { globals } from "./globals.js";
-export { updateMagicJson } from "./localUtils.js";
+export { updateMagicJson, readMagicJson } from "./localUtils.js";

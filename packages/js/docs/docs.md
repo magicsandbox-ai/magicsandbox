@@ -1,19 +1,19 @@
 # Magic Sandbox Documentation
 
-This technical documentation is aimed at developers interested in writing code that runs on Magic Sandbox. For non-technical user support, please see the [About](https://magicsandbox.ai?_app=magicsandbox.About) page. This documentation assumes you have already read through the About page and are familiar with Magic Sandbox at a high level.
+This technical documentation is aimed at developers interested in writing code for Magic Sandbox. For non-technical user support, please see the [About](https://magicsandbox.ai?_app=magicsandbox.About) page. This documentation assumes you have already read through the About page and are familiar with Magic Sandbox at a high level.
 
-1. [Magic Apps](#magic-apps)
-2. [Magic Functions](#magic-functions)
-3. [Publishing](#publishing)
-4. [Sandbox](#sandbox)
-5. [Assistants](#assistants)
+1. [Apps](#apps): how to create frontend Apps
+2. [Functions](#functions): how to create backend Functions
+3. [Publishing](#publishing): how to publish your Apps and Functions
+4. [Sandbox](#sandbox): about the environment Apps run in
+5. [Assistants](#assistants): how to create your own Assistant
 6. [Advanced Topics](#advanced-topics)
 
-# Magic Apps
+# Apps
 
-Magic Apps create the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and at least one of `script`, `html`, or `style` are required. Let's walk through them:
+Apps are the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and at least one of `script`, `html`, or `style` are required. Let's walk through them:
 
-## Magic App keys
+## App keys
 
 ### script
 
@@ -35,13 +35,13 @@ String of CSS which is added as a `<style>` tag in the Sandbox.
 
 ## Shared keys between Apps and Functions
 
-All of the remaining Magic App JSON keys are shared with Magic Functions, so we'll cover them together here:
+All of the remaining App JSON keys are shared with Functions, so we'll cover them together here:
 
 ### name
 
 _(**required**, string)_
 
-Magic App names must begin with a capital letter to distinguish them from Magic Functions, which must begin with a lowercase letter. Names can include alphanumeric characters and underscores and be at most 64 characters.
+App names must begin with a capital letter to distinguish them from Functions, which must begin with a lowercase letter. Names can include alphanumeric characters and underscores and be at most 64 characters.
 
 ### version
 
@@ -63,7 +63,7 @@ App types:
 
 _(string)_
 
-App or Function description. This is used to discover your App or Function, so while not required, you should include it.
+App or Function description. This is used by Assistants and other tools to discover your App or Function, so while not required, you should include it.
 
 ### minCost
 
@@ -77,9 +77,9 @@ _(number)_
 
 The final cost charged to call your App or Function. Apps and Functions have different behavior when it comes to `finalCost`:
 
-For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the budget to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the budget to make the required `requestFunction` call.
+For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the balance to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the balance to make the required `requestFunction` call. Assistants should allow users to spend the difference between `minCost` and `finalCost` without requiring additional confirmation.
 
-For Functions, `finalCost` is not accepted as a key in the Magic App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
+For Functions, `finalCost` is not accepted as a key in the App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
 
 ### private
 
@@ -93,17 +93,17 @@ _(string, default 'active')_
 
 Controls the availability of your App or Function. Supported values:
 
-- 'active' (default): App or Function is fully available.
-- 'deprecated': App or Function is available but users receive deprecation warnings.
-- 'inactive': Function cannot be called. Apps cannot currently be made inactive.
+- 'active' (default): App or Function is fully available
+- 'deprecated': App or Function is available but users receive deprecation warnings
+- 'inactive': Function cannot be called. Apps cannot currently be made inactive
 
 ## Making your App Magic
 
-As you can see, a Magic App is just typical HTML/CSS/JavaScript along with some metadata. What makes the App magic is how it works with the Assistant by exposing a global `app` object that includes:
+As you can see, an App is just typical HTML/CSS/JavaScript along with some metadata. What makes the App magic is how it works with the Assistant by exposing a global `app` object that includes:
 
-- `app.init` (() => string?): an optionally async function called when the App is first loaded with URL parameters as an argument. It can optionally return a context string that's used by the Assistant to dynamically initialize the App.
-- `app.context` (() => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App.
-- `app.api` (object): an object that exposes your App's API to the Assistant.
+- `app.init` (() => string?): an optionally async function called when the App is first loaded. It can optionally return a context string that's used by the Assistant to dynamically initialize the App
+- `app.context` (() => string): an optionally async function called when the user chats with the Assistant after the App is loaded. It returns a context string that's used by the Assistant to answer the user's question or to execute a script to dynamically update the App
+- `app.api` (object): an object that exposes your App's API to the Assistant
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 
@@ -188,15 +188,15 @@ When you export `init`, `context`, and `api` from your `script`, both [magicsand
 
 Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.
 
-# Magic Functions
+# Functions
 
-Magic Functions are server-side functions that can be called by Magic Apps or other Magic Functions. Unlike Magic Apps, which run on the frontend (the user's browser), Magic Functions run on the backend.
+Functions are server-side functions that can be called by Apps or other Functions. Unlike Apps, which run on the frontend (the user's browser), Functions run on the backend.
 
-Like Magic Apps, Magic Functions are also just JSON objects. See [shared keys](#shared-keys-between-apps-and-functions) for the keys you can include.
+Like Apps, Functions are also just JSON objects. See [shared keys](#shared-keys-between-apps-and-functions) for the keys you can include.
 
-Magic Sandbox currently only supports Magic Functions that you host on your own server. `name`, `version`, and `endpoint` are required keys for Magic Functions.
+Magic Sandbox currently only supports Functions that you host on your own server. `name`, `version`, and `endpoint` are required keys for Functions.
 
-## Magic Function keys
+## Function keys
 
 ### endpoint
 
@@ -253,9 +253,9 @@ _(boolean, default false)_
 
 Whether you want your endpoint to receive updates when users publish or update Apps or Functions. See [Subscribing to Updates](#subscribing-to-updates) for details.
 
-## Calling other Magic Functions
+## Calling other Functions
 
-From your endpoint, you can call other Magic Functions by making a POST request to `magicsandbox.ai/request-function`. Your request should include the following:
+From your endpoint, you can call other Functions by making a POST request to `magicsandbox.ai/request-function`. Your request should include the following:
 
 - Headers:
   - `Content-Type: application/json`
@@ -267,9 +267,9 @@ From your endpoint, you can call other Magic Functions by making a POST request 
 
 ## magicsandbox.Dev
 
-The App [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an easy way to create and publish Magic Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
+The App [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
 
-With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Magic Apps](#magic-apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
+With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Apps](#apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
 
 ### magic.json
 
@@ -410,7 +410,7 @@ Whether to further minify the build by tree shaking unused imports, which requir
 
 #### update (boolean) (default false)
 
-Whether to update the App when publishing. magicsandbox.Dev will skip the build, as `script`, `html`, and `style` cannot be updated. See [Updating Magic Apps and Functions](#updating-magic-apps-and-functions) for details.
+Whether to update the App when publishing. magicsandbox.Dev will skip the build, as `script`, `html`, and `style` cannot be updated. See [Updating Apps and Functions](#updating-apps-and-functions) for details.
 
 ### magicsandbox.Dev advanced details
 
@@ -464,19 +464,19 @@ This is actually more convenient for peer dependencies like React when you want 
 
 ## @magicsandbox.ai/dev
 
-The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Magic Apps locally. Refer to the docs for more details.
+The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Apps locally. Refer to the docs for more details.
 
 ## Custom Methods
 
-You can develop your own methods for publishing Magic Apps and Functions. Remember, only the keys documented in [Magic Apps](#magic-apps) and [Magic Functions](#magic-functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
+You can develop your own methods for publishing Apps and Functions. Remember, only the keys documented in [Apps](#apps) and [Functions](#functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
 
-### Custom Magic App
+### Custom App
 
-Rather than using magicsandbox.Dev, you can create your own Magic App to publish Magic Apps and Functions using [requestPublish](#requestPublish).
+Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestPublish).
 
 ### Custom Local Development
 
-You can publish Magic Apps and Functions locally by making a POST request to `magicsandbox.ai/publish`. Your request should include the following:
+You can publish Apps and Functions locally by making a POST request to `magicsandbox.ai/publish`. Your request should include the following:
 
 - URL parameters:
   - `kind`: 'app' or 'function'
@@ -504,9 +504,9 @@ fetch(
 );
 ```
 
-## Updating Magic Apps and Functions
+## Updating Apps and Functions
 
-You can update Magic Apps and Functions by publishing again with the same name and version.
+You can update Apps and Functions by publishing again with the same name and version.
 
 Updates have the following restrictions:
 
@@ -531,26 +531,26 @@ The Sandbox is implemented as an iframe with a sandbox attribute. The Sandbox en
 The Sandbox has the following high level restrictions and associated Sandbox functions:
 
 - Limited network access. APIs like `fetch` don't work, and you can't use traditional links.
-  - Use `requestApp` and `requestFunction` to call other Magic Apps and Magic Functions
+  - Use `requestApp` and `requestFunction` to call other Apps and Functions
   - Use `requestFetch` to fetch data from another website
   - Use `requestOpenUrl` to open a link in a new tab
-  - Use `requestPublish` to publish a Magic Function
+  - Use `requestPublish` to publish a Function
   - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
 - No direct access to web storage APIs.
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
 - Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any feedback you have by creating an [issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue).
 
-## Calling Magic Apps and Functions
+## Calling Apps and Functions
 
 ### requestApp
 
-Retrieves a Magic App's `style`, `html`, `script`, and `metadata`.
+Retrieves an App's `style`, `html`, `script`, and `metadata`.
 
 **Arguments:**
 
-- `app` _(**required**, string)_: Magic App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
+- `app` _(**required**, string)_: App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Magic Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
   - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys.
 
 **Returns:** a Promise that resolves to an App:
@@ -568,11 +568,11 @@ type App = {
 
 ### requestFunction
 
-Executes a Magic Function and returns the result.
+Executes a Function and returns the result.
 
 **Arguments:**
 
-- `fn` _(**required**, string)_: Magic Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
+- `fn` _(**required**, string)_: Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
 - `args` _(**required**, any)_: Arguments to pass to the called Function.
 - `options` _(object)_:
   - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00.
@@ -590,11 +590,11 @@ Executes a Magic Function and returns the result.
 
 ## Storing and Retrieving Data
 
-Magic Sandbox provides Sandbox functions for storing and retrieving key/value pairs. Each Magic App has its own isolated storage, ensuring that keys used by one App don't interfere with keys used by another.
+Magic Sandbox provides Sandbox functions for storing and retrieving key/value pairs. Each App has its own isolated storage, ensuring that keys used by one App don't interfere with keys used by another.
 
 You can use another App's storage by passing `app` in `options`, though these requests are subject to user approval. Furthermore, put and delete requests that specify an `app` that has not been called with `requestApp` will throw an error.
 
-Each Magic App can store up to 10 MB of data. There is no concept of App version used for storage, so author.App@1.0.0 and author.App@1.0.1 store data in the same location.
+Each App can store up to 10 MB of data. There is no concept of App version used for storage, so author.App@1.0.0 and author.App@1.0.1 store data in the same location.
 
 ### requestPutData
 
@@ -708,11 +708,11 @@ Open a URL in a new tab. Traditional links can't be opened in the Sandbox, so us
 
 ### requestPublish
 
-Publish a Magic Function or Magic App.
+Publish a Function or App.
 
 **Arguments:**
 
-- `magicJson` _(**required**, object)_: See [Magic Apps](#magic-apps) and [Magic Functions](#magic-functions) for details.
+- `magicJson` _(**required**, object)_: See [Apps](#apps) and [Functions](#functions) for details.
 
 **Returns:** a Promise that resolves to true
 
@@ -740,7 +740,10 @@ Get or update URL parameters.
 
 **Returns:** a Promise that resolves to an object containing the URL parameters after making any updates in `params`.
 
-Note: URL parameters that begin with an underscore (e.g. `_app`) are reserved for Magic Sandbox use. These parameters cannot be modified by Apps.
+Notes:
+
+- The special key `hash` is reserved for the URL hash. So a URL like `?hash=foo#bar` will return `{hash: 'bar'}`. Avoid using `hash` in the query string to avoid conflicts.
+- Keys that begin with an underscore (e.g. `_app`) are reserved for Magic Sandbox use. These cannot be modified by Apps.
 
 ### requestSandbox
 
@@ -764,26 +767,26 @@ If a Sandbox function throws an error, it will have the following properties:
 
 # Assistants
 
-**Note:** you don't need to know all these details to create a Magic App or Function (though you may find it helpful context). This section is aimed at those who want to develop their own Assistant. See [magicsandbox.Assistant](todo) for an example Assistant implementation.
+**Note:** you don't need to know all these details to create an App or Function (though you may find it helpful context). This section is aimed at those who want to develop their own Assistant. See [magicsandbox.Assistant](todo) for an example Assistant implementation.
 
-Assistants are simply Magic Apps that are executed in a Sandbox immediately when the user loads the page. Like any other Magic App, the Sandbox restrictions apply, but Sandbox functions like requestApp are available. The key difference though is that Magic Sandbox always approve Sandbox requests made by the Assistant. This gives Assistants enormous power, which is why it's so critical that users trust their Assistant.
+Assistants are simply Apps that are executed in a Sandbox immediately when the user loads the page. Like any other App, the Sandbox restrictions apply, but Sandbox functions like requestApp are available. The key difference though is that Magic Sandbox always approve Sandbox requests made by the Assistant. This gives Assistants enormous power, which is why it's so critical that users trust their Assistant.
 
 There are no hard restrictions on what exactly an Assistant does, but Assistants should typically do at least two things:
 
-1. Create a UI to accept user input and handle user input by executing other Magic Apps. To execute Magic Apps safely, the Assistant needs to create its own child Sandbox.
-2. Handle requests from Magic Apps executing in the child Sandbox.
+1. Create a UI to accept user input and handle user input by executing other Apps. To execute Apps safely, the Assistant needs to create its own child Sandbox.
+2. Handle requests from Apps executing in the child Sandbox.
 
 The rest of this section assumes you're following this basic pattern. We'll use the following terminology:
 
 - Magic Sandbox: the top level webpage that the user loads in their browser. The parent of the Assistant Sandbox.
 - Assistant Sandbox: the Sandbox iframe that the Assistant runs in. The parent of the App Sandbox.
-- App Sandbox: the Sandbox iframe that Magic Functions run in.
+- App Sandbox: the Sandbox iframe that Apps run in.
 
 A typical series of interactions between the three looks like this:
 
 1. Magic Sandbox creates Assistant Sandbox and executes the Assistant
 2. Assistant Sandbox creates UI and App Sandbox
-3. Assistant Sandbox handles user input and determines Magic App to call
+3. Assistant Sandbox handles user input and determines App to call
 4. Assistant Sandbox calls `requestApp`
 5. Magic Sandbox responds with the App returned by `requestApp`
 6. Assistant Sandbox executes the App in the App Sandbox
@@ -793,11 +796,11 @@ A typical series of interactions between the three looks like this:
 10. Magic Sandbox responds with the result of the Sandbox function
 11. Assistant Sandbox forwards the response to the App Sandbox
 
-## Handling User Input and Executing Magic Functions
+## Handling User Input and Executing Apps
 
 Magic Sandbox does not provide any UI beyond the navigation bar at the top of the page, so it's up to the Assistant to create a UI that can accept user input, parse, and handle user input. Features like `!magic` and other bangs are implemented by magicsandbox.Assistant, not by Magic Sandbox.
 
-Let's say your Assistant has handled some user input and determined a Magic App to call. The Assistant must create a child App Sandbox to execute the Magic App safely. The [Sandbox](todo) component provides some helpers to make this easier, or you can create an iframe yourself with src set to 'frame.html'.
+Let's say your Assistant has handled some user input and determined an App to call. The Assistant must create a child App Sandbox to execute the App safely. The [Sandbox](todo) component provides some helpers to make this easier, or you can create an iframe yourself with src set to 'frame.html'.
 
 The 'frame.html' file loads [frame.js](todo), which sets up a listener in the App Sandbox. The listener enables the Assistant to control the App Sandbox by listening for an object with specific keys and taking action based on those keys:
 
@@ -886,7 +889,7 @@ todo budget
 
 **Relevant Sandbox functions: requestPublish**
 
-Publishing Magic Apps and Functions is potentially dangerous. A malicious App could publish a broken or malicious new version of an App or Function, or deprecate an App or Function against the author's will. Assistants should always ask for user approval when requestPublish is called.
+Publishing Apps and Functions is potentially dangerous. A malicious App could publish a broken or malicious new version of an App or Function, or deprecate an App or Function against the author's will. Assistants should always ask for user approval when requestPublish is called.
 
 #### Privacy Risk
 
@@ -902,7 +905,7 @@ Currently, there are ways for Apps to access the network without using a Sandbox
 
 Assistants should ask for user approval before allowing cross-author writes.
 
-Like any other Magic App, Assistants can use the data Sandbox functions to store data. Assistants however can supply a `backup` option to the data Sandbox functions to access a separate storage location with a much higher limit of 1 GB. This backup storage is isolated from the Assistant's main storage and is not backed up in the cloud or synced to other devices. Assistants can backup data to protect against data loss risk:
+Like any other App, Assistants can use the data Sandbox functions to store data. Assistants however can supply a `backup` option to the data Sandbox functions to access a separate storage location with a much higher limit of 1 GB. This backup storage is isolated from the Assistant's main storage and is not backed up in the cloud or synced to other devices. Assistants can backup data to protect against data loss risk:
 
 ```javascript
 //take backup of all of author.App's data
@@ -938,7 +941,7 @@ todo handling url params
 
 ## Limits
 
-- 10 MB of storage per Magic Function
+- 10 MB of storage per Function
 - 1 GB of storage per Assistant
 - 10 seconds runtime per request
 

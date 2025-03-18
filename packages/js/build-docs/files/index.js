@@ -4,8 +4,8 @@ import markdown from "../index.md";
 const navLinks = Object.fromEntries(
   Array.from(document.querySelectorAll("nav a")).map((a) => {
     const url = new URL(a.href);
-    const id = url.searchParams.get("id");
-    return [id, a];
+    const hash = url.hash?.slice(1); //remove leading #
+    return [hash, a];
   }),
 );
 const boldLinks = new Set();
@@ -50,11 +50,13 @@ document
 document.addEventListener("click", (e) => {
   if (e.target.href && !e.ctrlKey && !e.shiftKey) {
     e.preventDefault();
+    const baseUrl = new URL(document.baseURI);
+    const baseApp = baseUrl.searchParams.get("_app");
     const url = new URL(e.target.href);
     const app = url.searchParams.get("_app");
-    const id = url.searchParams.get("id");
-    if (app === "magicsandbox.Docs" && id) {
-      scrollToId(id);
+    const hash = url.hash?.slice(1); //remove leading #
+    if (app === baseApp && hash) {
+      scrollToHash(hash);
     } else {
       requestOpenUrl(e.target.href);
     }
@@ -63,14 +65,14 @@ document.addEventListener("click", (e) => {
 
 async function init() {
   const urlParams = await requestUrlParams();
-  const { id } = urlParams;
-  if (id) {
-    scrollToId(id);
+  const { hash } = urlParams;
+  if (hash) {
+    scrollToHash(hash);
   }
 }
 
-function scrollToId(id) {
-  const el = document.getElementById(id);
+function scrollToHash(hash) {
+  const el = document.getElementById(hash);
   if (el) {
     el.scrollIntoView({ behavior: "smooth" });
   }
