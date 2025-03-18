@@ -9,6 +9,8 @@ This technical documentation is aimed at developers interested in writing code f
 5. [Assistants](#assistants): how to create your own Assistant
 6. [Advanced Topics](#advanced-topics)
 
+The Magic Sandbox [public repo](https://github.com/magicsandbox-ai/magicsandbox) is a resource that includes example Apps, Functions, and useful packages. If you have any questions or feedback, please create an issue - we'd love to hear from you!
+
 # Apps
 
 Apps are the frontend interfaces you see in Magic Sandbox. Behind the scenes, they're simply JSON objects with a number of mostly optional keys. Only `name`, `version`, and at least one of `script`, `html`, or `style` are required. Let's walk through them:
@@ -114,7 +116,7 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 async function init() {
-  // get the notes here so they're available in the initial context call
+  // need to get the notes here so they're available in the initial context call
   const initNotes = await requestGetData("notes");
   api.notes = initNotes;
   createRoot(document.getElementById("root")).render(
@@ -245,7 +247,7 @@ Specifies how to decode the response from your Function's endpoint. Supported va
 - 'string': Decode the response as a UTF-8 string
 - 'bytes': Return the raw bytes as an ArrayBuffer
 
-See [Streaming JSON](#streaming-json) for details on streaming with decode set to 'json'.
+See [Streaming JSON](#streaming-json) for details on streaming with decode set to 'json' or 'msgpack'.
 
 ### subscribeToUpdates
 
@@ -255,7 +257,7 @@ Whether you want your endpoint to receive updates when users publish or update A
 
 ## Calling other Functions
 
-From your endpoint, you can call other Functions by making a POST request to `magicsandbox.ai/request-function`. Your request should include the following:
+From your endpoint, you can call other Functions by making a POST request to `https://magicsandbox.ai/request-function`. Your request should include the following:
 
 - Headers:
   - `Content-Type: application/json`
@@ -265,25 +267,43 @@ From your endpoint, you can call other Functions by making a POST request to `ma
 
 # Publishing
 
-## magicsandbox.Dev
+This section details how to publish Apps and Functions. You have a number of options to do so:
 
-The App [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
+- [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an App that offers an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
+- [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started.
+- Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestPublish).
+- You can publish Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
+  - URL parameters:
+    - `kind`: 'app' or 'function'
+    - `name`: App or Function name
+    - `version`: App or Function version
+  - Headers:
+    - `Content-Type: application/json`
+    - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
+  - Body:
+    - the App or Function JSON object
 
-With magicsandbox.Dev, you'll edit a `magic.json` file. This file can include all of the keys documented in [Apps](#apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. When magicsandbox.Dev builds your App, it will combine all of your files and populate `script`, `style`, and `html` for you.
+magicsandbox.Dev is the easiest way to get started, while @magicsandbox.ai/dev offers better integration with development tools like IDEs and version control. When using either tool, you'll edit a `magic.json` file:
 
-### magic.json
+## magic.json
+
+`magic.json` can include all of the keys documented in [Apps](#apps), like `script`, `style`, and `html`. However, trying to edit code inside of a JSON file is inconvenient, so `magic.json` accepts additional keys enabling you to edit code using separate files instead. For example, rather than editing `script` in `magic.json` directly, you can create multiple JavaScript files. The build process will combine all of your files and populate `script`, `style`, and `html` for you.
+
+The remainder of this section describes the additional keys accepted by `magic.json`:
+
+### magic.json keys
 
 #### scriptFile
 
 _(string, default 'index.js')_
 
-Main filename for `script` code. magicsandbox.Dev bundles your JavaScript files using esbuild using `scriptFile` as the entrypoint.
+Main filename for `script` code. Your JavaScript files are bundled with esbuild using `scriptFile` as the entrypoint.
 
 #### html
 
 _(string, default '<div id="root"></div>')_
 
-Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `html` if you don't specify `html` or have an `htmlFile`.
+Unlike when publishing to Magic Sandbox directly, a default value for `html` is provided if you don't specify `html` or have an `htmlFile`.
 
 #### htmlFile
 
@@ -295,7 +315,7 @@ Filename containing `html` code.
 
 _(string, default '@tailwind base; @tailwind components; @tailwind utilities;')_
 
-Unlike when publishing to Magic Sandbox directly, magicsandbox.Dev provides a default value for `style`, assuming you're using Tailwind if you don't specify `style` or have a `styleFile`.
+Unlike when publishing to Magic Sandbox directly, a default value for `style` is provided if you don't specify `style` or have a `styleFile`, enabling you to use Tailwind.
 
 #### styleFile
 
@@ -329,39 +349,23 @@ export default {
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
-#### cacheRequests (boolean) (default true)
+#### cacheRequests (boolean) (default false)
 
-Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development. Set to false to disable.
+Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development.
 
 #### author (string)
 
-To read from the database using e.g. `requestGetData`, magicsandbox.Dev needs to know the App to use for storage in the form 'author.name', so you must set the `author` key. Alternatively, you can set `options.app` when calling `requestGetData`.
+To read from the database using e.g. `requestGetData`, the `author` key is required. Alternatively, you can set `options.app` when calling `requestGetData`.
 
-Note that magicsandbox.Dev only maintains writes made with `requestPutData` or `requestDeleteData` in memory, not saved to the database. They can be retrieved by later calls to `requestGetData` but will be lost upon refresh. magicsandbox.Dev does not currently enforce the 10 MB database size limit.
+Note that writes made during development with `requestPutData` or `requestDeleteData` are maintained only in memory, not saved to the database. They can be retrieved by later calls to `requestGetData` but will be lost upon refresh. The 10 MB database size limit is not enforced.
 
 #### dependencies (object)
 
-Version ranges to use for the packages you import. magicsandbox.Dev supports import statements that use [semver ranges](https://github.com/npm/node-semver#versions):
-
-```javascript
-import React from "react@^18";
-```
-
-However, if you import a package across multiple files, it can be easier to manage the version in `magic.json` using the `dependencies` key:
-
-```javascript
-{
-  "dependencies": {
-    "react": "^18"
-  }
-}
-```
-
-todo dependencies takes precedence over the version ranges specified in the import statements
+Semantic version ranges to use for the packages you import.
 
 #### overrides (object)
 
-Version ranges to use for all imports, enabling you to override the dependencies of your dependencies. If you're familiar with the behavior of `overrides` in npm, note that magicsandbox.Dev currently supports only a subset of the functionality that npm does:
+Semantic version ranges to use for all imports, enabling you to override the dependencies of your dependencies. Similar to `overrides` in npm, but magicsandbox.Dev currently supports only a subset of the functionality that npm does:
 
 ```javascript
 {
@@ -380,15 +384,12 @@ Version ranges to use for all imports, enabling you to override the dependencies
 
 Options to pass to [esbuild](https://esbuild.github.io/api/#build).
 
-The default values below can be overridden, except for `entryPoints`, `write`, and `plugins`:
+The options `entryPoints`, `write`, and `plugins` cannot be set. The default options are:
 
 ```javascript
 {
-  entryPoints: [scriptFile], //cannot be overridden
-  write: false, //cannot be overridden
-  plugins: [magicsandbox.Dev.customPlugins], //cannot be overridden
   bundle: true,
-  globalName: 'app', //assigns exports (i.e. context, api) to this global variable
+  globalName: 'app', //assigns exports (i.e. init, context, api) to this global variable
   loader: { '.js': 'jsx' },
   target: 'es2020',
   minify: publishing ? true : false, //true when building for publishing, false when building for live preview
@@ -400,109 +401,9 @@ The default values below can be overridden, except for `entryPoints`, `write`, a
 
 Enable additional logging to debug the build.
 
-#### cdn (string) (default 'esm.sh')
-
-The CDN to use for the build. Supported values are `esm.sh` and `jsdelivr `.
-
-#### optimizedTreeShaking (boolean) (default true)
-
-Whether to further minify the build by tree shaking unused imports, which requires two build passes. This is only supported for `cdn` `esm.sh`.
-
 #### update (boolean) (default false)
 
-Whether to update the App when publishing. magicsandbox.Dev will skip the build, as `script`, `html`, and `style` cannot be updated. See [Updating Apps and Functions](#updating-apps-and-functions) for details.
-
-### magicsandbox.Dev advanced details
-
-#### JSON5
-
-The `magic.json` file can be written in JSON5.
-
-#### Why are my builds sometimes slow?
-
-magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.
-
-#### Debugging
-
-When using magicsandbox.Dev, your code runs in an iframe that's nested several layers deep. Because of this, it can be difficult to find your code in the Sources tab in Chrome's devtools.
-
-The easiest way to debug your code in Chrome is to add a `debugger` statement and run your code with devtools open, which will open your file in the Sources tab. Your files will all be prefixed with 'MagicApp', like 'MagicApp:index.js'.
-
-#### Peer dependencies
-
-magicsandbox.Dev handles peer dependencies differently than npm. Consider the following dependency graph:
-
-```
-root -> (peer@1, dep1, dep2)
-dep1 -> (PEER: peer@1)
-dep2 -> (peer@2, dep3)
-dep3 -> (PEER: peer@2)
-```
-
-npm places peer dependencies at or above the dependent package, creating the following tree:
-
-```
-root
-  +-- peer@1
-  +-- dep1
-  +-- dep2
-      +-- peer@2
-      +-- dep3
-```
-
-magicsandbox.Dev currently takes a simplified approach, assuming a package marked as a peer dependency should only resolve to a single version throughout the tree. It will create the following tree and emit a warning that dep2's and dep3's version ranges for peer@2 are ignored:
-
-```
-root
-  +-- peer@1
-  +-- dep1
-  +-- dep2
-  +-- dep3
-```
-
-This is actually more convenient for peer dependencies like React when you want to ensure only a single version is used globally. However, it may not support more advanced use cases. Please [create an issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue) if you have any feedback.
-
-## @magicsandbox.ai/dev
-
-The package [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Apps locally. Refer to the docs for more details.
-
-## Custom Methods
-
-You can develop your own methods for publishing Apps and Functions. Remember, only the keys documented in [Apps](#apps) and [Functions](#functions) are supported when publishing to the server. `magic.json` keys like `scriptFile` are not supported.
-
-### Custom App
-
-Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestPublish).
-
-### Custom Local Development
-
-You can publish Apps and Functions locally by making a POST request to `magicsandbox.ai/publish`. Your request should include the following:
-
-- URL parameters:
-  - `kind`: 'app' or 'function'
-  - `name`: App or Function name
-  - `version`: App or Function version
-- Headers:
-  - `Content-Type: application/json`
-  - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
-- Body:
-  - the App or Function JSON object
-
-Here's an example:
-
-```javascript
-fetch(
-  `https://magicsandbox.ai/publish?kind=app&name=${appObj.name}&version=${appObj.version}`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(appObj),
-  },
-);
-```
+Whether to update the App when publishing. The build will be skipped, as `script`, `html`, and `style` cannot be updated. See [Updating Apps and Functions](#updating-apps-and-functions) for details.
 
 ## Updating Apps and Functions
 
@@ -933,23 +834,34 @@ Assistants should prompt the user for approval when the App Sandbox attempts to 
 
 Assistants should provide rate limiting to network requests to prevent abuse.
 
-trust? track denials in addition to thumbs down
-
 todo handling url params
 
 # Advanced Topics
 
-## Limits
+## API Logs
 
-- 10 MB of storage per Function
-- 1 GB of storage per Assistant
-- 10 seconds runtime per request
+If you want to create a log that the Assistant can see within your app's API, rather than `console.log`, use the global `assistant.log` method. For example, to implement a method where the Assistant can request to view the contents of a note by providing its id:
 
-etc
+```javascript
+app.api.logNote = (id) => {
+  assistant.log(notes[id]);
+};
+```
+
+The Assistant can then see the log in its next message and use it to provide a response to the user.
+
+The following log methods are available - they're similar to their corresponding `console` methods except for `assistant.full`:
+
+- `assistant.log`
+- `assistant.error`
+- `assistant.warn`
+- `assistant.info`
+- `assistant.debug`
+- `assistant.full`: Assistants may truncate logs to avoid using too many tokens - using the `assistant.full` method is an indication that this log should not be truncated.
 
 ## Streaming JSON
 
-When streaming over a network, the client may not receive chunks that correspond to your writes; your writes may be combined or split across multiple chunks. This will cause issues if streaming with `decode` set to 'json':
+When streaming over a network, the client may not receive chunks that correspond to your writes; your writes may be combined or split across multiple chunks. This will cause issues if streaming with `decode` set to 'json' or 'msgpack':
 
 ```javascript
 //on your server
@@ -1094,24 +1006,32 @@ type Metadata = {
 };
 ```
 
-### Public Metadata
+App and Function metadata is made publicly available unless the App or Function's `private` key is set to true. This enables things like building an App or Function that can search for relevant Apps or Functions given some criteria.
 
-todo add details on publishing full list to S3 periodically
+### Accessing Public Metadata
 
-todo `private` does not appear here
+Make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key). Ensure your client is configured to follow redirects.
+
+The public metadata is updated once hourly. Requesting the public metadata more frequently than hourly may result in an error. If you need more frequent updates, you'll need to publish a Function with the `subscribeToUpdates` key set to true.
 
 ### Subscribing to Updates
 
-If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions. This enables you to create metaFunctions like [magicsandbox.findApp](todo), which takes user input and finds an App that best matches it.
+If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions.
 
 - The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`.
 - Includes headers:
   - `Content-Type: application/json`
-  - `Authorization: Bearer <hashedKey>`, see [endpoint](todo).
+  - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint).
 - Includes a `Metadata` body
 
 todo app.messageHandler
 
-## Questions or Feedback
+## Limits
 
-For additional questions or feedback, please [create an issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue). We'd love to hear from you!
+- Function timeout: 60 seconds
+- Maximum requestFunction arguments size: 1 MB
+- Maximum Function response size: 10 MB
+- Maximum command object size: 100 KB
+- Maximum publishing size: 50 MB
+- Maximum App storage: 10 MB
+- Maximum Assistant backup storage: 1 GB

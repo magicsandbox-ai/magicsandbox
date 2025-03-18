@@ -16,14 +16,15 @@ async function buildAppLocal({
   prod,
 }) {
   const now = new Date();
-  let log = () => {};
-  // if (debug) {
-  //   log = console.log;
-  // }
   const magicObj = await readMagicJson(magicPath);
   if (magicObj.update) {
     console.log("Build skipped when update is true");
     return { appObj: magicObj };
+  }
+  debug = debug || magicObj.debug;
+  let log = () => {};
+  if (debug) {
+    log = console.log;
   }
   log(new Date() - now, "readMagicJson");
   if (magicObj.prebuild) {

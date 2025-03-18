@@ -109,7 +109,7 @@ async function requestHandler({
       return;
     }
     let cacheKey;
-    if (appObjRef.current.cacheRequests !== false && request === "app") {
+    if (appObjRef.current.cacheRequests && request === "app") {
       cacheKey = data.app;
       if (cacheKey === requestAppRef.current.cacheKey) {
         sandboxRef.current.postMessage(sandboxId, {
@@ -119,10 +119,7 @@ async function requestHandler({
         });
         return;
       }
-    } else if (
-      appObjRef.current.cacheRequests !== false &&
-      request === "function"
-    ) {
+    } else if (appObjRef.current.cacheRequests && request === "function") {
       cacheKey = JSON.stringify({
         function: data.function,
         args: data.args,

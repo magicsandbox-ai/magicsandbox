@@ -87,7 +87,7 @@ const stream = await requestFunction(
 );
 ```
 
-magicsandbox.llm charges [variable costs](https://magicsandbox.ai/?_app=magicsandbox.Docs&id=variable-costs), so you'll only be charged for the tokens used, not the entire `maxCost`.
+magicsandbox.llm charges [variable costs](https://magicsandbox.ai/?_app=magicsandbox.Docs#variable-costs), so you'll only be charged for the tokens used, not the entire `maxCost`.
 
 ### Multiple responses
 

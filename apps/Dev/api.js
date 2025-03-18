@@ -132,12 +132,7 @@ function additionalContext(appState, { files, code }) {
 
 function advancedDocs() {
   assistant.full(
-    getHeadings(docs, [
-      "Magic Apps",
-      "Magic Functions",
-      "Publishing",
-      "Advanced Topics",
-    ]),
+    getHeadings(docs, ["Apps", "Functions", "Publishing", "Advanced Topics"]),
   );
 }
 

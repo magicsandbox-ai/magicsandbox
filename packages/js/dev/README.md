@@ -54,7 +54,9 @@ package.json
 
 ## Documentation
 
-This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file. Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on `magic.json` and Magic Sandbox in general.
+Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Docs) for details on `magic.json` and Magic Sandbox in general.
+
+This section documents behavior specific to how `@magicsandbox.ai/dev` works and interprets the `magic.json` file.
 
 ### magic.json file
 
@@ -70,11 +72,13 @@ If `dependencies` is present in `magic.json`, `@magicsandbox.ai/dev` will handle
 
 If `dependencies` is not present in `magic.json`, `@magicsandbox.ai/dev` will assume you're handling dependencies yourself. You should either use `dependencies` in `magic.json` or `package.json`, not both. `@magicsandbox.ai/dev` will throw an error if both are present.
 
-todo install `npx magicsandbox install MyApp react`
+You can install a package and add it to `dependencies` in `magic.json` using the `install` command. For example, to add "react" to MyApp:
+
+`npx magicsandbox install MyApp react`
 
 ### tailwindConfig
 
-Unlike `magicsandbox.Dev`, `@magicsandbox.ai/dev` supports configuring `content` in the usual way. `@magicsandbox.ai/dev` also supports `excludeContent` to enable porting Apps from `magicsandbox.Dev`. Behind the scenes, it transforms:
+Unlike `magicsandbox.Dev`, `@magicsandbox.ai/dev` supports configuring `content` in the usual way. `@magicsandbox.ai/dev` also supports `excludeContent` to enable easily porting Apps from `magicsandbox.Dev`. Behind the scenes, it transforms:
 
 ```javascript
 {
@@ -92,7 +96,7 @@ into:
 
 ### documentationFile
 
-todo
+Filename containing `documentation`. Defaults to 'README.md'. Only used for Functions.
 
 ### prebuild
 
