@@ -27,9 +27,9 @@ When you join Magic Sandbox, you start with a small account balance. [Sign up](h
 
 You account balance can be spent in the following ways:
 
-- When you chat with your assistant, you pay to use the latest AI models like ChatGPT, Claude, and Gemini. By default, your assistant will automatically select an appropriate model given your account balance and usage frequency, but you can override this by selecting your favorite model.
-- When you open an app, you pay the author of the app to use it.
-- Certain actions when using an app can trigger additional payments. For example, when using `magicsandbox.Flights`, you pay a small fee for each flight search you make. Don't worry - your assistant has safeguards in place to prevent apps from spending more than you'd like.
+- When you chat with your assistant, you pay to use the latest AI models like ChatGPT, Claude, and Gemini. By default, your assistant will automatically select an appropriate model given your account balance and usage frequency, but you can override this by selecting your favorite model
+- When you open an app, you pay the author of the app to use it
+- Certain actions when using an app can trigger additional payments. For example, when using `magicsandbox.Flights`, you pay a small fee for each flight search you make. Don't worry - your assistant has safeguards in place to prevent apps from spending more than you'd like
 
 # Privacy and Security
 

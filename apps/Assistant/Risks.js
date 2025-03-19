@@ -140,15 +140,15 @@ class PublishRisk extends Risk {
       this._handleBatch(batch);
       if (this.publishRequests.length > 1) {
         return {
-          error: "May only publish one Magic App or Function at a time",
+          error: "May only publish one App or Function at a time",
         };
       } else if (this.publishRequests.length === 1) {
         const app = this.assistant.app.app;
         const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
         return {
-          message: `${app} is requesting to publish a Magic App or Function`,
+          message: `${app} is requesting to publish an App or Function`,
           downloadDetails: {
-            text: "Download Magic App JSON",
+            text: "Download App JSON",
             filename: `${app}_publish_request_${now}.json`,
             content: JSON.stringify(this.publishRequests[0], null, 2),
           },

@@ -13,7 +13,7 @@ const program = new Command();
 
 program
   .command("init")
-  .description("Set up a new Magic App or Function")
+  .description("Set up a new Magic Sandbox App or Function")
   .argument(
     "<path>",
     "Path to App/Function directory (relative to --dir if specified)",
@@ -30,7 +30,7 @@ const urlOption = new Option("--url <url>")
 
 program
   .command("dev")
-  .description("Start dev server for a Magic App")
+  .description("Start dev server for a Magic Sandbox App")
   .argument("<path>", "Path to App directory (relative to --dir if specified)")
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .option("--debug", "Debug build")
@@ -47,7 +47,7 @@ program
 
 program
   .command("publish")
-  .description("Publish a Magic App or Function")
+  .description("Publish a Magic Sandbox App or Function")
   .argument(
     "<path>",
     "Path to App/Function directory (relative to --dir if specified)",
@@ -61,7 +61,7 @@ program
 
 program
   .command("install")
-  .description("Install dependencies for a Magic App or Function")
+  .description("Install dependencies for a Magic Sandbox App or Function")
   .argument(
     "<path>",
     "Path to App/Function directory (relative to --dir if specified)",
@@ -74,7 +74,7 @@ program
 
 program
   .command("docs")
-  .description("Build a Magic App from a documentation Markdown file")
+  .description("Build a Magic Sandbox App from a documentation Markdown file")
   .argument("<path>", "Path to App directory (relative to --dir if specified)")
   .option("-d, --dir <directory>", "Base directory", process.cwd())
   .action(async (appPath, options) => {
@@ -96,7 +96,7 @@ program
 program
   .command("test")
   .description(
-    "Run Playwright tests for a Magic App. Additional arguments are passed to the Playwright CLI",
+    "Run Playwright tests for a Magic Sandbox App. Additional arguments are passed to the Playwright CLI",
   )
   .argument("<path>", "Path to App directory (relative to --dir if specified)")
   .option("-d, --dir <directory>", "Base directory", process.cwd())

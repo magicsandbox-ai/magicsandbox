@@ -1,6 +1,6 @@
 # magicsandbox.findApp
 
-Finds Magic Apps that are relevant to a user input.
+Finds Magic Sandbox Apps that are relevant to a user input.
 
 ## Arguments
 

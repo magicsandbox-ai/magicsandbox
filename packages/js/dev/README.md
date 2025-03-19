@@ -112,7 +112,7 @@ Debug your builds with `npm run dev --debug MyApp`.
 
 This will save three files in the same directory as your app:
 
-- `_debug_magic.json`: The build output, your Magic App JSON. This is the JSON that is sent to Magic Sandbox when publishing.
+- `_debug_magic.json`: The build output, your App JSON. This is the JSON that is sent to Magic Sandbox when publishing.
 - `_debug_metafile.json`: esbuild's [metafile](https://esbuild.github.io/api/#metafile)
 - `_debug_metafile.txt`: The output of [esbuild.analyzeMetafile](https://esbuild.github.io/api/#analyze)
 

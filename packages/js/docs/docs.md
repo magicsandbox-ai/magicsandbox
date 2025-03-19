@@ -35,7 +35,7 @@ _(string)_
 
 String of CSS which is added as a `<style>` tag in the Sandbox.
 
-## Shared keys between Apps and Functions
+## App and Function shared keys
 
 All of the remaining App JSON keys are shared with Functions, so we'll cover them together here:
 
@@ -59,7 +59,7 @@ Used to indicate that your App or Function has certain behavior. We expect to ad
 
 App types:
 
-- `assistant`: an [Assistant](#assistants).
+- `assistant`: an [Assistant](#assistants)
 
 ### description
 
@@ -87,17 +87,17 @@ For Functions, `finalCost` is not accepted as a key in the App JSON, but instead
 
 _(boolean, default false)_
 
-Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#accessing-public-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
+Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#app-and-function-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
 
 ### status
 
-_(string, default 'active')_
+_(string, default "active")_
 
 Controls the availability of your App or Function. Supported values:
 
-- 'active' (default): App or Function is fully available
-- 'deprecated': App or Function is available but users receive deprecation warnings
-- 'inactive': Function cannot be called. Apps cannot currently be made inactive
+- "active" (default): App or Function is fully available
+- "deprecated": App or Function is available but users receive deprecation warnings
+- "inactive": Function cannot be called. Apps cannot currently be made inactive
 
 ## Making your App Magic
 
@@ -109,7 +109,7 @@ As you can see, an App is just typical HTML/CSS/JavaScript along with some metad
 
 You can think of the context string returned by `app.init` and `app.context` as your App's documentation, but it might not be just a hardcoded string - you can update it dynamically based on the current state of your App.
 
-Let's look at a simple app, example.Notes, and walk through its lifecycle:
+Let's look at a simple App, example.Notes, and walk through its lifecycle:
 
 ```javascript
 import React, { useState, useEffect } from "react";
@@ -194,7 +194,7 @@ Assistants are aware of the basic details of the Magic Sandbox platform and have
 
 Functions are server-side functions that can be called by Apps or other Functions. Unlike Apps, which run on the frontend (the user's browser), Functions run on the backend.
 
-Like Apps, Functions are also just JSON objects. See [shared keys](#shared-keys-between-apps-and-functions) for the keys you can include.
+Like Apps, Functions are also just JSON objects. See [shared keys](#app-and-function-shared-keys) for the keys you can include.
 
 Magic Sandbox currently only supports Functions that you host on your own server. `name`, `version`, and `endpoint` are required keys for Functions.
 
@@ -209,7 +209,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 - The request is a POST that will timeout after 60 seconds
 - Includes headers:
   - `Content-Type: application/json`
-  - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`.
+  - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`
 - Includes the body `{ id, args, options, userInfo, app }`, where:
   - `id` is the fully resolved Function name, author.name@version
   - `args`, `options` were the arguments to [requestFunction](#requestfunction)
@@ -238,16 +238,16 @@ Documentation of how to use your Function.
 
 ### decode
 
-_(string, default 'json')_
+_(string, default "json")_
 
 Specifies how to decode the response from your Function's endpoint. Supported values:
 
-- 'json' (default): Parse the response as JSON. If parsing fails, the response will be returned as a string.
-- 'msgpack': Parse the response using [msgpack](https://github.com/kriszyp/msgpackr?tab=readme-ov-file#structured-cloning). If parsing fails, `requestFunction` will throw an error.
-- 'string': Decode the response as a UTF-8 string
-- 'bytes': Return the raw bytes as an ArrayBuffer
+- "json" (default): Parse the response as JSON. If parsing fails, the response will be returned as a string
+- "msgpack": Parse the response using [msgpack](https://github.com/kriszyp/msgpackr?tab=readme-ov-file#structured-cloning). If parsing fails, `requestFunction` will throw an error
+- "string": Decode the response as a UTF-8 string
+- "bytes": Return the raw bytes as an ArrayBuffer
 
-See [Streaming JSON](#streaming-json) for details on streaming with decode set to 'json' or 'msgpack'.
+See [Streaming JSON](#streaming-json) for details on streaming with decode set to "json" or "msgpack".
 
 ### subscribeToUpdates
 
@@ -269,12 +269,12 @@ From your endpoint, you can call other Functions by making a POST request to `ht
 
 This section details how to publish Apps and Functions. You have a number of options to do so:
 
-- [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an App that offers an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
-- [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started.
-- Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestpublish).
+- [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an App that offers an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing
+- [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started
+- Rather than using `magicsandbox.Dev`, you can create your own App to publish Apps and Functions using [requestPublish](#requestpublish)
 - You can publish Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
   - URL parameters:
-    - `kind`: 'app' or 'function'
+    - `kind`: "app" or "function"
     - `name`: App or Function name
     - `version`: App or Function version
   - Headers:
@@ -283,7 +283,7 @@ This section details how to publish Apps and Functions. You have a number of opt
   - Body:
     - the App or Function JSON object
 
-magicsandbox.Dev is the easiest way to get started, while @magicsandbox.ai/dev offers better integration with development tools like IDEs and version control. When using either tool, you'll edit a `magic.json` file:
+`magicsandbox.Dev` is the easiest way to get started, while `@magicsandbox.ai/dev` offers better integration with development tools like IDEs and version control. When using either tool, you'll edit a `magic.json` file:
 
 ## magic.json
 
@@ -295,45 +295,45 @@ The remainder of this section describes the additional keys accepted by `magic.j
 
 #### scriptFile
 
-_(string, default 'index.js')_
+_(string, default "index.js")_
 
 Main filename for `script` code. Your JavaScript files are bundled with esbuild using `scriptFile` as the entrypoint.
 
 #### html
 
-_(string, default '<div id="root"></div>')_
+_(string, default `<div id="root"></div>`)_
 
 Unlike when publishing to Magic Sandbox directly, a default value for `html` is provided if you don't specify `html` or have an `htmlFile`.
 
 #### htmlFile
 
-_(string, default 'index.html')_
+_(string, default "index.html")_
 
 Filename containing `html` code.
 
 #### style
 
-_(string, default '@tailwind base; @tailwind components; @tailwind utilities;')_
+_(string, default "@tailwind base; @tailwind components; @tailwind utilities;")_
 
 Unlike when publishing to Magic Sandbox directly, a default value for `style` is provided if you don't specify `style` or have a `styleFile`, enabling you to use Tailwind.
 
 #### styleFile
 
-_(string, default 'index.css')_
+_(string, default "index.css")_
 
 Filename containing `style` code.
 
 #### tailwindConfig
 
-_(object, default below)_
+_(object)_
 
 Options to pass to [Tailwind](https://v3.tailwindcss.com/docs/configuration). Currently only Tailwind v3 is supported.
 
-magicsandbox.Dev does not support configuring `content`. By default, all files ending in `.js`, `.jsx`, or `.html` are included. You can add an `excludeContent` key to exclude files:
+`magicsandbox.Dev` does not support configuring `content`. By default, all files ending in `.js`, `.jsx`, or `.html` are included. You can add an `excludeContent` key to exclude files:
 
 ```javascript
 {
-  excludeContent: ['utils.js', 'index.html],
+  excludeContent: ["utils.js", "index.html"],
 };
 ```
 
@@ -349,23 +349,31 @@ export default {
 
 `tailwindConfig` is not used if `tailwind.config.js` or `tailwind.config.mjs` is present.
 
-#### cacheRequests (boolean) (default false)
+#### cacheRequests
+
+_(boolean)_
 
 Whether to cache `requestApp` and `requestFunction` calls, which can save cost when making repeated calls during development.
 
-#### author (string)
+#### author
+
+_(string)_
 
 To read from the database using e.g. `requestGetData`, the `author` key is required. Alternatively, you can set `options.app` when calling `requestGetData`.
 
 Note that writes made during development with `requestPutData` or `requestDeleteData` are maintained only in memory, not saved to the database. They can be retrieved by later calls to `requestGetData` but will be lost upon refresh. The 10 MB database size limit is not enforced.
 
-#### dependencies (object)
+#### dependencies
+
+_(object)_
 
 Semantic version ranges to use for the packages you import.
 
-#### overrides (object)
+#### overrides
 
-Semantic version ranges to use for all imports, enabling you to override the dependencies of your dependencies. Similar to `overrides` in npm, but magicsandbox.Dev currently supports only a subset of the functionality that npm does:
+_(object)_
+
+Semantic version ranges to use for all imports, enabling you to override the dependencies of your dependencies. Similar to `overrides` in npm, but `magicsandbox.Dev` currently supports only a subset of the functionality that npm does:
 
 ```javascript
 {
@@ -380,7 +388,9 @@ Semantic version ranges to use for all imports, enabling you to override the dep
 }
 ```
 
-#### esbuildOptions (object) (default below)
+#### esbuildOptions
+
+_(object, default below)_
 
 Options to pass to [esbuild](https://esbuild.github.io/api/#build).
 
@@ -389,19 +399,23 @@ The options `entryPoints`, `write`, and `plugins` cannot be set. The default opt
 ```javascript
 {
   bundle: true,
-  globalName: 'app', //assigns exports (i.e. init, context, api) to this global variable
-  loader: { '.js': 'jsx' },
-  target: 'es2020',
+  globalName: "app", //assigns exports (i.e. init, context, api) to this global variable
+  loader: { ".js": "jsx" },
+  target: "es2020",
   minify: publishing ? true : false, //true when building for publishing, false when building for live preview
   sourcemap: publishing ? false : true, //false when building for publishing, true when building for live preview
 };
 ```
 
-#### debug (boolean) (default false)
+#### debug
+
+_(boolean)_
 
 Enable additional logging to debug the build.
 
-#### update (boolean) (default false)
+#### update
+
+_(boolean)_
 
 Whether to update the App when publishing. The build will be skipped, as `script`, `html`, and `style` cannot be updated. See [Updating Apps and Functions](#updating-apps-and-functions) for details.
 
@@ -411,8 +425,8 @@ You can update Apps and Functions by publishing again with the same name and ver
 
 Updates have the following restrictions:
 
-- `script`, `html`, `style`: cannot be updated. Publish a new version instead.
-- Apps cannot be changed to Functions or vice versa.
+- `script`, `html`, `style`: cannot be updated. Publish a new version instead
+- Apps cannot be changed to Functions or vice versa
 
 You only need to provide the keys you're updating. In fact, this is required for Apps, as the server will throw an error if you include `script`, `html`, or `style` when republishing an App. For example, to update `description`, you can publish the following:
 
@@ -431,15 +445,15 @@ The secure environment that Apps execute in is called the Sandbox. It's implemen
 
 The Sandbox has the following high level restrictions and associated Sandbox functions:
 
-- Limited network access. APIs like `fetch` don't work, and you can't use traditional links.
+- Limited network access. APIs like `fetch` don't work, and you can't use traditional links
   - Use `requestApp` and `requestFunction` to call other Apps and Functions
   - Use `requestFetch` to fetch data from the web
   - Use `requestOpenUrl` to open a link in a new tab
   - Use `requestPublish` to publish a Function
-  - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
-- No direct access to web storage APIs.
+  - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning
+- No direct access to web storage APIs
   - Use `requestPutData`, `requestDeleteData`, `requestGetData`, `requestGetAllData`, and `requestGetAllKeysData` to store and retrieve data
-- Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any feedback you have by creating an [issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue).
+- Permissions to use certain browser features like creating popups or accessing the camera may be blocked. We expect the allowed permissions to evolve over time. Please share any feedback you have by creating an [issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue)
 
 ## Calling Apps and Functions
 
@@ -449,10 +463,10 @@ Retrieves an App's `style`, `html`, `script`, and `metadata`.
 
 **Arguments:**
 
-- `app` _(**required**, string)_: App to call, either in the form author.name@version or just author.name, in which case the latest version is used.
+- `app` _(**required**, string)_: App to call, either in the form author.name@version or just author.name, in which case the latest version is used
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Apps can't charge variable costs, so the user will be charged the App's `finalCost`.
-  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Apps can't charge variable costs, so the user will be charged the App's `finalCost`
+  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
 
 **Returns:** a Promise that resolves to an App:
 
@@ -473,27 +487,25 @@ Executes a Function and returns the result.
 
 **Arguments:**
 
-- `fn` _(**required**, string)_: Function to call, either in the form author.name@version or just author.name, in which case the latest version is used.
-- `args` _(**required**, any)_: Arguments to pass to the called Function.
+- `fn` _(**required**, string)_: Function to call, either in the form author.name@version or just author.name, in which case the latest version is used
+- `args` _(**required**, any)_: Arguments to pass to the called Function
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00.
-  - `stream` _(boolean, default false)_: Whether to stream the result.
-  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys.
+  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00
+  - `stream` _(boolean, default false)_: Whether to stream the result
+  - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
   - `includeUserInfo` _(string[], default [])_: Array of user info keys to include. Supported values:
-    - 'userId': Include the user ID
+    - "userId": Include the user ID
 
 **Returns:** a Promise that includes the Function result and metadata. The type depends on the `stream` option.
 
-- `stream: false`: `Promise<{result: any, metadata: object}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`.
-- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk.
+- `stream: false`: `Promise<{result: any, metadata: object}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`
+- `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk
 
 `metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
 
 ## Storing and Retrieving Data
 
-Magic Sandbox provides Sandbox functions for storing and retrieving key/value pairs. Each App has its own isolated storage, ensuring that keys used by one App don't interfere with keys used by another.
-
-You can use another App's storage by passing `app` in `options`, though these requests are subject to user approval. Furthermore, put and delete requests that specify an `app` that has not been called with `requestApp` will throw an error.
+Magic Sandbox provides Sandbox functions for storing and retrieving key/value pairs. Each App has its own isolated storage, ensuring that keys used by one App don't interfere with keys used by another. You can use another App's storage by passing `app` in `options`, though these requests are subject to user approval. Furthermore, put and delete requests that specify an `app` that has not been called with `requestApp` will throw an error.
 
 Each App can store up to 10 MB of data. There is no concept of App version used for storage, so author.App@1.0.0 and author.App@1.0.1 store data in the same location.
 
@@ -504,12 +516,12 @@ Store a key/value pair.
 **Arguments:**
 
 - `key` _(**required**, string)_: Key to store
-- `val` _(**required**, any)_: Value to store. May not be `null`. Will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+- `val` _(**required**, any)_: Value to store. May not be `null`. Will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm)
 - `options` _(object)_:
   - `app` _(string)_: App to use for storage
   - `evictionPolicy` _(string)_: Controls behavior if the put would cause the app to exceed its storage limit. Supported values:
-    - undefined _(default)_: Does not evict any key/value pairs and returns a 'Database size limit exceeded' error.
-    - 'fifo': Evict the oldest key/value pairs as needed to make room for the new key/value pair.
+    - undefined (default): Does not evict any key/value pairs and returns a "Database size limit exceeded" error
+    - "fifo": Evict the oldest key/value pairs as needed to make room for the new key/value pair
 
 **Returns:** a Promise that resolves to true
 
@@ -574,10 +586,10 @@ See the [fetch docs](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
 
 Additionally, `options` accepts a `responseType` option used to parse the response body:
 
-- 'auto' (default): Parse as json or string according to the Content-Type header. If the Content-Type header is not present, returns an arrayBuffer.
-- 'json': Parse the response as JSON
-- 'string': Decode the response as a UTF-8 string
-- 'bytes': Return the raw bytes as an ArrayBuffer
+- "auto" (default): Parse as json or string according to the Content-Type header. If the Content-Type header is not present, returns an arrayBuffer
+- "json": Parse the response as JSON
+- "string": Decode the response as a UTF-8 string
+- "bytes": Return the raw bytes as an ArrayBuffer
 
 **Returns:** a Promise that resolves to a SerializedResponse, since the Response object itself cannot be serialized and passed into the Sandbox.
 
@@ -613,7 +625,7 @@ Publish a Function or App.
 
 **Arguments:**
 
-- `magicJson` _(**required**, object)_: See [Apps](#apps) and [Functions](#functions) for details.
+- `magicJson` _(**required**, object)_: See [Apps](#apps) and [Functions](#functions) for details
 
 **Returns:** a Promise that resolves to true
 
@@ -624,7 +636,7 @@ Download a file.
 **Arguments:**
 
 - `filename` _(**required**, string)_: filename to use for the downloaded file
-- `content` _(**required**, BlobPart)_: content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types.
+- `content` _(**required**, BlobPart)_: content of the file. Can be a string, or see [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob/Blob) for accepted types
 
 **Returns:** a Promise that resolves to true
 
@@ -636,15 +648,15 @@ Get or update URL parameters.
 
 - `params` _(object | null, default undefined)_:
   - If `undefined`, returns current URL parameters without making changes
-  - If an object, key/value pairs to use to update the URL parameters. Setting a value to `null` will remove that parameter.
+  - If an object, key/value pairs to use to update the URL parameters. Setting a value to `null` will remove that parameter
   - If `null`, removes all URL parameters
 
 **Returns:** a Promise that resolves to an object containing the URL parameters after making any updates in `params`.
 
-Notes:
+**Notes:**
 
-- The special key `hash` is reserved for the URL hash. So a URL like `?hash=foo#bar` will return `{hash: 'bar'}`. Avoid using `hash` in the query string to avoid conflicts.
-- Keys that begin with an underscore (e.g. `_app`) are reserved for Magic Sandbox use. These cannot be modified by Apps.
+- The special key `hash` is reserved for the URL hash. So a URL like `?hash=foo#bar` will return `{hash: "bar"}`. Avoid using `hash` in the query string to avoid conflicts
+- Keys that begin with an underscore (e.g. `_app`) are reserved for Magic Sandbox use. These cannot be modified by Apps
 
 ### requestSandbox
 
@@ -652,7 +664,7 @@ A convenience function to call other Sandbox functions.
 
 **Arguments:**
 
-- `request` _(**required**, string)_: the Sandbox function to call. 'app' calls requestApp, 'function' calls requestFunction, 'putData' calls requestPutData, etc.
+- `request` _(**required**, string)_: the Sandbox function to call. "app" calls `requestApp`, "function" calls `requestFunction`, "putData" calls `requestPutData`, etc.
 - `args` _(any)_: the arguments to pass to the Sandbox function
 
 **Returns:** a Promise that resolves to the result from the Sandbox function
@@ -684,7 +696,7 @@ When the Assistant's `init` function is called, it receives a `user` argument, w
 
 - `name`: the user's username
 - `userBalance`: the user's balance
-- `userBalanceRemainingDays`: the number of days remaining until the user's balance resets. `undefined` for unauthenticated users.
+- `userBalanceRemainingDays`: the number of days remaining until the user's balance resets. `undefined` for unauthenticated users
 
 The Assistant is responsible for setting `_app` with `requestUrlParams`.
 
@@ -694,7 +706,7 @@ When the user clicks on the Magic Sandbox logo in the top left of the page (whic
 
 #### Handle Sandbox requests from Apps
 
-When an App calls a Sandbox function, a message is sent to its parent. The Assistant should listen for these messages and approve the request, deny it, or ask the user for confirmation. If approved, the Assistant should forward the request to its parent and return the response back to the App. The [react-sandbox](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/react-sandbox) package provides helpers to make this easier.
+When an App calls a Sandbox function, a message is sent to its parent. The Assistant should listen for these messages and approve the request, deny it, or ask the user for confirmation. If approved, the Assistant should forward the request to Magic Sandbox and return the response back to the App. The [react-sandbox](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/react-sandbox) package provides helpers to make this easier.
 
 Assistants should consider the following risks when handling Sandbox requests:
 
@@ -733,7 +745,7 @@ The following log methods are available - they're similar to their corresponding
 - `assistant.warn`
 - `assistant.info`
 - `assistant.debug`
-- `assistant.full`: Assistants may truncate logs to avoid using too many tokens - using the `assistant.full` method is an indication that this log should not be truncated.
+- `assistant.full`: Assistants may truncate logs to avoid using too many tokens - using the `assistant.full` method is an indication that this log should not be truncated
 
 ## Intercepting Assistant Scripts
 
@@ -745,16 +757,16 @@ Magic Sandbox enables Functions to charge variable costs:
 
 1. When a Function is published, it specifies a `minCost`, the minimum cost the publisher will accept.
 2. When a Function is called, the caller specifies `maxCost`, the maximum cost they're willing to pay.
-   - Magic Sandbox ensures that `maxCost` is greater than or equal to the Function's `minCost`.
+   - Magic Sandbox ensures that `maxCost` is greater than or equal to the Function's `minCost`
 3. When the Function executes, it can specify `finalCost`, the actual cost the user will be charged.
-   - Magic Sandbox ensures `finalCost` is between $0.001 and `maxCost`.
-   - If `finalCost` is not specified, it defaults to `minCost`.
-   - `requestApp` does not support variable costs and always charges `minCost`.
+   - Magic Sandbox ensures `finalCost` is between $0.001 and `maxCost`
+   - If `finalCost` is not specified, it defaults to `minCost`
+   - `requestApp` does not support variable costs and always charges `minCost`
 
 To specify `finalCost`, you must:
 
-- Return a command object, which is an object with two keys: `result` and `__command`. `result` will be sent to the user, while `__command` is used by the server.
-- Include an `x-command-object` header in your response.
+- Return a command object, which is an object with two keys: `result` and `__command`. `result` will be sent to the user, while `__command` is used by the server
+- Include an `x-command-object` header in your response
 
 ```typescript
 type CommandObject = {
@@ -784,17 +796,19 @@ Rather than implement this yourself, you can use the [JavaScript](https://github
 import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
 import { pipeline } from "stream/promises";
 // ...
-const source = somehowGetReadable(); //your readable stream
-res.setHeader("x-length-prefix", "true"); //your response writable stream
-await pipeline(source, createLengthPrefixTransform(), res); //for a command object: createLengthPrefixTransform({ finalObject: true })
+const source = somehowGetReadable(); // your readable stream
+res.setHeader("x-length-prefix", "true"); // your response writable stream
+await pipeline(source, createLengthPrefixTransform(), res);
+// for a command object: createLengthPrefixTransform({ finalObject: true })
 ```
 
 ```python
 from magicsandbox import length_prefix_transform
 from fastapi.responses import StreamingResponse
 # ...
-source = somehow_get_async_iterable() #your async iterable
-return StreamingResponse(length_prefix_transform(source), headers={'x-length-prefix': 'true'}) #for a command object: length_prefix_transform(source, final_object=True)
+source = somehow_get_async_iterable() # your async iterable
+return StreamingResponse(length_prefix_transform(source), headers={"x-length-prefix": "true"})
+# for a command object: length_prefix_transform(source, final_object=True)
 ```
 
 Consult your specific server framework's documentation for details.
@@ -835,10 +849,10 @@ The public metadata is updated hourly. Requesting the public metadata more frequ
 
 If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions.
 
-- The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`.
+- The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`
 - Includes headers:
   - `Content-Type: application/json`
-  - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint).
+  - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint)
 - Includes a `Metadata` body
 
 ## Limits

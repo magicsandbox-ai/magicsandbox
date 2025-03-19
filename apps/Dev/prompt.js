@@ -12,11 +12,11 @@ function prompt({ context, summarizedContext } = {}) {
   const sections = [];
   sections.push(`# magicsandbox.Dev
 
-magicsandbox.Dev enables developing, previewing, and publishing Magic Apps in the browser. 
+magicsandbox.Dev enables developing, previewing, and publishing Magic Sandbox Apps in the browser. 
 
 ## Files
 
-By default, a Magic App is built using the following files:
+By default, an App is built using the following files:
 
 ### magic.json
 
