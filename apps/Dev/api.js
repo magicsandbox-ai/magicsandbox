@@ -131,9 +131,29 @@ function additionalContext(appState, { files, code }) {
 }
 
 function advancedDocs() {
-  assistant.full(
-    getHeadings(docs, ["Apps", "Functions", "Publishing", "Advanced Topics"]),
-  );
+  const processedDocs = getHeadings(docs, [
+    "Apps",
+    "Functions",
+    "Publishing",
+    "Advanced Topics",
+  ]);
+  const faqs = `# magicsandbox.Dev FAQs
+
+## Why are my builds sometimes slow?
+
+magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.
+
+## How do I debug my code?
+
+When using magicsandbox.Dev, your code runs in an iframe that's nested several layers deep. Because of this, it can be difficult to find your code in the Sources tab in Chrome's devtools.
+
+The easiest way to debug your code in Chrome is to add a \`debugger\` statement and run your code with devtools open, which will open your file in the Sources tab. Your files will all be prefixed with 'MagicApp', like 'MagicApp:index.js'.
+
+## What is the \`magic.json\` syntax? It's not valid JSON.
+
+The \`magic.json\` file can be written in JSON5.
+`;
+  assistant.full(processedDocs + "\n\n" + faqs);
 }
 
 export { createApp, updateFiles, additionalContext, advancedDocs };

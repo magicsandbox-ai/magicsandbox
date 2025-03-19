@@ -148,7 +148,7 @@ Logs advanced documentation that you can reference in your next message. The adv
 
 - The Magic Sandbox platform
 - \`magic.json\` configuration
-- magicsandbox.Dev's build and publishing process`);
+- magicsandbox.Dev FAQs`);
 
   return `## API
 
