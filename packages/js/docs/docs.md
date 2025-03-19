@@ -79,7 +79,7 @@ _(number)_
 
 The final cost charged to call your App or Function. Apps and Functions have different behavior when it comes to `finalCost`:
 
-For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the balance to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the balance to make the required `requestFunction` call. Assistants should allow users to spend the difference between `minCost` and `finalCost` without requiring additional confirmation.
+For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the balance to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the balance to make the required `requestFunction` call. Assistants should allow Apps to spend the difference between `minCost` and `finalCost` without requiring additional confirmation.
 
 For Functions, `finalCost` is not accepted as a key in the App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
 
@@ -87,7 +87,7 @@ For Functions, `finalCost` is not accepted as a key in the App JSON, but instead
 
 _(boolean, default false)_
 
-Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#public-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
+Set to true to make your App or Function private. This just means your App or Function won't be published publicly (more info [here](#accessing-public-metadata)). Anyone who knows your App or Function name can still call it, which enables sharing with others without publishing publicly. To keep your App or Function truly private, give it a hard to guess name and keep it a secret by treating the name like a password.
 
 ### status
 
@@ -186,7 +186,7 @@ export { init, context, api };
 6. `app.context` returns a context string.
 7. The Assistant reads the context string and replies "Based on your notes, here's a to do list for the day: ...".
 
-When you export `init`, `context`, and `api` from your `script`, both [magicsandbox.Dev](#magicsandboxdev) and [@magicsandbox.ai/dev](#magicsandboxaidev) will assign them to the global `app` object during the build process. If you use an alternative approach to publishing your App, you'll need to handle this yourself.
+When you export `init`, `context`, and `api` from your `script`, both `magicsandbox.Dev` and `@magicsandbox.ai/dev` will assign them to the global `app` object during the build process (see [Publishing](#publishing) for details). If you use an alternative approach to publishing your App, you'll need to handle this yourself.
 
 Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.
 
@@ -212,7 +212,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
   - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`.
 - Includes the body `{ id, args, options, userInfo, app }`, where:
   - `id` is the fully resolved Function name, author.name@version
-  - `args`, `options` were the arguments to [requestFunction](#requestFunction)
+  - `args`, `options` were the arguments to [requestFunction](#requestfunction)
   - `userInfo` (UserInfo) is an object with keys populated based on the arguments in `options.includeUserInfo`
   - `app` is the name of the App that is calling the Function. This is provided by the user's Assistant and is not verified by Magic Sandbox.
 
@@ -263,15 +263,15 @@ From your endpoint, you can call other Functions by making a POST request to `ht
   - `Content-Type: application/json`
   - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
 - Body:
-  - An object with keys `fn`, `args`, and `options`, the arguments to [requestFunction](#requestFunction)
+  - An object with keys `fn`, `args`, and `options`, the arguments to [requestFunction](#requestfunction)
 
 # Publishing
 
 This section details how to publish Apps and Functions. You have a number of options to do so:
 
 - [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an App that offers an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing.
-- [@magicsandbox.ai/dev](https://www.npmjs.com/package/@magicsandbox.ai/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started.
-- Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestPublish).
+- [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started.
+- Rather than using magicsandbox.Dev, you can create your own App to publish Apps and Functions using [requestPublish](#requestpublish).
 - You can publish Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
   - URL parameters:
     - `kind`: 'app' or 'function'
@@ -427,13 +427,13 @@ You only need to provide the keys you're updating. In fact, this is required for
 
 # Sandbox
 
-The Sandbox is implemented as an iframe with a sandbox attribute. The Sandbox environment is restrictive but provides a number of global functions that enable you to bypass these restrictions. Each of these Sandbox functions has a name that begins with `request`, reflecting the fact that they may fail if not approved. The Assistant is responsible for approving Sandbox requests, either automatically if determined to be safe or by asking for user confirmation.
+The secure environment that Apps execute in is called the Sandbox. It's implemented as an iframe with a sandbox attribute. The Sandbox environment is restrictive but provides a number of global functions that enable you to bypass these restrictions. Each of these Sandbox functions has a name that begins with `request`, reflecting the fact that they may fail if not approved. The Assistant is responsible for approving Sandbox requests, either automatically if determined to be safe or by asking for user confirmation.
 
 The Sandbox has the following high level restrictions and associated Sandbox functions:
 
 - Limited network access. APIs like `fetch` don't work, and you can't use traditional links.
   - Use `requestApp` and `requestFunction` to call other Apps and Functions
-  - Use `requestFetch` to fetch data from another website
+  - Use `requestFetch` to fetch data from the web
   - Use `requestOpenUrl` to open a link in a new tab
   - Use `requestPublish` to publish a Function
   - Note: currently there are limited ways that your App can access the network without using a Sandbox function. You should not rely on these, as they may be blocked at any time without warning.
@@ -504,7 +504,7 @@ Store a key/value pair.
 **Arguments:**
 
 - `key` _(**required**, string)_: Key to store
-- `val` _(**required**, any)_: Value to store. May not be `null` and will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+- `val` _(**required**, any)_: Value to store. May not be `null`. Will be serialized using [msgpackr's](https://github.com/kriszyp/msgpackr) implementation of the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
 - `options` _(object)_:
   - `app` _(string)_: App to use for storage
   - `evictionPolicy` _(string)_: Controls behavior if the put would cause the app to exceed its storage limit. Supported values:
@@ -664,177 +664,53 @@ If a Sandbox function throws an error, it will have the following properties:
 - `name` (string): "RequestSandboxError"
 - `message` (string): a message describing the error
 - `data?` (object): an optional object containing additional error data
-  - `minCost?` (number): provided if calling requestApp or requestFunction with a maxCost that is less than the App or Function's minCost
+  - `minCost?` (number): provided if calling `requestApp` or `requestFunction` with a `maxCost` that is less than the App or Function's `minCost`
 
 # Assistants
 
-**Note:** you don't need to know all these details to create an App or Function (though you may find it helpful context). This section is aimed at those who want to develop their own Assistant. See [magicsandbox.Assistant](todo) for an example Assistant implementation.
+This section provides an overview of the Assistant - you don't need to know these details to create an App or Function, though you may find it helpful context.
 
-Assistants are simply Apps that are executed in a Sandbox immediately when the user loads the page. Like any other App, the Sandbox restrictions apply, but Sandbox functions like requestApp are available. The key difference though is that Magic Sandbox always approve Sandbox requests made by the Assistant. This gives Assistants enormous power, which is why it's so critical that users trust their Assistant.
+You can create your own Assistant. See [magicsandbox.Assistant](https://github.com/magicsandbox-ai/magicsandbox/tree/main/apps/Assistant) for an example implementation. In the future, we'd like to make `magicsandbox.Assistant` more modular and easily extendable.
 
-There are no hard restrictions on what exactly an Assistant does, but Assistants should typically do at least two things:
+Assistants are simply Apps that are executed in the Sandbox immediately when the user loads the page. Like any other App, the Sandbox restrictions apply, but Sandbox functions like `requestApp` are available. The key difference though is that Magic Sandbox always approve Sandbox requests made by the Assistant. This gives Assistants the unchecked ability to spend the user's balance and modify their data, which is why it's so critical that users trust their Assistant.
 
-1. Create a UI to accept user input and handle user input by executing other Apps. To execute Apps safely, the Assistant needs to create its own child Sandbox.
-2. Handle requests from Apps executing in the child Sandbox.
+There are no hard restrictions on what exactly an Assistant does or doesn't do. That said, the remainder of this section details the features implemented by `magicsandbox.Assistant`, many of which you may want to implement if creating your own Assistant.
 
-The rest of this section assumes you're following this basic pattern. We'll use the following terminology:
+#### Create a UI, handle user input, and execute Apps
 
-- Magic Sandbox: the top level webpage that the user loads in their browser. The parent of the Assistant Sandbox.
-- Assistant Sandbox: the Sandbox iframe that the Assistant runs in. The parent of the App Sandbox.
-- App Sandbox: the Sandbox iframe that Apps run in.
+The Assistant is almost completely responsible for the UI - Magic Sandbox does not provide any UI beyond the navigation bar at the top of the page. The Assistant should create a UI that can handle user input and execute Apps. To execute Apps safely, the Assistant needs to create a child Sandbox. The [react-sandbox](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/react-sandbox) package provides helpers to make this easier.
 
-A typical series of interactions between the three looks like this:
+When the Assistant's `init` function is called, it receives a `user` argument, which is an object with keys:
 
-1. Magic Sandbox creates Assistant Sandbox and executes the Assistant
-2. Assistant Sandbox creates UI and App Sandbox
-3. Assistant Sandbox handles user input and determines App to call
-4. Assistant Sandbox calls `requestApp`
-5. Magic Sandbox responds with the App returned by `requestApp`
-6. Assistant Sandbox executes the App in the App Sandbox
-7. App Sandbox calls a Sandbox function, e.g. `requestFetch`
-8. Assistant Sandbox approves the request or asks the user for confirmation
-9. Assistant Sandbox forwards the request to Magic Sandbox
-10. Magic Sandbox responds with the result of the Sandbox function
-11. Assistant Sandbox forwards the response to the App Sandbox
+- `name`: the user's username
+- `userBalance`: the user's balance
+- `userBalanceRemainingDays`: the number of days remaining until the user's balance resets. `undefined` for unauthenticated users.
 
-## Handling User Input and Executing Apps
+The Assistant is responsible for setting `_app` with `requestUrlParams`.
 
-Magic Sandbox does not provide any UI beyond the navigation bar at the top of the page, so it's up to the Assistant to create a UI that can accept user input, parse, and handle user input. Features like `!magic` and other bangs are implemented by magicsandbox.Assistant, not by Magic Sandbox.
+If interacting with Apps via `init`, `context`, and `api`, the Assistant should be aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation. Apps are not expected to provide this context.
 
-Let's say your Assistant has handled some user input and determined an App to call. The Assistant must create a child App Sandbox to execute the App safely. The [Sandbox](todo) component provides some helpers to make this easier, or you can create an iframe yourself with src set to 'frame.html'.
+When the user clicks on the Magic Sandbox logo in the top left of the page (which is outside of the Sandbox), rather than doing a slow reload of the entire page, Magic Sandbox sends a "reload" message to the Assistant. The Assistant should reset its state appropriately.
 
-The 'frame.html' file loads [frame.js](todo), which sets up a listener in the App Sandbox. The listener enables the Assistant to control the App Sandbox by listening for an object with specific keys and taking action based on those keys:
+#### Handle Sandbox requests from Apps
 
-- `script`: App Sandbox will execute the script
-- `style`: App Sandbox will append the style to the document's head
-- `html`: App Sandbox will append the html to the document's body
-- `args`: App Sandbox will save the object to the global `args` variable
+When an App calls a Sandbox function, a message is sent to its parent. The Assistant should listen for these messages and approve the request, deny it, or ask the user for confirmation. If approved, the Assistant should forward the request to its parent and return the response back to the App. The [react-sandbox](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/react-sandbox) package provides helpers to make this easier.
 
-todo url params
+Assistants should consider the following risks when handling Sandbox requests:
 
-todo reload
+- **Financial risk** (`requestApp`, `requestFunction`): Assistants should control how much Apps are allowed to spend. Assistants should allow Apps to spend the difference between `minCost` and `finalCost` without requiring additional confirmation
+- **Publishing risk** (`requestPublish`): Assistants should always ask for user approval when `requestPublish` is called. A malicious App could publish a broken or malicious new version of an App or Function against the author's will
+- **Privacy risk** (`requestGetData`, `requestGetAllData`, `requestGetAllKeysData`): Assistants should ask for user approval before allowing cross-author reads
+- **Data loss risk** (`requestPutData`, `requestDeleteData`): Assistants should ask for user approval before allowing cross-author writes. Assistants can take backups of data by providing a `backup` option to the data Sandbox functions. This backup storage is isolated from the Assistant's main storage, has a size limit of 1 GB, and is not backed up in the cloud or synced to other devices
+- **Download risk** (`requestDownload`): Assistants should always ask for user approval when `requestDownload` is called
+- **Network risk** (`requestApp`, `requestFunction`, `requestFetch`, `requestOpenUrl`, `requestPublish`): Assistants should rate limit network requests to prevent abuse
 
-todo expectations on magic. what context assistant is expected to have vs. what app provides
+Assistants should also implement the following:
 
-todo initialized with userBalance and userBalanceRemainingDays
-
-todo providing app for data functions. when assistants use them, they must provide options.app
-
-## Handling Sandbox Requests
-
-When the App Sandbox calls a Sandbox function like requestFetch, it uses postMessage to send a message to its parent, the Assistant Sandbox, that looks like this:
-
-```javascript
-{
-  id: number,
-  msg: {
-    request: 'fetch',
-    data: { resource, options },
-  },
-}
-```
-
-The App Sandbox then listens for a response from the Assistant Sandbox including the same id. So an Assistant needs to:
-
-1. Listen for messages from the App Sandbox
-2. Approve the request, deny it, or ask the user for confirmation
-3. Forward the request to its parent, Magic Sandbox
-4. Forward the response from Magic Sandbox to the App Sandbox
-
-```javascript
-async function handleRequest(event) {
-  // 1. listen for messages
-  if (event.source !== appSandbox.contentWindow) return;
-  if (!(event.data.id && event.data.msg?.request)) return;
-  const { id, msg } = event.data;
-  const { request, data } = msg;
-  // 2. approve/deny/ask for confirmation. a proper implementation should batch requests when asking for user confirmation
-  const confirmed = await handleConfirm(request, data);
-  let response;
-  if (!confirmed) {
-    response = { error: "User denied the request" };
-  } else {
-    delete data.options?.backup; //don't allow apps to access backup storage
-    if (request === "function") {
-      data.options.app = currentApp; //identify the app that called requestFunction
-    }
-    // 3. forward the request
-    response = await requestSandbox(request, data);
-  }
-  // 4. forward the response
-  event.source.postMessage({ id, response }, "*");
-}
-
-window.addEventListener("message", handleRequest);
-```
-
-todo update with proper error handling
-
-### Providing App to requestFunction calls
-
-Assistants are responsible for identifying the App that called requestFunction. Assistants should pass an additional `app` option to requestFunction and prevent Apps from setting this option without user approval.
-
-### Guidelines for Approving Sandbox Requests
-
-Assistants should consider the following risks when approving Sandbox requests:
-
-#### Financial Risk
-
-**Relevant Sandbox functions: requestApp, requestFunction**
-
-Assistants should track the cost incurred by requestApp and requestFunction over time and prompt users for approval when exceeding reasonable thresholds.
-
-todo budget
-
-#### Publishing Risk
-
-**Relevant Sandbox functions: requestPublish**
-
-Publishing Apps and Functions is potentially dangerous. A malicious App could publish a broken or malicious new version of an App or Function, or deprecate an App or Function against the author's will. Assistants should always ask for user approval when requestPublish is called.
-
-#### Privacy Risk
-
-**Relevant Sandbox functions: requestGetData, requestGetAllData, requestGetAllKeysData**
-
-Assistants should ask for user approval before allowing cross-author reads.
-
-Currently, there are ways for Apps to access the network without using a Sandbox function, so Assistants should assume that Apps can exfiltrate any data they can access. Assistants should therefore block reads (e.g. requestGetData) as needed rather than attempting to block exfiltration (e.g. requestFetch).
-
-#### Data Loss Risk
-
-**Relevant Sandbox functions: requestPutData, requestDeleteData**
-
-Assistants should ask for user approval before allowing cross-author writes.
-
-Like any other App, Assistants can use the data Sandbox functions to store data. Assistants however can supply a `backup` option to the data Sandbox functions to access a separate storage location with a much higher limit of 1 GB. This backup storage is isolated from the Assistant's main storage and is not backed up in the cloud or synced to other devices. Assistants can backup data to protect against data loss risk:
-
-```javascript
-//take backup of all of author.App's data
-requestPutData(
-  "author.App", //key
-  await requestGetAllData({ app: "author.App" }), //val
-  { app: "magicsandbox.Assistant", evictionPolicy: "fifo", backup: true }, //options
-);
-
-//retrieve backup
-requestGetData("author.App", { app: "magicsandbox.Assistant", backup: true });
-```
-
-Assistants should not allow Apps access to this backup storage.
-
-#### Download Risk
-
-**Relevant Sandbox functions: requestDownload**
-
-Assistants should prompt the user for approval when the App Sandbox attempts to download a file.
-
-#### Rate Limiting
-
-**Relevant Sandbox functions: requestApp, requestFunction, requestFetch, requestOpenUrl, requestPublish**
-
-Assistants should provide rate limiting to network requests to prevent abuse.
-
-todo handling url params
+- Identify the App calling `requestFunction`
+- Identify the App calling data Sandbox functions
+- Prevent Apps from accessing backup storage
+- Prevent Apps from setting `_app` when calling `requestUrlParams`
 
 # Advanced Topics
 
@@ -859,128 +735,69 @@ The following log methods are available - they're similar to their corresponding
 - `assistant.debug`
 - `assistant.full`: Assistants may truncate logs to avoid using too many tokens - using the `assistant.full` method is an indication that this log should not be truncated.
 
-## Streaming JSON
+## Intercepting Assistant Scripts
 
-When streaming over a network, the client may not receive chunks that correspond to your writes; your writes may be combined or split across multiple chunks. This will cause issues if streaming with `decode` set to 'json' or 'msgpack':
-
-```javascript
-//on your server
-res.write(JSON.stringify({ msg: "hello" }));
-res.end(JSON.stringify({ msg: " world!" }));
-
-//in Sandbox
-for await (const chunk of result) {
-  console.log(chunk);
-}
-//could print:
-//'{"msg":"hello"}{"msg":" world!"}'
-```
-
-In this example, the server makes two writes, but they were combined into a single chunk over the network, so the chunks are no longer valid JSON.
-
-The Sandbox can reconstruct your writes and properly parse JSON if you prefix each chunk with its length. You can do this by:
-
-1. Including an `x-length-prefix` header in your response
-2. Prefixing each chunk of your response with its 4-byte length (big-endian uint32)
-
-Rather than implement this yourself, you can use the [JavaScript](todo) or [Python](todo) helpers and do something like:
-
-```javascript
-import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
-import { pipeline } from "stream/promises";
-// ...
-const source = somehowGetReadable(); //your readable stream
-res.setHeader("x-length-prefix", "true"); //your response writable stream
-await pipeline(source, createLengthPrefixTransform(), res);
-```
-
-```python
-from magicsandbox import length_prefix_transform
-from fastapi.responses import StreamingResponse
-# ...
-source = somehow_get_async_iterable() #your async iterable
-return StreamingResponse(length_prefix_transform(source), headers={'x-length-prefix': 'true'})
-```
-
-Consult your specific server framework's documentation for details.
-
-## Command Object
-
-Usually Function results are intended for the user, but there are scenarios where you want to instruct the Magic Sandbox server to do something:
-
-- [Charge the caller a variable cost](#variable-costs)
-
-You do this using a command object, which is an object with two keys: `result` and `__command`. `result` will be sent to the user, while `__command` is interpreted by the server.
-
-```typescript
-type CommandObject = {
-  result?: any; //will be sent to the user
-  __command: {
-    //interpreted by the server
-    finalCost;
-  };
-};
-```
-
-You have to signal to the server that your response is a command object, which you can do by including an `x-command-object` header in your response. The server will attempt to parse the entire response as a command object.
-
-The command object cannot exceed 100KB. If you have a large result you want to send to the user, consider streaming it instead. You can stream a result that includes a command object by:
-
-1. Including an `x-length-prefix` header in your response
-2. Prefixing each chunk of your response with its 4-byte length (big-endian uint32)
-3. Except for the final chunk, which must be prefixed with the special 4-byte sequence [0xFF, 0xFF, 0xFF, 0xFF] (four 255 bytes). The server will attempt to parse the final chunk as a command object.
-
-Rather than implement this yourself, you can use the [JavaScript](todo) or [Python](todo) helpers and do something like:
-
-```javascript
-import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
-import { pipeline } from "stream/promises";
-// ...
-const source = somehowGetReadable(); //your readable stream
-res.setHeader("x-length-prefix", "true"); //your response writable stream
-await pipeline(
-  source,
-  createLengthPrefixTransform({ finalObject: true }), //prefix final chunk with 0xFFFFFFFF
-  res,
-);
-```
-
-```python
-from magicsandbox import length_prefix_transform
-from fastapi.responses import StreamingResponse
-# ...
-source = somehow_get_async_iterable() #your async iterable
-return StreamingResponse(
-  length_prefix_transform(source, final_object=True), #prefix final chunk with 0xFFFFFFFF
-  headers={'x-length-prefix': 'true'}
-);
-```
+It's possible to intercept Assistant scripts and modify them before they're executed, but the API is not yet stable. Please create an [issue](https://github.com/magicsandbox-ai/magicsandbox/issues/new?template=Blank+issue) and share your use case if you'd like to do this.
 
 ## Variable Costs
 
 Magic Sandbox enables Functions to charge variable costs:
 
-1. When a Function is published, it specifies a minCost, the minimum cost the publisher will accept.
-2. When a Function is called, the caller specifies maxCost, the maximum cost they're willing to pay.
-   - Magic Sandbox ensures that maxCost is greater than or equal to the Function's minCost.
-3. When the Function executes, it can specify finalCost, the actual cost the user will be charged.
-   - Magic Sandbox ensures finalCost is between $0.001 and maxCost.
-   - If finalCost is not specified, it defaults to minCost.
-   - requestApp does not support variable costs and always charges minCost.
+1. When a Function is published, it specifies a `minCost`, the minimum cost the publisher will accept.
+2. When a Function is called, the caller specifies `maxCost`, the maximum cost they're willing to pay.
+   - Magic Sandbox ensures that `maxCost` is greater than or equal to the Function's `minCost`.
+3. When the Function executes, it can specify `finalCost`, the actual cost the user will be charged.
+   - Magic Sandbox ensures `finalCost` is between $0.001 and `maxCost`.
+   - If `finalCost` is not specified, it defaults to `minCost`.
+   - `requestApp` does not support variable costs and always charges `minCost`.
 
-Variable costs are implemented using a [Command Object](todo). Here's an example:
+To specify `finalCost`, you must:
+
+- Return a command object, which is an object with two keys: `result` and `__command`. `result` will be sent to the user, while `__command` is used by the server.
+- Include an `x-command-object` header in your response.
+
+```typescript
+type CommandObject = {
+  result?: any; //sent to the user
+  __command: {
+    //used by the server
+    finalCost: number;
+  };
+};
+```
+
+The command object cannot exceed 100KB. If you have a large result you want to send to the user, you'll need to [stream](#streaming-json) it.
+
+## Streaming JSON
+
+When streaming over a network, the client may not receive chunks that correspond to your writes; your writes may be combined or split across multiple chunks. This will cause issues if streaming with `decode` set to "json" or "msgpack".
+
+The Sandbox can reconstruct your writes and properly decode the chunks if you prefix each chunk with its length. You can do this by:
+
+1. Including an `x-length-prefix` header in your response
+2. Prefixing each chunk of your response with its 4-byte length (big-endian uint32)
+3. If streaming a command object, the final chunk must be prefixed with the special 4-byte sequence [0xFF, 0xFF, 0xFF, 0xFF] (four 255 bytes).
+
+Rather than implement this yourself, you can use the [JavaScript](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/streaming) or [Python](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/python/magicsandbox_streaming) helpers and do something like:
 
 ```javascript
-function main(args, options) {
-  const length = Math.min(args.input.length, options.maxCost / 0.001);
-  return {
-    result: args.input.slice(0, length).toUpperCase(),
-    __command: {
-      finalCost: length * 0.001,
-    },
-  };
-}
+import { createLengthPrefixTransform } from "@magicsandbox.ai/streaming";
+import { pipeline } from "stream/promises";
+// ...
+const source = somehowGetReadable(); //your readable stream
+res.setHeader("x-length-prefix", "true"); //your response writable stream
+await pipeline(source, createLengthPrefixTransform(), res); //for a command object: createLengthPrefixTransform({ finalObject: true })
 ```
+
+```python
+from magicsandbox import length_prefix_transform
+from fastapi.responses import StreamingResponse
+# ...
+source = somehow_get_async_iterable() #your async iterable
+return StreamingResponse(length_prefix_transform(source), headers={'x-length-prefix': 'true'}) #for a command object: length_prefix_transform(source, final_object=True)
+```
+
+Consult your specific server framework's documentation for details.
 
 ## App and Function Metadata
 
@@ -1012,7 +829,7 @@ App and Function metadata is made publicly available unless the App or Function'
 
 Make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key). Ensure your client is configured to follow redirects.
 
-The public metadata is updated once hourly. Requesting the public metadata more frequently than hourly may result in an error. If you need more frequent updates, you'll need to publish a Function with the `subscribeToUpdates` key set to true.
+The public metadata is updated hourly. Requesting the public metadata more frequently than hourly may result in an error. If you need more frequent updates, you'll need to publish a Function with the `subscribeToUpdates` key set to true.
 
 ### Subscribing to Updates
 
@@ -1023,8 +840,6 @@ If you set `subscribeToUpdates` to true, your endpoint will receive updates when
   - `Content-Type: application/json`
   - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint).
 - Includes a `Metadata` body
-
-todo app.messageHandler
 
 ## Limits
 

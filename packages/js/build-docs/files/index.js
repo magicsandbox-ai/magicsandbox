@@ -69,6 +69,20 @@ async function init() {
   if (hash) {
     scrollToHash(hash);
   }
+  //todo clean up duplicated code
+  const baseUrl = new URL(document.baseURI);
+  const baseApp = baseUrl.searchParams.get("_app");
+  document.querySelectorAll("a").forEach((a) => {
+    const url = new URL(a.href);
+    const app = url.searchParams.get("_app");
+    const hash = url.hash?.slice(1); //remove leading #
+    if (app === baseApp && hash) {
+      if (!document.getElementById(hash)) {
+        console.warn(`invalid hash: ${hash}`);
+      }
+    }
+  });
+  return context();
 }
 
 function scrollToHash(hash) {
