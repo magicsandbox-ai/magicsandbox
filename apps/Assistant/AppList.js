@@ -27,10 +27,10 @@ function AppList({ appData, setAppData, assistantRef }) {
 
   let message;
   if (state === "favorited") {
-    message = "Your Assistant can launch your favorited apps";
+    message = "Your Assistant can open your favorited apps";
   } else if (state === "blocked") {
     message =
-      "Blocked apps don't appear in searches and can't be launched without approval";
+      "Blocked apps don't appear in searches and can't be opened without approval";
   }
 
   const displayApps = Object.values(appData).filter((app) => app[state]);

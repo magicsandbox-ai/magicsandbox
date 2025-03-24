@@ -501,7 +501,7 @@ Execute a Function and returns the result.
 - `stream: false`: `Promise<{result: any, metadata: object}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`
 - `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk
 
-`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
+`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`
 
 ### requestMetadata
 
@@ -872,7 +872,7 @@ If you set `subscribeToUpdates` to true, your endpoint will receive updates when
 - Includes headers:
   - `Content-Type: application/json`
   - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint)
-- Includes a `Metadata` body
+- Includes a body which is an array of `Metadata` objects
 
 ## Limits
 

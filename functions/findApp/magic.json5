@@ -1,6 +1,0 @@
-{
-  name: "findApp",
-  version: "0.0.1",
-  endpoint: "https://magicsandbox.ai/endpoint/findApp",
-  subscribeToUpdates: true,
-}

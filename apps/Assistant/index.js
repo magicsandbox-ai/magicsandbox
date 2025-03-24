@@ -307,7 +307,9 @@ function App({ user, urlParams, initData, initConversation }) {
       />
     );
   } else if (showDiscover) {
-    modalComponent = <Discover setShowDiscover={setShowDiscover} />;
+    modalComponent = (
+      <Discover setShowDiscover={setShowDiscover} assistantRef={assistantRef} />
+    );
   }
 
   return (

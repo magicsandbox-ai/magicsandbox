@@ -14,6 +14,7 @@ msgpack = "~=1.1"
 httpx = "~=0.28.1"
 boto3 = "~=1.37"
 aiostream = "~=0.6.4"
+aiosqlite = "~=0.21.0"
 
 [dev-packages]
 jupyter = "~=1.1"

@@ -165,7 +165,7 @@ function SearchResult({ node, onClickResult }) {
 
   return (
     <button
-      className="mb-4 w-full cursor-pointer rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
+      className="mb-4 w-full rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
       onClick={handleClick}
       aria-label={node.name}
     >
