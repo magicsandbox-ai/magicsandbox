@@ -711,9 +711,10 @@ The Assistant is almost completely responsible for the UI - Magic Sandbox does n
 
 When the Assistant's `init` function is called, it receives a `user` argument, which is an object with keys:
 
-- `name`: the user's username
-- `userBalance`: the user's balance
-- `userBalanceRemainingDays`: the number of days remaining until the user's balance resets. `undefined` for unauthenticated users
+- `name`: user's username
+- `userBalance`: user's balance
+- `userBalanceRemainingDays`: number of days remaining until the user's balance resets. `undefined` for unauthenticated users
+- `lastPublished`: timestamp the user last published an App or Function
 
 The Assistant is responsible for setting `_app` with `requestUrlParams`.
 

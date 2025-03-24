@@ -21,6 +21,8 @@ import {
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
 
+const includeMetadata = ["id", "description", "minCost", "finalCost", "status"];
+
 class Assistant {
   constructor({
     user,
@@ -529,13 +531,7 @@ class Assistant {
       };
       const requestAppOptions = {
         maxCost,
-        includeMetadata: [
-          "id",
-          "description",
-          "minCost",
-          "finalCost",
-          "status",
-        ],
+        includeMetadata,
       };
       try {
         const result = await requestApp(app, requestAppOptions);
@@ -799,7 +795,7 @@ class Assistant {
   }
 }
 
-export { Assistant };
+export { includeMetadata, Assistant };
 
 class AbortIdController {
   constructor() {

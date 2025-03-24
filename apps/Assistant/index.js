@@ -5,7 +5,7 @@ import AssistantConfirm from "./AssistantConfirm.js";
 import AssistantSearch from "./AssistantSearch.js";
 import RiskConfirm from "./RiskConfirm.js";
 import { Toasts } from "@components/Toasts.js";
-import { Assistant } from "./Assistant.js";
+import { includeMetadata, Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
@@ -15,10 +15,12 @@ import { welcomeMessage } from "./welcomeMessage.js";
 import Discover from "./Discover.js";
 
 async function init({ user } = {}) {
-  const urlParams = await requestUrlParams();
-  const initData = await requestGetAllData({
-    app: "magicsandbox.Assistant",
-  });
+  const [urlParams, initData] = await Promise.all([
+    requestUrlParams(),
+    requestGetAllData({
+      app: "magicsandbox.Assistant",
+    }),
+  ]);
   const initConversation = {
     conversationId: Date.now(),
     messages: [],
@@ -88,7 +90,7 @@ function App({ user, urlParams, initData, initConversation }) {
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
-  //type App {id, app, description, minCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  //type App {id, app, description, minCost, finalCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
   const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
@@ -122,6 +124,31 @@ function App({ user, urlParams, initData, initConversation }) {
       };
       appDataRef.current = appData;
       setAppData(appData);
+      if (user?.lastPublished > (initData.lastMetadataRefresh || 0)) {
+        requestMetadata(user.name, includeMetadata, {
+          kind: "app",
+          includePrivate: true,
+        })
+          .then(async (metadata) => {
+            setAppData((appData) => {
+              const newAppData = { ...appData };
+              metadata.forEach((m) => {
+                const app = m.id.split("@")[0];
+                newAppData[app] = {
+                  ...newAppData[app],
+                  ...m,
+                  app,
+                  published: newAppData[app]?.published || Date.now(),
+                };
+              });
+              return newAppData;
+            });
+            await requestPutData("lastMetadataRefresh", user.lastPublished, {
+              app: "magicsandbox.Assistant",
+            });
+          })
+          .catch(console.error);
+      }
       const model = initData.selectedModel || "auto";
       modelRef.current = model;
       setModel(model);
