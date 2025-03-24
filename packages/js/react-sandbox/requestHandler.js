@@ -8,6 +8,7 @@ function validateAndDefaultRequest(request, data, assistant, app) {
   const requiredKeys = {
     app: ["app"],
     function: ["fn", "args"],
+    metadata: ["identifier", "includeMetadata"],
     putData: ["key", "val"],
     deleteData: ["key"],
     getData: ["key"],
@@ -50,6 +51,14 @@ function validateAndDefaultRequest(request, data, assistant, app) {
     }
     if (assistant && app) {
       data.options.app = app; //assistant provides app calling requestFunction
+    }
+  } else if (request === "metadata") {
+    data.options = {
+      kind: data.options?.kind,
+      includePrivate: data.options?.includePrivate || false,
+    };
+    if (assistant) {
+      data.options.includePrivate = false; //assistants should not allow apps to set includePrivate to true
     }
   } else if (
     assistant &&

@@ -21,11 +21,13 @@ function ChatDisplay({
       const action = link.href.slice("assistant://".length);
       if (action === "discover") {
         setShowDiscover(true);
-        return;
+      } else if (action.startsWith("open/")) {
+        const app = action.slice("open/".length);
+        assistantRef.current.handleApp({ app });
       }
-      return;
+    } else {
+      requestOpenUrl(link.href);
     }
-    requestOpenUrl(link.href);
   };
 
   let scrollToBottom = false;

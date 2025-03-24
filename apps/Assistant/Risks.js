@@ -313,6 +313,7 @@ class RateLimitRisk extends Risk {
     this.handleRequests = new Set([
       "app",
       "function",
+      "metadata",
       "fetch",
       "openUrl",
       "publish",

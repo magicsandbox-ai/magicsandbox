@@ -459,7 +459,7 @@ The Sandbox has the following high level restrictions and associated Sandbox fun
 
 ### requestApp
 
-Retrieves an App's `style`, `html`, `script`, and `metadata`.
+Retrieve an App's `style`, `html`, `script`, and `metadata`.
 
 **Arguments:**
 
@@ -483,7 +483,7 @@ type App = {
 
 ### requestFunction
 
-Executes a Function and returns the result.
+Execute a Function and returns the result.
 
 **Arguments:**
 
@@ -502,6 +502,23 @@ Executes a Function and returns the result.
 - `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk
 
 `metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
+
+### requestMetadata
+
+Retrieve App and Function metadata.
+
+**Arguments:**
+
+- `identifier` _(**required**, string)_: can take the forms:
+  - author.name@version: retrieve a specific App or Function version
+  - author.name: retrieve the latest App or Function version
+  - author: retrieve the latest version of all Apps and Functions published by the author. Use `kind` to specify whether to retrieve Apps or Functions
+- `includeMetadata` _(**required**, string[])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
+- `options` _(object)_:
+  - `kind` _("app" | "function")_: Whether to retrieve App or Function metadata. If not provided, both are retrieved. Only relevant when `query` specifies only an author
+  - `includePrivate` _(boolean, default false)_: Whether to retrieve private Apps and Functions. Assistants should not allow Apps to set this to true
+
+**Returns:** a Promise that resolves to an array of objects with the keys specified in `includeMetadata`
 
 ## Storing and Retrieving Data
 
@@ -715,11 +732,12 @@ Assistants should consider the following risks when handling Sandbox requests:
 - **Privacy risk** (`requestGetData`, `requestGetAllData`, `requestGetAllKeysData`): Assistants should ask for user approval before allowing cross-author reads
 - **Data loss risk** (`requestPutData`, `requestDeleteData`): Assistants should ask for user approval before allowing cross-author writes. Assistants can take backups of data by providing a `backup` option to the data Sandbox functions. This backup storage is isolated from the Assistant's main storage, has a size limit of 1 GB, and is not backed up in the cloud or synced to other devices
 - **Download risk** (`requestDownload`): Assistants should always ask for user approval when `requestDownload` is called
-- **Network risk** (`requestApp`, `requestFunction`, `requestFetch`, `requestOpenUrl`, `requestPublish`): Assistants should rate limit network requests to prevent abuse
+- **Network risk** (`requestApp`, `requestFunction`, `requestMetadata`, `requestFetch`, `requestOpenUrl`, `requestPublish`): Assistants should rate limit network requests to prevent abuse
 
 Assistants should also implement the following:
 
 - Identify the App calling `requestFunction`
+- Prevent Apps from setting `includePrivate` to true when calling `requestMetadata`
 - Identify the App calling data Sandbox functions
 - Prevent Apps from accessing backup storage
 - Prevent Apps from setting `_app` when calling `requestUrlParams`

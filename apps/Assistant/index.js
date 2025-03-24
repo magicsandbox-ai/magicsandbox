@@ -11,7 +11,7 @@ import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars } from "./utils.js";
-import welcomeMessage from "./welcomeMessage.md";
+import { welcomeMessage } from "./welcomeMessage.js";
 import Discover from "./Discover.js";
 
 async function init({ user } = {}) {
@@ -28,7 +28,7 @@ async function init({ user } = {}) {
   if (Object.keys(initData).length === 0) {
     initConversation.messages.push({
       role: "assistant",
-      tags: [{ content: welcomeMessage }],
+      tags: [{ content: welcomeMessage(urlParams._app) }],
     });
     initConversation.summary = "Welcome to Magic Sandbox!";
     initConversation.welcome = true;
@@ -143,7 +143,7 @@ function App({ user, urlParams, initData, initConversation }) {
         setAppData,
       });
       const { _app } = urlParams;
-      if (_app) {
+      if (_app && !initConversation.welcome) {
         let appString = _app.split("@")[0];
         const [author, name] = appString.split(".");
         appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
