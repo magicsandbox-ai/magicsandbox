@@ -333,6 +333,7 @@ function App({ user, urlParams, initData, initConversation }) {
               chatLoading,
               appData,
               setAppData,
+              setShowDiscover,
             }}
           />
         )}
