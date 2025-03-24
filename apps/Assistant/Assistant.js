@@ -545,10 +545,9 @@ class Assistant {
         if (abortSignal.aborted) return;
         if (error.data?.minCost) {
           //maxCost is lower than minCost, prompt user to approve
-          //todo enable user to configure how maxCost is set from here
           this.setConfirm({
             header: `Open App ${app}?`,
-            message: `${app} costs ${formatAsDollars(error.data.minCost)}`,
+            message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than last time you opened it.`,
             callback: async (response) => {
               this.setConfirm(null);
               if (response) {

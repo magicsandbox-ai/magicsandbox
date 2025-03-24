@@ -1,8 +1,18 @@
-function welcomeMessage(app) {
+import { getMinCost } from "./utils.js";
+
+async function welcomeMessage(app) {
   let suggestion;
   if (app) {
-    suggestion = `- [**Open app ${app}.**](assistant://open/${app}) The link you opened includes a request to open this app`;
-  } else {
+    try {
+      //would be a very bad first experience if the user tries to open an invalid app, so call getMinCost to validate it
+      await getMinCost(app);
+      suggestion = `- [**Open app ${app}.**](assistant://open/${app}) The link you opened includes a request to open this app`;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  if (!suggestion) {
+    //if no app, or if getMinCost threw
     suggestion = `- **Jump right in! Enter _"add a joke to my notes"_ below** and I'll show you how I can work with apps!`;
   }
   return `## Welcome to Magic Sandbox!

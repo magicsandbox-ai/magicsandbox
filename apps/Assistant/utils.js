@@ -9,4 +9,14 @@ function formatAsDollars(amount) {
   return dollarFormatter.format(amount);
 }
 
-export { formatAsDollars };
+async function getMinCost(app) {
+  const metadata = await requestMetadata(app, ["minCost"], {
+    kind: "app",
+  });
+  if (metadata.length !== 1) {
+    throw new Error("Invalid metadata with length " + metadata.length);
+  }
+  return metadata[0].minCost;
+}
+
+export { formatAsDollars, getMinCost };

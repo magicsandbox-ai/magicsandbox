@@ -10,7 +10,7 @@ import Home from "./Home.js";
 import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
-import { formatAsDollars } from "./utils.js";
+import { formatAsDollars, getMinCost } from "./utils.js";
 import { welcomeMessage } from "./welcomeMessage.js";
 import Discover from "./Discover.js";
 
@@ -26,9 +26,10 @@ async function init({ user } = {}) {
     lastUpdated: Date.now(),
   };
   if (Object.keys(initData).length === 0) {
+    const message = await welcomeMessage(urlParams._app);
     initConversation.messages.push({
       role: "assistant",
-      tags: [{ content: welcomeMessage(urlParams._app) }],
+      tags: [{ content: message }],
     });
     initConversation.summary = "Welcome to Magic Sandbox!";
     initConversation.welcome = true;
@@ -148,35 +149,30 @@ function App({ user, urlParams, initData, initConversation }) {
         const [author, name] = appString.split(".");
         appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
         const app = appData[appString] || { app: appString };
-        let maxCost;
+        let maxCost = app.minCost;
         let messages = [
           "The link you opened includes a request to open this App",
         ];
         if (app.blocked) {
-          messages.push(`${app.app} costs ${formatAsDollars(app.minCost)}`);
           messages.push("This App is blocked");
         } else if (app.favorited || app.published) {
-          messages = []; //no need to confirma
-          maxCost = app.minCost;
+          messages = []; //no need to confirm
         } else if (
           Date.now() - (app.recent || 0) < 1000 * 60 * 60 * 24 * 7 &&
-          app.minCost < 0.01
+          maxCost < 0.01
         ) {
           //todo enable user to configure thresholds
           messages = []; //opened in last week and less than a penny, no need to confirm
-          maxCost = app.minCost;
-        } else if (app.minCost) {
-          maxCost = app.minCost;
-          //todo if app's minCost has increased, requestApp will throw and the user will be shown the new cost
-          //but without any explanation, which is confusing
-          messages.push(`${app.app} costs ${formatAsDollars(app.minCost)}`);
-        } else {
-          //don't know the cost, leave messages as is
-          //todo look up cost here rather than requestApp throwing and showing another confirmation?
-          //todo enable user to configure?
-          maxCost = 0.01;
+        } else if (!maxCost) {
+          try {
+            maxCost = await getMinCost(app.app);
+          } catch (error) {
+            console.error(error);
+            toastsRef.current.addToast(`Invalid app in URL`, "warning");
+          }
         }
-        if (messages.length > 0) {
+        if (messages.length > 0 && maxCost) {
+          messages.push(`${app.app} costs ${formatAsDollars(maxCost)}`);
           const message = messages.join("\n");
           setConfirm({
             header: `Open App ${app.app}?`,
@@ -188,7 +184,7 @@ function App({ user, urlParams, initData, initConversation }) {
               }
             },
           });
-        } else {
+        } else if (maxCost) {
           assistantRef.current.handleApp({ app: app.app, maxCost });
         }
       }

@@ -515,8 +515,8 @@ Retrieve App and Function metadata.
   - author: retrieve the latest version of all Apps and Functions published by the author. Use `kind` to specify whether to retrieve Apps or Functions
 - `includeMetadata` _(**required**, string[])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
 - `options` _(object)_:
-  - `kind` _("app" | "function")_: Whether to retrieve App or Function metadata. If not provided, both are retrieved. Only relevant when `query` specifies only an author
-  - `includePrivate` _(boolean, default false)_: Whether to retrieve private Apps and Functions. Assistants should not allow Apps to set this to true
+  - `kind` _("app" | "function")_: Whether to retrieve App or Function metadata. If not provided, both are retrieved
+  - `includePrivate` _(boolean, default false)_: Whether to retrieve the user's private Apps and Functions. Only relevant when `identifier` specifies only the author and the author is the current authenticated user. Assistants should not allow Apps to set this to true
 
 **Returns:** a Promise that resolves to an array of objects with the keys specified in `includeMetadata`
 

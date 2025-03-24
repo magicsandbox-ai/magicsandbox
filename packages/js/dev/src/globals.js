@@ -2,6 +2,7 @@ export const globals = {
   assistant: false,
   requestApp: false,
   requestFunction: false,
+  requestMetadata: false,
   requestPutData: false,
   requestDeleteData: false,
   requestGetData: false,

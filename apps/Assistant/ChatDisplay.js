@@ -3,6 +3,7 @@ import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
+import { getMinCost } from "./utils.js";
 
 function ChatDisplay({
   outerClassName = "",
@@ -13,20 +14,29 @@ function ChatDisplay({
 }) {
   const ref = useRef(null);
 
-  const handleClick = (e) => {
-    const link = e.target.closest("a");
-    if (!link?.href) return;
-    e.preventDefault();
-    if (link.href.startsWith("assistant://")) {
-      const action = link.href.slice("assistant://".length);
-      if (action === "discover") {
-        setShowDiscover(true);
-      } else if (action.startsWith("open/")) {
-        const app = action.slice("open/".length);
-        assistantRef.current.handleApp({ app });
+  const handleClick = async (e) => {
+    try {
+      const link = e.target.closest("a");
+      if (!link?.href) return;
+      e.preventDefault();
+      if (link.href.startsWith("assistant://")) {
+        const action = link.href.slice("assistant://".length);
+        if (action === "discover") {
+          setShowDiscover(true);
+        } else if (action.startsWith("open/")) {
+          const app = action.slice("open/".length);
+          const maxCost = await getMinCost(app);
+          assistantRef.current.handleApp({ app, maxCost });
+        }
+      } else {
+        requestOpenUrl(link.href);
       }
-    } else {
-      requestOpenUrl(link.href);
+    } catch (error) {
+      console.error(error);
+      assistantRef.current.toastsRef.current.addToast(
+        "An unexpected error occurred",
+        "error",
+      );
     }
   };
 
