@@ -123,8 +123,10 @@ class Assistant {
       messages: conversation.messages,
     });
   }
-  handleUpdateConversation({ messages, message, summary }) {
-    const conversationId = this.currentConversationRef.current.conversationId;
+  handleUpdateConversation({ conversationId, messages, message, summary }) {
+    if (conversationId === undefined) {
+      conversationId = this.currentConversationRef.current.conversationId;
+    }
     const conversation = this.conversationsRef.current[conversationId];
     const messagesUpdated = messages !== undefined || message !== undefined;
     if (messagesUpdated) {
@@ -571,10 +573,10 @@ class Assistant {
     }
   }
   handleRequest(event) {
-    window.clearTimeout(this.requestTimeoutId);
+    clearTimeout(this.requestTimeoutId);
     event.sandboxId = this.sandboxRef.current.getSandboxId();
     this.requestQueue.push(event);
-    this.requestTimeoutId = window.setTimeout(() => {
+    this.requestTimeoutId = setTimeout(() => {
       this.requestTimeoutId = null;
       this.processRequestBatch();
     }, 16);
@@ -684,7 +686,7 @@ class Assistant {
     } finally {
       this.requestProcessing = false;
       if (!this.requestTimeoutId) {
-        this.requestTimeoutId = window.setTimeout(() => {
+        this.requestTimeoutId = setTimeout(() => {
           this.processRequestBatch();
         }, 16);
       }

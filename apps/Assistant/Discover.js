@@ -87,6 +87,7 @@ function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
       {status === "loading" ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader className="h-10 w-10 animate-spin" />
+          <span className="sr-only">Loading...</span>
         </div>
       ) : status === "error" ? (
         <div className="flex flex-1 items-center justify-center text-red-600">

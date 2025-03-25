@@ -6,13 +6,14 @@ async function waitForFrame(page) {
 }
 
 const test = base.extend({
-  appOptions: [{ autoInit: true }, { option: true }],
+  appOptions: [{}, { option: true }],
   app: async ({ page, appOptions }, use) => {
+    const { autoInit = true, autoConfirm = false } = appOptions;
     if (!process.env.MAGICSANDBOX_API_KEY) {
       throw new Error("MAGICSANDBOX_API_KEY environment variable is required");
     }
     let url = process.env.MAGICSANDBOX_TEST_URL;
-    if (!appOptions.autoInit) {
+    if (!autoInit) {
       url += "&devLocalAutoInit=false";
     }
     const baseUrl = url.split("?")[0].toLowerCase();
@@ -38,6 +39,11 @@ const test = base.extend({
     await waitForFrame(page);
     const assistant = page.mainFrame().childFrames()[0];
     await waitForFrame(assistant);
+    if (autoConfirm) {
+      await assistant.evaluate(() => {
+        window._AUTO_CONFIRM = true;
+      });
+    }
     const devLocal = assistant.childFrames()[0];
     const buildCompletePromise = devLocal
       .page()

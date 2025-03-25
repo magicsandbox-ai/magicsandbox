@@ -2,12 +2,29 @@ import { test, expect } from "@magicsandbox.ai/test";
 
 /*
 npm run test assistant
+
+favorite/block/drag and drop?
+chat, maximize bottom chat, pause
+model picker
+confirm/risks?
+rename/delete
 */
 
+test.use({ appOptions: { autoConfirm: true } });
+
 test("Assistant", async ({ app }) => {
-  //welcome and discover
-  await app.getByRole("link", { name: "Discover apps" }).click();
+  //discover
+  await app.getByRole("button", { name: "Discover Apps" }).click();
   await expect(app.getByRole("dialog")).toBeVisible();
+  const discoverInput = app.getByLabel("Search for apps...");
+  await discoverInput.fill("Notes");
+  await discoverInput.press("Enter");
+  //should be multiple buttons (first button is the search button)
+  //performance of magicsandbox.discover locally is variable (I think due to the embedding model being swapped to disk)
+  //so increase the timeout
+  await expect(app.getByRole("dialog").getByRole("button").nth(1)).toBeVisible({
+    timeout: 15000,
+  });
   await app.getByRole("dialog").press("Escape");
   await expect(app.getByRole("dialog")).not.toBeVisible();
 
@@ -20,6 +37,12 @@ test("Assistant", async ({ app }) => {
     .getByRole("dialog")
     .getByRole("button", { name: "Welcome to Magic Sandbox!" })
     .click();
+  await expect(app.getByRole("dialog")).not.toBeVisible();
+
+  //welcome message - app fixture tests opening apps so no need to test here
+  await app.getByRole("button", { name: "Discover apps" }).click();
+  await expect(app.getByRole("dialog")).toBeVisible();
+  await app.getByRole("dialog").press("Escape");
   await expect(app.getByRole("dialog")).not.toBeVisible();
 
   //close menu
@@ -35,6 +58,6 @@ test("Assistant", async ({ app }) => {
   //new chat
   await app.getByRole("button", { name: "New chat" }).click();
   await expect(
-    app.getByRole("button", { name: "magicsandbox.Notes" }),
-  ).toBeVisible(); //should be favorited app on init
+    app.getByRole("button", { name: "Discover Apps" }),
+  ).toBeVisible();
 });

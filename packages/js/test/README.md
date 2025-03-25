@@ -92,11 +92,19 @@ test.describe("run tests with autoInit disabled", () => {
 });
 ```
 
+To disable `magicsandbox.Assistant` user confirmation prompts (for example, when spending money with `requestFunction`), set `autoConfirm` to true:
+
+```javascript
+test.use({ appOptions: { autoConfirm: true } });
+```
+
 See the ExampleApp folder for an App that passes the above tests.
 
 ### Tests Cost Warning
 
-Each Playwright test runs in a new browser instance. That means each test has to load the Apps magicsandbox.Assistant and magicsandbox.DevLocal at a cost of $0.002. Be sure not to run thousands of tests!
+Each Playwright test runs in a new browser instance. That means each test has to load the Apps `magicsandbox.Assistant` and `magicsandbox.DevLocal` at a cost of $0.002. Be sure not to run thousands of tests!
+
+Use extra caution when setting `autoConfirm` to true.
 
 ## Configuration
 

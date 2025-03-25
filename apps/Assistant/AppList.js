@@ -195,9 +195,7 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
       className="flex w-full cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
       onClick={handleClick}
     >
-      <div className="mx-1 min-w-0 grow text-wrap break-words">
-        {app.id.split("@")[0]}
-      </div>
+      <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
       {favoritable && (
         <button onClick={() => assistantRef.current.handleFavorite(app)}>
           <Star className={app.favorited ? "fill-yellow-500" : ""} />

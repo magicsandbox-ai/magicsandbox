@@ -4,6 +4,7 @@ import { Sandbox } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.js";
 import AssistantSearch from "./AssistantSearch.js";
 import RiskConfirm from "./RiskConfirm.js";
+import DeleteConfirm from "./DeleteConfirm.js";
 import { Toasts } from "@components/Toasts.js";
 import { includeMetadata, Assistant } from "./Assistant.js";
 import Home from "./Home.js";
@@ -95,6 +96,7 @@ function App({ user, urlApp, initData, initConversation }) {
   const [app, setApp] = useState(urlApp ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
+  const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
 
@@ -297,9 +299,26 @@ function App({ user, urlApp, initData, initConversation }) {
 
   let modalComponent;
   if (confirm) {
-    modalComponent = <AssistantConfirm confirm={confirm} />;
+    if (window._AUTO_CONFIRM) {
+      //used for testing
+      confirm.callback?.(true);
+    } else {
+      modalComponent = <AssistantConfirm confirm={confirm} />;
+    }
   } else if (risk) {
-    modalComponent = <RiskConfirm risk={risk} />;
+    if (window._AUTO_CONFIRM) {
+      risk.callback?.(true);
+    } else {
+      modalComponent = <RiskConfirm risk={risk} />;
+    }
+  } else if (showDelete) {
+    modalComponent = (
+      <DeleteConfirm
+        assistantRef={assistantRef}
+        setShowDelete={setShowDelete}
+        currentConversation={currentConversation}
+      />
+    );
   } else if (showSearch) {
     modalComponent = (
       <AssistantSearch
@@ -329,6 +348,7 @@ function App({ user, urlApp, initData, initConversation }) {
             setModel,
             assistantRef,
             setShowSearch,
+            setShowDelete,
           }}
         />
       )}

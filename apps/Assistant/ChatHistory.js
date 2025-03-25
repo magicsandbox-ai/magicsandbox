@@ -9,6 +9,7 @@ const ChatHistory = memo(function ChatHistory({
   setModel,
   assistantRef,
   setShowSearch,
+  setShowDelete,
 }) {
   const [show, setShow] = useState(window.innerWidth > 768);
 
@@ -17,7 +18,7 @@ const ChatHistory = memo(function ChatHistory({
   }
 
   function handleDelete() {
-    assistantRef.current.handleDeleteConversations(null); //todo
+    setShowDelete(true);
   }
 
   if (show) {
@@ -48,20 +49,15 @@ const ChatHistory = memo(function ChatHistory({
           {conversationSummaries
             .filter(({ summary }) => summary)
             .map(({ conversationId, summary }) => (
-              <button
-                className={`w-full truncate rounded-lg px-1 py-0.5 text-sm hover:bg-stone-300 ${
-                  currentConversationId === conversationId
-                    ? "bg-stone-200 outline outline-1 outline-stone-500"
-                    : ""
-                }`}
-                onClick={() =>
-                  assistantRef.current.handleSwitchConversation(conversationId)
-                }
+              <ChatButton
                 key={conversationId}
-                title={summary}
-              >
-                {summary}
-              </button>
+                {...{
+                  conversationId,
+                  summary,
+                  currentConversationId,
+                  assistantRef,
+                }}
+              />
             ))}
         </div>
       </nav>
@@ -75,5 +71,61 @@ const ChatHistory = memo(function ChatHistory({
     );
   }
 });
+
+function ChatButton({
+  conversationId,
+  summary,
+  currentConversationId,
+  assistantRef,
+}) {
+  const [renameValue, setRenameValue] = useState(null);
+
+  function handleRename(e) {
+    e.preventDefault();
+    const newName = renameValue.trim();
+    if (newName.length > 0) {
+      assistantRef.current.handleUpdateConversation({
+        conversationId,
+        summary: newName,
+      });
+    }
+    setRenameValue(null);
+  }
+
+  const baseClassName = "w-full rounded-lg px-1 py-0.5 text-sm";
+
+  if (renameValue !== null) {
+    return (
+      <form onSubmit={handleRename} className="flex">
+        <input
+          className={`${baseClassName} border border-stone-500 bg-white`}
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onBlur={handleRename}
+          autoFocus
+          onFocus={(e) => e.target.select()}
+          aria-label="Rename"
+        />
+      </form>
+    );
+  }
+
+  return (
+    <button
+      className={`${baseClassName} truncate hover:bg-stone-300 ${
+        currentConversationId === conversationId
+          ? "bg-stone-200 outline outline-1 outline-stone-500"
+          : ""
+      }`}
+      onClick={() =>
+        assistantRef.current.handleSwitchConversation(conversationId)
+      }
+      onDoubleClick={() => setRenameValue(summary)}
+      title={summary}
+    >
+      {summary}
+    </button>
+  );
+}
 
 export default ChatHistory;

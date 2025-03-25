@@ -116,10 +116,13 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
 
   function handleRename(e) {
     e.preventDefault();
-    notesState.updateNode({
-      uuid: node.uuid,
-      name: renameValue.trim(),
-    });
+    const newName = renameValue.trim();
+    if (newName.length > 0) {
+      notesState.updateNode({
+        uuid: node.uuid,
+        name: newName,
+      });
+    }
     setRenameValue(null);
   }
 
