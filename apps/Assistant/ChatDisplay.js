@@ -3,7 +3,6 @@ import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
-import { getMinCost } from "./utils.js";
 
 function ChatDisplay({
   outerClassName = "",
@@ -13,32 +12,6 @@ function ChatDisplay({
   setShowDiscover,
 }) {
   const ref = useRef(null);
-
-  const handleClick = async (e) => {
-    try {
-      const link = e.target.closest("a");
-      if (!link?.href) return;
-      e.preventDefault();
-      if (link.href.startsWith("assistant://")) {
-        const action = link.href.slice("assistant://".length);
-        if (action === "discover") {
-          setShowDiscover(true);
-        } else if (action.startsWith("open/")) {
-          const app = action.slice("open/".length);
-          const maxCost = await getMinCost(app);
-          assistantRef.current.handleApp({ app, maxCost });
-        }
-      } else {
-        requestOpenUrl(link.href);
-      }
-    } catch (error) {
-      console.error(error);
-      assistantRef.current.toastsRef.current.addToast(
-        "An unexpected error occurred",
-        "error",
-      );
-    }
-  };
 
   let scrollToBottom = false;
   if (!ref.current) {
@@ -62,11 +35,7 @@ function ChatDisplay({
   }
 
   return (
-    <div
-      ref={ref}
-      className={`overflow-y-auto ${outerClassName}`}
-      onClick={handleClick}
-    >
+    <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>
       <div className={`mb-4 flex flex-col gap-5 ${innerClassName}`}>
         {messages.map((message, i) => (
           <Message
@@ -79,6 +48,8 @@ function ChatDisplay({
                   }
                 : undefined
             }
+            setShowDiscover={setShowDiscover}
+            assistantRef={assistantRef}
           />
         ))}
         {handleContinue && (
@@ -102,9 +73,43 @@ const userMessageStyle =
 const assistantMessageContainerStyle = "group";
 const userMessageContainerStyle = "self-end max-w-[80%]";
 
-const Message = memo(function Message({ message, onComplete }) {
+const Message = memo(function Message({
+  message,
+  onComplete,
+  setShowDiscover,
+  assistantRef,
+}) {
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
+
+  const handleClick = async (e) => {
+    try {
+      e.preventDefault();
+      if (!message.welcome) return;
+      const button = e.target.closest("button");
+      const action = button?.dataset?.action;
+      if (!action) return;
+      if (action === "discover") {
+        setShowDiscover(true);
+      } else if (action.startsWith("open-")) {
+        const app = action.slice("open-".length);
+        //const maxCost = await getMinCost(app); //save a request
+        assistantRef.current.handleApp({
+          app,
+          maxCost: message.welcomeMinCost,
+        });
+      } else {
+        throw new Error(`Unknown action: ${action}`);
+      }
+    } catch (error) {
+      console.error(error);
+      assistantRef.current.toastsRef.current.addToast(
+        "An unexpected error occurred",
+        "error",
+      );
+    }
+  };
+
   return (
     <div
       className={
@@ -112,14 +117,21 @@ const Message = memo(function Message({ message, onComplete }) {
           ? userMessageContainerStyle
           : assistantMessageContainerStyle
       }
+      onClick={handleClick}
     >
       <Markdown
         className={
           message.role === "user" ? userMessageStyle : assistantMessageStyle
         }
         remarkPlugins={remarkPlugins}
-        rehypePlugins={rehypePlugins}
-        rehypeSanitizeOptions={rehypeSanitizeOptions}
+        rehypePlugins={
+          message.welcome
+            ? [...rehypePlugins, rehypeWelcomeButton]
+            : rehypePlugins
+        }
+        rehypeSanitizeOptions={
+          message.welcome ? welcomeRehypeSanitizeOptions : rehypeSanitizeOptions
+        }
         onComplete={onComplete}
       >
         {formattedMessage}
@@ -157,9 +169,6 @@ function formatTag({ tag, content }) {
   return content;
 }
 
-const preStyle =
-  "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
-
 function remarkHtmlToText() {
   return (tree) => {
     visit(tree, (node) => {
@@ -169,6 +178,9 @@ function remarkHtmlToText() {
     });
   };
 }
+
+const preStyle =
+  "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
 
 function rehypeCode() {
   return (tree) => {
@@ -202,6 +214,25 @@ function rehypeCode() {
   };
 }
 
+const welcomeButtonStyle = "underline";
+
+function rehypeWelcomeButton() {
+  return (tree) => {
+    visit(tree, "element", (node) => {
+      if (
+        node.tagName === "a" &&
+        node.properties.href?.startsWith("?action=")
+      ) {
+        node.tagName = "button";
+        node.properties.className = [welcomeButtonStyle];
+        node.properties["data-action"] = node.properties.href.slice(
+          "?action=".length,
+        );
+      }
+    });
+  };
+}
+
 const remarkPlugins = [remarkHtmlToText];
 const rehypePlugins = [rehypeCode, rehypeHighlight];
 const rehypeSanitizeOptions = {
@@ -210,6 +241,14 @@ const rehypeSanitizeOptions = {
     ...defaultSchema.attributes,
     span: [...(defaultSchema.attributes?.span || []), ["className", /^hljs-./]],
     pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
+  },
+};
+const welcomeRehypeSanitizeOptions = {
+  ...rehypeSanitizeOptions,
+  tagNames: [...rehypeSanitizeOptions.tagNames, "button"],
+  attributes: {
+    ...rehypeSanitizeOptions.attributes,
+    button: ["data-action", ["className", welcomeButtonStyle]],
   },
 };
 

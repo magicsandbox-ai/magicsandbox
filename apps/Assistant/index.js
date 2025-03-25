@@ -27,29 +27,28 @@ async function init({ user } = {}) {
     summary: null,
     lastUpdated: Date.now(),
   };
+  let urlApp;
   if (Object.keys(initData).length === 0) {
     const message = await welcomeMessage(urlParams._app);
-    initConversation.messages.push({
-      role: "assistant",
-      tags: [{ content: message }],
-    });
+    initConversation.messages.push(message);
     initConversation.summary = "Welcome to Magic Sandbox!";
-    initConversation.welcome = true;
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
     }).catch(console.error);
+  } else {
+    urlApp = urlParams._app;
   }
   createRoot(document.getElementById("root")).render(
     <App
       user={user}
-      urlParams={urlParams}
+      urlApp={urlApp}
       initData={initData}
       initConversation={initConversation}
     />,
   );
 }
 
-function App({ user, urlParams, initData, initConversation }) {
+function App({ user, urlApp, initData, initConversation }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
@@ -58,7 +57,6 @@ function App({ user, urlParams, initData, initConversation }) {
   - messages: see below
   - summary: summary of the first user message
   - lastUpdated: timestamp of the last message
-  - welcome: boolean
 
   messages is an array of objects with keys:
   - role: "user", "assistant", "display"
@@ -67,6 +65,8 @@ function App({ user, urlParams, initData, initConversation }) {
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
   - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
   - model: the model used to generate the message
+  - welcome: boolean indicating whether the message is the special welcome message
+  - welcomeMinCost: minCost of the app suggested in the welcome message
 
   currentConversation is an object with keys:
   - conversationId
@@ -92,7 +92,7 @@ function App({ user, urlParams, initData, initConversation }) {
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
   //type App {id, app, description, minCost, finalCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
-  const [app, setApp] = useState(urlParams._app ? false : null);
+  const [app, setApp] = useState(urlApp ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
   const [showSearch, setShowSearch] = useState(false);
@@ -124,7 +124,10 @@ function App({ user, urlParams, initData, initConversation }) {
       };
       appDataRef.current = appData;
       setAppData(appData);
-      if (user?.lastPublished > (initData.lastMetadataRefresh || 0)) {
+      if (
+        user?.lastPublished > (initData.lastMetadataRefresh || 0) &&
+        !navigator.webdriver
+      ) {
         requestMetadata(user.name, includeMetadata, {
           kind: "app",
           includePrivate: true,
@@ -170,9 +173,8 @@ function App({ user, urlParams, initData, initConversation }) {
         setApp,
         setAppData,
       });
-      const { _app } = urlParams;
-      if (_app && !initConversation.welcome) {
-        let appString = _app.split("@")[0];
+      if (urlApp) {
+        let appString = urlApp.split("@")[0];
         const [author, name] = appString.split(".");
         appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
         const app = appData[appString] || { app: appString };

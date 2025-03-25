@@ -46,7 +46,9 @@ const test = base.extend({
           .url()
           .startsWith(process.env.MAGICSANDBOX_DEV_SERVER_URL);
       });
-    await assistant.getByRole("button", { name: "Approve" }).click(); //approve opening of DevLocal
+    await assistant
+      .getByRole("button", { name: "Open the app magicsandbox.DevLocal" })
+      .click();
     await buildCompletePromise;
     //request is finished, but the messages have to be passed through all the frames
     //so wait an extra second

@@ -1,10 +1,5 @@
 import { test, expect } from "@magicsandbox.ai/test";
 
-/*
-todo delete or change this command:
-npx magicsandbox test -p 3002 --url http://localhost:3000 packages/js/test/ExampleApp
-*/
-
 test("example test", async ({ app }) => {
   await expect(app.getByText("Hello, world!")).toBeVisible();
   await app.getByRole("button", { name: "Click me" }).click();
