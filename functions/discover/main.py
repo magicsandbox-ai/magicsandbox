@@ -1,5 +1,5 @@
 from ..body import Body
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import semantic_search, dot_score
 import torch
@@ -24,8 +24,9 @@ class Kind(str, Enum):
 
 class DiscoverArgs(BaseModel):
     query: str
-    includeMetadata: list[str]
-    kind: Kind | None
+    includeMetadata: list[str] = Field(default_factory=lambda: ['id'])
+    kind: Kind | None = None
+    limit: int = Field(default=10, ge=1, le=100)
 
 class DiscoverBody(Body):
     args: DiscoverArgs
@@ -43,14 +44,17 @@ class DiscoverUpdateItem(BaseModel):
     documentation: str | None
     type: str | None
     minCost: float
-    finalCost: float
+    finalCost: float | None
     status: str
-    decode: str
+    decode: str | None
 
 insert_question_marks = ','.join(['?'] * len(DiscoverUpdateItem.model_fields))
 
-def get_insert_item(item: DiscoverUpdateItem):
-    return [getattr(item, key) for key in DiscoverUpdateItem.model_fields]
+def get_insert_item(item: DiscoverUpdateItem | dict):
+    if isinstance(item, dict):
+        return [item.get(key) for key in DiscoverUpdateItem.model_fields]
+    else:
+        return [getattr(item, key) for key in DiscoverUpdateItem.model_fields]
 
 def get_cols(includeMetadata: list[str]):
     cols = ['id']
@@ -208,10 +212,12 @@ class DiscoverData:
             top_k=100,
             score_function=dot_score)
         out = []
-        for d in search_result[0]:
+        for d in search_result[0][:args.limit]:
             ix = original_indices[d['corpus_id']]
             id = self.embeddings['ids'][ix]
-            out.append(valid_data[id])
+            result = valid_data[id]
+            result['relevance'] = (d['score'] + 1) / 2  
+            out.append(result)
         return out
 
     def embed(self, sentences):
@@ -219,21 +225,25 @@ class DiscoverData:
 
     async def get_valid_data(self, args: DiscoverArgs):
         cols = get_cols(args.includeMetadata)
-        filter = '' if args.kind is None else f'AND kind = "{args.kind}"'
+        filter_params = []
+        filter_sql = ''
+        if args.kind is not None:
+            filter_sql = 'AND kind = ?'
+            filter_params.append(args.kind)
         async with self.con.cursor() as cur:
             await cur.execute(f'''
                 SELECT {', '.join(cols)} 
                 FROM data 
                 WHERE latest
-                {filter}
-                ''')
+                {filter_sql}
+                ''', filter_params)
             return {row[0]: {col: row[i] for i, col in enumerate(cols)} for row in await cur.fetchall()}
 
     async def update(self, items: list[DiscoverUpdateItem]):
         async with self.con.cursor() as cur:
             await cur.executemany(f'''
                 INSERT INTO _data (
-                    id, author, name, version, major, minor, patch, kind
+                    id, author, name, version, major, minor, patch, kind,
                     description, documentation, type, minCost, finalCost, status, decode
                 ) VALUES ({insert_question_marks})
                 ON CONFLICT(id) DO UPDATE SET
@@ -251,7 +261,6 @@ class DiscoverData:
                     finalCost = excluded.finalCost,
                     status = excluded.status,
                     decode = excluded.decode
-                )
             ''', [get_insert_item(item) for item in items])
         await self.materialize_db()
         self.add_embeddings([(item.id, item.description, item.name) for item in items])

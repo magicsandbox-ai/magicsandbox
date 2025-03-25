@@ -1,13 +1,18 @@
 import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
-import { includeMetadata } from "./Assistant.js";
 import { formatAsDollars } from "./utils.js";
 import { Loader } from "lucide-react";
 
-export default function Discover({ setShowDiscover, assistantRef }) {
+export default function Discover({ setShowDiscover, assistantRef, appData }) {
   return (
     <ModalOverlay
-      modal={<DiscoverInner assistantRef={assistantRef} />}
+      modal={
+        <DiscoverInner
+          assistantRef={assistantRef}
+          appData={appData}
+          setShowDiscover={setShowDiscover}
+        />
+      }
       onClose={() => {
         setShowDiscover(false);
       }}
@@ -16,27 +21,47 @@ export default function Discover({ setShowDiscover, assistantRef }) {
   );
 }
 
-function DiscoverInner({ assistantRef }) {
+function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState(null);
 
   async function handleSearch(e) {
     e.preventDefault();
-    setIsLoading(true);
+    setStatus("loading");
     try {
-      const { results } = await requestFunction("discover", {
+      const { result } = await requestFunction("magicsandbox.discover", {
         query: searchQuery,
-        includeMetadata,
+        includeMetadata: ["id", "description", "minCost", "type"],
         kind: "app",
+        limit: 100,
       });
-      setSearchResults(results);
-    } finally {
-      setIsLoading(false);
+      const newSearchResults = result
+        .filter((r) => {
+          if (r.type === "assistant") {
+            return false;
+          }
+          if (appData[r.id.split("@")[0]]?.blocked) {
+            return false;
+          }
+          return true;
+        })
+        .map((r) => ({
+          ...r,
+          score: r.relevance - 10 * r.minCost,
+        }))
+        .sort((a, b) => b.score - a.score);
+      setSearchResults(newSearchResults);
+      setStatus(null);
+    } catch (error) {
+      console.error(error);
+      setStatus("error");
     }
   }
 
   const placeholder = "Search for apps...";
+
+  //styling here duplicated from Search
 
   return (
     <div className="flex h-[440px] w-[680px] flex-col gap-3 overflow-y-auto p-3">
@@ -59,9 +84,13 @@ function DiscoverInner({ assistantRef }) {
           </button>
         </div>
       </form>
-      {isLoading ? (
+      {status === "loading" ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader className="h-10 w-10 animate-spin" />
+        </div>
+      ) : status === "error" ? (
+        <div className="flex flex-1 items-center justify-center text-red-600">
+          An unexpected error occurred. Please try again.
         </div>
       ) : (
         searchResults !== null && (
@@ -76,6 +105,7 @@ function DiscoverInner({ assistantRef }) {
                   key={result.id}
                   result={result}
                   assistantRef={assistantRef}
+                  setShowDiscover={setShowDiscover}
                 />
               ))
             )}
@@ -86,11 +116,12 @@ function DiscoverInner({ assistantRef }) {
   );
 }
 
-function SearchResult({ result, assistantRef }) {
+function SearchResult({ result, assistantRef, setShowDiscover }) {
   const app = result.id.split("@")[0];
 
   function handleClick() {
     assistantRef.current.handleApp({ app, maxCost: result.minCost });
+    setShowDiscover(false);
   }
 
   return (

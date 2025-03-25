@@ -10,6 +10,7 @@
     "magicsandbox",
     "msgpack",
     "msgpackr's",
-    "prebuild"
+    "prebuild",
+    "undeprecated"
   ]
 }
