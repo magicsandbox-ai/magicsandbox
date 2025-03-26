@@ -84,11 +84,17 @@ export default function FilePicker({
           buttons={[
             {
               text: "Cancel",
+              onClick: () => {
+                setConfirmDeleteApp("");
+              },
               className: "bg-stone-300 hover:bg-stone-400 text-black",
             },
             {
               text: "Delete",
-              onClick: () => deleteApp(confirmDeleteApp),
+              onClick: () => {
+                deleteApp(confirmDeleteApp);
+                setConfirmDeleteApp("");
+              },
               className: "bg-red-500 hover:bg-red-700 text-white",
             },
           ]}

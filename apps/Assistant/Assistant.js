@@ -391,6 +391,7 @@ class Assistant {
           models[model].input_cost_per_token * inputTokens +
           models[model].output_cost_per_token * max_completion_tokens;
       }
+
       const llmArgs = [
         {
           messages: llmMessages,
@@ -570,7 +571,6 @@ class Assistant {
             header: `Open App ${app}?`,
             message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than last time you opened it.`,
             callback: async (response) => {
-              this.setConfirm(null);
               if (response) {
                 try {
                   const result = await requestApp(app, {
@@ -719,7 +719,6 @@ class Assistant {
     this.handleApprovePromise = createDeferredPromise();
     const callback = (response) => {
       //arrow function ensures `this` refers to Assistant
-      this.setRisk(null);
       this.handleApprovePromise.resolve(response);
     };
     this.setRisk({

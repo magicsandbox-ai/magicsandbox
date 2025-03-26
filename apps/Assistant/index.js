@@ -209,7 +209,6 @@ function App({ user, urlApp, initData, initConversation }) {
             header: `Open App ${app.app}?`,
             message,
             callback: (response) => {
-              setConfirm(null);
               if (response) {
                 assistantRef.current.handleApp({ app: app.app, maxCost });
               }
@@ -303,13 +302,15 @@ function App({ user, urlApp, initData, initConversation }) {
       //used for testing
       confirm.callback?.(true);
     } else {
-      modalComponent = <AssistantConfirm confirm={confirm} />;
+      modalComponent = (
+        <AssistantConfirm confirm={confirm} setConfirm={setConfirm} />
+      );
     }
   } else if (risk) {
     if (window._AUTO_CONFIRM) {
       risk.callback?.(true);
     } else {
-      modalComponent = <RiskConfirm risk={risk} />;
+      modalComponent = <RiskConfirm risk={risk} setRisk={setRisk} />;
     }
   } else if (showDelete) {
     modalComponent = (

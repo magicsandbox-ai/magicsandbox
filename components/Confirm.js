@@ -1,18 +1,15 @@
 import React, { useRef } from "react";
 import ModalOverlay from "./ModalOverlay.js";
 
-function InnerConfirm({ onClose, header, message, buttons, customContent }) {
+function InnerConfirm({ header, message, buttons, customContent }) {
   const mountTimeRef = useRef(Date.now());
 
-  function handleClick(onClick, closeOnClick = true) {
+  function handleClick(onClick) {
     //ignore super fast clicks to prevent Apps from tricking users into confirming something
     if (Date.now() - mountTimeRef.current < (navigator.webdriver ? 0 : 300))
       return;
     if (onClick) {
       onClick();
-    }
-    if (closeOnClick) {
-      onClose();
     }
   }
 
@@ -27,7 +24,7 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
             key={i}
             className={"rounded px-4 py-2 font-bold " + b.className}
             onClick={() => {
-              handleClick(b.onClick, b.closeOnClick);
+              handleClick(b.onClick);
             }}
           >
             {b.text}
@@ -41,11 +38,7 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
 function Confirm({ onClose, header, message, buttons, customContent }) {
   return (
     <ModalOverlay
-      modal={
-        <InnerConfirm
-          {...{ onClose, header, message, buttons, customContent }}
-        />
-      }
+      modal={<InnerConfirm {...{ header, message, buttons, customContent }} />}
       onClose={onClose}
       fullScreen={true}
     />

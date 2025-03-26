@@ -1,7 +1,7 @@
 import React from "react";
 import Confirm from "@components/Confirm.js";
 
-function RiskConfirm({ risk }) {
+function RiskConfirm({ risk, setRisk }) {
   const { riskResponses, callback } = risk;
   const customContent = (
     <div className="flex flex-col gap-4">
@@ -37,24 +37,32 @@ function RiskConfirm({ risk }) {
     {
       text: "Approve",
       className: "bg-stone-300 hover:bg-stone-400 text-black w-32",
-      onClick: () => callback(true),
+      onClick: () => {
+        callback(true);
+        setRisk(null);
+      },
     },
     {
       text: "Deny",
       className: "bg-red-500 hover:bg-red-700 text-white w-32",
-      onClick: () => callback(false),
+      onClick: () => {
+        callback(false);
+        setRisk(null);
+      },
     },
     {
       text: "Learn More",
       className: "bg-blue-500 hover:bg-blue-700 text-white w-32",
       onClick: () =>
         requestOpenUrl("?_app=magicsandbox.About#privacy-and-security"),
-      closeOnClick: false,
     },
   ];
   return (
     <Confirm
-      onClose={() => callback(false)}
+      onClose={() => {
+        callback(false);
+        setRisk(null);
+      }}
       header={header}
       customContent={customContent}
       buttons={buttons}
