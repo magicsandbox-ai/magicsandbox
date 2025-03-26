@@ -26,7 +26,7 @@ function formatMessage(message) {
   if (message.role === "system" || message.role === "display") return "";
   const tagsToInclude = {
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
-    assistant: new Set([undefined]), //exclude launch_app, intermediate_script, final_script
+    assistant: new Set([undefined]), //exclude open_app, intermediate_script, final_script
   };
   const messageTagsToInclude = tagsToInclude[message.role];
   return message.tags

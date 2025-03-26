@@ -507,7 +507,7 @@ class NotesState {
     this._init = init;
     const currentContext = this._context(init);
     const logNotesInstruction = init
-      ? "Because the app has just launched, there are no notes in context. First, run a script that uses `app.api.logNotes` to log notes that are relevant to the user's request. Then, use the notes you logged as context to solve the user's request."
+      ? "Because the app has just opened, there are no notes in context. First, run a script that uses `app.api.logNotes` to log notes that are relevant to the user's request. Then, use the notes you logged as context to solve the user's request."
       : "Use `app.api.logNotes` sparingly and try to solve the user's request given the context provided. Only use `app.api.logNotes` if it's clear that the user expects you to reference a note that's not currently in context.";
     return `# magicsandbox.Notes
 

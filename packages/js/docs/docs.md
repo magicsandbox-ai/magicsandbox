@@ -179,7 +179,7 @@ export { init, context, api };
 ```
 
 1. The user says "I'm competing in a chili cookoff, can you add the groceries I'll need to my notes?".
-2. The Assistant launches example.Notes, triggering a call to `app.init()`.
+2. The Assistant opens example.Notes, triggering a call to `app.init()`.
 3. `app.init` uses [requestGetData](#requestgetdata) to get the user's notes, renders the App, and returns a context string.
 4. The Assistant reads the context string, which includes the user's notes and the App's API. The Assistant replies "I'll add the groceries you need to your notes. Since you already have a note to buy tomatoes and onions, I won't add them again." The Assistant then executes the script `app.api.addNote("For the chili cookoff, buy: ...");`. Note: if `app.init` didn't return anything, this step would be skipped.
 5. Later, the user says "can you make me a to do list for the day?", triggering a call to `app.context()`.

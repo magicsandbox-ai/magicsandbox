@@ -123,7 +123,7 @@ describe("tagStreamParser", () => {
       tagStreamParser({
         stream,
         chunkProcessor: (chunk) => chunk.result?.content,
-        validTags: ["intermediate_script", "final_script", "launch_app"],
+        validTags: ["intermediate_script", "final_script", "open_app"],
       }),
     );
     const content = results.map((r) => r.content).join("");
@@ -170,7 +170,7 @@ describe("tagParser", () => {
     const result = tagParser(input, [
       "intermediate_script",
       "final_script",
-      "launch_app",
+      "open_app",
     ]);
     expect(result).toEqual([
       {

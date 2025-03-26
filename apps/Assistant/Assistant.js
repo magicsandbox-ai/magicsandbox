@@ -114,7 +114,7 @@ class Assistant {
       tags: [
         {
           content:
-            "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like launching an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
+            "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
         },
       ],
     });
@@ -430,7 +430,7 @@ class Assistant {
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
-        validTags: ["intermediate_script", "final_script", "launch_app"],
+        validTags: ["intermediate_script", "final_script", "open_app"],
       })) {
         if (abortSignal.aborted) return;
         const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
@@ -447,7 +447,7 @@ class Assistant {
         this.handleUpdateConversation({ summary });
       }
       for (const tag of llmMessage.tags) {
-        if (!this.app && tag.tag === "launch_app") {
+        if (!this.app && tag.tag === "open_app") {
           const app = this.appDataRef.current[tag.content.trim()];
           if (app) {
             await this.handleApp({
@@ -457,7 +457,7 @@ class Assistant {
               messages: [...newMessages, llmMessage],
             });
           } else {
-            //todo warn user that app failed to launch
+            //todo warn user that app failed to open
           }
           break;
         } else if (
@@ -546,7 +546,7 @@ class Assistant {
         if (abortSignal.aborted) return;
         //if loaded from a url, there's no input and the init context is irrelevant
         if (input && initContext) {
-          //by default, chat is collapsed after launching an app. but open it since assistant is going to send another message
+          //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
           this.setCollapsed(false);
           this.handleInput({
             messages,
