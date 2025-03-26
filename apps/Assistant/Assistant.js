@@ -60,6 +60,7 @@ class Assistant {
     this.setAppData = setAppData;
     this.app = null;
     this.abortIdController = new AbortIdController();
+    this.handleApprovePromises = {};
     this.budget = null;
     this.saveTimeoutIds = {};
     this.requestTimeoutId = null;
@@ -380,6 +381,7 @@ class Assistant {
       ];
       const max_completion_tokens = 5000;
       let model, maxCost;
+      let approved = true;
       if (this.modelRef.current === "auto") {
         maxCost = llmBudget;
       } else {
@@ -390,8 +392,22 @@ class Assistant {
         maxCost =
           models[model].input_cost_per_token * inputTokens +
           models[model].output_cost_per_token * max_completion_tokens;
+        if (this.app && maxCost > 0.1) {
+          //todo
+          const { promise, callback } = this.handleApprove(conversationId);
+          this.setConfirm({
+            header: "Approve Chat?",
+            message: `This chat will cost ${formatAsDollars(maxCost)}.`,
+            callback,
+          });
+          approved = await promise;
+        }
       }
-
+      if (abortSignal.aborted) return;
+      if (!approved) {
+        //todo - ideally reset messages and put the user text back in the input
+        return;
+      }
       const llmArgs = [
         {
           messages: llmMessages,
@@ -637,9 +653,12 @@ class Assistant {
       if (error) {
         approved = false;
       } else if (riskResponses.some((response) => response.message)) {
-        approved = await this.handleApprove(
-          riskResponses.filter((r) => r.message),
-        );
+        const { promise, callback } = this.handleApprove("risk");
+        this.setRisk({
+          riskResponses: riskResponses.filter((r) => r.message),
+          callback,
+        });
+        approved = await promise;
         if (abortSignal.aborted) return;
         askedUser = true;
       } else {
@@ -715,17 +734,12 @@ class Assistant {
       }
     }
   }
-  handleApprove(riskResponses) {
-    this.handleApprovePromise = createDeferredPromise();
+  handleApprove(id) {
+    this.handleApprovePromises[id] = createDeferredPromise();
     const callback = (response) => {
-      //arrow function ensures `this` refers to Assistant
-      this.handleApprovePromise.resolve(response);
+      this.handleApprovePromises[id].resolve(response);
     };
-    this.setRisk({
-      riskResponses,
-      callback,
-    });
-    return this.handleApprovePromise;
+    return { promise: this.handleApprovePromises[id], callback };
   }
   async handleMetadata(response, id, abortSignal) {
     let metadata;
@@ -807,7 +821,9 @@ class Assistant {
     this.abortIdController.abort(null);
     this.abortIdController = new AbortIdController();
     this.sandboxRef.current.reload();
-    this.handleApprovePromise?.resolve(false);
+    Object.values(this.handleApprovePromises).forEach((promise) =>
+      promise.resolve(false),
+    );
     this.setConfirm(null);
     this.setRisk(null);
     this.handleNewConversation();
