@@ -84,6 +84,7 @@ async function init() {
     renameNode: (...args) => notesState.apiRenameNode(...args),
     moveNodes: (...args) => notesState.apiMoveNodes(...args),
     deleteNodes: (...args) => notesState.apiDeleteNodes(...args),
+    logNotes: (...args) => notesState.apiLogNotes(...args),
   };
   createRoot(document.getElementById("root")).render(
     <App initcurrentNodeUuid={currentNodeUuid} initNodes={nodes} />,

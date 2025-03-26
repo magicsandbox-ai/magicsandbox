@@ -168,20 +168,25 @@ class Assistant {
       );
     }
     this.conversationsRef.current[conversationId] = conversation;
-    if (this.saveTimeoutIds[conversationId]) {
+    //when a user loads an app, it creates a display message "Loading..."
+    //don't bother saving these
+    if (
+      conversation.summary !== null ||
+      conversation.messages.some((message) => message.role !== "display")
+    ) {
       clearTimeout(this.saveTimeoutIds[conversationId]);
+      this.saveTimeoutIds[conversationId] = setTimeout(() => {
+        requestPutData(
+          conversationId,
+          this.conversationsRef.current[conversationId],
+          {
+            app: "magicsandbox.Assistant",
+            evictionPolicy: "fifo",
+          },
+        ).catch(console.error);
+        delete this.saveTimeoutIds[conversationId];
+      }, 500);
     }
-    this.saveTimeoutIds[conversationId] = setTimeout(() => {
-      requestPutData(
-        conversationId,
-        this.conversationsRef.current[conversationId],
-        {
-          app: "magicsandbox.Assistant",
-          evictionPolicy: "fifo",
-        },
-      ).catch(console.error);
-      delete this.saveTimeoutIds[conversationId];
-    }, 500);
   }
   async _handleDeleteConversation(conversationId) {
     delete this.conversationsRef.current[conversationId];
@@ -272,7 +277,12 @@ class Assistant {
     this.setDisplayMessage(`Error: ${message}`);
     this.toastsRef.current.addToast(`Error: ${message}`, type);
   }
-  async handleInput({ input, messages = [], initContext }) {
+  async handleInput({
+    input,
+    messages = [],
+    initContext,
+    continueSystemPrompt,
+  }) {
     try {
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const conversationId = this.currentConversationRef.current.conversationId;
@@ -311,9 +321,11 @@ class Assistant {
             tags: [{ tag: "app_context", content: `\n${initContext}\n` }],
           },
         ];
-      } else {
+      } else if (continueSystemPrompt) {
         //continuing after an intermediate_script, already created user message with logs
         newMessages = [...messages];
+      } else {
+        throw new Error("Invalid Assistant.handleInput call");
       }
       this.handleUpdateConversation({
         messages: [
@@ -355,7 +367,10 @@ class Assistant {
       const llmBudget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
       const llmMessages = [
-        { role: "system", content: prompt({ app: this.app, initContext }) },
+        {
+          role: "system",
+          content: prompt({ app: this.app, initContext, continueSystemPrompt }),
+        },
         ...newMessages
           .filter((message) => message.role !== "display")
           .map((message, i, filteredMessages) => ({
@@ -384,7 +399,9 @@ class Assistant {
           maxCost,
         },
       ];
-      if (!this.conversationsRef.current[conversationId].summary) {
+      const updateSummary =
+        this.conversationsRef.current[conversationId].summary === null;
+      if (updateSummary) {
         const summaryArgs = createSummaryArgs(userMessage);
         llmArgs.push(summaryArgs);
         maxCost += summaryArgs.maxCost;
@@ -426,7 +443,9 @@ class Assistant {
           messages: [...newMessages, llmMessage],
         });
       }
-      this.handleUpdateConversation({ summary });
+      if (updateSummary) {
+        this.handleUpdateConversation({ summary });
+      }
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "launch_app") {
           const app = this.appDataRef.current[tag.content.trim()];
@@ -458,16 +477,20 @@ class Assistant {
             logs = ["[Uncaught Error] Error: script timed out"];
           }
           if (abortSignal.aborted) return;
+          const newUserMessage = {
+            role: "user",
+            tags: [{ tag: "logs", content: formatLogs(logs) }],
+          };
+          if (tag.tag === "intermediate_script") {
+            //this feels messy but don't want the system prompt to change when continuing
+            if (initContext || continueSystemPrompt === "init") {
+              newUserMessage.promptToContinue = "init";
+            } else {
+              newUserMessage.promptToContinue = "magic";
+            }
+          }
           this.handleUpdateConversation({
-            messages: [
-              ...newMessages,
-              llmMessage,
-              {
-                role: "user",
-                tags: [{ tag: "logs", content: formatLogs(logs) }],
-                promptToContinue: tag.tag === "intermediate_script",
-              },
-            ],
+            messages: [...newMessages, llmMessage, newUserMessage],
           });
           break;
         }

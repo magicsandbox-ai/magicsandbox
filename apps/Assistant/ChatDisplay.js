@@ -26,10 +26,12 @@ function ChatDisplay({
   }
 
   let handleContinue;
-  if (messages[messages.length - 1]?.promptToContinue) {
+  const promptToContinue = messages[messages.length - 1]?.promptToContinue;
+  if (promptToContinue) {
     handleContinue = () => {
       assistantRef.current.handleInput({
         messages,
+        continueSystemPrompt: promptToContinue,
       });
     };
   }
@@ -82,9 +84,8 @@ const Message = memo(function Message({
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
 
-  const handleClick = async (e) => {
+  const handleClick = (e) => {
     try {
-      e.preventDefault();
       if (!message.welcome) return;
       const button = e.target.closest("button");
       const action = button?.dataset?.action;

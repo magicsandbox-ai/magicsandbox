@@ -64,7 +64,7 @@ function App({ user, urlApp, initData, initConversation }) {
   - tags: an array of objects [{tag?: string, content: string}] representing a message
     - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
-  - promptToContinue: boolean indicating whether the user should be prompted to let the Assistant continue
+  - promptToContinue: string, when populated, indicates that the user should be prompted to let the Assistant continue. the string identifies the system prompt
   - model: the model used to generate the message
   - welcome: boolean indicating whether the message is the special welcome message
   - welcomeMinCost: minCost of the app suggested in the welcome message
@@ -367,7 +367,7 @@ function App({ user, urlApp, initData, initConversation }) {
         )}
         {messages.length > 0 && app === null && (
           <ChatDisplay
-            outerClassName="my-4 flex grow flex-col items-center"
+            outerClassName="my-6 flex grow flex-col items-center"
             innerClassName="w-full max-w-screen-lg"
             messages={messages}
             assistantRef={assistantRef}

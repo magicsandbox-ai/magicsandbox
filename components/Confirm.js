@@ -21,7 +21,7 @@ function InnerConfirm({ onClose, header, message, buttons, customContent }) {
       {header && <h2 className="text-lg font-bold">{header}</h2>}
       {message && <p className="whitespace-pre-wrap">{message}</p>}
       {customContent}
-      <div className="flex justify-center gap-4">
+      <div className="flex flex-wrap justify-center gap-4">
         {buttons.map((b, i) => (
           <button
             key={i}

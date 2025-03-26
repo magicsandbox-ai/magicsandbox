@@ -516,7 +516,6 @@ Retrieve App and Function metadata.
 - `includeMetadata` _(**required**, string[])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
 - `options` _(object)_:
   - `kind` _("app" | "function")_: Whether to retrieve App or Function metadata. If not provided, both are retrieved
-  - `includePrivate` _(boolean, default false)_: Whether to retrieve the user's private Apps and Functions. Only relevant when `identifier` specifies only the author and the author is the current authenticated user. Assistants should not allow Apps to set this to true
 
 **Returns:** a Promise that resolves to an array of objects with the keys specified in `includeMetadata`
 
@@ -731,17 +730,17 @@ Assistants should consider the following risks when handling Sandbox requests:
 - **Financial risk** (`requestApp`, `requestFunction`): Assistants should control how much Apps are allowed to spend. Assistants should allow Apps to spend the difference between `minCost` and `finalCost` without requiring additional confirmation
 - **Publishing risk** (`requestPublish`): Assistants should always ask for user approval when `requestPublish` is called. A malicious App could publish a broken or malicious new version of an App or Function against the author's will
 - **Privacy risk** (`requestGetData`, `requestGetAllData`, `requestGetAllKeysData`): Assistants should ask for user approval before allowing cross-author reads
-- **Data loss risk** (`requestPutData`, `requestDeleteData`): Assistants should ask for user approval before allowing cross-author writes. Assistants can take backups of data by providing a `backup` option to the data Sandbox functions. This backup storage is isolated from the Assistant's main storage, has a size limit of 1 GB, and is not backed up in the cloud or synced to other devices
+- **Data loss risk** (`requestPutData`, `requestDeleteData`): Assistants should ask for user approval before allowing cross-author writes. Assistants can take backups of data by setting a `backup` key in the `options` object to `true` when calling the data Sandbox functions. This backup storage is isolated from the Assistant's main storage, has a size limit of 1 GB, and is not backed up in the cloud or synced to other devices
 - **Download risk** (`requestDownload`): Assistants should always ask for user approval when `requestDownload` is called
 - **Network risk** (`requestApp`, `requestFunction`, `requestMetadata`, `requestFetch`, `requestOpenUrl`, `requestPublish`): Assistants should rate limit network requests to prevent abuse
 
-Assistants should also implement the following:
+Assistants have additional capabilities and responsibilities when calling Sandbox functions:
 
-- Identify the App calling `requestFunction`
-- Prevent Apps from setting `includePrivate` to true when calling `requestMetadata`
-- Identify the App calling data Sandbox functions
-- Prevent Apps from accessing backup storage
-- Prevent Apps from setting `_app` when calling `requestUrlParams`
+- Assistants should provide an `app` key in the `options` object when calling `requestFunction` to identify the App calling the Function. The value should be the fully qualified App id. Assistants should prevent Apps from setting this option
+- Assistants can set an `includePrivate` key in the `options` object to `true` when calling `requestMetadata` to retrieve private Apps and Functions. This option is only relevant when `identifier` specifies only the author and the author is the current authenticated user. Assistants should prevent Apps from setting this option
+- If not already set by the App, Assistants should provide an `app` key in the `options` object when calling the data Sandbox functions to identify the App to use for storage
+- Assistants should prevent Apps from setting the `backup` key in the `options` object when calling the data Sandbox functions
+- Assistants should prevent Apps from setting `_app` when calling `requestUrlParams`
 
 # Advanced Topics
 

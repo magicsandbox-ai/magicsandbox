@@ -47,7 +47,7 @@ const ChatHistory = memo(function ChatHistory({
         </div>
         <div className="grow space-y-3 overflow-y-auto px-3">
           {conversationSummaries
-            .filter(({ summary }) => summary)
+            .filter(({ summary }) => summary !== null)
             .map(({ conversationId, summary }) => (
               <ChatButton
                 key={conversationId}
@@ -79,6 +79,8 @@ function ChatButton({
   assistantRef,
 }) {
   const [renameValue, setRenameValue] = useState(null);
+
+  summary = summary || "New Chat";
 
   function handleRename(e) {
     e.preventDefault();
