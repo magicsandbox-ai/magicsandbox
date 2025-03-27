@@ -255,14 +255,16 @@ function App({ user, urlApp, initData, initConversation }) {
   }, []);
 
   useEffect(() => {
-    function handleReload(event) {
+    function handleMessage(event) {
       if (event.source !== parent) return;
-      if (event.data === "reload") {
+      if (event.data.message === "reload") {
         assistantRef.current.reload();
+      } else if (event.data.message === "user") {
+        assistantRef.current.user = event.data.user;
       }
     }
-    window.addEventListener("message", handleReload);
-    return () => window.removeEventListener("message", handleReload);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   useEffect(() => {

@@ -17,7 +17,10 @@ function Home({
     if (input === "" || assistantRef.current === null || chatLoading) return;
     try {
       setInput("");
-      await assistantRef.current.handleInput({ input });
+      await assistantRef.current.handleInput({
+        input,
+        resetInput: () => setInput(input),
+      });
     } catch (error) {
       console.error(error);
       toastsRef.current.addToast("An unexpected error occurred", "error");

@@ -479,7 +479,7 @@ type App = {
 };
 ```
 
-`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`.
+`metadata` includes the keys specified in `includeMetadata`.
 
 ### requestFunction
 
@@ -501,7 +501,7 @@ Execute a Function and returns the result.
 - `stream: false`: `Promise<{result: any, metadata: object}>`. This is the default behavior. Resolves to an object with keys `result` and `metadata`
 - `stream: true`: `Promise<AsyncIterable<{result: any} | {metadata: object}>>`. Resolves to an AsyncIterable, which can be consumed using a `for await...of` loop. Each streamed chunk is an object with either a `result` key or a `metadata` key, not both. `result` is populated on all chunks except the final chunk, while `metadata` is populated on only the final chunk
 
-`metadata` includes the keys specified in `includeMetadata` as well as `userBalance` and `userBalanceRemainingDays`
+`metadata` includes the keys specified in `includeMetadata`.
 
 ### requestMetadata
 
@@ -708,18 +708,25 @@ There are no hard restrictions on what exactly an Assistant does or doesn't do. 
 
 The Assistant is almost completely responsible for the UI - Magic Sandbox does not provide any UI beyond the navigation bar at the top of the page. The Assistant should create a UI that can handle user input and execute Apps. To execute Apps safely, the Assistant needs to create a child Sandbox. The [react-sandbox](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/react-sandbox) package provides helpers to make this easier.
 
-When the Assistant's `init` function is called, it receives a `user` argument, which is an object with keys:
+When the Assistant's `init` function is called, it receives a single object as argument. The object has the key `user`, which is an object:
 
-- `name`: user's username
-- `userBalance`: user's balance
-- `userBalanceRemainingDays`: number of days remaining until the user's balance resets. `undefined` for unauthenticated users
-- `lastPublished`: timestamp the user last published an App or Function
+```typescript
+type User = {
+  name: string;
+  balance: number;
+  balanceRemainingDays: number | undefined; //number of days until balance resets, undefined for unauthenticated users
+  lastPublished: number; //timestamp the user last published an App or Function
+};
+```
 
 The Assistant is responsible for setting `_app` with `requestUrlParams`.
 
 If interacting with Apps via `init`, `context`, and `api`, the Assistant should be aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation. Apps are not expected to provide this context.
 
-When the user clicks on the Magic Sandbox logo in the top left of the page (which is outside of the Sandbox), rather than doing a slow reload of the entire page, Magic Sandbox sends a "reload" message to the Assistant. The Assistant should reset its state appropriately.
+Magic Sandbox sends messages to the Assistant when certain events occur. The message is an object with a `message` key, which is a string that takes the following values:
+
+- "reload": The user clicked on the Magic Sandbox logo in the top left of the page. The Assistant should reset its state appropriately.
+- "user": The user's data is updated. The message also includes a `user` key which has a `User` object as defined above as its value.
 
 #### Handle Sandbox requests from Apps
 

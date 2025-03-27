@@ -146,7 +146,7 @@ class PublishRisk extends Risk {
         const app = this.assistant.app.app;
         const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
         return {
-          message: `${app} is requesting to publish an App or Function`,
+          message: `${app} is requesting to publish an App or Function${!this.publishRequests[0].private ? ". It will be publicly visible." : ""}`,
           downloadDetails: {
             text: "Download App JSON",
             filename: `${app}_publish_request_${now}.json`,

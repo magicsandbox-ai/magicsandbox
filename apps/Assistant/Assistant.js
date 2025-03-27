@@ -227,9 +227,9 @@ class Assistant {
     });
   }
   async updateBudget(update = true) {
-    const { userBalance, userBalanceRemainingDays } = this.user || {};
-    if (!userBalanceRemainingDays || userBalance < 0.05) {
-      const budget = Math.min(userBalance || 0.005, 0.005);
+    const { balance, balanceRemainingDays } = this.user || {};
+    if (!balanceRemainingDays || balance < 0.05) {
+      const budget = Math.min(balance || 0.005, 0.005);
       if (update) {
         this.budget = budget;
       }
@@ -251,8 +251,8 @@ class Assistant {
     }
     const budget = Math.max(
       Math.min(
-        userBalance / (userBalanceRemainingDays / avgDaysBetweenUsage),
-        userBalance / 5,
+        balance / (balanceRemainingDays / avgDaysBetweenUsage),
+        balance / 5,
         0.2, //todo allow configuring
       ),
       0.005,
@@ -283,6 +283,7 @@ class Assistant {
     messages = [],
     initContext,
     continueSystemPrompt,
+    resetInput = () => {},
   }) {
     try {
       const sandboxId = this.sandboxRef.current.getSandboxId();
@@ -396,7 +397,7 @@ class Assistant {
           //todo
           const { promise, callback } = this.handleApprove(conversationId);
           this.setConfirm({
-            header: "Approve Chat?",
+            header: "Approve Chat Cost?",
             message: `This chat will cost ${formatAsDollars(maxCost)}.`,
             callback,
           });
@@ -405,7 +406,8 @@ class Assistant {
       }
       if (abortSignal.aborted) return;
       if (!approved) {
-        //todo - ideally reset messages and put the user text back in the input
+        this.handleUpdateConversation({ messages }); //reset messages
+        resetInput();
         return;
       }
       const llmArgs = [
@@ -753,8 +755,6 @@ class Assistant {
     } else {
       metadata = response.metadata;
     }
-    this.user.userBalance = metadata.userBalance;
-    this.user.userBalanceRemainingDays = metadata.userBalanceRemainingDays;
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
   }
   handlePublish(magicObj) {

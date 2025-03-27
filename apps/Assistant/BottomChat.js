@@ -53,6 +53,7 @@ function BottomChat({
       await assistantRef.current.handleInput({
         input,
         messages,
+        resetInput: () => setInput(input),
       });
     } catch (error) {
       console.error(error);
