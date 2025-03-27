@@ -4,8 +4,8 @@
   version: "0.1.0",
   description: "Take notes, create to-do lists, organize documents, and more",
   dependencies: {
-    react: "^18.0.0",
-    "react-dom": "^18.0.0",
+    react: "^19.0.0",
+    "react-dom": "^19.0.0",
     "lucide-react": "^0.408.0",
     "@handlewithcare/react-prosemirror": "^2.3.3",
     "prosemirror-markdown": "^1.13.1",

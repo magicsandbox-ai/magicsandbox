@@ -2,5 +2,4 @@
   name: "discover",
   version: "0.0.1",
   endpoint: "https://magicsandbox.ai/endpoint/discover",
-  subscribeToUpdates: true,
 }

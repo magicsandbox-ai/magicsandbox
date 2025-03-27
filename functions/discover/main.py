@@ -11,6 +11,9 @@ import boto3
 import msgpack
 import logging
 from enum import Enum
+import random
+import datetime
+from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger("magicsandbox.discover")
 
@@ -31,37 +34,36 @@ class DiscoverArgs(BaseModel):
 class DiscoverBody(Body):
     args: DiscoverArgs
 
-class DiscoverUpdateItem(BaseModel):
-    id: str
-    author: str
-    name: str
-    version: str
-    major: int
-    minor: int
-    patch: int
-    kind: Kind
-    description: str | None
-    documentation: str | None
-    type: str | None
-    minCost: float
-    finalCost: float | None
-    status: str
-    decode: str | None
+cols = {
+    'id': 'TEXT COLLATE NOCASE PRIMARY KEY',
+    'author': 'TEXT',
+    'name': 'TEXT',
+    'version': 'TEXT',
+    'major': 'INTEGER',
+    'minor': 'INTEGER',
+    'patch': 'INTEGER',
+    'kind': 'TEXT',
+    'description': 'TEXT',
+    'documentation': 'TEXT',
+    'type': 'TEXT',
+    'minCost': 'NUMERIC',
+    'finalCost': 'NUMERIC',
+    'status': 'TEXT',
+    'decode': 'TEXT',
+    'usage': 'INTEGER',
+}
 
-insert_question_marks = ','.join(['?'] * len(DiscoverUpdateItem.model_fields))
+insert_question_marks = ','.join(['?'] * len(cols))
 
-def get_insert_item(item: DiscoverUpdateItem | dict):
-    if isinstance(item, dict):
-        return [item.get(key) for key in DiscoverUpdateItem.model_fields]
-    else:
-        return [getattr(item, key) for key in DiscoverUpdateItem.model_fields]
+def get_insert_item(item: dict):
+    return [item.get(key) for key in cols]
 
 def get_cols(includeMetadata: list[str]):
-    cols = ['id']
+    out = ['id']
     for col in includeMetadata:
-        if col in DiscoverUpdateItem.model_fields and col != 'id':
-            cols.append(col)
-    return cols
+        if col in cols and col != 'id':
+            out.append(col)
+    return out
 
 class DiscoverData:
     def __init__(self, test_data = None):
@@ -72,6 +74,7 @@ class DiscoverData:
         else:
             self.path = 'dev/discover'
         self.test_data = test_data
+        self.embeddings = None
 
     async def startup(self):
         self.con = await aiosqlite.connect(':memory:')
@@ -80,7 +83,8 @@ class DiscoverData:
 
     async def background_sync_data(self):
         while True:
-            await asyncio.sleep(3600)
+            # add some jitter in case multiple instances start at once
+            await asyncio.sleep(random.uniform(3600, 4000))
             try:
                 await self.sync_data()
             except Exception:
@@ -95,7 +99,6 @@ class DiscoverData:
                 response = await client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
                 data = response.json()
         await self.init_db(data)
-        await self.init_embeddings(skip_request=self.test_data is not None)
 
     async def sync_data(self):
         url, headers = self.get_url_and_headers()
@@ -103,7 +106,7 @@ class DiscoverData:
             response = await client.get(url, headers=headers, timeout=30.0, follow_redirects=True)
             data = response.json()
         await self.init_db(data)
-        self.persist_embeddings()
+        await run_in_threadpool(self.maybe_persist_embeddings)
 
     def get_url_and_headers(self):
         if os.getenv('NODE_ENV') == 'production':
@@ -119,46 +122,71 @@ class DiscoverData:
     async def init_db(self, data):
         async with self.con.cursor() as cur:
             await cur.execute('DROP TABLE IF EXISTS _data')
-            await cur.execute('''
+            await cur.execute(f'''
                 CREATE TABLE _data (
-                    id TEXT COLLATE NOCASE PRIMARY KEY,
-                    author TEXT,
-                    name TEXT,
-                    version TEXT,
-                    major INTEGER,
-                    minor INTEGER,
-                    patch INTEGER,
-                    kind TEXT,
-                    description TEXT,
-                    documentation TEXT,
-                    type TEXT,
-                    minCost NUMERIC,
-                    finalCost NUMERIC,
-                    status TEXT,
-                    decode TEXT
+                    {', '.join([f'{col} {cols[col]}' for col in cols])}
                 )
             ''')
             await cur.executemany(f'''
                 INSERT INTO _data 
                 VALUES ({insert_question_marks})
             ''', [get_insert_item(item) for item in data])
-        await self.materialize_db()
-
-    async def materialize_db(self):
-        async with self.con.cursor() as cur:
             await cur.execute('DROP TABLE IF EXISTS data')
-            await cur.execute('''
+            await cur.execute(f'''
                 CREATE TABLE data AS
+                WITH TBL1 AS (
                 SELECT *
                     , row_number() over (partition by author, name order by major desc, minor desc, patch desc) = 1 as latest
+                    , sum(usage) over (partition by author, name) as total_usage
                 FROM _data
                 WHERE status = 'active'
+                )
+                SELECT {','.join([col for col in cols if col != 'usage'])}
+                    , total_usage as usage
+                FROM TBL1
+                WHERE latest
             ''')
+            await cur.execute('DROP TABLE IF EXISTS _data')
         await self.con.commit()
+        await self.update_embeddings()
 
-    async def init_embeddings(self, skip_request = False):
+    async def update_embeddings(self):
+        self.init_embeddings()
+        async with self.con.cursor() as cur:
+            await cur.execute('SELECT id, description, name FROM data')
+            data = await cur.fetchall()
+        existing_ids = []
+        existing_ixs = []
+        new_ids = []
+        new_sentences = []
+        for id, description, name in data:
+            if id in self.embeddings['ids_to_ix']:
+                existing_ids.append(id)
+                existing_ixs.append(self.embeddings['ids_to_ix'][id])
+            else:
+                new_ids.append(id)
+                new_sentences.append(description or name)  
+        dim = self.embedder.get_sentence_embedding_dimension()
+        if existing_ixs:
+            existing_embeddings = self.embeddings['embeddings'][existing_ixs]
+        else:
+            existing_embeddings = torch.empty((0, dim))
+        if new_sentences:
+            new_embeddings = self.embed(new_sentences)
+        else:
+            new_embeddings = torch.empty((0, dim))
+        ids = existing_ids + new_ids
+        self.embeddings = {
+            'ids': ids,
+            'ids_to_ix': {id: ix for ix, id in enumerate(ids)},
+            'embeddings': torch.cat([existing_embeddings, new_embeddings])
+        }
+
+    def init_embeddings(self):
+        if self.embeddings is not None:
+            return
         try:
-            if skip_request:
+            if self.test_data is not None:
                 raise TestingSkipException()
             response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/embeddings.msgpack')
             embeddings = msgpack.unpackb(response['Body'].read())
@@ -173,35 +201,25 @@ class DiscoverData:
                 'ids_to_ix': {},
                 'embeddings': torch.empty((0, self.embedder.get_sentence_embedding_dimension()))
             }
-        async with self.con.cursor() as cur:
-            await cur.execute('SELECT id, description, name FROM data')
-            self.add_embeddings(await cur.fetchall())
 
-    def add_embeddings(self, data):
-        new_ids = []
-        new_sentences = []
-        for d in data:
-            if d[0] not in self.embeddings['ids_to_ix']:
-                new_ids.append(d[0])
-                new_sentences.append(d[1] or d[2])
-        if len(new_ids) == 0:
-            return
-        new_ids_to_ix = {id: ix + len(self.embeddings['ids']) for ix, id in enumerate(new_ids)}
-        new_embeddings = self.embed(new_sentences)
-        self.embeddings = {
-            'ids': self.embeddings['ids'] + new_ids,
-            'ids_to_ix': self.embeddings['ids_to_ix'] | new_ids_to_ix,
-            'embeddings': torch.cat([self.embeddings['embeddings'], new_embeddings])
-        }
-
+    def maybe_persist_embeddings(self):
+        try:
+            response = self.s3.head_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/embeddings.msgpack')
+            last_modified = response['LastModified']
+            age_in_seconds = (datetime.datetime.now(datetime.timezone.utc) - last_modified).total_seconds()
+            if age_in_seconds < 3600:
+                return # don't persist embeddings if they are less than 1 hour old
+        except self.s3.exceptions.NoSuchKey:
+            pass
+        self.persist_embeddings()
+    
     def persist_embeddings(self):
-        # todo make async?
         embeddings = {
             'ids': self.embeddings['ids'],
             'embeddings': self.embeddings['embeddings'].tolist()
         }
         self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/embeddings.msgpack', Body=msgpack.packb(embeddings))
-        
+
     async def discover(self, args: DiscoverArgs):
         query_embedding = self.embed(args.query)
         valid_data = await self.get_valid_data(args)
@@ -227,47 +245,16 @@ class DiscoverData:
         cols = get_cols(args.includeMetadata)
         filter_params = []
         filter_sql = ''
-        if args.kind is not None:
+        if args.kind is not None: # todo could probably optimize this
             filter_sql = 'AND kind = ?'
             filter_params.append(args.kind)
         async with self.con.cursor() as cur:
             await cur.execute(f'''
                 SELECT {', '.join(cols)} 
-                FROM data 
-                WHERE latest
+                FROM data
                 {filter_sql}
                 ''', filter_params)
             return {row[0]: {col: row[i] for i, col in enumerate(cols)} for row in await cur.fetchall()}
 
-    async def update(self, items: list[DiscoverUpdateItem]):
-        async with self.con.cursor() as cur:
-            await cur.executemany(f'''
-                INSERT INTO _data (
-                    id, author, name, version, major, minor, patch, kind,
-                    description, documentation, type, minCost, finalCost, status, decode
-                ) VALUES ({insert_question_marks})
-                ON CONFLICT(id) DO UPDATE SET
-                    author = excluded.author,
-                    name = excluded.name,
-                    version = excluded.version,
-                    major = excluded.major,
-                    minor = excluded.minor,
-                    patch = excluded.patch,
-                    kind = excluded.kind,
-                    description = excluded.description,
-                    documentation = excluded.documentation,
-                    type = excluded.type,
-                    minCost = excluded.minCost,
-                    finalCost = excluded.finalCost,
-                    status = excluded.status,
-                    decode = excluded.decode
-            ''', [get_insert_item(item) for item in items])
-        await self.materialize_db()
-        self.add_embeddings([(item.id, item.description, item.name) for item in items])
-
-
 async def discover(discover_data: DiscoverData, body: DiscoverBody):
     return await discover_data.discover(body.args)
-
-async def discover_update(discover_data: DiscoverData, items: list[DiscoverUpdateItem]):
-    return await discover_data.update(items)

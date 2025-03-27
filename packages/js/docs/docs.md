@@ -249,12 +249,6 @@ Specifies how to decode the response from your Function's endpoint. Supported va
 
 See [Streaming JSON](#streaming-json) for details on streaming with decode set to "json" or "msgpack".
 
-### subscribeToUpdates
-
-_(boolean, default false)_
-
-Whether you want your endpoint to receive updates when users publish or update Apps or Functions. See [Subscribing to Updates](#subscribing-to-updates) for details.
-
 ## Calling other Functions
 
 From your endpoint, you can call other Functions by making a POST request to `https://magicsandbox.ai/request-function`. Your request should include the following:
@@ -859,26 +853,13 @@ type Metadata = {
   finalCost: number;
   status: "active" | "deprecated" | "inactive";
   decode: "json" | "msgpack" | "string" | "bytes";
+  usage: number; //number of times the App or Function has been used
 };
 ```
 
 App and Function metadata is made publicly available unless the App or Function's `private` key is set to true. This enables things like building an App or Function that can search for relevant Apps or Functions given some criteria.
 
-### Accessing Public Metadata
-
-Make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key). Ensure your client is configured to follow redirects.
-
-The public metadata is updated hourly. Requesting the public metadata more frequently than hourly may result in an error. If you need more frequent updates, you'll need to publish a Function with the `subscribeToUpdates` key set to true.
-
-### Subscribing to Updates
-
-If you set `subscribeToUpdates` to true, your endpoint will receive updates when users publish or update Apps or Functions.
-
-- The request is a POST to `endpoint/update`, so if your endpoint is `https://example.com/my-function`, you'll receive updates at `https://example.com/my-function/update`
-- Includes headers:
-  - `Content-Type: application/json`
-  - `Authorization: Bearer <hashedKey>`, see [endpoint](#endpoint)
-- Includes a body which is an array of `Metadata` objects
+To access the public metadata, make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key). Ensure your client is configured to follow redirects. The public metadata is updated hourly.
 
 ## Limits
 
