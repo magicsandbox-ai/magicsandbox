@@ -632,12 +632,11 @@ class Assistant {
       for (const event of batch) {
         const { id, msg } = event.data;
         let { request, data } = msg;
-        const validation = validateAndDefaultRequest(
-          request,
-          data,
-          true,
-          this.app.id,
-        );
+        const validation = validateAndDefaultRequest(request, data, {
+          assistant: true,
+          app: this.app.id,
+          includeMetadata: ["finalCost"],
+        });
         if (validation) {
           this.sandboxRef.current.postMessage(event.sandboxId, {
             id,

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Preview } from "@magicsandbox.ai/react-sandbox";
-import { Toasts } from "@components/Toasts.js";
 import { Loader } from "lucide-react";
 import ExternalLink from "@components/ExternalLink.js";
 
@@ -21,7 +20,6 @@ function App({ urlParams }) {
   const [widthClass, setWidthClass] = useState("w-full");
 
   const previewRef = useRef(null);
-  const toastsRef = useRef(null);
   const urlParamsRef = useRef({});
 
   useEffect(() => {
@@ -97,11 +95,9 @@ function App({ urlParams }) {
       const sandboxId = previewRef.current.getSandboxId();
       const appObj = await previewApp(false);
       await requestPublish(appObj);
-      toastsRef.current.addToast("Successfully published!", "success");
       previewRef.current.update(sandboxId, appObj);
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast("Failed to publish", "error");
       previewRef.current.error(error.message);
     }
   }
@@ -176,7 +172,6 @@ function App({ urlParams }) {
         loadingIndicator={<Loader className="h-10 w-10 animate-spin" />}
         initState="loading"
       />
-      <Toasts className="top-2" ref={toastsRef} />
     </div>
   );
 }

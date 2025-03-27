@@ -20,9 +20,9 @@ function DeleteConfirm({ assistantRef, setShowDelete, currentConversation }) {
       text: "Delete Current Chat",
       className: "bg-red-500 hover:bg-red-600 text-white w-48",
       onClick: () => {
-        assistantRef.current.handleDeleteConversation(
+        assistantRef.current.handleDeleteConversations([
           currentConversation.conversationId,
-        );
+        ]);
         setShowDelete(false);
       },
     });

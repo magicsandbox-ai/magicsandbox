@@ -4,7 +4,8 @@ const maximumMaxCost = 1;
 /**
  * Validates the request and adds default values by mutating `data`
  */
-function validateAndDefaultRequest(request, data, assistant, app) {
+function validateAndDefaultRequest(request, data, options = {}) {
+  const { assistant, app, includeMetadata } = options;
   const requiredKeys = {
     app: ["app"],
     function: ["fn", "args"],
@@ -85,13 +86,12 @@ function validateAndDefaultRequest(request, data, assistant, app) {
       Object.entries(data.params).filter(([key]) => !key.startsWith("_")), //params that start with _ are reserved
     );
   }
-  if (
-    assistant &&
-    (request === "app" || request === "function") &&
-    !data.options.includeMetadata.includes("finalCost")
-  ) {
-    //assistants need to know the final cost
-    data.options.includeMetadata.push("finalCost");
+  if (includeMetadata && (request === "app" || request === "function")) {
+    for (const key of includeMetadata) {
+      if (!data.options.includeMetadata.includes(key)) {
+        data.options.includeMetadata.push(key);
+      }
+    }
   }
 }
 
@@ -108,7 +108,7 @@ async function requestHandler({
     const sandboxId = sandboxRef.current.getSandboxId();
     const { id, msg } = event.data;
     const { request, data } = msg;
-    const validation = validateAndDefaultRequest(request, data, true);
+    const validation = validateAndDefaultRequest(request, data);
     let response;
     if (validation) {
       sandboxRef.current.postMessage(sandboxId, {
