@@ -175,6 +175,7 @@ function App({ user, urlApp, initData, initConversation }) {
         setCollapsed,
         setApp,
         setAppData,
+        initData,
       });
       if (urlApp) {
         let appString = urlApp.split("@")[0];
@@ -299,14 +300,21 @@ function App({ user, urlApp, initData, initConversation }) {
 
   useEffect(() => {
     async function refreshPopularApps() {
-      if (Date.now() - (popularAppData.ts || 0) > 1000 * 60 * 60 * 24 * 7) {
+      if (
+        Date.now() - (popularAppData.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
+        !navigator.webdriver
+      ) {
         const popularApps = await requestFunction("magicsandbox.discover", {
           includeMetadata: discoverMetadata,
           kind: "app",
           limit: 100,
         });
-        setPopularAppData({ ts: Date.now(), apps: popularApps });
-        await requestPutData("popularAppData", popularAppData, {
+        const newPopularAppData = {
+          ts: Date.now(),
+          apps: popularApps,
+        };
+        setPopularAppData(newPopularAppData);
+        await requestPutData("popularAppData", newPopularAppData, {
           app: "magicsandbox.Assistant",
           evictionPolicy: "fifo",
         });

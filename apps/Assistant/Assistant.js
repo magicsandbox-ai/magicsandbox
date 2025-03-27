@@ -41,6 +41,7 @@ class Assistant {
     setCollapsed,
     setApp,
     setAppData,
+    initData,
   }) {
     this.user = user;
     this.sandboxRef = sandboxRef;
@@ -61,6 +62,12 @@ class Assistant {
     this.app = null;
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
+    this.appUsagePerDay =
+      initData?.appUsage?.appUsagePerDay ||
+      user?.balance / user?.balanceRemainingDays / 2 ||
+      0.01;
+    this.pendingAppUsage = 0;
+    this.appUsageTimeoutId = null;
     this.budget = null;
     this.saveTimeoutIds = {};
     this.requestTimeoutId = null;
@@ -225,6 +232,41 @@ class Assistant {
     this.handleUpdateConversation({
       message: { role: "display", tags: [{ content: `\n\n${message}` }] },
     });
+  }
+  handleAppUsage(finalCost) {
+    this.pendingAppUsage += finalCost;
+    clearTimeout(this.appUsageTimeoutId);
+    this.appUsageTimeoutId = setTimeout(() => {
+      this._handleAppUsage(); //batch to avoid too many reads/writes
+    }, 16);
+  }
+  async _handleAppUsage() {
+    try {
+      let { ts, appUsagePerDay } = await requestGetData("appUsage", {
+        app: "magicsandbox.Assistant",
+      });
+      const now = Date.now();
+      let newAppUsagePerDay = this.appUsagePerDay; //initialized with a default value
+      if (appUsagePerDay) {
+        const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
+        const alpha = 0.1;
+        newAppUsagePerDay =
+          alpha * (this.pendingAppUsage / daysSinceLastUsage) +
+          (1 - alpha) * appUsagePerDay;
+        this.appUsagePerDay = newAppUsagePerDay;
+      }
+      await requestPutData(
+        "appUsage",
+        { ts: now, appUsagePerDay: newAppUsagePerDay },
+        {
+          app: "magicsandbox.Assistant",
+          evictionPolicy: "fifo",
+        },
+      );
+      this.pendingAppUsage = 0;
+    } catch (error) {
+      console.error(error);
+    }
   }
   async updateBudget(update = true) {
     const { balance, balanceRemainingDays } = this.user || {};
@@ -553,6 +595,7 @@ class Assistant {
         }));
         this.budget = result.metadata.minCost - result.metadata.finalCost;
         this.sandboxRef.current.postMessage(sandboxId, result);
+        this.handleAppUsage(result.metadata.finalCost);
         let initContext;
         try {
           initContext = await this.sandboxRef.current.getInit({
@@ -755,6 +798,7 @@ class Assistant {
       metadata = response.metadata;
     }
     this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
+    this.handleAppUsage(metadata.finalCost);
   }
   handlePublish(magicObj) {
     const id = `${this.user.name}.${magicObj.name}@${magicObj.version}`;
