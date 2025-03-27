@@ -26,7 +26,7 @@ class Kind(str, Enum):
     FUNCTION = "function"
 
 class DiscoverArgs(BaseModel):
-    query: str
+    query: str | None = None
     includeMetadata: list[str] = Field(default_factory=lambda: ['id'])
     kind: Kind | None = None
     limit: int = Field(default=10, ge=1, le=100)
@@ -147,6 +147,18 @@ class DiscoverData:
                 WHERE latest
             ''')
             await cur.execute('DROP TABLE IF EXISTS _data')
+            await cur.execute('DROP TABLE IF EXISTS popular')
+            await cur.execute(f'''
+                CREATE TABLE popular AS
+                WITH TBL1 AS (
+                SELECT *
+                    , row_number() over (partition by kind order by usage desc) as rank
+                FROM data
+                )
+                SELECT {','.join([col for col in cols])}
+                FROM TBL1
+                WHERE rank <= 100
+            ''')
         await self.con.commit()
         await self.update_embeddings()
 
@@ -221,6 +233,8 @@ class DiscoverData:
         self.s3.put_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/embeddings.msgpack', Body=msgpack.packb(embeddings))
 
     async def discover(self, args: DiscoverArgs):
+        if args.query is None:
+            return await self.get_popular(args)
         query_embedding = self.embed(args.query)
         valid_data = await self.get_valid_data(args)
         valid_mask = torch.tensor([id in valid_data for id in self.embeddings['ids']])
@@ -255,6 +269,24 @@ class DiscoverData:
                 {filter_sql}
                 ''', filter_params)
             return {row[0]: {col: row[i] for i, col in enumerate(cols)} for row in await cur.fetchall()}
+
+    async def get_popular(self, args: DiscoverArgs):
+        # todo cleanup duplicated code
+        cols = get_cols(args.includeMetadata)
+        filter_params = []
+        filter_sql = ''
+        if args.kind is not None: # todo could probably optimize this
+            filter_sql = 'AND kind = ?'
+            filter_params.append(args.kind)
+        async with self.con.cursor() as cur:
+            await cur.execute(f'''
+                SELECT {', '.join(cols)} 
+                FROM popular
+                {filter_sql}
+                ORDER BY usage DESC
+                LIMIT ?
+                ''', filter_params + [args.limit])
+            return [{col: row[i] for i, col in enumerate(cols)} for row in await cur.fetchall()]
 
 async def discover(discover_data: DiscoverData, body: DiscoverBody):
     return await discover_data.discover(body.args)

@@ -3,7 +3,7 @@ import ModalOverlay from "@components/ModalOverlay.js";
 import { formatAsDollars } from "./utils.js";
 import { Loader } from "lucide-react";
 
-export default function Discover({ setShowDiscover, assistantRef, appData }) {
+function Discover({ setShowDiscover, assistantRef, appData, popularApps }) {
   return (
     <ModalOverlay
       modal={
@@ -11,6 +11,7 @@ export default function Discover({ setShowDiscover, assistantRef, appData }) {
           assistantRef={assistantRef}
           appData={appData}
           setShowDiscover={setShowDiscover}
+          popularApps={popularApps}
         />
       }
       onClose={() => {
@@ -21,10 +22,38 @@ export default function Discover({ setShowDiscover, assistantRef, appData }) {
   );
 }
 
-function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
+const discoverMetadata = ["id", "description", "minCost", "type", "usage"];
+
+function DiscoverInner({
+  assistantRef,
+  appData,
+  setShowDiscover,
+  popularApps,
+}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState(null);
+  const [apps, setApps] = useState(() => {
+    const filteredApps = popularApps?.filter((r) => filterResult(r));
+    if (filteredApps?.length > 0) {
+      return filteredApps;
+    }
+    return null;
+  });
+  const [showingPopular, setShowingPopular] = useState(true);
   const [status, setStatus] = useState(null);
+
+  function filterResult(r) {
+    if (r.type === "assistant") {
+      return false;
+    }
+    const app = r.id.split("@")[0];
+    if (app === "magicsandbox.Docs" || app === "magicsandbox.About") {
+      return false;
+    }
+    if (appData[app]?.blocked) {
+      return false;
+    }
+    return true;
+  }
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -32,26 +61,22 @@ function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
     try {
       const { result } = await requestFunction("magicsandbox.discover", {
         query: searchQuery,
-        includeMetadata: ["id", "description", "minCost", "type"],
+        includeMetadata: discoverMetadata,
         kind: "app",
         limit: 100,
       });
-      const newSearchResults = result
-        .filter((r) => {
-          if (r.type === "assistant") {
-            return false;
-          }
-          if (appData[r.id.split("@")[0]]?.blocked) {
-            return false;
-          }
-          return true;
-        })
+      const newApps = result
+        .filter((r) => filterResult(r))
         .map((r) => ({
           ...r,
-          score: r.relevance - 10 * r.minCost,
+          score:
+            r.relevance *
+            (1 - r.minCost * 0.5) *
+            Math.min(Math.log10(r.usage + 1) / 4 + 0.5, 2),
         }))
         .sort((a, b) => b.score - a.score);
-      setSearchResults(newSearchResults);
+      setApps(newApps);
+      setShowingPopular(false);
       setStatus(null);
     } catch (error) {
       console.error(error);
@@ -94,21 +119,26 @@ function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
           An unexpected error occurred. Please try again.
         </div>
       ) : (
-        searchResults !== null && (
+        apps !== null && (
           <div className="flex-1 overflow-auto">
-            {searchResults.length === 0 ? (
+            {apps.length === 0 ? (
               <div className="text-center italic text-stone-500">
                 No results found
               </div>
             ) : (
-              searchResults.map((result) => (
-                <SearchResult
-                  key={result.id}
-                  result={result}
-                  assistantRef={assistantRef}
-                  setShowDiscover={setShowDiscover}
-                />
-              ))
+              <>
+                {showingPopular && (
+                  <div className="text-center font-bold">Most Popular Apps</div>
+                )}
+                {apps.map((app) => (
+                  <App
+                    key={app.id}
+                    app={app}
+                    assistantRef={assistantRef}
+                    setShowDiscover={setShowDiscover}
+                  />
+                ))}
+              </>
             )}
           </div>
         )
@@ -117,25 +147,29 @@ function DiscoverInner({ assistantRef, appData, setShowDiscover }) {
   );
 }
 
-function SearchResult({ result, assistantRef, setShowDiscover }) {
-  const app = result.id.split("@")[0];
+function App({ app, assistantRef, setShowDiscover }) {
+  const appName = app.id.split("@")[0];
 
   function handleClick() {
-    assistantRef.current.handleApp({ app, maxCost: result.minCost });
+    assistantRef.current.handleApp({ app: appName, maxCost: app.minCost });
     setShowDiscover(false);
   }
+
+  //todo display usage?
 
   return (
     <button
       className="mb-4 w-full rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
       onClick={handleClick}
-      aria-label={app}
+      aria-label={appName}
     >
       <div className="flex items-center justify-between">
-        <div className="mb-1 font-medium">{app}</div>
-        <div>{formatAsDollars(result.minCost)}</div>
+        <div className="mb-1 font-medium">{appName}</div>
+        <div>{formatAsDollars(app.minCost)}</div>
       </div>
-      <div className="line-clamp-2">{result.description}</div>
+      <div className="line-clamp-2">{app.description}</div>
     </button>
   );
 }
+
+export { Discover, discoverMetadata };

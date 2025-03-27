@@ -27,7 +27,7 @@ sample_data = [
         'finalCost': 0.001,
         'status': 'active',
         'decode': None,
-        'usage': 0,
+        'usage': 10,
     },
     {
         'id': 'magicsandbox.Bananas@0.1.0',
@@ -45,7 +45,7 @@ sample_data = [
         'finalCost': 0.001,
         'status': 'active',
         'decode': None,
-        'usage': 0,
+        'usage': 5,
     },
     {
         'id': 'magicsandbox.Test@0.1.1',
@@ -100,6 +100,12 @@ async def assert_discover_works(discover_data):
 @pytest.mark.asyncio(loop_scope="module")
 async def test_discover(discover_data):
     await assert_discover_works(discover_data)
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_popular(discover_data):
+    args = DiscoverArgs()
+    response = await discover_data.discover(args)
+    assert response[0]['id'] == 'magicsandbox.Test@0.1.0' #highest usage
 
 @pytest.mark.asyncio(loop_scope="module")
 async def test_sync(discover_data):

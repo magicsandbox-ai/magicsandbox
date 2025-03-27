@@ -13,7 +13,7 @@ import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars, getMinCost } from "./utils.js";
 import { welcomeMessage } from "./welcomeMessage.js";
-import Discover from "./Discover.js";
+import { Discover, discoverMetadata } from "./Discover.js";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -99,6 +99,7 @@ function App({ user, urlApp, initData, initConversation }) {
   const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [popularAppData, setPopularAppData] = useState(initData.popularAppData); // {ts, apps}
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -296,6 +297,24 @@ function App({ user, urlApp, initData, initConversation }) {
     modelRef.current = model;
   }, [model]);
 
+  useEffect(() => {
+    async function refreshPopularApps() {
+      if (Date.now() - (popularAppData.ts || 0) > 1000 * 60 * 60 * 24 * 7) {
+        const popularApps = await requestFunction("magicsandbox.discover", {
+          includeMetadata: discoverMetadata,
+          kind: "app",
+          limit: 100,
+        });
+        setPopularAppData({ ts: Date.now(), apps: popularApps });
+        await requestPutData("popularAppData", popularAppData, {
+          app: "magicsandbox.Assistant",
+          evictionPolicy: "fifo",
+        });
+      }
+    }
+    refreshPopularApps().catch(console.error);
+  }, []);
+
   const messages = currentConversation.messages;
 
   let modalComponent;
@@ -336,6 +355,7 @@ function App({ user, urlApp, initData, initConversation }) {
         setShowDiscover={setShowDiscover}
         assistantRef={assistantRef}
         appData={appData}
+        popularApps={popularAppData.apps}
       />
     );
   }
