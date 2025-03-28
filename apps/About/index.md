@@ -59,6 +59,8 @@ By default, Magic Sandbox apps save data using your browser's storage, which mea
 
 Upgrade to [Magic Sandbox Plus](https://magicsandbox.ai/login) to backup your data to the cloud and sync it across all your devices.
 
+If using a shared device, create your own profile in your browser to keep your data private.
+
 #### Why do I sometimes need to approve a chat's cost?
 
 When you chat with your assistant with an app open, the app can provide additional information to your assistant. This extra information can help your assistant be more helpful, but it also increases the cost of using the AI model - occasionally you'll be asked to approve that this higher cost is acceptable.

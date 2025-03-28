@@ -719,15 +719,15 @@ ${contextString}
     }
   }
   apiLogNotes(ids) {
-    for (const id of ids) {
+    ids.forEach((id, i) => {
       const note = this._getNote(id);
+      if (i == 0 && this._init) {
+        this.setCurrentNodeUuid(note.uuid);
+      }
       assistant.full(`<(${note.id}) ${note.name}>
 ${note.content}
 </(${note.id}) ${note.name}>`);
-    }
-    if (this._init) {
-      this.setCurrentNodeUuid(ids[0]);
-    }
+    });
   }
   _getAndCreateFolders(parentId, folders) {
     let parent;

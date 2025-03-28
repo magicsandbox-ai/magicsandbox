@@ -103,7 +103,9 @@ async def test_discover(discover_data):
 
 @pytest.mark.asyncio(loop_scope="module")
 async def test_popular(discover_data):
-    args = DiscoverArgs()
+    args = DiscoverArgs(
+        kind='app',
+    )
     response = await discover_data.discover(args)
     assert response[0]['id'] == 'magicsandbox.Test@0.1.0' #highest usage
 

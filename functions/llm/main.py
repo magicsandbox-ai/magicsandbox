@@ -1,4 +1,4 @@
-from ..body import Body, Options
+from ..body import Body
 import json
 from math import floor
 from pydantic import BaseModel, field_validator
@@ -374,10 +374,14 @@ async def handle_stream_result(result, index=None):
                     yield data(content=buffer)
                 buffer = ''
         finish_reason = chunk.choices[0].finish_reason or finish_reason
+    usage = {
+        'prompt_tokens': chunk.usage.prompt_tokens,
+        'completion_tokens': chunk.usage.completion_tokens,
+    }
     if first_chunk:
-        yield data(model=model, content=buffer, finish_reason=finish_reason)
+        yield data(model=model, content=buffer, finish_reason=finish_reason, usage=usage)
     else:
-        yield data(content=buffer, finish_reason=finish_reason)
+        yield data(content=buffer, finish_reason=finish_reason, usage=usage)
     final_cost = handle_final_cost(model, expected_cost, chunk.usage)
     yield {'final_cost': final_cost}
 
@@ -426,5 +430,9 @@ def handle_result(result):
             'model': model,
             'content': response.choices[0].message.content,
             'finish_reason': response.choices[0].finish_reason,
+            'usage': {
+                'prompt_tokens': response.usage.prompt_tokens,
+                'completion_tokens': response.usage.completion_tokens,
             },
-            final_cost)
+        },
+        final_cost)

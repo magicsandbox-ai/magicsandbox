@@ -26,6 +26,9 @@ def validate_response(response, model=None):
     assert isinstance(response_body['result']['model'], str)
     if model is not None:
         assert response_body['result']['model'] == model
+    assert isinstance(response_body['result']['finish_reason'], str)
+    assert isinstance(response_body['result']['usage']['prompt_tokens'], int)
+    assert isinstance(response_body['result']['usage']['completion_tokens'], int)
     assert isinstance(response_body['__command']['finalCost'], float)
 
 @pytest.mark.asyncio
@@ -75,6 +78,11 @@ async def test_stream():
         if i == 0:
             assert chunk['model'] == 'gpt-4o-mini-2024-07-18'
             content = chunk['content']
+        elif i == len(chunks) - 2:
+            assert isinstance(chunk['finish_reason'], str)
+            assert isinstance(chunk['usage']['prompt_tokens'], int)
+            assert isinstance(chunk['usage']['completion_tokens'], int)
+            content += chunk['content']
         elif i == len(chunks) - 1:
             assert isinstance(chunk['__command']['finalCost'], float)
         else:

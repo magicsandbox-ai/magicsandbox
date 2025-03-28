@@ -14,6 +14,7 @@ import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars, getMinCost } from "./utils.js";
 import { welcomeMessage } from "./welcomeMessage.js";
 import { Discover, discoverMetadata } from "./Discover.js";
+import { ErrorBoundary } from "react-error-boundary";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -40,12 +41,20 @@ async function init({ user } = {}) {
     urlApp = urlParams._app;
   }
   createRoot(document.getElementById("root")).render(
-    <App
-      user={user}
-      urlApp={urlApp}
-      initData={initData}
-      initConversation={initConversation}
-    />,
+    <ErrorBoundary
+      fallback={
+        <div className="flex h-screen items-center justify-center font-bold">
+          😬 Unexpected error occurred. Sorry! Please try again.
+        </div>
+      }
+    >
+      <App
+        user={user}
+        urlApp={urlApp}
+        initData={initData}
+        initConversation={initConversation}
+      />
+    </ErrorBoundary>,
   );
 }
 
@@ -301,17 +310,17 @@ function App({ user, urlApp, initData, initConversation }) {
   useEffect(() => {
     async function refreshPopularApps() {
       if (
-        Date.now() - (popularAppData.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
+        Date.now() - (popularAppData?.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
         !navigator.webdriver
       ) {
-        const popularApps = await requestFunction("magicsandbox.discover", {
+        const { result } = await requestFunction("magicsandbox.discover", {
           includeMetadata: discoverMetadata,
           kind: "app",
           limit: 100,
         });
         const newPopularAppData = {
           ts: Date.now(),
-          apps: popularApps,
+          apps: result,
         };
         setPopularAppData(newPopularAppData);
         await requestPutData("popularAppData", newPopularAppData, {
@@ -363,7 +372,7 @@ function App({ user, urlApp, initData, initConversation }) {
         setShowDiscover={setShowDiscover}
         assistantRef={assistantRef}
         appData={appData}
-        popularApps={popularAppData.apps}
+        popularApps={popularAppData?.apps}
       />
     );
   }

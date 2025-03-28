@@ -260,7 +260,7 @@ class DiscoverData:
         filter_params = []
         filter_sql = ''
         if args.kind is not None: # todo could probably optimize this
-            filter_sql = 'AND kind = ?'
+            filter_sql = 'WHERE kind = ?'
             filter_params.append(args.kind)
         async with self.con.cursor() as cur:
             await cur.execute(f'''
@@ -276,7 +276,7 @@ class DiscoverData:
         filter_params = []
         filter_sql = ''
         if args.kind is not None: # todo could probably optimize this
-            filter_sql = 'AND kind = ?'
+            filter_sql = 'WHERE kind = ?'
             filter_params.append(args.kind)
         async with self.con.cursor() as cur:
             await cur.execute(f'''

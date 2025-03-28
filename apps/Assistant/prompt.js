@@ -4,7 +4,7 @@ import { getHeadings } from "@magicsandbox.ai/docs";
 const sandboxDocs = getHeadings(docs, ["Sandbox"]);
 
 function formatMessage(message, isFinalMessage) {
-  return message.tags
+  const result = message.tags
     .filter(
       ({ tag }) =>
         isFinalMessage ||
@@ -17,6 +17,14 @@ function formatMessage(message, isFinalMessage) {
       return content;
     })
     .join("");
+  if (result) {
+    return result;
+  } else if (message.tags.some(({ tag }) => tag === "app_context")) {
+    return "[<app_context> removed for brevity]";
+  } else {
+    console.error("empty message");
+    return " "; //anthropic throws on an empty message, so I guess a space is better than an error?
+  }
 }
 
 function formatFavoritedApps(apps) {

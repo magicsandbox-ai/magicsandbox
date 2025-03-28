@@ -100,10 +100,10 @@ function BottomChat({
         <div className="flex h-12 w-full max-w-screen-lg flex-initial items-center">
           <div className="relative h-full w-full">
             <div
-              className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border border-stone-500 bg-white py-1 outline-1 ${
+              className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border-stone-500 bg-white py-1 outline-1 ${
                 collapsed
-                  ? "focus-within:outline focus-within:outline-stone-500"
-                  : "py-2"
+                  ? "border focus-within:outline focus-within:outline-stone-500"
+                  : "border-2 py-2"
               }`}
               onKeyDown={handleEscape}
               tabIndex={-1}

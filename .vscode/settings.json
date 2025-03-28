@@ -7,9 +7,11 @@
     "favorited",
     "hashlib",
     "hexdigest",
+    "logit",
     "magicsandbox",
     "msgpack",
     "msgpackr's",
+    "Multimodal",
     "prebuild",
     "undeprecated"
   ]

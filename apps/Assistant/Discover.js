@@ -128,7 +128,9 @@ function DiscoverInner({
             ) : (
               <>
                 {showingPopular && (
-                  <div className="text-center font-bold">Most Popular Apps</div>
+                  <div className="mb-4 text-center text-lg font-bold">
+                    Most Popular Apps
+                  </div>
                 )}
                 {apps.map((app) => (
                   <App

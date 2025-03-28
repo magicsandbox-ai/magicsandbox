@@ -22,6 +22,9 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
 
 const includeMetadata = ["id", "description", "minCost", "finalCost", "status"];
+const defaultInputBytesPerToken = 4;
+const defaultOutputTokens = 500;
+const defaultLlmCostThreshold = 0.1;
 
 class Assistant {
   constructor({
@@ -64,8 +67,14 @@ class Assistant {
     this.handleApprovePromises = {};
     this.appUsagePerDay =
       initData?.appUsage?.appUsagePerDay ||
-      user?.balance / user?.balanceRemainingDays / 2 ||
+      user?.balance / user?.balanceRemainingDays / 4 ||
       0.01;
+    this.llmUsage = initData?.llmUsage || {
+      llmCallsPerDay: 10,
+      inputBytesPerToken: {}, //keyed by author.name
+      outputTokens: {}, //keyed by author.name
+      costThreshold: {}, //keyed by author.name
+    };
     this.pendingAppUsage = 0;
     this.appUsageTimeoutId = null;
     this.budget = null;
@@ -242,22 +251,22 @@ class Assistant {
   }
   async _handleAppUsage() {
     try {
-      let { ts, appUsagePerDay } = await requestGetData("appUsage", {
-        app: "magicsandbox.Assistant",
-      });
+      //need to grab latest in case user is using multiple tabs
+      const { ts, appUsagePerDay } =
+        (await requestGetData("appUsage", {
+          app: "magicsandbox.Assistant",
+        })) || {};
       const now = Date.now();
-      let newAppUsagePerDay = this.appUsagePerDay; //initialized with a default value
       if (appUsagePerDay) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         const alpha = 0.1;
-        newAppUsagePerDay =
+        this.appUsagePerDay =
           alpha * (this.pendingAppUsage / daysSinceLastUsage) +
           (1 - alpha) * appUsagePerDay;
-        this.appUsagePerDay = newAppUsagePerDay;
       }
       await requestPutData(
         "appUsage",
-        { ts: now, appUsagePerDay: newAppUsagePerDay },
+        { ts: now, appUsagePerDay: this.appUsagePerDay },
         {
           app: "magicsandbox.Assistant",
           evictionPolicy: "fifo",
@@ -268,46 +277,121 @@ class Assistant {
       console.error(error);
     }
   }
-  async updateBudget(update = true) {
+  async handleLlmUsage(inputBytes, promptTokens, completionTokens, askedUser) {
+    try {
+      const {
+        ts,
+        llmCallsPerDay,
+        inputBytesPerToken,
+        outputTokens,
+        costThreshold,
+      } =
+        (await requestGetData("llmUsage", {
+          app: "magicsandbox.Assistant",
+        })) || {};
+      const now = Date.now();
+      if (ts) {
+        const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
+        let alpha = 0.1;
+        this.llmUsage.llmCallsPerDay =
+          alpha * (1 / daysSinceLastUsage) + (1 - alpha) * llmCallsPerDay;
+        this.llmUsage.inputBytesPerToken = inputBytesPerToken;
+        this.llmUsage.outputTokens = outputTokens;
+        this.llmUsage.costThreshold = costThreshold;
+        if (this.app) {
+          if (promptTokens && completionTokens) {
+            const newInputBytesPerToken = inputBytes / promptTokens;
+            const oldInputBytesPerToken =
+              this.llmUsage.inputBytesPerToken[this.app.app] ||
+              defaultInputBytesPerToken;
+            alpha = newInputBytesPerToken < oldInputBytesPerToken ? 0.5 : 0.1; //more aggressive for decrease (potentially malicious)
+            this.llmUsage.inputBytesPerToken[this.app.app] =
+              alpha * newInputBytesPerToken +
+              (1 - alpha) * oldInputBytesPerToken;
+            const newOutputTokens = completionTokens;
+            const oldOutputTokens =
+              this.llmUsage.outputTokens[this.app.app] || defaultOutputTokens;
+            alpha = newOutputTokens > oldOutputTokens ? 0.5 : 0.1; //more aggressive for increase (potentially malicious)
+            this.llmUsage.outputTokens[this.app.app] =
+              alpha * newOutputTokens + (1 - alpha) * oldOutputTokens;
+          } else {
+            console.error("missing promptTokens or completionTokens");
+          }
+
+          if (askedUser) {
+            this.llmUsage.costThreshold[this.app.app] =
+              (this.llmUsage.costThreshold[this.app.app] ||
+                defaultLlmCostThreshold) * 1.2;
+          }
+        }
+      }
+      await requestPutData(
+        "llmUsage",
+        {
+          ts: now,
+          llmCallsPerDay: this.llmUsage.llmCallsPerDay,
+          inputBytesPerToken: this.llmUsage.inputBytesPerToken,
+          outputTokens: this.llmUsage.outputTokens,
+          costThreshold: this.llmUsage.costThreshold,
+        },
+        {
+          app: "magicsandbox.Assistant",
+          evictionPolicy: "fifo",
+        },
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  getLlmExpectedCost(inputBytes, maxCompletionTokens, model) {
+    const expectedInputTokens =
+      inputBytes /
+      (this.llmUsage.inputBytesPerToken[this.app?.app] ||
+        defaultInputBytesPerToken);
+    const expectedOutputTokens = Math.min(
+      this.llmUsage.outputTokens[this.app?.app] || defaultOutputTokens,
+      maxCompletionTokens,
+    );
+    let expectedCost;
+    if (model) {
+      expectedCost =
+        models[model].input_cost_per_token * expectedInputTokens +
+        models[model].output_cost_per_token * expectedOutputTokens;
+    }
+    return {
+      expectedInputTokens,
+      expectedOutputTokens,
+      expectedCost,
+    };
+  }
+  getLlmBudget(inputBytes, maxCompletionTokens) {
     const { balance, balanceRemainingDays } = this.user || {};
     if (!balanceRemainingDays || balance < 0.05) {
-      const budget = Math.min(balance || 0.005, 0.005);
-      if (update) {
-        this.budget = budget;
+      if (!balance && balance !== 0) {
+        console.error("missing balance");
       }
-      return budget;
+      return Math.min(Math.max(balance || 0.005, 0.001), 0.005);
     }
-    const usageData = await requestGetData("usageData", {
-      app: "magicsandbox.Assistant",
-    });
-    const now = Date.now();
-    let avgDaysBetweenUsage = 0.1;
-    if (usageData) {
-      const daysSinceLastUsage = (now - usageData.ts) / (1000 * 60 * 60 * 24);
-      const alpha = 0.05;
-      avgDaysBetweenUsage = Math.min(
-        alpha * daysSinceLastUsage +
-          (1 - alpha) * usageData.avgDaysBetweenUsage,
-        1,
-      );
+    /*
+    solve for llmBudget in this equation, where llmFinalCostPct is the finalCost as a percentage of llmBudget
+    balance / balanceRemainingDays = appUsagePerDay + (llmCallsPerDay * llmBudget * llmFinalCostPct)
+    llmFinalCostPct is driven by:
+    - not using all of maxCompletionTokens
+    - "rounding down" to a cheaper model, e.g. maxCost is .1, model A costs .15, model B costs .05 - we "round down" to model B
+    */
+    const { expectedInputTokens, expectedOutputTokens } =
+      this.getLlmExpectedCost(inputBytes, maxCompletionTokens);
+    const expectedTokenCostPct = //output tokens are ~4x more expensive
+      (expectedInputTokens + expectedOutputTokens * 4) /
+      (expectedInputTokens + maxCompletionTokens * 4);
+    const llmFinalCostPct = expectedTokenCostPct * 0.5; //0.5 is fudge factor to account for "rounding down" - todo do something smarter
+    const llmBudget =
+      (balance / balanceRemainingDays - this.appUsagePerDay) /
+      (Math.max(this.llmUsage.llmCallsPerDay, 1) * llmFinalCostPct);
+    if (!llmBudget && llmBudget !== 0) {
+      console.error("missing llmBudget");
     }
-    const budget = Math.max(
-      Math.min(
-        balance / (balanceRemainingDays / avgDaysBetweenUsage),
-        balance / 5,
-        0.2, //todo allow configuring
-      ),
-      0.005,
-    );
-    if (update) {
-      this.budget = budget;
-    }
-    requestPutData(
-      "usageData",
-      { avgDaysBetweenUsage, ts: now },
-      { app: "magicsandbox.Assistant", evictionPolicy: "fifo" },
-    ).catch(console.error);
-    return budget;
+    return Math.min(Math.max(llmBudget || 0.005, 0.005), balance);
   }
   handleError(error) {
     console.error(error);
@@ -408,7 +492,6 @@ class Assistant {
           content: formatFavoritedApps(Object.values(this.appDataRef.current)),
         });
       }
-      const llmBudget = await this.updateBudget(false);
       if (abortSignal.aborted) return;
       const llmMessages = [
         {
@@ -422,28 +505,40 @@ class Assistant {
             content: formatMessage(message, i === filteredMessages.length - 1),
           })),
       ];
-      const max_completion_tokens = 5000;
+      const inputBytes = new TextEncoder().encode(
+        JSON.stringify(llmMessages),
+      ).length;
+      const maxCompletionTokens = 5000;
       let model, maxCost;
       let approved = true;
+      let askedUser = false;
       if (this.modelRef.current === "auto") {
-        maxCost = llmBudget;
+        maxCost = this.getLlmBudget(inputBytes, maxCompletionTokens);
       } else {
         model = this.modelRef.current;
-        const inputTokens = new TextEncoder().encode(
-          JSON.stringify(llmMessages),
-        ).length; //one token per byte
         maxCost =
-          models[model].input_cost_per_token * inputTokens +
-          models[model].output_cost_per_token * max_completion_tokens;
-        if (this.app && maxCost > 0.1) {
-          //todo
-          const { promise, callback } = this.handleApprove(conversationId);
-          this.setConfirm({
-            header: "Approve Chat Cost?",
-            message: `This chat will cost ${formatAsDollars(maxCost)}.`,
-            callback,
-          });
-          approved = await promise;
+          models[model].input_cost_per_token * inputBytes + //assume one token per byte
+          models[model].output_cost_per_token * maxCompletionTokens;
+        if (this.app) {
+          const { expectedCost } = this.getLlmExpectedCost(
+            inputBytes,
+            maxCompletionTokens,
+            model,
+          );
+          if (
+            expectedCost >
+            (this.llmUsage.costThreshold[this.app.app] ||
+              defaultLlmCostThreshold)
+          ) {
+            const { promise, callback } = this.handleApprove(conversationId);
+            this.setConfirm({
+              header: "Approve Chat Cost?",
+              message: `${this.app.app} provided a lot of information, which increases cost. This chat is expected to cost ${formatAsDollars(expectedCost)}.`,
+              callback,
+            });
+            approved = await promise;
+            askedUser = true;
+          }
         }
       }
       if (abortSignal.aborted) return;
@@ -456,7 +551,7 @@ class Assistant {
         {
           messages: llmMessages,
           model,
-          max_completion_tokens,
+          max_completion_tokens: maxCompletionTokens,
           maxCost,
         },
       ];
@@ -477,13 +572,20 @@ class Assistant {
         tags: [],
       };
       let summary = "";
+      let promptTokens, completionTokens;
       const chunkProcessor = (chunk) => {
-        const { model, content, index } = chunk.result || {};
+        const { model, content, usage, index } = chunk.result || {};
         if (index === 1) {
           summary += content;
         } else {
           if (model) {
             llmMessage.model = models[model]?.name || model;
+          }
+          if (usage) {
+            ({
+              prompt_tokens: promptTokens,
+              completion_tokens: completionTokens,
+            } = usage);
           }
           return content;
         }
@@ -504,6 +606,12 @@ class Assistant {
           messages: [...newMessages, llmMessage],
         });
       }
+      this.handleLlmUsage(
+        inputBytes,
+        promptTokens,
+        completionTokens,
+        askedUser,
+      );
       if (updateSummary) {
         this.handleUpdateConversation({ summary });
       }
@@ -657,13 +765,14 @@ class Assistant {
     }
   }
   handleRequest(event) {
-    clearTimeout(this.requestTimeoutId);
     event.sandboxId = this.sandboxRef.current.getSandboxId();
     this.requestQueue.push(event);
-    this.requestTimeoutId = setTimeout(() => {
-      this.requestTimeoutId = null;
-      this.processRequestBatch();
-    }, 16);
+    if (!this.requestTimeoutId) {
+      this.requestTimeoutId = setTimeout(() => {
+        this.requestTimeoutId = null;
+        this.processRequestBatch();
+      }, 16);
+    }
   }
   async processRequestBatch() {
     if (this.requestProcessing || this.requestQueue.length === 0) return;
@@ -773,6 +882,7 @@ class Assistant {
       this.requestProcessing = false;
       if (!this.requestTimeoutId) {
         this.requestTimeoutId = setTimeout(() => {
+          this.requestTimeoutId = null;
           this.processRequestBatch();
         }, 16);
       }

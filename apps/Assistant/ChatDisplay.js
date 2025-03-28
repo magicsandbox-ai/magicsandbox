@@ -56,6 +56,11 @@ function ChatDisplay({
         ))}
         {handleContinue && (
           <button
+            ref={(el) => {
+              if (el && scrollToBottom) {
+                ref.current.scrollTop = ref.current.scrollHeight;
+              }
+            }}
             className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 text-lg font-bold hover:bg-stone-200"
             onClick={handleContinue}
           >
