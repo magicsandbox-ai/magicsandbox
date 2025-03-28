@@ -6,6 +6,8 @@ import {
   Maximize2,
   OctagonPause,
   Plus,
+  LayoutGrid,
+  Sparkles,
 } from "lucide-react";
 import ChatInput from "./ChatInput.js";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
@@ -22,6 +24,7 @@ function BottomChat({
   model,
   setModel,
   setShowDiscover,
+  setShowApps,
 }) {
   const [input, setInput] = useState("");
 
@@ -168,15 +171,26 @@ function BottomChat({
               </>
             )}
           </button>
-          {app && (
+          {app ? (
             <>
               <button onClick={() => assistantRef.current.handleFavorite(app)}>
-                <Star className={app.favorited ? "fill-yellow-500" : ""} />
+                <Star className={app.favorited ? "fill-yellow-200" : ""} />
                 <span className="sr-only">Favorite</span>
               </button>
               <button onClick={() => assistantRef.current.handleBlock(app)}>
                 <Ban className={app.blocked ? "text-red-500" : ""} />
                 <span className="sr-only">Block</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setShowApps(true)}>
+                <LayoutGrid />
+                <span className="sr-only">Your apps</span>
+              </button>
+              <button onClick={() => setShowDiscover(true)}>
+                <Sparkles />
+                <span className="sr-only">Discover apps</span>
               </button>
             </>
           )}

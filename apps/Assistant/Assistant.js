@@ -65,18 +65,23 @@ class Assistant {
     this.app = null;
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
-    this.appUsagePerDay =
-      initData?.appUsage?.appUsagePerDay ||
-      user?.balance / user?.balanceRemainingDays / 4 ||
-      0.01;
+    this.appUsage = {
+      daysBetweenCalls: 0.1,
+      //assume 1/4 balance on apps, 10 times per day
+      usagePerCall: Math.max(
+        user?.balance / user?.balanceRemainingDays / 4 / 10 || 0.001,
+        0.001,
+      ),
+      pendingUsage: 0,
+      timeoutId: null,
+      ...initData?.appUsage,
+    };
     this.llmUsage = initData?.llmUsage || {
-      llmCallsPerDay: 10,
+      daysBetweenCalls: 0.1,
       inputBytesPerToken: {}, //keyed by author.name
       outputTokens: {}, //keyed by author.name
       costThreshold: {}, //keyed by author.name
     };
-    this.pendingAppUsage = 0;
-    this.appUsageTimeoutId = null;
     this.budget = null;
     this.saveTimeoutIds = {};
     this.requestTimeoutId = null;
@@ -243,45 +248,56 @@ class Assistant {
     });
   }
   handleAppUsage(finalCost) {
-    this.pendingAppUsage += finalCost;
-    clearTimeout(this.appUsageTimeoutId);
-    this.appUsageTimeoutId = setTimeout(() => {
+    this.appUsage.pendingUsage += finalCost;
+    clearTimeout(this.appUsage.timeoutId);
+    this.appUsage.timeoutId = setTimeout(() => {
       this._handleAppUsage(); //batch to avoid too many reads/writes
     }, 16);
   }
   async _handleAppUsage() {
+    //note: need to smooth daysBetweenCalls and usagePerCall separately
+    //correct: appUsagePerDay = avg(usagePerCall) / avg(daysBetweenCalls)
+    //incorrect: appUsagePerDay = avg(usagePerCall / daysBetweenCalls)
     try {
       //need to grab latest in case user is using multiple tabs
-      const { ts, appUsagePerDay } =
+      const { ts, daysBetweenCalls, usagePerCall } =
         (await requestGetData("appUsage", {
           app: "magicsandbox.Assistant",
         })) || {};
       const now = Date.now();
-      if (appUsagePerDay) {
+      if (ts) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         const alpha = 0.1;
-        this.appUsagePerDay =
-          alpha * (this.pendingAppUsage / daysSinceLastUsage) +
-          (1 - alpha) * appUsagePerDay;
+        this.appUsage.daysBetweenCalls =
+          alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
+        this.appUsage.usagePerCall =
+          alpha * this.appUsage.pendingUsage + (1 - alpha) * usagePerCall;
       }
       await requestPutData(
         "appUsage",
-        { ts: now, appUsagePerDay: this.appUsagePerDay },
+        {
+          ts: now,
+          daysBetweenCalls: this.appUsage.daysBetweenCalls,
+          usagePerCall: this.appUsage.usagePerCall,
+        },
         {
           app: "magicsandbox.Assistant",
           evictionPolicy: "fifo",
         },
       );
-      this.pendingAppUsage = 0;
+      this.appUsage.pendingUsage = 0;
     } catch (error) {
       console.error(error);
     }
   }
   async handleLlmUsage(inputBytes, promptTokens, completionTokens, askedUser) {
+    //note: need to smooth daysBetweenCalls rather than llmCallsPerDay
+    //correct: llmCallsPerDay = 1 / avg(daysBetweenCalls)
+    //incorrect: llmCallsPerDay = avg(1 / daysBetweenCalls)
     try {
       const {
         ts,
-        llmCallsPerDay,
+        daysBetweenCalls,
         inputBytesPerToken,
         outputTokens,
         costThreshold,
@@ -293,8 +309,8 @@ class Assistant {
       if (ts) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         let alpha = 0.1;
-        this.llmUsage.llmCallsPerDay =
-          alpha * (1 / daysSinceLastUsage) + (1 - alpha) * llmCallsPerDay;
+        this.llmUsage.daysBetweenCalls =
+          alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
         this.llmUsage.inputBytesPerToken = inputBytesPerToken;
         this.llmUsage.outputTokens = outputTokens;
         this.llmUsage.costThreshold = costThreshold;
@@ -329,7 +345,7 @@ class Assistant {
         "llmUsage",
         {
           ts: now,
-          llmCallsPerDay: this.llmUsage.llmCallsPerDay,
+          daysBetweenCalls: this.llmUsage.daysBetweenCalls,
           inputBytesPerToken: this.llmUsage.inputBytesPerToken,
           outputTokens: this.llmUsage.outputTokens,
           costThreshold: this.llmUsage.costThreshold,
@@ -379,6 +395,9 @@ class Assistant {
     - not using all of maxCompletionTokens
     - "rounding down" to a cheaper model, e.g. maxCost is .1, model A costs .15, model B costs .05 - we "round down" to model B
     */
+    const appUsagePerDay =
+      this.appUsage.usagePerCall / this.appUsage.daysBetweenCalls;
+    const llmCallsPerDay = 1 / this.llmUsage.daysBetweenCalls;
     const { expectedInputTokens, expectedOutputTokens } =
       this.getLlmExpectedCost(inputBytes, maxCompletionTokens);
     const expectedTokenCostPct = //output tokens are ~4x more expensive
@@ -386,12 +405,12 @@ class Assistant {
       (expectedInputTokens + maxCompletionTokens * 4);
     const llmFinalCostPct = expectedTokenCostPct * 0.5; //0.5 is fudge factor to account for "rounding down" - todo do something smarter
     const llmBudget =
-      (balance / balanceRemainingDays - this.appUsagePerDay) /
-      (Math.max(this.llmUsage.llmCallsPerDay, 1) * llmFinalCostPct);
+      (balance / balanceRemainingDays - appUsagePerDay) /
+      (Math.max(llmCallsPerDay, 1) * llmFinalCostPct);
     if (!llmBudget && llmBudget !== 0) {
       console.error("missing llmBudget");
     }
-    return Math.min(Math.max(llmBudget || 0.005, 0.005), balance);
+    return Math.min(Math.max(llmBudget || 0.005, 0.005), balance, 0.99);
   }
   handleError(error) {
     console.error(error);

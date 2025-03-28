@@ -15,6 +15,7 @@ import { formatAsDollars, getMinCost } from "./utils.js";
 import { welcomeMessage } from "./welcomeMessage.js";
 import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
+import AppModal from "./AppModal.js";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -108,6 +109,7 @@ function App({ user, urlApp, initData, initConversation }) {
   const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [showApps, setShowApps] = useState(false);
   const [popularAppData, setPopularAppData] = useState(initData.popularAppData); // {ts, apps}
 
   const sandboxRef = useRef(null);
@@ -375,6 +377,15 @@ function App({ user, urlApp, initData, initConversation }) {
         popularApps={popularAppData?.apps}
       />
     );
+  } else if (showApps) {
+    modalComponent = (
+      <AppModal
+        setShowApps={setShowApps}
+        appData={appData}
+        setAppData={setAppData}
+        assistantRef={assistantRef}
+      />
+    );
   }
 
   return (
@@ -430,6 +441,8 @@ function App({ user, urlApp, initData, initConversation }) {
               app,
               model,
               setModel,
+              setShowDiscover,
+              setShowApps,
             }}
           />
         )}

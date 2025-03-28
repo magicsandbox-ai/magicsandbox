@@ -198,7 +198,7 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
       {favoritable && (
         <button onClick={() => assistantRef.current.handleFavorite(app)}>
-          <Star className={app.favorited ? "fill-yellow-500" : ""} />
+          <Star className={app.favorited ? "fill-yellow-200" : ""} />
           <span className="sr-only">Favorite</span>
         </button>
       )}

@@ -374,7 +374,7 @@ function Note({
       >
         {node.starred ? (
           <>
-            <Star className={iconClassName + " fill-yellow-500"} />
+            <Star className={iconClassName + " fill-yellow-200"} />
             <span className="sr-only">Unstar note</span>
           </>
         ) : (
