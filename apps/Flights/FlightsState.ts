@@ -1,7 +1,8 @@
-class SyncExternalStore {
-  _subscribers: { [prop: string]: (() => void)[] } = {};
-  _props: { [prop: string]: unknown } = {};
-  subscribe(prop: string) {
+class SyncExternalStore<T extends { [key: string]: unknown }> {
+  _subscribers: { [K in keyof T]?: (() => void)[] } = {};
+  _props: Partial<T> = {};
+
+  subscribe<K extends keyof T>(prop: K) {
     return (callback: () => void) => {
       if (!this._subscribers[prop]) {
         this._subscribers[prop] = [];
@@ -14,12 +15,12 @@ class SyncExternalStore {
       };
     };
   }
-  getSnapshot(prop: string) {
+  getSnapshot<K extends keyof T>(prop: K) {
     return () => {
-      return this._props[prop] as any;
+      return this._props[prop] as T[K];
     };
   }
-  set(prop: string, value: unknown) {
+  set<K extends keyof T>(prop: K, value: T[K]) {
     this._props[prop] = value;
     this._subscribers[prop]?.forEach((subscriber) => subscriber());
   }
@@ -29,7 +30,7 @@ class Flight {
   constructor(public id: string) {}
 }
 
-class FlightsState extends SyncExternalStore {
+class FlightsState extends SyncExternalStore<{ flights: Flight[] }> {
   constructor() {
     super();
     this.set("flights", []);

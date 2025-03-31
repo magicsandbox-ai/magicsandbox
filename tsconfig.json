@@ -11,6 +11,10 @@
     "noUncheckedIndexedAccess": true,
     "jsx": "preserve",
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "allowArbitraryExtensions": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext"
   }
 }

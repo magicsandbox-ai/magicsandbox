@@ -21,13 +21,6 @@ interface UserInfo {
   userId?: string;
 }
 
-interface App {
-  style?: string;
-  html?: string;
-  script?: string;
-  metadata: object;
-}
-
 interface SerializedResponse {
   body: any; // parsed according to responseType
   status: number;
@@ -35,24 +28,94 @@ interface SerializedResponse {
 }
 
 declare global {
-  function requestFunction<TArgs, TResult>(
+  function requestApp<TMetadataKeys extends keyof Metadata>(
+    app: string,
+    options?: {
+      maxCost?: number;
+      includeMetadata?: TMetadataKeys[];
+    },
+  ): Promise<{
+    style?: string;
+    html?: string;
+    script?: string;
+    metadata: Pick<Metadata, TMetadataKeys>;
+  }>;
+
+  // streaming
+  function requestFunction<
+    TArgs = any,
+    TResult = any,
+    TMetadataKeys extends keyof Metadata = keyof Metadata,
+  >(
     fn: string,
     args: TArgs,
     options: {
+      stream: true;
       maxCost?: number;
-      stream?: boolean;
-      includeMetadata?: Array<keyof Metadata>;
+      includeMetadata?: TMetadataKeys[];
       includeUserInfo?: Array<keyof UserInfo>;
+    },
+  ): Promise<
+    AsyncIterable<{
+      result?: TResult;
+      metadata?: Pick<Metadata, TMetadataKeys>;
+    }>
+  >;
+
+  // non streaming
+  function requestFunction<
+    TArgs = any,
+    TResult = any,
+    TMetadataKeys extends keyof Metadata = keyof Metadata,
+  >(
+    fn: string,
+    args: TArgs,
+    options?: {
+      stream?: false;
+      maxCost?: number;
+      includeMetadata?: TMetadataKeys[];
+      includeUserInfo?: Array<keyof UserInfo>;
+      app?: string; // Assistants only
     },
   ): Promise<{
     result: TResult;
-    metadata: Pick<
-      Metadata,
-      (typeof options)["includeMetadata"] extends ReadonlyArray<infer K>
-        ? K
-        : never
-    >;
+    metadata: Pick<Metadata, TMetadataKeys>;
   }>;
+
+  function requestMetadata<TMetadataKeys extends keyof Metadata>(
+    identifier: string,
+    includeMetadata?: TMetadataKeys[],
+    options?: {
+      kind?: "app" | "function";
+      includePrivate?: boolean; // Assistants only
+    },
+  ): Promise<Pick<Metadata, TMetadataKeys>[]>;
+
+  function requestPutData(
+    key: string,
+    val: Exclude<any, null>,
+    options?: {
+      app?: string;
+      evictionPolicy?: "fifo";
+      backup?: boolean; // Assistants only
+    },
+  ): Promise<true>;
+
+  function requestDeleteData(
+    key: string,
+    options?: {
+      app?: string;
+      backup?: boolean; // Assistants only
+    },
+  ): Promise<true>;
+
+  function requestGetData(
+    key: string,
+    options?: {
+      app?: string;
+      backup?: boolean; // Assistants only
+    },
+  ): Promise<any>;
 }
 
 export {};

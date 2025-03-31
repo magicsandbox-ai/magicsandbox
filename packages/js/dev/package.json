@@ -28,5 +28,8 @@
     "json5": "^2.2.3",
     "open": "^10.1.0",
     "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "typescript": "^5.8.2"
   }
 }
