@@ -1,0 +1,11 @@
+{
+  "name": "@magicsandbox.ai/types",
+  "version": "0.1.0",
+  "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
+  },
+  "license": "MIT",
+  "type": "module"
+}

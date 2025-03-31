@@ -217,9 +217,9 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
   - `app` is the name of the App that is calling the Function. This is provided by the user's Assistant and is not verified by Magic Sandbox.
 
 ```typescript
-type UserInfo = {
+interface UserInfo {
   userId?: string;
-};
+}
 ```
 
 ```javascript
@@ -465,12 +465,12 @@ Retrieve an App's `style`, `html`, `script`, and `metadata`.
 **Returns:** a Promise that resolves to an App:
 
 ```typescript
-type App = {
+interface App {
   style?: string;
   html?: string;
   script?: string;
   metadata: object;
-};
+}
 ```
 
 `metadata` includes the keys specified in `includeMetadata`.
@@ -604,11 +604,11 @@ Additionally, `options` accepts a `responseType` option used to parse the respon
 **Returns:** a Promise that resolves to a SerializedResponse, since the Response object itself cannot be serialized and passed into the Sandbox.
 
 ```typescript
-type SerializedResponse = {
+interface SerializedResponse {
   body: any; // parsed according to responseType
   status: number;
   headers: { [headerName: string]: string };
-};
+}
 ```
 
 ### requestOpenUrl
@@ -705,12 +705,12 @@ The Assistant is almost completely responsible for the UI - Magic Sandbox does n
 When the Assistant's `init` function is called, it receives a single object as argument. The object has the key `user`, which is an object:
 
 ```typescript
-type User = {
+interface User {
   name: string;
   balance: number;
   balanceRemainingDays: number | undefined; //number of days until balance resets, undefined for unauthenticated users
   lastPublished: number; //timestamp the user last published an App or Function
-};
+}
 ```
 
 The Assistant is responsible for setting `_app` with `requestUrlParams`.
@@ -788,13 +788,13 @@ To specify `finalCost`, you must:
 - Include an `x-command-object` header in your response
 
 ```typescript
-type CommandObject = {
+interface CommandObject {
   result?: any; //sent to the user
   __command: {
     //used by the server
     finalCost: number;
   };
-};
+}
 ```
 
 The command object cannot exceed 100KB. If you have a large result you want to send to the user, you'll need to [stream](#streaming-json) it.
@@ -837,7 +837,7 @@ Consult your specific server framework's documentation for details.
 Below are the metadata keys that are available for Apps and Functions:
 
 ```typescript
-type Metadata = {
+interface Metadata {
   id: string; //author.name@version
   author: string;
   name: string;
@@ -854,7 +854,7 @@ type Metadata = {
   status: "active" | "deprecated" | "inactive";
   decode: "json" | "msgpack" | "string" | "bytes";
   usage: number; //number of times the App or Function has been used
-};
+}
 ```
 
 App and Function metadata is made publicly available unless the App or Function's `private` key is set to true. This enables things like building an App or Function that can search for relevant Apps or Functions given some criteria.
