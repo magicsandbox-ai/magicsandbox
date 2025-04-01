@@ -149,6 +149,14 @@ function App() {
     setSelectedFilename("magic.json");
   }
 
+  function fileExists(filename) {
+    return filename in filesRef.current;
+  }
+
+  function readFile(filename) {
+    return filesRef.current[filename];
+  }
+
   async function callProcessTailwind() {
     let appObj;
     try {
@@ -156,16 +164,13 @@ function App() {
     } catch {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
-    appObj = await getDefaults(appObj);
+    appObj = await getDefaults({ appObj, fileExists });
     appState.scriptFile = appObj.scriptFile;
     //this is only used for tailwind tooltips, so skip building tailwind.config.js
     //not worth the slow build that potentially makes network requests
     setTailwindState(
-      await runProcessTailwind(
-        appObj,
-        (filename) => filename in filesRef.current,
-        (filename) => filesRef.current[filename],
-        (config, css) => processTailwind(config, css, true),
+      await runProcessTailwind(appObj, fileExists, readFile, (config, css) =>
+        processTailwind(config, css, true),
       ),
     );
   }
@@ -389,8 +394,8 @@ function App() {
           ...(publish ? { minify: true, sourcemap: false } : {}),
         },
         context: esbuildContextRef.current,
-        fileExists: (filename) => filename in files,
-        readFile: (filename) => files[filename],
+        fileExists,
+        readFile,
         processTailwind,
       });
       if (appObjRef.current.dependencies) {

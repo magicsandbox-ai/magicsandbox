@@ -40,7 +40,7 @@ async function buildApp({
   log = () => {},
 }) {
   now = now || new Date();
-  appObj = getDefaults(appObj, esbuildOptions);
+  appObj = getDefaults({ appObj, esbuildOptions, fileExists });
   if (!appObj.script && (await fileExists(appObj.scriptFile))) {
     let result;
     const options = {
@@ -66,12 +66,35 @@ async function buildApp({
   return { appObj, context };
 }
 
-function getDefaults(appObj, esbuildOptions) {
+async function getDefaults({ appObj, esbuildOptions, fileExists }) {
   appObj.esbuildOptions = {
     ...defaultEsbuildOptions,
     ...esbuildOptions,
     ...appObj.esbuildOptions,
   };
+  if (!appObj.scriptFile) {
+    const scriptFilesExists = await Promise.all([
+      fileExists("index.js"),
+      fileExists("index.jsx"),
+      fileExists("index.ts"),
+      fileExists("index.tsx"),
+    ]);
+    const scriptFiles = [
+      "index.js",
+      "index.jsx",
+      "index.ts",
+      "index.tsx",
+    ].filter((file, index) => scriptFilesExists[index]);
+    if (scriptFiles.length > 0) {
+      if (scriptFiles.length > 1) {
+        console.warn(
+          `Found multiple default scriptFiles: ${scriptFiles.join(", ")}`,
+        );
+        console.warn(`Using: ${scriptFiles[0]}`);
+      }
+      appObj.scriptFile = scriptFiles[0];
+    }
+  }
   appObj = preBuildSchema.parse(appObj);
   return appObj;
 }

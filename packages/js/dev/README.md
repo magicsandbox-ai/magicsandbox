@@ -106,6 +106,25 @@ Script to run before building the App. The script will run in your current worki
 
 This package exports a `globals` object that can be used with your linter. See [here](https://github.com/magicsandbox-ai/magicsandbox/blob/main/eslint.config.mjs) for an example.
 
+## TypeScript Support
+
+Use `index.ts` or `index.tsx` as your entrypoint. The build looks for these files by default, so you don't need to configure `scriptFile` in `magic.json`.
+
+This package installs `magicsandbox.ai/types` as a dependency. To get type definitions for `requestFunction` and other Sandbox functions, add to your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/@magicsandbox.ai/types"
+    ]
+  }
+}
+```
+
+See [here](https://github.com/magicsandbox-ai/magicsandbox/blob/main/tsconfig.json) for an example `tsconfig.json`.
+
 ## Debugging
 
 Debug your builds with `npm run dev --debug MyApp`.

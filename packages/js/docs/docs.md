@@ -291,7 +291,7 @@ The remainder of this section describes the additional keys accepted by `magic.j
 
 _(string, default "index.js")_
 
-Main filename for `script` code. Your JavaScript files are bundled with esbuild using `scriptFile` as the entrypoint.
+Main filename for `script` code. Your JavaScript files are bundled with esbuild using `scriptFile` as the entrypoint. If not provided, the build will look for the following files in order: "index.js", "index.jsx", "index.ts", "index.tsx".
 
 #### html
 
