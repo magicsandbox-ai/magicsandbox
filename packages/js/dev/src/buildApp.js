@@ -40,7 +40,7 @@ async function buildApp({
   log = () => {},
 }) {
   now = now || new Date();
-  appObj = getDefaults({ appObj, esbuildOptions, fileExists });
+  appObj = await getDefaults({ appObj, esbuildOptions, fileExists });
   if (!appObj.script && (await fileExists(appObj.scriptFile))) {
     let result;
     const options = {

@@ -20,7 +20,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Star, Ban, MoveVertical } from "lucide-react";
 
-function AppList({ appData, setAppData, assistantRef }) {
+function AppList({
+  appData,
+  setAppData,
+  assistantRef,
+  modal = false,
+  setShowApps = () => {},
+}) {
   const [state, setState] = useState("favorited");
 
   const states = ["favorited", "published", "recent", "blocked"];
@@ -52,7 +58,13 @@ function AppList({ appData, setAppData, assistantRef }) {
   const blockable = state === "recent" || state === "blocked";
 
   return (
-    <div className="flex justify-center pb-6">
+    <div
+      className={
+        modal
+          ? "flex h-[440px] w-[680px] max-w-full justify-center p-3 text-sm md:text-base"
+          : "flex justify-center pb-6"
+      }
+    >
       <div className="flex w-full max-w-lg flex-col items-center">
         <div className="flex w-full justify-evenly">
           {states.map((s) => (
@@ -60,6 +72,7 @@ function AppList({ appData, setAppData, assistantRef }) {
               key={s}
               active={s === state}
               onClick={() => setState(s)}
+              modal={modal}
             >
               {properCase(s)}
             </AppListButton>
@@ -67,7 +80,13 @@ function AppList({ appData, setAppData, assistantRef }) {
         </div>
         <p className="mt-2 text-lg font-medium">{`${properCase(state)} Apps`}</p>
         {message && (
-          <p className="text-center text-sm text-stone-500">{message}</p>
+          <p
+            className={`text-center text-stone-500 ${
+              modal ? "text-xs md:text-sm" : "text-sm"
+            }`}
+          >
+            {message}
+          </p>
         )}
         {displayApps.length > 0 ? (
           <ListComponent {...{ appData, setAppData, state, displayApps }}>
@@ -80,6 +99,8 @@ function AppList({ appData, setAppData, assistantRef }) {
                   favoritable={favoritable}
                   blockable={blockable}
                   assistantRef={assistantRef}
+                  modal={modal}
+                  setShowApps={setShowApps}
                 />
               ))}
             </div>
@@ -150,14 +171,14 @@ function StaticList({ children }) {
   return children;
 }
 
-function AppListButton({ active, onClick, children }) {
+function AppListButton({ active, onClick, children, modal }) {
   return (
     <button
-      className={`w-20 rounded-md py-px hover:bg-stone-200 ${
+      className={`rounded-md py-px hover:bg-stone-200 ${
         active
           ? "border-2 border-stone-700 bg-stone-200 font-medium"
           : "border border-stone-500 bg-stone-100"
-      }`}
+      } ${modal ? "px-0.5 md:w-20" : "w-20"}`}
       onClick={onClick}
     >
       {children}
@@ -171,7 +192,15 @@ function AppListButton({ active, onClick, children }) {
 - add bang?
 */
 
-function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
+function AppCard({
+  app,
+  sortable,
+  favoritable,
+  blockable,
+  assistantRef,
+  modal,
+  setShowApps,
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: app.app });
 
@@ -185,6 +214,9 @@ function AppCard({ app, sortable, favoritable, blockable, assistantRef }) {
   const handleClick = (e) => {
     if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
       assistantRef.current.handleApp({ app: app.app, maxCost: app.minCost });
+      if (modal) {
+        setShowApps(false);
+      }
     }
   };
 

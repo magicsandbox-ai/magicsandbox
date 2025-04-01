@@ -227,7 +227,8 @@ class Assistant {
         }),
       );
     } catch (error) {
-      console.error(error); //todo
+      console.error(error);
+      this.toastsRef.current.addToast(`Error: failed to delete chat`, "error");
     }
     conversationIds = new Set(conversationIds);
     this.setConversationSummaries((conversationSummaries) =>
@@ -637,7 +638,7 @@ class Assistant {
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "open_app") {
           const app = this.appDataRef.current[tag.content.trim()];
-          if (app) {
+          if (app.favorited) {
             await this.handleApp({
               input,
               app: app.app,

@@ -15,6 +15,8 @@ export default function AppModal({
           appData={appData}
           setAppData={setAppData}
           assistantRef={assistantRef}
+          modal={true}
+          setShowApps={setShowApps}
         />
       }
       onClose={() => {

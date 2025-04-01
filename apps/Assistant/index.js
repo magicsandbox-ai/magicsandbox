@@ -418,7 +418,7 @@ function App({ user, urlApp, initData, initConversation }) {
         )}
         {messages.length > 0 && app === null && (
           <ChatDisplay
-            outerClassName="my-6 flex grow flex-col items-center"
+            outerClassName="py-6 flex grow flex-col items-center"
             innerClassName="w-full max-w-screen-lg"
             messages={messages}
             assistantRef={assistantRef}

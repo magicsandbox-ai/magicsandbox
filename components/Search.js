@@ -61,7 +61,7 @@ function SearchInner({ nodes, onClickResult, placeholder }) {
   }
 
   return (
-    <div className="flex h-[440px] w-[680px] flex-col gap-3 overflow-y-auto p-3">
+    <div className="flex h-[440px] w-[680px] max-w-full flex-col gap-3 overflow-y-auto p-3">
       <form onSubmit={handleSearch}>
         <div className="flex gap-2">
           <input
@@ -69,7 +69,7 @@ function SearchInner({ nodes, onClickResult, placeholder }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={placeholder}
-            className="flex-1 rounded border border-stone-200 p-2"
+            className="min-w-0 flex-1 rounded border border-stone-200 p-2"
             autoFocus
             aria-label={placeholder}
           />

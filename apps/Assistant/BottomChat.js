@@ -46,7 +46,6 @@ function BottomChat({
 
   async function handleInput(input) {
     //don't let user submit while loading
-    //todo let user stop loading?
     if (input === "" || assistantRef.current === null || chatLoading) return;
     setInput("");
     try {
@@ -95,6 +94,8 @@ function BottomChat({
   } else {
     placeholder = "Chat with your Assistant";
   }
+
+  const actionButtonStyle = collapsed ? "" : "hidden md:block";
 
   return (
     <>
@@ -173,22 +174,34 @@ function BottomChat({
           </button>
           {app ? (
             <>
-              <button onClick={() => assistantRef.current.handleFavorite(app)}>
+              <button
+                onClick={() => assistantRef.current.handleFavorite(app)}
+                className={actionButtonStyle}
+              >
                 <Star className={app.favorited ? "fill-yellow-200" : ""} />
                 <span className="sr-only">Favorite</span>
               </button>
-              <button onClick={() => assistantRef.current.handleBlock(app)}>
+              <button
+                onClick={() => assistantRef.current.handleBlock(app)}
+                className={actionButtonStyle}
+              >
                 <Ban className={app.blocked ? "text-red-500" : ""} />
                 <span className="sr-only">Block</span>
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => setShowApps(true)}>
+              <button
+                onClick={() => setShowApps(true)}
+                className={actionButtonStyle}
+              >
                 <LayoutGrid />
                 <span className="sr-only">Your apps</span>
               </button>
-              <button onClick={() => setShowDiscover(true)}>
+              <button
+                onClick={() => setShowDiscover(true)}
+                className={actionButtonStyle}
+              >
                 <Sparkles />
                 <span className="sr-only">Discover apps</span>
               </button>
