@@ -21,14 +21,12 @@ interface UserInfo {
   userId?: string;
 }
 
-interface SerializedResponse {
-  body: any; // parsed according to responseType
-  status: number;
-  headers: { [headerName: string]: string };
+interface DatabaseSchema {
+  [key: string]: any;
 }
 
 declare global {
-  function requestApp<TMetadataKeys extends keyof Metadata>(
+  function requestApp<TMetadataKeys extends keyof Metadata = never>(
     app: string,
     options?: {
       maxCost?: number;
@@ -91,9 +89,12 @@ declare global {
     },
   ): Promise<Pick<Metadata, TMetadataKeys>[]>;
 
-  function requestPutData(
-    key: string,
-    val: Exclude<any, null>,
+  function requestPutData<
+    TSchema = DatabaseSchema,
+    TKey extends keyof TSchema = keyof TSchema,
+  >(
+    key: TKey & string,
+    val: TSchema[TKey],
     options?: {
       app?: string;
       evictionPolicy?: "fifo";
@@ -101,21 +102,65 @@ declare global {
     },
   ): Promise<true>;
 
-  function requestDeleteData(
-    key: string,
+  function requestDeleteData<
+    TSchema = DatabaseSchema,
+    TKey extends keyof TSchema = keyof TSchema,
+  >(
+    key: TKey & string,
     options?: {
       app?: string;
       backup?: boolean; // Assistants only
     },
   ): Promise<true>;
 
-  function requestGetData(
-    key: string,
+  function requestGetData<
+    TSchema = DatabaseSchema,
+    TKey extends keyof TSchema = keyof TSchema,
+  >(
+    key: TKey & string,
     options?: {
       app?: string;
       backup?: boolean; // Assistants only
     },
-  ): Promise<any>;
+  ): Promise<TSchema[TKey]>;
+
+  function requestGetAllData<TSchema = DatabaseSchema>(options?: {
+    app?: string;
+    backup?: boolean; // Assistants only
+  }): Promise<TSchema>;
+
+  function requestGetAllKeysData<TSchema = DatabaseSchema>(options?: {
+    app?: string;
+    backup?: boolean; // Assistants only
+  }): Promise<Array<keyof TSchema & string>>;
+
+  function requestFetch<T = any>(
+    resource: string | URL | Request,
+    options?: Pick<
+      RequestInit,
+      "body" | "headers" | "integrity" | "method" | "priority" | "redirect"
+    > & {
+      responseType?: "auto" | "json" | "string" | "bytes";
+    },
+  ): Promise<{
+    body: T; // parsed according to responseType
+    status: number;
+    headers: { [headerName: string]: string };
+  }>;
+
+  function requestOpenUrl(url: string): Promise<true>;
+
+  function requestPublish(magicJson: any): Promise<true>;
+
+  function requestDownload(filename: string, content: BlobPart): Promise<true>;
+
+  function requestUrlParams(
+    params?: {
+      [key: string]: string | null;
+    } | null,
+  ): Promise<{ [key: string]: string }>;
+
+  function requestSandbox(request: string, args?: any): Promise<any>;
 }
 
 export {};
