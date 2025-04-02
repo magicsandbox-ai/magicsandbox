@@ -155,11 +155,13 @@ async function requestHandler({
         "getAllKeysData",
       ].includes(request)
     ) {
-      if (!data.options.app && appObjRef.current.author) {
-        //in case we don't find data with e.g. getData, set options.app for the call to requestSandbox
-        data.options.app = `${appObjRef.current.author}.${appObjRef.current.name}`;
+      if (!data.options?.app && appObjRef.current.author) {
+        data.options = {
+          ...data.options,
+          app: `${appObjRef.current.author}.${appObjRef.current.name}`,
+        };
       }
-      const app = data.options.app;
+      const app = data.options?.app;
       if (requestDataRef.current[app] === undefined) {
         //initialize requestDataRef[app]
         try {

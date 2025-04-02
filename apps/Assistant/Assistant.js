@@ -131,15 +131,19 @@ class Assistant {
     }
     this.handleStopConversation();
     const conversation = this.conversationsRef.current[conversationId];
-    conversation.messages.push({
-      role: "system",
-      tags: [
-        {
-          content:
-            "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
-        },
-      ],
-    });
+    if (
+      conversation.messages[conversation.messages.length - 1]?.role !== "system"
+    ) {
+      conversation.messages.push({
+        role: "system",
+        tags: [
+          {
+            content:
+              "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
+          },
+        ],
+      });
+    }
     this.setCurrentConversation({
       conversationId,
       messages: conversation.messages,
@@ -623,7 +627,7 @@ class Assistant {
           llmMessage.tags.push({ tag, content });
         }
         this.handleUpdateConversation({
-          messages: [...newMessages, llmMessage],
+          messages: [...newMessages, { ...llmMessage }], //create new llmMessage since Message component is memoized
         });
       }
       this.handleLlmUsage(

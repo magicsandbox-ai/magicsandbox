@@ -101,56 +101,54 @@ function BottomChat({
     <>
       <div className="flex flex-none items-center justify-center gap-2 border-t border-stone-500 bg-stone-100">
         <div className="flex-1" /> {/* spacer */}
-        <div className="flex h-12 w-full max-w-screen-lg flex-initial items-center">
-          <div className="relative h-full w-full">
-            <div
-              className={`absolute bottom-1.5 left-0 right-0 z-10 flex flex-col justify-center gap-2 rounded-xl border-stone-500 bg-white py-1 outline-1 ${
-                collapsed
-                  ? "border focus-within:outline focus-within:outline-stone-500"
-                  : "border-2 py-2"
-              }`}
-              onKeyDown={handleEscape}
-              tabIndex={-1}
-            >
-              {!collapsed && (
-                <>
-                  <div className="mx-2 flex items-center justify-between gap-2">
-                    <div className="flex grow items-center">
-                      <ModelPicker model={model} setModel={setModel} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          assistantRef.current.handleNewConversation()
-                        }
-                      >
-                        <Plus />
-                        <span className="sr-only">New chat</span>
-                      </button>
-                      {maximizeComponent}
-                    </div>
+        <div className="relative flex min-h-12 w-full max-w-screen-lg flex-initial items-center py-1.5">
+          <div
+            className={`flex w-full flex-col justify-center gap-2 rounded-xl border-stone-500 bg-white py-1 outline-1 ${
+              collapsed
+                ? "border focus-within:outline focus-within:outline-stone-500"
+                : "absolute bottom-1.5 z-10 border-2 py-2"
+            }`}
+            onKeyDown={handleEscape}
+            tabIndex={-1}
+          >
+            {!collapsed && (
+              <>
+                <div className="mx-2 flex items-center justify-between gap-2">
+                  <div className="flex grow items-center">
+                    <ModelPicker model={model} setModel={setModel} />
                   </div>
-                  <ChatDisplay
-                    outerClassName="max-h-[80vh]"
-                    messages={messages}
-                    assistantRef={assistantRef}
-                    setShowDiscover={setShowDiscover}
-                  />
-                  <hr className="mx-2 border-stone-300" />
-                </>
-              )}
-              <div className="flex items-center">
-                <ChatInput
-                  className={`max-h-[148px] grow resize-none px-1 ${
-                    collapsed ? "mx-1 outline-0" : "mx-2"
-                  }`}
-                  input={input}
-                  setInput={setInput}
-                  handleInput={handleInput}
-                  placeholder={placeholder}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        assistantRef.current.handleNewConversation()
+                      }
+                    >
+                      <Plus />
+                      <span className="sr-only">New chat</span>
+                    </button>
+                    {maximizeComponent}
+                  </div>
+                </div>
+                <ChatDisplay
+                  outerClassName="max-h-[70vh]"
+                  messages={messages}
+                  assistantRef={assistantRef}
+                  setShowDiscover={setShowDiscover}
                 />
-                {collapsed && maximizeComponent}
-              </div>
+                <hr className="mx-2 border-stone-300" />
+              </>
+            )}
+            <div className="flex items-center">
+              <ChatInput
+                className={`max-h-[148px] grow resize-none px-1 ${
+                  collapsed ? "mx-1 outline-0" : "mx-2"
+                }`}
+                input={input}
+                setInput={setInput}
+                handleInput={handleInput}
+                placeholder={placeholder}
+              />
+              {collapsed && maximizeComponent}
             </div>
           </div>
         </div>
