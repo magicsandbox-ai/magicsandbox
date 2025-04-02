@@ -23,7 +23,7 @@ Anyone can create an app, but Magic Sandbox can only provide support for apps th
 
 # Payments
 
-When you join Magic Sandbox, you start with a small account balance. [Sign up](https://magicsandbox.ai/login) for free to unlock a higher account balance, or start a free trial of Magic Sandbox Plus for the best experience.
+When you join Magic Sandbox, you start with a small account balance. [Sign up](https://magicsandbox.ai/account/upgrade) for free to unlock a higher account balance, or start a free trial of Magic Sandbox Plus for the best experience.
 
 You account balance can be spent in the following ways:
 
@@ -35,7 +35,7 @@ You account balance can be spent in the following ways:
 
 Just like if you were using any other app, the author of the app you're using can see any data you enter in the app. One benefit of Magic Sandbox is that the Magic Sandbox platform handles payments and authentication, so you don't need to share this sensitive information with any apps.
 
-**You never need to share your password, credit card, or other sensitive information with any apps.** Please report any suspicious apps to [help@magicsandbox.ai](mailto:help@magicsandbox.ai). You should only ever enter this information when logging in at [https://magicsandbox.ai/login](https://magicsandbox.ai/login).
+**You never need to share your password, credit card, or other sensitive information with any apps.** Please report any suspicious apps to [help@magicsandbox.ai](mailto:help@magicsandbox.ai). You should only ever enter this information on your account page at [https://magicsandbox.ai/account](https://magicsandbox.ai/account).
 
 Apps execute in a secure environment where your confirmation is required before apps can take sensitive actions like:
 
@@ -57,7 +57,7 @@ By default, Magic Sandbox apps save data using your browser's storage, which mea
 - If you clear your browser's "site data", your data will be lost
 - If you use incognito mode, your data will not be saved
 
-Upgrade to [Magic Sandbox Plus](https://magicsandbox.ai/login) to backup your data to the cloud and sync it across all your devices.
+Upgrade to [Magic Sandbox Plus](https://magicsandbox.ai/upgrade) to backup your data to the cloud and sync it across all your devices.
 
 If using a shared device, create your own profile in your browser to keep your data private.
 

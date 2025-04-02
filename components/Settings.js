@@ -2,7 +2,6 @@
 "lucide-react": "^0.408.0",
 */
 import React, { useState } from "react";
-import ModalOverlay from "./ModalOverlay.js";
 import Table from "./Table.js";
 
 function Setting({ setting, settings, setSettings }) {
@@ -57,19 +56,11 @@ function Setting({ setting, settings, setSettings }) {
   );
 }
 
-function InnerSettings({ settings, setSettings, onClose, onSave }) {
+function InnerSettings({ settings, setSettings, onSave }) {
   const buttonStyle =
     "rounded-md border-2 border-stone-500 bg-stone-200 px-1 py-px font-medium hover:bg-stone-300 w-28";
   return (
     <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto p-4">
-      <div className="flex justify-center gap-12">
-        <button className={buttonStyle} onClick={() => onSave(settings)}>
-          Save Settings
-        </button>
-        <button className={buttonStyle} onClick={onClose}>
-          Close
-        </button>
-      </div>
       {settings.map((setting, i) => (
         <React.Fragment key={i}>
           <Setting
@@ -80,24 +71,22 @@ function InnerSettings({ settings, setSettings, onClose, onSave }) {
           {i < settings.length - 1 && <hr className="border-stone-300" />}
         </React.Fragment>
       ))}
+      <div className="flex justify-center gap-12">
+        <button className={buttonStyle} onClick={() => onSave(settings)}>
+          Save Settings
+        </button>
+      </div>
     </div>
   );
 }
 
-function Settings({ initSettings, onClose, onSave }) {
+function Settings({ initSettings, onSave }) {
   const [settings, setSettings] = useState(initSettings);
   return (
-    <ModalOverlay
-      modal={
-        <InnerSettings
-          settings={settings}
-          setSettings={setSettings}
-          onClose={onClose}
-          onSave={onSave}
-        />
-      }
-      onClose={onClose}
-      fullScreen={true}
+    <InnerSettings
+      settings={settings}
+      setSettings={setSettings}
+      onSave={onSave}
     />
   );
 }

@@ -209,7 +209,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 - The request is a POST that will timeout after 60 seconds
 - Includes headers:
   - `Content-Type: application/json`
-  - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/api-key). See below code snippets that generate `hashedKey`
+  - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/account/api-key). See below code snippets that generate `hashedKey`
 - Includes the body `{ id, args, options, userInfo, app }`, where:
   - `id` is the fully resolved Function name, author.name@version
   - `args`, `options` were the arguments to [requestFunction](#requestfunction)
@@ -255,7 +255,7 @@ From your endpoint, you can call other Functions by making a POST request to `ht
 
 - Headers:
   - `Content-Type: application/json`
-  - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
+  - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/account/api-key)
 - Body:
   - An object with keys `fn`, `args`, and `options`, the arguments to [requestFunction](#requestfunction)
 
@@ -273,7 +273,7 @@ This section details how to publish Apps and Functions. You have a number of opt
     - `version`: App or Function version
   - Headers:
     - `Content-Type: application/json`
-    - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key)
+    - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/account/api-key)
   - Body:
     - the App or Function JSON object
 
@@ -859,7 +859,7 @@ interface Metadata {
 
 App and Function metadata is made publicly available unless the App or Function's `private` key is set to true. This enables things like building an App or Function that can search for relevant Apps or Functions given some criteria.
 
-To access the public metadata, make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/api-key). Ensure your client is configured to follow redirects. The public metadata is updated hourly.
+To access the public metadata, make a GET request to `https://magicsandbox.ai/magics` and include the header `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/account/api-key). Ensure your client is configured to follow redirects. The public metadata is updated hourly.
 
 ## Limits
 

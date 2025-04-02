@@ -26,7 +26,7 @@ MyApp/
     └── test2.spec.js
 ```
 
-`@magicsandbox.ai/test` requires the `MAGICSANDBOX_API_KEY` environment variable to be set, which you can set in a `.env` file in your project root. You can get an API key [here](https://magicsandbox.ai/api-key).
+`@magicsandbox.ai/test` requires the `MAGICSANDBOX_API_KEY` environment variable to be set, which you can set in a `.env` file in your project root. You can get an API key [here](https://magicsandbox.ai/account/api-key).
 
 See [Writing Tests](#writing-tests) for details on creating the test files like `test1.spec.js`.
 

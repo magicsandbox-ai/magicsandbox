@@ -39,7 +39,7 @@ Run `npx magicsandbox --help` to see more command line options.
 
 Run `npm run publish MyApp` to build and publish your App.
 
-Publishing requires an API key, which you can get [here](https://magicsandbox.ai/api-key).
+Publishing requires an API key, which you can get [here](https://magicsandbox.ai/account/api-key).
 
 `@magicsandbox.ai/dev` requires the `MAGICSANDBOX_API_KEY` environment variable to be set, which you can set in a `.env` file in your project root.
 
