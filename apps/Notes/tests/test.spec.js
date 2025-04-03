@@ -77,6 +77,15 @@ test("Notes", async ({ app }) => {
   }, noteId);
   await expect(app.getByText("API Edit")).toBeVisible();
 
+  //api log
+  const logPromise = app.page().waitForEvent("console");
+  await app.evaluate((noteId) => {
+    app.api.logNotes([noteId]);
+  }, noteId);
+  const log = await logPromise;
+  const logText = await log.text();
+  await expect(logText).toContain("API Edit");
+
   //api rename
   await app.evaluate((noteId) => {
     app.api.renameNode(noteId, "API Rename");

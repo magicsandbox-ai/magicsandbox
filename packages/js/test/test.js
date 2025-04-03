@@ -1,10 +1,6 @@
 import "dotenv/config";
 import { test as base, expect } from "@playwright/test";
 
-async function waitForFrame(page) {
-  await expect(page.locator("iframe")).toHaveCount(1, { timeout: 10000 });
-}
-
 const test = base.extend({
   appOptions: [{}, { option: true }],
   app: async ({ page, appOptions }, use) => {
@@ -44,25 +40,45 @@ const test = base.extend({
         window._AUTO_CONFIRM = true;
       });
     }
-    const devLocal = assistant.childFrames()[0];
-    const buildCompletePromise = devLocal
-      .page()
-      .waitForEvent("requestfinished", (request) => {
-        return request
-          .url()
-          .startsWith(process.env.MAGICSANDBOX_DEV_SERVER_URL);
-      });
+
     await assistant
       .getByRole("button", { name: "Open the app magicsandbox.DevLocal" })
       .click();
-    await buildCompletePromise;
-    //request is finished, but the messages have to be passed through all the frames
-    //so wait an extra second
-    //todo this is not ideal - maybe listen for an event in the devlocal or app frame?
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const devLocal = assistant.childFrames()[0];
+    await waitForFrame(devLocal);
     const app = devLocal.childFrames()[0];
+    await waitForCustomEvent(app.page(), "message");
     await use(app);
   },
 });
 
 export { test };
+
+async function waitForFrame(page) {
+  await expect(page.locator("iframe")).toHaveCount(1, { timeout: 10000 });
+}
+
+async function waitForCustomEvent(page, event) {
+  const promise = createDeferredPromise();
+  await page.exposeFunction("_handleCustomEvent", async (event) => {
+    promise.resolve(event);
+    await page.evaluate(() => {
+      window.removeEventListener(event, window._handleCustomEvent);
+    });
+  });
+  await page.evaluate((event) => {
+    window.addEventListener(event, window._handleCustomEvent);
+  }, event);
+  return await promise;
+}
+
+function createDeferredPromise() {
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  promise.resolve = resolve;
+  promise.reject = reject;
+  return promise;
+}

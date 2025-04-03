@@ -7,7 +7,7 @@ import React, {
 import { EditorState, Plugin } from "prosemirror-state";
 import { DecorationSet, Decoration } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
-import { Slice } from "prosemirror-model";
+import { Slice, Fragment, Node } from "prosemirror-model";
 import { parse, serialize, schema } from "./prosemirrorMarkdown.js";
 import { exampleSetup } from "prosemirror-example-setup";
 import { history } from "prosemirror-history";
@@ -249,7 +249,43 @@ function Note({ notesState, showSideBar }) {
           decorations={() => diff?.decorationSet}
           editable={() => !diff}
           clipboardTextSerializer={(slice) => {
+            //prosemirror inserts two newlines by default, we want just one
+            //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L37
             return slice.content.textBetween(0, slice.content.size, "\n");
+          }}
+          transformPastedText={(text) => {
+            //prosemirror collapses consecutive newlines, use a zero width space to preserve them
+            //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L58
+            return text.replace(/\r\n/g, "\n").replace(/\n(?=\n)/g, "\n\u200b");
+          }}
+          transformPasted={(slice) => {
+            //https://discuss.prosemirror.net/t/an-extra-br-is-added-in-certain-pasted-content/4730
+            function recurse(item) {
+              if (item instanceof Fragment) {
+                const nodes = item.content.map(recurse);
+                return Fragment.from(nodes);
+              } else if (item instanceof Node) {
+                const fragment = recurse(item.content);
+                let node;
+
+                if (
+                  item.type.isBlock &&
+                  item.content.size === 1 &&
+                  item.content.content[0].type === schema.nodes.hard_break
+                ) {
+                  node = item.copy();
+                } else {
+                  node = item.copy(fragment);
+                }
+
+                return node;
+              }
+            }
+            return new Slice(
+              recurse(slice.content),
+              slice.openStart,
+              slice.openEnd,
+            );
           }}
         >
           <ProseMirrorDoc />
