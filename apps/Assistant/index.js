@@ -74,7 +74,8 @@ function App({ user, urlApp, initData, initConversation }) {
   - tags: an array of objects [{tag?: string, content: string}] representing a message
     - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
     - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
-  - promptToContinue: string, when populated, indicates that the user should be prompted to let the Assistant continue. the string identifies the system prompt
+  - promptToContinue: string to use if populated to prompt the user to continue
+  - systemPrompt: "input" | "init" | "magic", the system prompt used
   - model: the model used to generate the message
   - welcome: boolean indicating whether the message is the special welcome message
   - welcomeMinCost: minCost of the app suggested in the welcome message

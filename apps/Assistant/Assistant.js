@@ -295,7 +295,12 @@ class Assistant {
       console.error(error);
     }
   }
-  async handleLlmUsage(inputBytes, promptTokens, completionTokens, askedUser) {
+  async handleLlmUsage({
+    inputBytes,
+    promptTokens,
+    completionTokens,
+    userApproved,
+  }) {
     //note: need to smooth daysBetweenCalls rather than llmCallsPerDay
     //correct: llmCallsPerDay = 1 / avg(daysBetweenCalls)
     //incorrect: llmCallsPerDay = avg(1 / daysBetweenCalls)
@@ -314,35 +319,42 @@ class Assistant {
       if (ts) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         let alpha = 0.1;
-        this.llmUsage.daysBetweenCalls =
-          alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
+        this.llmUsage.daysBetweenCalls = daysBetweenCalls;
         this.llmUsage.inputBytesPerToken = inputBytesPerToken;
         this.llmUsage.outputTokens = outputTokens;
         this.llmUsage.costThreshold = costThreshold;
-        if (this.app) {
-          if (promptTokens && completionTokens) {
-            const newInputBytesPerToken = inputBytes / promptTokens;
-            const oldInputBytesPerToken =
-              this.llmUsage.inputBytesPerToken[this.app.app] ||
-              defaultInputBytesPerToken;
-            alpha = newInputBytesPerToken < oldInputBytesPerToken ? 0.5 : 0.1; //more aggressive for decrease (potentially malicious)
-            this.llmUsage.inputBytesPerToken[this.app.app] =
-              alpha * newInputBytesPerToken +
-              (1 - alpha) * oldInputBytesPerToken;
-            const newOutputTokens = completionTokens;
-            const oldOutputTokens =
-              this.llmUsage.outputTokens[this.app.app] || defaultOutputTokens;
-            alpha = newOutputTokens > oldOutputTokens ? 0.5 : 0.1; //more aggressive for increase (potentially malicious)
-            this.llmUsage.outputTokens[this.app.app] =
-              alpha * newOutputTokens + (1 - alpha) * oldOutputTokens;
-          } else {
-            console.error("missing promptTokens or completionTokens");
-          }
+        if (userApproved === false) {
+          this.llmUsage.costThreshold[this.app.app] =
+            (this.llmUsage.costThreshold[this.app.app] ||
+              defaultLlmCostThreshold) * 0.5;
+        } else {
+          this.llmUsage.daysBetweenCalls =
+            alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
+          if (this.app) {
+            if (promptTokens && completionTokens) {
+              const newInputBytesPerToken = inputBytes / promptTokens;
+              const oldInputBytesPerToken =
+                this.llmUsage.inputBytesPerToken[this.app.app] ||
+                defaultInputBytesPerToken;
+              alpha = newInputBytesPerToken < oldInputBytesPerToken ? 0.5 : 0.1; //more aggressive for decrease (potentially malicious)
+              this.llmUsage.inputBytesPerToken[this.app.app] =
+                alpha * newInputBytesPerToken +
+                (1 - alpha) * oldInputBytesPerToken;
+              const newOutputTokens = completionTokens;
+              const oldOutputTokens =
+                this.llmUsage.outputTokens[this.app.app] || defaultOutputTokens;
+              alpha = newOutputTokens > oldOutputTokens ? 0.5 : 0.1; //more aggressive for increase (potentially malicious)
+              this.llmUsage.outputTokens[this.app.app] =
+                alpha * newOutputTokens + (1 - alpha) * oldOutputTokens;
+            } else {
+              console.error("missing promptTokens or completionTokens");
+            }
 
-          if (askedUser) {
-            this.llmUsage.costThreshold[this.app.app] =
-              (this.llmUsage.costThreshold[this.app.app] ||
-                defaultLlmCostThreshold) * 1.2;
+            if (userApproved) {
+              this.llmUsage.costThreshold[this.app.app] =
+                (this.llmUsage.costThreshold[this.app.app] ||
+                  defaultLlmCostThreshold) * 1.2;
+            }
           }
         }
       }
@@ -569,6 +581,7 @@ class Assistant {
       if (!approved) {
         this.handleUpdateConversation({ messages }); //reset messages
         resetInput();
+        this.handleLlmUsage({ userApproved: false });
         return;
       }
       const llmArgs = [
@@ -630,12 +643,12 @@ class Assistant {
           messages: [...newMessages, { ...llmMessage }], //create new llmMessage since Message component is memoized
         });
       }
-      this.handleLlmUsage(
+      this.handleLlmUsage({
         inputBytes,
         promptTokens,
         completionTokens,
-        askedUser,
-      );
+        userApproved: askedUser ? true : null,
+      });
       if (updateSummary) {
         this.handleUpdateConversation({ summary });
       }
@@ -1003,6 +1016,7 @@ class Assistant {
     );
     this.setConfirm(null);
     this.setRisk(null);
+    this.setCollapsed(true);
     this.handleNewConversation();
     this.setChatLoading(false);
     this.setApp(null);
