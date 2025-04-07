@@ -4,8 +4,8 @@ const exampleAppFiles = {
   version: '0.1.0',
   description: '',
   dependencies: {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }`,
   "index.js": `import React, { useState } from "react";

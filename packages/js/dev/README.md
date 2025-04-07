@@ -1,6 +1,6 @@
 # @magicsandbox.ai/dev
 
-@magicsandbox.ai/dev helps you develop and publish [Magic Sandbox](https://magicsandbox.ai) Apps and Functions locally.
+`@magicsandbox.ai/dev` helps you develop and publish [Magic Sandbox](https://magicsandbox.ai) Apps and Functions locally.
 
 ## Getting Started
 
@@ -18,8 +18,6 @@ This creates a new directory with a basic project structure:
 MyApp/
 ├── magic.json5
 ├── index.js
-├── index.html
-└── index.css
 ```
 
 And adds the following to your `package.json`:

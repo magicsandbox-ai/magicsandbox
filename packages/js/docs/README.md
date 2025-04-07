@@ -16,11 +16,13 @@
 import docs from "@magicsandbox.ai/docs/docs.md";
 ```
 
-Make sure your bundler is configured to load Markdown files. For example, with esbuild:
+Make sure your bundler is configured to load Markdown files:
 
 ```javascript
 {
-  loader: { ".md": "text" },
+  esbuildOptions: {
+    loader: { ".js": "jsx", ".md": "text" },
+  }
 }
 ```
 

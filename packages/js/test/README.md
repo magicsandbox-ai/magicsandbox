@@ -1,6 +1,6 @@
 # @magicsandbox.ai/test
 
-`@magicsandbox.ai/test` makes it easy to run [Playwright](https://playwright.dev/) tests for Magic Sandbox Apps.
+`@magicsandbox.ai/test` makes it easy to run [Playwright](https://playwright.dev/) tests for [Magic Sandbox](https://magicsandbox.ai) Apps.
 
 ## Getting Started
 
