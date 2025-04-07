@@ -57,6 +57,7 @@ program
   .addOption(urlOption)
   .action(async (appPath, options) => {
     await publish(handlePath(appPath, options.dir), options.debug, options.url);
+    process.exit(0); //think this is needed because esbuild keeps the process alive
   });
 
 program

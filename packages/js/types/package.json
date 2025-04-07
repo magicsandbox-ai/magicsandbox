@@ -7,5 +7,9 @@
     "url": "git+https://github.com/magicsandbox-ai/magicsandbox.git"
   },
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "files": [
+    "index.d.ts"
+  ],
+  "types": "index.d.ts"
 }

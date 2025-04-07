@@ -6,7 +6,7 @@
   scriptFile: "dist/index.js",
   htmlFile: "dist/index.html",
   styleFile: "dist/index.css",
-  prebuild: "npx magicsandbox docs apps/About && node cursorrules.js",
+  prebuild: "npx magicsandbox docs apps/About && node scripts/cursorrules.js",
   esbuildOptions: {
     loader: {
       ".md": "text",

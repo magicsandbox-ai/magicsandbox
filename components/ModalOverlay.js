@@ -36,15 +36,12 @@ function ModalOverlay({ modal, onClose, fullScreen }) {
     }
   }
 
-  const baseStyle = "fixed inset-0 flex items-center justify-center";
+  const backgroundStyle =
+    "fixed inset-0 flex items-center justify-center z-40 bg-stone-100 bg-opacity-50";
 
   if (fullScreen) {
     return (
-      <div
-        ref={modalRef}
-        className={baseStyle + " z-40 bg-stone-100 bg-opacity-50"}
-        onClick={handleClick}
-      >
+      <div ref={modalRef} className={backgroundStyle} onClick={handleClick}>
         <div
           className="max-h-[80%] max-w-[80%] overflow-y-auto rounded-lg border-2 border-stone-500 bg-white shadow-lg"
           role="dialog"
@@ -57,7 +54,7 @@ function ModalOverlay({ modal, onClose, fullScreen }) {
   } else {
     return (
       <div ref={modalRef}>
-        <div className={baseStyle} onClick={handleClick} />
+        <div className={backgroundStyle} onClick={handleClick} />
         <div role="dialog" aria-modal="true">
           {modal}
         </div>

@@ -3,7 +3,11 @@ import { readMagicJson, fileExists, readFile } from "./localUtils.js";
 import { maybeReadFile } from "./utils.js";
 import { buildAppLocal } from "./buildAppLocal.js";
 
-async function publish(magicPath, debug, url) {
+async function publish(
+  magicPath,
+  debug = false,
+  url = "https://magicsandbox.ai",
+) {
   try {
     if (!process.env.MAGICSANDBOX_API_KEY) {
       throw new Error("Environment variable MAGICSANDBOX_API_KEY is not set");
@@ -51,7 +55,7 @@ async function publish(magicPath, debug, url) {
       throw new Error(`Error: ${response.status} ${errorMessage}`);
     }
     console.log("Published successfully!");
-    process.exit(0); //think this is needed because esbuild keeps the process alive
+    return magicObj;
   } catch (error) {
     console.error("Failed to publish:", error);
     process.exit(1);

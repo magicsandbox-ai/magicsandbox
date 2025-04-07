@@ -1,0 +1,18 @@
+// #!/usr/bin/env node
+
+// import { execSync } from "child_process";
+
+// try {
+//     // Get current branch name
+//     const branch = execSync('git rev-parse --abbrev-ref HEAD')
+//         .toString()
+//         .trim();
+
+//     if (branch === 'main') {
+//         console.error('\x1b[31mError: Cannot commit directly to main branch\x1b[0m');
+//         process.exit(1);
+//     }
+// } catch (error) {
+//     console.error('\x1b[31mError checking branch:', error.message, '\x1b[0m');
+//     process.exit(1);
+// }
