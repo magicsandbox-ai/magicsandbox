@@ -529,10 +529,16 @@ class Assistant {
         });
       }
       if (abortSignal.aborted) return;
+      const { systemPrompt, continueSystemPrompt: nextContinueSystemPrompt } =
+        prompt({
+          app: this.app,
+          initContext,
+          continueSystemPrompt,
+        });
       const llmMessages = [
         {
           role: "system",
-          content: prompt({ app: this.app, initContext, continueSystemPrompt }),
+          content: systemPrompt,
         },
         ...newMessages
           .filter((message) => message.role !== "display")
@@ -655,7 +661,7 @@ class Assistant {
       for (const tag of llmMessage.tags) {
         if (!this.app && tag.tag === "open_app") {
           const app = this.appDataRef.current[tag.content.trim()];
-          if (app.favorited) {
+          if (app?.favorited) {
             await this.handleApp({
               input,
               app: app.app,
@@ -663,23 +669,36 @@ class Assistant {
               messages: [...newMessages, llmMessage],
             });
           } else {
-            //todo warn user that app failed to open
+            this.handleUpdateConversation({
+              message: {
+                role: "user",
+                tags: [
+                  {
+                    tag: "logs",
+                    content: "Error: Invalid app in <open_app> tags",
+                  },
+                ],
+                promptToContinue: "Error opening app. Try again?",
+                continueSystemPrompt: nextContinueSystemPrompt,
+              },
+            });
           }
           break;
         } else if (
           tag.tag === "intermediate_script" ||
           tag.tag === "final_script"
         ) {
-          let logs;
+          let logs, error;
           try {
-            ({ logs } =
+            ({ logs, error } =
               await this.sandboxRef.current.executeScriptAndWaitForResponse({
                 sandboxId,
                 script: tag.content,
                 timeout: 30000,
               }));
-          } catch (error) {
-            console.error(error);
+          } catch (e) {
+            error = new Error("Error: script timed out");
+            console.error(e);
             logs = ["[Uncaught Error] Error: script timed out"];
           }
           if (abortSignal.aborted) return;
@@ -687,16 +706,32 @@ class Assistant {
             role: "user",
             tags: [{ tag: "logs", content: formatLogs(logs) }],
           };
-          if (tag.tag === "intermediate_script") {
-            //this feels messy but don't want the system prompt to change when continuing
-            if (initContext || continueSystemPrompt === "init") {
-              newUserMessage.promptToContinue = "init";
+          if (error) {
+            newUserMessage.promptToContinue =
+              "Error executing script. Try again?";
+            newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
+          } else if (tag.tag === "intermediate_script") {
+            const prevAssistantMessage = messages.findLast(
+              (message) => message.role === "assistant",
+            );
+            if (
+              prevAssistantMessage?.tags.some(
+                ({ tag }) => tag === "intermediate_script",
+              )
+            ) {
+              //if two intermediate scripts in a row, prompt user to approve
+              newUserMessage.promptToContinue = "Allow Assistant to continue?";
+              newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
             } else {
-              newUserMessage.promptToContinue = "magic";
+              this.handleInput({
+                messages: [...newMessages, llmMessage, newUserMessage],
+                continueSystemPrompt: nextContinueSystemPrompt,
+              });
+              break;
             }
           }
           this.handleUpdateConversation({
-            messages: [...newMessages, llmMessage, newUserMessage],
+            message: newUserMessage,
           });
           break;
         }

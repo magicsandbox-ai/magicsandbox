@@ -52,12 +52,24 @@ function formatLogs(logs) {
 }
 
 function prompt({ app, initContext, continueSystemPrompt }) {
-  if (!app) {
-    return inputSystemPrompt;
-  } else if (initContext || continueSystemPrompt === "init") {
-    return initSystemPrompt;
+  if (continueSystemPrompt === "chat") {
+    return { systemPrompt: chatSystemPrompt, continueSystemPrompt: "chat" };
+  } else if (continueSystemPrompt === "init") {
+    return { systemPrompt: initSystemPrompt, continueSystemPrompt: "init" };
+  } else if (continueSystemPrompt === "context") {
+    return {
+      systemPrompt: contextSystemPrompt,
+      continueSystemPrompt: "context",
+    };
+  } else if (!app) {
+    return { systemPrompt: chatSystemPrompt, continueSystemPrompt: "chat" };
+  } else if (initContext) {
+    return { systemPrompt: initSystemPrompt, continueSystemPrompt: "init" };
   } else {
-    return magicSystemPrompt;
+    return {
+      systemPrompt: contextSystemPrompt,
+      continueSystemPrompt: "context",
+    };
   }
 }
 
@@ -107,7 +119,7 @@ const identityPrompt = `You are a highly capable, helpful, thoughtful, and preci
 /**
  * prompt used when the user chats with the Assistant when no app is open
  */
-const inputSystemPrompt = `${identityPrompt}
+const chatSystemPrompt = `${identityPrompt}
 
 The user's initial message will include both the user's request and a list of the user's favorited apps that you can choose to open. The favorited apps are of the form \`author.Name: description\`. App names always start with a capital letter. When referring to an app, always use the \`author.Name\` format.
 
@@ -215,7 +227,7 @@ ${magicsandboxInfo}`;
 /**
  * prompt used when the user chats with the Assistant when an app is open
  */
-const magicSystemPrompt = `${identityPrompt} The user is interacting with an app and is asking for your help. The user's requests are enclosed in <user_request> tags. The app has provided additional context that's included in an <app_context> tag. Additionally, if the user has highlighted text in the app, it will be included in a <user_highlighted_text> tag.
+const contextSystemPrompt = `${identityPrompt} The user is interacting with an app and is asking for your help. The user's requests are enclosed in <user_request> tags. The app has provided additional context that's included in an <app_context> tag. Additionally, if the user has highlighted text in the app, it will be included in a <user_highlighted_text> tag.
 
 In your response, you can:
 

@@ -31,7 +31,8 @@ function ChatDisplay({
     handleContinue = () => {
       assistantRef.current.handleInput({
         messages,
-        continueSystemPrompt: promptToContinue,
+        continueSystemPrompt:
+          messages[messages.length - 1].continueSystemPrompt,
       });
     };
   }
@@ -54,17 +55,17 @@ function ChatDisplay({
             assistantRef={assistantRef}
           />
         ))}
-        {handleContinue && (
+        {promptToContinue && (
           <button
             ref={(el) => {
               if (el && scrollToBottom) {
                 ref.current.scrollTop = ref.current.scrollHeight;
               }
             }}
-            className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 text-lg font-bold hover:bg-stone-200"
+            className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 font-bold hover:bg-stone-200"
             onClick={handleContinue}
           >
-            Allow Assistant to continue?
+            {promptToContinue}
           </button>
         )}
       </div>
