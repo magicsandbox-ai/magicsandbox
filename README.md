@@ -5,6 +5,6 @@ Refer to the [Magic Sandbox docs](https://magicsandbox.ai/?_app=magicsandbox.Doc
 ## Environment Setup
 
 ```
-git update-index --chmod=+x --add .githooks/pre-commit
 git config core.hooksPath .githooks
+git update-index --chmod=+x --add .githooks/pre-commit
 ```
