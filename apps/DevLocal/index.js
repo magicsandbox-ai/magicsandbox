@@ -163,7 +163,7 @@ function App({ urlParams }) {
           Preview Desktop
         </button>
         <button className={buttonStyle} onClick={handlePublish}>
-          Publish
+          Publish App
         </button>
       </div>
       <Preview

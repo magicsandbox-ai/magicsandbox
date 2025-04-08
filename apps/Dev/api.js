@@ -58,11 +58,11 @@ function updateFiles(appState, updateString) {
       }
       continue;
     }
-    updatedFiles.add(filename);
     if (!fileUpdateString.trim().startsWith("<find>")) {
       //update the whole file
       //we need to look specifically for <find> rather than use tagParser because the file might be HTML or JSX and the tags are false positives
       newFiles[filename] = fileUpdateString;
+      updatedFiles.add(filename);
     } else {
       if (!(filename in newFiles)) {
         assistant.error(
@@ -95,6 +95,7 @@ function updateFiles(appState, updateString) {
               assistant.error("Could not find text to replace:", find);
             } else {
               newFiles[filename] = newContent;
+              updatedFiles.add(filename);
             }
             find = null;
           } else {

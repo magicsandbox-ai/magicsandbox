@@ -145,12 +145,17 @@ class PublishRisk extends Risk {
       } else if (this.publishRequests.length === 1) {
         const app = this.assistant.app.app;
         const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
+        const obj = this.publishRequests[0];
+        const name =
+          !obj.name || !obj.version
+            ? "an App or Function"
+            : `${obj.name}@${obj.version}`;
         return {
-          message: `${app} is requesting to publish an App or Function${!this.publishRequests[0].private ? ". It will be publicly visible." : ""}`,
+          message: `${app} is requesting to publish ${name}${!obj.private ? ". It will be publicly visible." : ""}`,
           downloadDetails: {
             text: "Download App JSON",
             filename: `${app}_publish_request_${now}.json`,
-            content: JSON.stringify(this.publishRequests[0], null, 2),
+            content: JSON.stringify(obj, null, 2),
           },
         };
       }

@@ -41,6 +41,7 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
   }
 
   function handleHover(event) {
+    if (!event.target.closest(".cm-line")) return;
     let text = event.target.innerText;
     text = text.replace(/["'`;]/g, " "); //since getWordAtIndex looks for spaces, turn any separators into spaces
     const { left, width } = getBoundingClientRect(event.target);

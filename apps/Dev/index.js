@@ -511,7 +511,8 @@ function App() {
 
   const buttonStyle =
     "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
-  const panelResizeHandleStyle = "w-px bg-stone-500";
+  const approveButtonStyle =
+    "rounded-lg border border-stone-500 py-1 text-sm w-28 font-medium";
 
   return (
     <div
@@ -614,8 +615,56 @@ function App() {
             merge={merge}
             setMerge={setMerge}
           />
+          {Object.keys(merges).length > 0 && (
+            <div className="absolute bottom-4 left-0 right-0 flex flex-wrap justify-center gap-2 self-center">
+              <button
+                className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
+                onClick={() => {
+                  setMerges({});
+                }}
+              >
+                Accept All Files
+              </button>
+              {merge && (
+                <>
+                  <button
+                    className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
+                    onClick={() => {
+                      setMerge(null);
+                    }}
+                  >
+                    Accept File
+                  </button>
+                  <button
+                    className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
+                    onClick={() => {
+                      setMerge(null);
+                      setFiles((files) => ({
+                        ...files,
+                        [selectedFilename]: merges[selectedFilename],
+                      }));
+                    }}
+                  >
+                    Reject File
+                  </button>
+                </>
+              )}
+              <button
+                className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
+                onClick={() => {
+                  setMerges({});
+                  setFiles((files) => ({
+                    ...files,
+                    ...merges,
+                  }));
+                }}
+              >
+                Reject All Files
+              </button>
+            </div>
+          )}
         </Panel>
-        <PanelResizeHandle className={panelResizeHandleStyle} />
+        <PanelResizeHandle className={"w-px border-r border-stone-500"} />
         <Panel ref={previewPanelRef}>
           <Preview
             ref={previewRef}
