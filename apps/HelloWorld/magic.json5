@@ -1,9 +1,0 @@
-{
-  name: 'HelloWorld',
-  version: '0.1.0',
-  description: '',
-  dependencies: {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
-  }
-}

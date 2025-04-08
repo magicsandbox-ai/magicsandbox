@@ -42,20 +42,36 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
 
   function handleHover(event) {
     let text = event.target.innerText;
-    text = text.replace(/["'`]/g, " ");
-    const { left, width } = event.target.getBoundingClientRect();
+    text = text.replace(/["'`;]/g, " "); //since getWordAtIndex looks for spaces, turn any separators into spaces
+    const { left, width } = getBoundingClientRect(event.target);
     //careful! width can be zero if target is not yet rendered (maybe?)
     //makes index Infinity and causes infinite loop in getWordAtIndex. use Math.min(, 1) to fix
     const index = Math.round(
       Math.min((event.clientX - left) / width, 1) * text.length,
     );
     const word = getWordAtIndex(text, index);
-    if (cssClassMap[word] && cssClassMap[word] !== hover.content) {
+    if (!word) return;
+    const modifiers = word.split(":");
+    const content = cssClassMap[modifiers[modifiers.length - 1]];
+    if (content && content !== hover.content) {
       setHover({
-        content: cssClassMap[word],
+        content,
         el: event.target,
         x: event.clientX,
       });
+    }
+  }
+
+  function getBoundingClientRect(target) {
+    if (target.className.includes("cm-line")) {
+      //in a js file, tailwind classes are within quotes and so in a span
+      //but in a css file, they're within a div with class cm-line
+      //the div's width is much wider than the width of the text, so we need to look at the div's children
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      return range.getBoundingClientRect();
+    } else {
+      return target.getBoundingClientRect();
     }
   }
 

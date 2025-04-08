@@ -8,7 +8,13 @@ export default async function processTailwindBrowser(config, css) {
   );
   const classMap = {};
   postcss.parse(result.css).walkRules(/^\./, (rule) => {
-    classMap[rule.selector.trim().slice(1)] = rule.toString();
+    const modifiers = rule.selector.trim().slice(1).split(":");
+    const cssProps = rule.nodes
+      .map((node) => `${node.prop}: ${node.value};`)
+      .join("\n");
+    if (cssProps) {
+      classMap[modifiers[Math.floor(modifiers.length / 2)]] = cssProps;
+    }
   });
   return { processedCss: result.css, classMap };
 }

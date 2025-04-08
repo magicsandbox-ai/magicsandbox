@@ -44,6 +44,7 @@ function Row({ columns, row, data, setData, allowAdd }) {
             }}
           >
             <Trash2 />
+            <span className="sr-only">Delete</span>
           </button>
         </td>
       )}
@@ -68,6 +69,7 @@ function Cell({ id, column, value, data, setData }) {
         value={value}
         onChange={handleChange}
         spellCheck={false}
+        aria-label={column}
       />
     </td>
   );

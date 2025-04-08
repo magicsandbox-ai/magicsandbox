@@ -1,6 +1,11 @@
 import * as esbuild from "esbuild";
 import fs from "fs";
 
+/*
+cd packages/js/tailwind-browser
+node build.js
+*/
+
 const preflightCss = fs.readFileSync(
   "./node_modules/tailwindcss/src/css/preflight.css",
   "utf8",
@@ -38,6 +43,7 @@ await esbuild.build({
     stream: "./dummy.js",
     "glob-parent": "./dummy.js",
     "fast-glob": "./dummy.js",
+    util: "./dummy.js",
   },
   plugins: [replacePlugin],
   outfile: "dist/index.js",

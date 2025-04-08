@@ -205,10 +205,7 @@ async function requestHandler({
         return;
       } else if (request === "getAllKeysData") {
         response = Object.keys(requestDataRef.current[app] || {});
-        sandboxRef.current.postMessage(sandboxId, {
-          id,
-          response: Object.keys(response),
-        });
+        sandboxRef.current.postMessage(sandboxId, { id, response });
         return;
       }
     }

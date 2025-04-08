@@ -477,7 +477,7 @@ function App() {
   };
 
   const buttonStyle =
-    "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
+    "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
   const panelResizeHandleStyle = "w-px bg-stone-500";
 
   return (
@@ -485,37 +485,42 @@ function App() {
       className="flex h-screen flex-col text-stone-700"
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center border-b border-stone-500 px-2 py-0.5">
-        <div className="flex flex-1">
-          <i className="text-xs">Ctrl+S to save and update preview</i>
-        </div>
-        <div className="flex gap-12">
-          <button className={buttonStyle} onClick={handleSave}>
-            Update Preview
-          </button>
-          <button
-            className={buttonStyle}
-            onClick={() => handleResizePreview("mobile")}
-          >
-            Preview Mobile
-          </button>
-          <button
-            className={buttonStyle}
-            onClick={() => handleResizePreview("tablet")}
-          >
-            Preview Tablet
-          </button>
-          <button
-            className={buttonStyle}
-            onClick={() => handleResizePreview("desktop")}
-          >
-            Preview Desktop
-          </button>
-          <button className={buttonStyle} onClick={handlePublish}>
-            Publish
-          </button>
-        </div>
-        <div className="flex-1" /> {/* spacer */}
+      <div className="border-b border-stone-500 px-2">
+        <button className={buttonStyle} onClick={handleSave}>
+          Update Preview
+        </button>
+        <button
+          className={buttonStyle + " hidden md:inline-block"}
+          onClick={() => handleResizePreview("mobile")}
+        >
+          Preview Mobile
+        </button>
+        <button
+          className={buttonStyle + " hidden md:inline-block"}
+          onClick={() => handleResizePreview("tablet")}
+        >
+          Preview Tablet
+        </button>
+        <button
+          className={buttonStyle + " hidden lg:inline-block"}
+          onClick={() => handleResizePreview("desktop")}
+        >
+          Preview Desktop
+        </button>
+        <button
+          className={buttonStyle + " hidden md:inline-block"}
+          onClick={() => {
+            Object.entries(files).forEach(([filename, content]) => {
+              requestDownload(filename, content);
+            });
+          }}
+        >
+          Download Files
+        </button>
+        <button className={buttonStyle} onClick={handlePublish}>
+          Publish App
+        </button>
+        <button className={buttonStyle}>Help</button>
       </div>
       <PanelGroup
         className="grow"
