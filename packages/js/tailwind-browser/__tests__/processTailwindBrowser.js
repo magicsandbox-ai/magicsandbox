@@ -15,7 +15,17 @@ describe("processTailwindBrowser", () => {
         },
       ],
     };
-    const { processedCss, classMap } = await processTailwindBrowser(config);
+    const css = `@tailwind base; @tailwind components; @tailwind utilities;
+
+@layer base {
+  body {
+    @apply flex;
+  }
+}`;
+    const { processedCss, classMap } = await processTailwindBrowser(
+      config,
+      css,
+    );
     expect(processedCss).toBeDefined();
     expect(classMap).toBeDefined();
     expect(classMap).toEqual({
@@ -23,6 +33,7 @@ describe("processTailwindBrowser", () => {
       block: "display: block;",
       underline: "text-decoration-line: underline;",
       "text-lg": "font-size: 1.125rem;\nline-height: 1.75rem;",
+      flex: "display: flex;",
     });
   });
 });

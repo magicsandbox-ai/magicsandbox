@@ -45,6 +45,7 @@ export default function FilePicker({
             }}
           >
             <X size={16} />
+            <span className="sr-only">Delete App</span>
           </button>
         </div>
         {filenames.map(({ filename, merge }) => (
@@ -69,9 +70,11 @@ export default function FilePicker({
             value={newFilename}
             onChange={(e) => setNewFilename(e.target.value)}
             placeholder="New file"
+            aria-label="New file"
           />
           <button type="submit">
             <Plus size={16} />
+            <span className="sr-only">Add File</span>
           </button>
         </form>
       </div>

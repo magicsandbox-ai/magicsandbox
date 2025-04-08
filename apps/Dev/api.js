@@ -6,6 +6,13 @@ import JSON5 from "json5";
 
 function createApp(appState, name, description, createString) {
   const version = "0.1.0";
+  const existingNames = new Set(appState.apps.map((app) => app.split("@")[0]));
+  if (existingNames.has(name)) {
+    name = getUniqueName(name, existingNames);
+    assistant.warn(
+      `User already has an App with this name, so renamed the App to: ${name}`,
+    );
+  }
   const app = `${name}@${version}`;
   const files = {
     "magic.json": `{
@@ -28,19 +35,13 @@ function createApp(appState, name, description, createString) {
     assistant.warn("Anything in the createString outside of a tag is ignored");
   }
   //todo this is kind of a mess - need to clean up state management (and refs)
-  appState.setApps((apps) => {
-    const newApps = [...apps];
-    if (!newApps.includes(app)) {
-      newApps.push(app);
-    }
-    return newApps;
-  });
+  appState.setApps((apps) => [...apps, app]);
   appState.setSelectedApp(app);
   appState.setFiles(files);
   appState.setMerges({});
   appState.setSelectedFilename("magic.json");
-  requestPutData(app, files);
-  requestPutData("selectedApp", app);
+  appState.handlePutData(app, files);
+  appState.handlePutData("selectedApp", app);
   appState.build(JSON5.parse(files["magic.json"]));
 }
 
@@ -157,3 +158,18 @@ The \`magic.json\` file can be written in JSON5.
 }
 
 export { createApp, updateFiles, additionalContext, advancedDocs };
+
+function getUniqueName(name, existingNames) {
+  const match = name.match(/\d+$/);
+  let newName;
+  if (match) {
+    const number = parseInt(match[0]);
+    newName = `${name.slice(0, match.index)}${number + 1}`;
+  } else {
+    newName = `${name}1`;
+  }
+  if (existingNames.has(newName)) {
+    return getUniqueName(newName, existingNames);
+  }
+  return newName;
+}

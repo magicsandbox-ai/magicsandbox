@@ -50,7 +50,7 @@ todos:
 */
 
 class Context {
-  constructor(rawFiles = {}, selectedFiles = [], selectedCode = []) {
+  constructor(rawFiles = {}, selectedFiles = [], selectedCode = [], toastsRef) {
     this.rawFiles = rawFiles;
     this.selectedFiles = new Set(selectedFiles);
     this.selectedCode = selectedCode;
@@ -59,6 +59,7 @@ class Context {
     this.files = {};
     this.nodes = [];
     this.processedNodes = [];
+    this.toastsRef = toastsRef;
   }
 
   get() {
@@ -199,7 +200,11 @@ class File {
         // }
       });
     } catch (e) {
-      console.error(e); //todo
+      console.error(e);
+      this.context.toastsRef.current.addToast(
+        `Unexpected error gathering context`,
+        "error",
+      );
     }
   }
 
@@ -304,9 +309,6 @@ class Node {
       variables.push("default");
     }
     variables.forEach((variable) => {
-      if (this.file.definitions[variable]) {
-        console.warn("duplicate definition", variable); //todo remove this
-      }
       this.file.definitions[variable] = this;
     });
     this.references = [];
@@ -316,15 +318,7 @@ class Node {
     this.scope.through.forEach((reference) => {
       const resolved = reference.resolved;
       if (resolved) {
-        if (resolved.identifiers.length !== resolved.defs.length) {
-          console.warn("identifiers !== defs", reference); //todo remove this
-        }
-        if (resolved.defs.length === 0) {
-          console.warn("no defs", reference); //todo remove this
-        }
         this.references.push(...resolved.defs);
-      } else {
-        console.warn("unresolved reference", reference); //todo remove this
       }
     });
     this.edges = [];
@@ -388,23 +382,23 @@ function context(appState, { files = [], code = [] } = {}) {
     }
     selectedCode = [window.getSelection().toString()];
   }
-  return new Context(appState.files, selectedFiles, selectedCode).get();
+  return new Context(
+    appState.files,
+    selectedFiles,
+    selectedCode,
+    appState.toastsRef,
+  ).get();
 }
 
 export { context };
 
 function indexOfAll(str, search) {
   if (!str) return []; //empty string matches every index
-  try {
-    const indices = [];
-    let index = str.indexOf(search);
-    while (index !== -1) {
-      indices.push(index);
-      index = str.indexOf(search, index + 1);
-    }
-    return indices;
-  } catch (e) {
-    console.error(e); //todo
-    return [];
+  const indices = [];
+  let index = str.indexOf(search);
+  while (index !== -1) {
+    indices.push(index);
+    index = str.indexOf(search, index + 1);
   }
+  return indices;
 }

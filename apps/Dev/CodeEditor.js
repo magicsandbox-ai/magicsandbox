@@ -102,12 +102,16 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
       create() {
         return;
       },
-      update(value, tr) {
-        if (tr.isUserEvent("accept") || tr.isUserEvent("revert")) {
-          const chunks = getChunks(ref.current.view.state);
-          if (chunks?.chunks?.length === 1) {
-            setMerge(null);
-          }
+      update(_, tr) {
+        const currentState = ref.current.view.state;
+        const nextState = tr.state;
+        if (
+          //merge is set before the transaction that creates the first chunks, so make sure currentState has chunks before we clear it
+          getChunks(currentState)?.chunks?.length > 0 &&
+          //now if there are no chunks in the next state, we can clear the merge
+          getChunks(nextState)?.chunks?.length === 0
+        ) {
+          setMerge(null);
         }
       },
     });

@@ -29,6 +29,8 @@ import {
   additionalContext as _additionalContext,
   advancedDocs as _advancedDocs,
 } from "./api.js";
+import Help from "./Help.js";
+import { Toasts } from "@components/Toasts.js";
 
 async function initEsbuild() {
   const esbuildWasmResponse = await requestFetch(
@@ -62,6 +64,7 @@ exampleAppFiles["magic.json"] = exampleAppFiles["magic.json5"];
 delete exampleAppFiles["magic.json5"];
 
 function App() {
+  const [view, setView] = useState(window.innerWidth > 768 ? null : "code"); //"code" | "preview", only relevant for mobile
   const [apps, setApps] = useState([]);
   const [selectedApp, setSelectedApp] = useState("");
   const [files, setFiles] = useState({});
@@ -71,8 +74,11 @@ function App() {
     processedCss: "",
     classMap: {},
   });
+  const [showHelp, setShowHelp] = useState(false);
+  const [testApi, setTestApi] = useState(false);
 
   const previewRef = useRef(null);
+  const codePanelRef = useRef(null);
   const previewPanelRef = useRef(null);
   const deletedFilesRef = useRef({});
   const appObjRef = useRef(null);
@@ -84,6 +90,7 @@ function App() {
   const bundledDepsRef = useRef(null);
   const importPluginRef = useRef(null);
   const tailwindConfigRef = useRef(null);
+  const toastsRef = useRef(null);
   // const previewLogsRef = useRef(null);
 
   useEffect(() => {
@@ -203,7 +210,11 @@ function App() {
         }
         config = window.__tailwindConfig?.default || {};
       } catch (error) {
-        console.error(`Error building ${tailwindConfigFilename}`, error); //todo toast
+        console.error(error);
+        toastsRef.current.addToast(
+          `Error building ${tailwindConfigFilename}`,
+          "error",
+        );
       }
     }
     const excludeContent = new Set(config.excludeContent || []);
@@ -282,6 +293,20 @@ function App() {
     }
   }
 
+  async function handlePutData(key, value) {
+    try {
+      await requestPutData(key, value);
+    } catch (error) {
+      console.error(error);
+      let message = "Unexpected error saving data";
+      if (error.message === "Database size limit exceeded") {
+        message =
+          "Error saving data: maximum storage limit reached. Delete some apps to free up space.";
+      }
+      toastsRef.current.addToast(message, "error");
+    }
+  }
+
   async function handleSave() {
     const appObj = JSON5.parse(files["magic.json"]);
     if (!appObj.name || !appObj.version) {
@@ -329,11 +354,11 @@ function App() {
         console.error(`Prettier error: ${error}`);
       }
     }
-    requestPutData(app, newFiles); //todo handle database full
+    handlePutData(app, newFiles);
     if (!apps.includes(app)) {
       setApps([app, ...apps]);
       setSelectedApp(app);
-      requestPutData("selectedApp", app);
+      handlePutData("selectedApp", app);
     }
     await build(appObj);
   }
@@ -344,7 +369,7 @@ function App() {
       setFiles(newFiles);
       setSelectedApp(app);
       setMerges({});
-      requestPutData("selectedApp", app);
+      handlePutData("selectedApp", app);
       handleSelectFilename("magic.json", app);
       deletedFilesRef.current = {};
     } catch (error) {
@@ -376,7 +401,10 @@ function App() {
   async function build(_appObj, publish) {
     try {
       if (_appObj.update) {
-        console.log("Build skipped when update is true"); //todo show user
+        toastsRef.current.addToast(
+          "Build skipped when update is set to true",
+          "info",
+        );
         return _appObj;
       }
       previewRef.current.reload();
@@ -446,6 +474,7 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
+  appState.apps = apps;
   appState.setApps = setApps;
   appState.setSelectedApp = setSelectedApp;
   appState.files = files;
@@ -454,6 +483,10 @@ function App() {
   appState.selectedFilename = selectedFilename;
   appState.setSelectedFilename = setSelectedFilename;
   appState.build = build;
+  appState.testApi = testApi;
+  appState.previewRef = previewRef;
+  appState.handlePutData = handlePutData;
+  appState.toastsRef = toastsRef;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -485,49 +518,78 @@ function App() {
       className="flex h-screen flex-col text-stone-700"
       onKeyDown={handleKeyDown}
     >
-      <div className="border-b border-stone-500 px-2">
-        <button className={buttonStyle} onClick={handleSave}>
-          Update Preview
+      <div className="flex justify-between border-b border-stone-500 px-2">
+        <div>
+          <button
+            className={buttonStyle}
+            onClick={() => {
+              if (view === "code") {
+                setView("preview");
+                previewPanelRef.current.resize(100);
+                handleSave();
+              } else if (view === "preview") {
+                setView("code");
+                codePanelRef.current.resize(100);
+              } else {
+                handleSave();
+              }
+            }}
+          >
+            {view === "code"
+              ? "Show Preview"
+              : view === "preview"
+                ? "Show Code"
+                : "Update Preview"}
+          </button>
+          <button
+            className={buttonStyle + " hidden md:inline-block"}
+            onClick={() => handleResizePreview("mobile")}
+          >
+            Preview Mobile
+          </button>
+          <button
+            className={buttonStyle + " hidden md:inline-block"}
+            onClick={() => handleResizePreview("tablet")}
+          >
+            Preview Tablet
+          </button>
+          <button
+            className={buttonStyle + " hidden lg:inline-block"}
+            onClick={() => handleResizePreview("desktop")}
+          >
+            Preview Desktop
+          </button>
+          <button
+            className={buttonStyle + " hidden md:inline-block"}
+            onClick={() => {
+              Object.entries(files).forEach(([filename, content]) => {
+                requestDownload(filename, content);
+              });
+            }}
+          >
+            Download Files
+          </button>
+          <button className={buttonStyle} onClick={handlePublish}>
+            Publish App
+          </button>
+          <button className={buttonStyle} onClick={() => setShowHelp(true)}>
+            Help
+          </button>
+        </div>
+        <button className={buttonStyle} onClick={() => setTestApi(!testApi)}>
+          {testApi ? "Exit API Test Mode" : "Test App API"}
         </button>
-        <button
-          className={buttonStyle + " hidden md:inline-block"}
-          onClick={() => handleResizePreview("mobile")}
-        >
-          Preview Mobile
-        </button>
-        <button
-          className={buttonStyle + " hidden md:inline-block"}
-          onClick={() => handleResizePreview("tablet")}
-        >
-          Preview Tablet
-        </button>
-        <button
-          className={buttonStyle + " hidden lg:inline-block"}
-          onClick={() => handleResizePreview("desktop")}
-        >
-          Preview Desktop
-        </button>
-        <button
-          className={buttonStyle + " hidden md:inline-block"}
-          onClick={() => {
-            Object.entries(files).forEach(([filename, content]) => {
-              requestDownload(filename, content);
-            });
-          }}
-        >
-          Download Files
-        </button>
-        <button className={buttonStyle} onClick={handlePublish}>
-          Publish App
-        </button>
-        <button className={buttonStyle}>Help</button>
       </div>
       <PanelGroup
         className="grow"
         direction="horizontal"
         style={{ height: "100vh", width: "100vw" }}
       >
-        <Panel className="flex flex-col">
+        <Panel
+          ref={codePanelRef}
+          className="flex flex-col"
+          defaultSize={view === "code" ? 100 : 50}
+        >
           <FilePicker
             apps={apps}
             deleteApp={deleteApp}
@@ -562,6 +624,8 @@ function App() {
           />
         </Panel>
       </PanelGroup>
+      {showHelp && <Help setShowHelp={setShowHelp} />}
+      <Toasts className="top-2" ref={toastsRef} />
     </div>
   );
 }
@@ -592,8 +656,32 @@ const api = {
   },
 };
 
-function messageHandler(event) {
-  if (event.data.msg?.data?.script) {
+async function messageHandler(event) {
+  //this executes the script in the Sandbox such that the Assistant doesn't know DevLocal is in between them
+  //but to do so, it relies on implementation details in sandbox.js
+  //which is not ideal, but not sure how to improve it
+  //todo a lot of this is duplicated in DevLocal
+  if (
+    appState.testApi &&
+    event.data.id &&
+    event.data.msg?.request === "script" &&
+    event.data.msg.data?.script
+  ) {
+    const { script, args } = event.data.msg.data;
+    //remove id so that this function handles the message, not the default handler
+    //this must be synchronous before any awaits in this function
+    const id = event.data.id;
+    delete event.data.id;
+    const sandbox = appState.previewRef.current.sandboxRef.current;
+    const sandboxId = sandbox.getSandboxId();
+    const response = await sandbox.executeScriptAndWaitForResponse({
+      sandboxId,
+      script,
+      args,
+      timeout: 30000,
+    });
+    event.source.postMessage({ id, response }, "*");
+  } else if (!appState.testApi && event.data.msg?.data?.script) {
     event.data.msg.data.script = event.data.msg.data.script.replace(
       /```([\s\S]*?)```/g,
       (_, p1) => {

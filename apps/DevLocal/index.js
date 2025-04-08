@@ -118,7 +118,7 @@ function App({ urlParams }) {
   }
 
   const buttonStyle =
-    "w-32 rounded-lg border border-stone-700 bg-stone-100 py-0.5 font-semibold text-sm";
+    "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
 
   if (state === "error") {
     return (
@@ -140,7 +140,7 @@ function App({ urlParams }) {
 
   return (
     <div className="flex h-screen flex-col items-center text-stone-700">
-      <div className="flex w-full items-center justify-center gap-12 border-b border-stone-500 px-2 py-0.5">
+      <div className="w-full border-b border-stone-500 px-2">
         <button className={buttonStyle} onClick={handleUpdate}>
           Update Preview
         </button>
