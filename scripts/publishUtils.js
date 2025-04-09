@@ -1,18 +1,23 @@
 import { execSync } from "child_process";
 
-function prePublish(commitMessage) {
+function prePublish(path, commitMessage) {
   const currentBranch = execSync("git rev-parse --abbrev-ref HEAD")
     .toString()
     .trim();
   if (currentBranch !== "dev") {
     throw new Error("Must publish from dev branch");
   }
+  try {
+    execSync(`git ls-files --error-unmatch ${path}`);
+  } catch {
+    throw new Error(`Invalid path: ${path}`);
+  }
   // if commit message provided, dev doesn't have to be clean
   if (!commitMessage) {
     try {
-      execSync("git diff-index --quiet HEAD --");
+      execSync(`git diff-index --quiet HEAD ${path}`);
     } catch {
-      throw new Error("Working directory must be clean before publishing");
+      throw new Error("Path must be clean before publishing");
     }
   }
 }

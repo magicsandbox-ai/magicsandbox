@@ -7,7 +7,7 @@ npm run publish-package:prod dev
 
 const path = `packages/js/${process.argv[2]}`;
 
-prePublish();
+prePublish(path);
 
 const pkg = JSON.parse(execSync("npm pkg get", { cwd: path }));
 const tag = `${pkg.name}@${pkg.version}`;
