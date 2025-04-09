@@ -2,8 +2,8 @@ import { prePublish, postPublish } from "./publishUtils.js";
 import { publish } from "@magicsandbox.ai/dev";
 
 /*
-npm run publish assistant
-npm run publish functions/llm
+npm run publish:prod assistant
+npm run publish:prod functions/llm
 */
 
 let path = process.argv[2];

@@ -27,7 +27,7 @@ async function welcomeMessage(app) {
 
 **Let's get started!** Here's what you can do next:
 
-${suggestion}- **Give it a try! Enter _"add a joke to my notes"_ below** and I'll show you how I can work with apps!
+${suggestion}- **Give it a try! Enter _"add a chocolate chip cookie recipe to my notes"_ below** and I'll show you how I can work with apps!
 - [**Watch the 1 minute demo video**](https://www.youtube.com/watch?v=dQw4w9WgXcQ) to see what's possible.
 - [**Discover apps**](?action=discover) you can use.
 - [**Learn the details**](https://magicsandbox.ai/?_app=magicsandbox.About) of how Magic Sandbox works.
