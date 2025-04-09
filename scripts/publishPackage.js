@@ -7,7 +7,7 @@ npm run publish-package:prod dev
 
 const path = `packages/js/${process.argv[2]}`;
 
-prePublish(path);
+prePublish();
 
 const pkg = JSON.parse(execSync("npm pkg get", { cwd: path }));
 const tag = `${pkg.name}@${pkg.version}`;
@@ -25,4 +25,4 @@ for (const dep of deps) {
 
 execSync("npm publish --access public", { cwd: path });
 
-postPublish(path, tag);
+postPublish(tag);

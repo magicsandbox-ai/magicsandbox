@@ -14,12 +14,9 @@ from enum import Enum
 import random
 import datetime
 from fastapi.concurrency import run_in_threadpool
+import botocore.exceptions
 
 logger = logging.getLogger("magicsandbox.discover")
-
-class TestingSkipException(Exception):
-    """Raised when skipping operations during testing"""
-    pass
 
 class Kind(str, Enum):
     APP = "app"
@@ -199,7 +196,8 @@ class DiscoverData:
             return
         try:
             if self.test_data is not None:
-                raise TestingSkipException()
+                self.init_empty_embeddings()
+                return
             response = self.s3.get_object(Bucket=os.getenv('S3_ENDPOINT_BUCKET'), Key=f'{self.path}/embeddings.msgpack')
             embeddings = msgpack.unpackb(response['Body'].read())
             self.embeddings = {
@@ -207,12 +205,19 @@ class DiscoverData:
                 'ids_to_ix': {id: ix for ix, id in enumerate(embeddings['ids'])},
                 'embeddings': torch.tensor(embeddings['embeddings'])
             }
-        except (self.s3.exceptions.NoSuchKey, TestingSkipException): #todo remove NoSuchKey
-            self.embeddings = {
-                'ids': [],
-                'ids_to_ix': {},
-                'embeddings': torch.empty((0, self.embedder.get_sentence_embedding_dimension()))
-            }
+        except botocore.exceptions.ClientError as e:
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                logger.warning("init_empty_embeddings")
+                self.init_empty_embeddings()
+            else:
+                raise
+
+    def init_empty_embeddings(self):
+        self.embeddings = {
+            'ids': [],
+            'ids_to_ix': {},
+            'embeddings': torch.empty((0, self.embedder.get_sentence_embedding_dimension()))
+        }
 
     def maybe_persist_embeddings(self):
         try:
@@ -221,8 +226,11 @@ class DiscoverData:
             age_in_seconds = (datetime.datetime.now(datetime.timezone.utc) - last_modified).total_seconds()
             if age_in_seconds < 3600:
                 return # don't persist embeddings if they are less than 1 hour old
-        except self.s3.exceptions.NoSuchKey:
-            pass
+        except botocore.exceptions.ClientError as e:
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+                pass
+            else:
+                raise
         self.persist_embeddings()
     
     def persist_embeddings(self):
