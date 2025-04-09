@@ -1,34 +1,43 @@
 import { execSync } from "child_process";
 
-function prePublish() {
+function prePublish(commitMessage) {
   const currentBranch = execSync("git rev-parse --abbrev-ref HEAD")
     .toString()
     .trim();
   if (currentBranch !== "dev") {
     throw new Error("Must publish from dev branch");
   }
-
-  try {
-    execSync("git diff-index --quiet HEAD --");
-  } catch {
-    throw new Error("Working directory must be clean before publishing");
+  // if commit message provided, dev doesn't have to be clean
+  if (!commitMessage) {
+    try {
+      execSync("git diff-index --quiet HEAD --");
+    } catch {
+      throw new Error("Working directory must be clean before publishing");
+    }
   }
 }
 
-function postPublish(path, tag) {
+function postPublish(path, tag, commitMessage) {
   try {
-    execSync("git checkout main");
-    execSync(`git checkout dev -- ${path}`); //overwrite path files in main from dev
-    execSync(`git add ${path}`);
-    execSync(`git commit --no-verify -m 'Publishing ${tag}'`);
-    execSync(`git tag ${tag}`);
-    execSync("git push --atomic origin main --tags");
-    execSync("git checkout dev");
-    console.log(`Successfully pushed tag ${tag} to main`);
-  } catch (error) {
-    execSync("git checkout dev");
-    throw error;
+    // if commit message provided, commit changes in dev first
+    if (commitMessage) {
+      execSyncLog(`git add ${path}`);
+      execSyncLog(`git commit -m "${commitMessage}"`);
+    }
+    execSyncLog(`git commit --allow-empty -m "Publishing ${tag}"`); //add publishing commit to dev
+    execSyncLog("git checkout main");
+    execSyncLog(`git checkout dev -- ${path}`); //overwrite path files in main from dev
+    execSyncLog(`git add ${path}`);
+    execSyncLog(`git commit --allow-empty --no-verify -m "Publishing ${tag}"`);
+    execSyncLog("git push");
+  } finally {
+    execSyncLog("git checkout dev");
   }
+}
+
+function execSyncLog(command) {
+  console.log(command);
+  execSync(command, { stdio: "inherit" });
 }
 
 function getTagTimestamp() {
