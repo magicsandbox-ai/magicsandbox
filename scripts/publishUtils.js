@@ -4,6 +4,7 @@ function prePublish(commitMessage) {
   // if commit message provided, doesn't have to be clean
   if (!commitMessage) {
     try {
+      execSync("git update-index --refresh"); //in case file is touched but not changed (magic.json)
       execSync("git diff-index --quiet HEAD --");
     } catch {
       throw new Error("Working directory must be clean before publishing");
