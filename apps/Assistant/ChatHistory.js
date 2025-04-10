@@ -64,7 +64,10 @@ const ChatHistory = memo(function ChatHistory({
     );
   } else {
     return (
-      <button className="absolute ml-3 mt-3" onClick={() => setShow(!show)}>
+      <button
+        className="absolute z-10 ml-3 mt-3"
+        onClick={() => setShow(!show)}
+      >
         <Menu />
         <span className="sr-only">Open menu</span>
       </button>

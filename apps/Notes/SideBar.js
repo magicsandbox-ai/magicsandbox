@@ -101,7 +101,7 @@ function SideBar({
     );
   } else {
     return (
-      <div className="absolute ml-3 mt-3">
+      <div className="absolute z-10 ml-3 mt-3">
         <button onClick={() => setShowSideBar(!showSideBar)}>
           <Menu />
           <span className="sr-only">Open menu</span>
