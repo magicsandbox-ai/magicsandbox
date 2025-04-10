@@ -1,3 +1,5 @@
+**Note: this package has not yet been published. Please create an issue if you'd like to use it.**
+
 # @magicsandbox.ai/hooks
 
 @magicsandbox.ai/hooks provides custom React hooks for Magic Sandbox.

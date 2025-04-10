@@ -1,6 +1,7 @@
 {
   "name": "@magicsandbox.ai/hooks",
   "version": "0.1.0",
+  "private": true,
   "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
   "repository": {
     "type": "git",
