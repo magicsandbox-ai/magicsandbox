@@ -92,6 +92,12 @@ const Message = memo(function Message({
 
   const handleClick = (e) => {
     try {
+      const link = e.target.closest("a");
+      if (link?.href) {
+        e.preventDefault();
+        requestOpenUrl(link.href);
+        return;
+      }
       if (!message.welcome) return;
       const button = e.target.closest("button");
       const action = button?.dataset?.action;
