@@ -1,4 +1,4 @@
-import React, { useRef, memo } from "react";
+import React, { useRef, memo, useCallback } from "react";
 import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
@@ -12,18 +12,26 @@ function ChatDisplay({
   setShowDiscover,
 }) {
   const ref = useRef(null);
+  const scrollToBottomRef = useRef(false);
 
-  let scrollToBottom = false;
   if (!ref.current) {
     //messages are not open, we want to scroll to bottom when they are opened
-    scrollToBottom = true;
+    scrollToBottomRef.current = true;
   } else if (
     ref.current.scrollHeight - ref.current.clientHeight <=
     ref.current.scrollTop + 1
   ) {
     //already at the bottom so scroll to bottom once new message is added
-    scrollToBottom = true;
+    scrollToBottomRef.current = true;
+  } else {
+    scrollToBottomRef.current = false;
   }
+
+  const handleComplete = useCallback(() => {
+    if (ref.current && scrollToBottomRef.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+  }, []);
 
   let handleContinue;
   const promptToContinue = messages[messages.length - 1]?.promptToContinue;
@@ -44,13 +52,7 @@ function ChatDisplay({
           <Message
             key={i}
             message={message}
-            onComplete={
-              scrollToBottom && i === messages.length - 1
-                ? () => {
-                    ref.current.scrollTop = ref.current.scrollHeight;
-                  }
-                : undefined
-            }
+            onComplete={handleComplete}
             setShowDiscover={setShowDiscover}
             assistantRef={assistantRef}
           />
@@ -58,8 +60,8 @@ function ChatDisplay({
         {promptToContinue && (
           <button
             ref={(el) => {
-              if (el && scrollToBottom) {
-                ref.current.scrollTop = ref.current.scrollHeight;
+              if (el) {
+                handleComplete();
               }
             }}
             className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 font-bold hover:bg-stone-200"

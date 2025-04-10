@@ -404,7 +404,7 @@ function App({ user, urlApp, initData, initConversation }) {
           }}
         />
       )}
-      <div className="flex grow flex-col">
+      <div className="flex min-w-0 grow flex-col">
         {messages.length === 0 && app === null && (
           <Home
             {...{

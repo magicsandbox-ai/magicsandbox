@@ -153,7 +153,7 @@ Follow these guidelines when responding:
 
 After opening an app, you'll receive additional context on how you can use the app to fulfill the user's request.`;
 
-const scriptInstructions = `To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
+const scriptInstructions = `To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Do not use \`\`\`tool_call\`\`\` or any other blocks to execute scripts - only use <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
 
 <example_assistant_message>
 This text will be displayed to the user in a chat interface.

@@ -522,7 +522,7 @@ class Assistant {
             content: `\n${selection}\n`,
           });
         }
-      } else if (messages.length === 0) {
+      } else if (!messages.find((message) => message.role === "user")) {
         userMessage.tags.push({
           tag: "favorited_apps",
           content: formatFavoritedApps(Object.values(this.appDataRef.current)),

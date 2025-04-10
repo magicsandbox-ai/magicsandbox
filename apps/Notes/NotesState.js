@@ -601,6 +601,7 @@ Logs the content of existing notes so that you can reference them in your next m
 - If the user is simply asking a question about their notes, just answer it.
 - If you're suggesting a change to a note, use the API. The user can view a diff of the changes and approve or reject them.
 - If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
+- The user can see the name of the note at the top of the page, so don't create a redundant heading with the note's name. For example, if adding a note named "My Note", don't begin the note with "# My Note...".
 - Avoid making changes to many notes or renaming/moving/deleting nodes unless the user specifically asks (e.g. "reorganize all my notes").
 - ${logNotesInstruction}
 `;
