@@ -23,6 +23,6 @@ for (const dep of deps) {
   }
 }
 
-execSync("npm publish --access public", { cwd: path });
+execSync("npm publish --access public", { cwd: path, stdio: "inherit" });
 
 postPublish(tag);

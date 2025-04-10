@@ -10,7 +10,7 @@
   "type": "module",
   "main": "./index.js",
   "dependencies": {
-    "@magicsandbox.ai/dev": "file:packages/js/dev",
+    "@magicsandbox.ai/dev": "0.1.0",
     "@playwright/test": "^1.50.1",
     "dotenv": "^16.4.7"
   }

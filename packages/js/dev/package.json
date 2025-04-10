@@ -18,8 +18,8 @@
     "magicsandbox": "./bin/magicsandbox.js"
   },
   "dependencies": {
-    "@magicsandbox.ai/esbuild-plugin-tailwind": "file:../esbuild-plugin-tailwind",
-    "@magicsandbox.ai/types": "file:../types",
+    "@magicsandbox.ai/esbuild-plugin-tailwind": "0.1.0",
+    "@magicsandbox.ai/types": "0.1.0",
     "commander": "^12.1.0",
     "dotenv": "^16.4.7",
     "es-toolkit": "^1.29.0",
