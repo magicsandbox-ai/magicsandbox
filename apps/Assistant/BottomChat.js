@@ -147,6 +147,7 @@ function BottomChat({
                 setInput={setInput}
                 handleInput={handleInput}
                 placeholder={placeholder}
+                focus={false}
               />
               {collapsed && maximizeComponent}
             </div>

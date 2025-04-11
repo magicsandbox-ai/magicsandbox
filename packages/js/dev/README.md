@@ -113,10 +113,7 @@ This package installs `magicsandbox.ai/types` as a dependency. To get type defin
 ```json
 {
   "compilerOptions": {
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@magicsandbox.ai/types"
-    ]
+    "types": ["@magicsandbox.ai/types"]
   }
 }
 ```
