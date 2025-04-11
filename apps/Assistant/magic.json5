@@ -11,9 +11,9 @@
     loader: { ".js": "jsx", ".md": "text" },
   },
   dependencies: {
-    "@magicsandbox.ai/docs": "0.1.0",
-    "@magicsandbox.ai/react-sandbox": "0.1.0",
-    "@magicsandbox.ai/streaming": "0.1.0",
+    "@magicsandbox.ai/docs": "^0.1.0",
+    "@magicsandbox.ai/react-sandbox": "^0.1.0",
+    "@magicsandbox.ai/streaming": "^0.1.0",
     react: "^19.0.0",
     "react-dom": "^19.0.0",
     "lucide-react": "^0.408.0",
