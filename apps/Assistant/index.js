@@ -5,7 +5,7 @@ import AssistantConfirm from "./AssistantConfirm.js";
 import AssistantSearch from "./AssistantSearch.js";
 import RiskConfirm from "./RiskConfirm.js";
 import DeleteConfirm from "./DeleteConfirm.js";
-import { Toasts } from "@components/Toasts.js";
+import { Toasts, ToastError } from "@components/Toasts.js";
 import { includeMetadata, Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import BottomChat from "./BottomChat.js";
@@ -189,9 +189,26 @@ function App({ user, urlApp, initData, initConversation }) {
         setAppData,
         initData,
       });
+      conversationsRef.current = {
+        ...conversationsRef.current, //keep initConversation
+        ...Object.fromEntries(
+          Object.entries(initData).filter(([, v]) => v.conversationId),
+        ),
+      };
+      setConversationSummaries(
+        Object.entries(conversationsRef.current)
+          .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
+          .map(([conversationId, conversation]) => ({
+            conversationId,
+            summary: conversation.summary,
+          })),
+      );
       if (urlApp) {
         let appString = urlApp.split("@")[0];
         const [author, name] = appString.split(".");
+        if (!name) {
+          throw new ToastError("Invalid app in URL", "error");
+        }
         appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
         const app = appData[appString] || { app: appString };
         let maxCost = app.minCost;
@@ -232,20 +249,6 @@ function App({ user, urlApp, initData, initConversation }) {
           assistantRef.current.handleApp({ app: app.app, maxCost });
         }
       }
-      conversationsRef.current = {
-        ...conversationsRef.current, //keep initConversation
-        ...Object.fromEntries(
-          Object.entries(initData).filter(([, v]) => v.conversationId),
-        ),
-      };
-      setConversationSummaries(
-        Object.entries(conversationsRef.current)
-          .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
-          .map(([conversationId, conversation]) => ({
-            conversationId,
-            summary: conversation.summary,
-          })),
-      );
     }
     if (assistantRef.current === null) {
       init().catch((error) => {

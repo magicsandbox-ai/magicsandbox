@@ -70,7 +70,7 @@ async function handleMagicJson(folder) {
   if (!magicJson.author) {
     throw new Error("magic.json5 must contain an author key");
   }
-  return `${magicJson.author}/${magicJson.name}@${magicJson.version}`;
+  return `${magicJson.author}.${magicJson.name}@${magicJson.version}`;
 }
 
 async function handleHtml(folder, app) {
