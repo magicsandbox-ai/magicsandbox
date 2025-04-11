@@ -9,3 +9,4 @@ apps/Docs/index.md
 apps/About/dist/*
 **/test-results/
 **/.devlocal.json
+packages/python/**/dist/*

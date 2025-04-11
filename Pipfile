@@ -21,6 +21,7 @@ jupyter = "~=1.1"
 magicsandbox-streaming = {editable = true, path = "packages/python/magicsandbox_streaming"}
 pytest = "~=8.3"
 pytest-asyncio = "~=0.25.3"
+flit = "*"
 
 [requires]
 python_version = "3.12"
