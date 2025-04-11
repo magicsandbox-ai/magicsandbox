@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7bae0c7ebff0882676c4dcee00ab7e2b171168bf53fdb4c85886cfe53341fe6e"
+            "sha256": "dd86632e3bcedb25f1a2aed8ea593146765d84e096fce032ef240e69e51c9a4f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -893,6 +893,15 @@
             "index": "pypi",
             "markers": "python_version not in '2.7, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7' and python_version >= '3.8'",
             "version": "==1.65.7"
+        },
+        "magicsandbox-streaming": {
+            "hashes": [
+                "sha256:74c2a4b1993e9c99153abb54f6c375e01253bbab4eefc4c2f54602bee389b01f",
+                "sha256:e4d79b0cd07fc34da41cc2d95d7e08e4f982d2186811ba4f8f03a0f43371af81"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.7'",
+            "version": "==0.1.0"
         },
         "markdown-it-py": {
             "hashes": [
@@ -3233,10 +3242,6 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==3.0.14"
-        },
-        "magicsandbox-streaming": {
-            "editable": true,
-            "path": "packages/python/magicsandbox_streaming"
         },
         "markupsafe": {
             "hashes": [

@@ -1,10 +1,10 @@
-# magicsandbox_streaming
+# magicsandbox-streaming
 
 Python streaming utilities for [Magic Sandbox](https://magicsandbox.ai).
 
 ## Getting Started
 
-`pip install magicsandbox_streaming`
+`pip install magicsandbox-streaming`
 
 ## Usage
 
