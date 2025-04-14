@@ -12,7 +12,7 @@ import {
   getDefaults,
   runProcessTailwind,
   updateMagicJson,
-  exampleAppFiles,
+  exampleAppFiles as _exampleAppFiles,
 } from "@magicsandbox.ai/dev";
 import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
@@ -60,8 +60,12 @@ const debounce = (callback, wait) => {
   };
 };
 
-exampleAppFiles["magic.json"] = exampleAppFiles["magic.json5"];
-delete exampleAppFiles["magic.json5"];
+const exampleAppFiles = {
+  "magic.json": _exampleAppFiles["magic.json5"], //rename
+  ...Object.fromEntries(
+    Object.entries(_exampleAppFiles).filter(([key]) => key !== "magic.json5"),
+  ),
+};
 
 function App() {
   const [view, setView] = useState(window.innerWidth > 768 ? null : "code"); //"code" | "preview", only relevant for mobile

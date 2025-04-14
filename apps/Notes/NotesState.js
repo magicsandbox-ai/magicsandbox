@@ -20,6 +20,7 @@ class Node {
     prevContent,
     checked,
     starred,
+    save = true,
   }) {
     this.notesState = notesState;
     this.uuid = uuid || generateUuid();
@@ -45,7 +46,9 @@ class Node {
       throw new Error("Invalid Node type");
     }
     this.updateChange();
-    this.save();
+    if (save) {
+      this.save();
+    }
   }
   update(node) {
     Object.entries(node).forEach(([key, value]) => {
@@ -142,6 +145,7 @@ class NotesState {
           notesState: this,
           ...node,
           checked: false, //reset checked when starting a new session
+          save: false, //don't need to save on initial load
         }),
       ]),
     );

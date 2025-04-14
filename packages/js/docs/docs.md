@@ -206,7 +206,9 @@ _(**required**, string)_
 
 HTTPS URL that Magic Sandbox will call to execute your backend code:
 
-- The request is a POST that will timeout after 60 seconds
+- The request is a POST that will timeout if:
+  - Headers are not received within 30 seconds
+  - The request is not completed within 180 seconds
 - Includes headers:
   - `Content-Type: application/json`
   - If you have an API key, `Authorization: Bearer <hashedKey>`, where `<hashedKey>` is the SHA-256 hash of your API key encoded as a hexadecimal string. You can generate an API key [here](https://magicsandbox.ai/account/api-key). See below code snippets that generate `hashedKey`
