@@ -135,3 +135,22 @@ You may want to add `**/_debug_*` to your `.gitignore` file.
 ## Testing
 
 Consider using [@magicsandbox.ai/test](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/test) to test your App.
+
+## Accessing the Dev Server from Another Device
+
+To access the dev server from another device, (for example, your phone), follow these steps:
+
+1. Start the dev server, which opens a url in your default browser:
+
+`npm run dev MyApp`
+
+2. Get the IP address of the device running the dev server:
+
+```
+ipconfig # Windows
+ifconfig # Mac/Linux
+```
+
+3. On another device, open the url from step 1, adding the IP address from step 2 as a query parameter:
+
+`[url from step 1]&devLocalIp=[ip from step 2]`

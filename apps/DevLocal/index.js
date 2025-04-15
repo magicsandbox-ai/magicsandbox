@@ -29,6 +29,7 @@ function App({ urlParams }) {
           devLocalPort: port,
           devLocalToken: token,
           devLocalAutoInit: autoInit,
+          devLocalIp: ip,
         } = urlParams;
         if (!port || !token) {
           setState("error");
@@ -38,6 +39,7 @@ function App({ urlParams }) {
           port,
           token,
           autoInit: autoInit === "false" ? false : true,
+          ip: ip ? ip : "localhost",
         };
         await previewApp();
       } catch (error) {
@@ -53,7 +55,7 @@ function App({ urlParams }) {
     let response;
     try {
       response = await requestFetch(
-        `http://localhost:${urlParamsRef.current.port}`,
+        `http://${urlParamsRef.current.ip}:${urlParamsRef.current.port}`,
         {
           headers: {
             "x-token": urlParamsRef.current.token,
