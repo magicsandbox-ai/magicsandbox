@@ -29,7 +29,7 @@ And adds the following to your `package.json`:
 }
 ```
 
-You can then run `npm run dev MyApp`, which will start a local dev server and open magicsandbox.DevLocal, where you can see your App and start making changes.
+You can then run `npm run dev MyApp`, which will start a local dev server and open `magicsandbox.DevLocal`, where you can see your App and start making changes.
 
 Run `npx magicsandbox --help` to see more command line options.
 
@@ -136,21 +136,21 @@ You may want to add `**/_debug_*` to your `.gitignore` file.
 
 Consider using [@magicsandbox.ai/test](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/test) to test your App.
 
-## Accessing the Dev Server from Another Device
+## Using HTTPS
 
-To access the dev server from another device, (for example, your phone), follow these steps:
+`magicsandbox.DevLocal` works by making a fetch request to the dev server at `http://localhost`. There are scenarios where this won't work and you'll need to use HTTPS:
 
-1. Start the dev server, which opens a url in your default browser:
+- Using Safari: Safari doesn't allow HTTP requests to localhost from a site served over HTTPS
+- Accessing the dev server from another device: for example, to test your App on your phone before publishing
 
-`npm run dev MyApp`
+To access the dev server using HTTPS, follow these steps:
 
-2. Get the IP address of the device running the dev server:
+1. Sign up for a tunneling service. Currently only [ngrok](https://dashboard.ngrok.com/signup) is supported. If you want to use a different service, please create an issue or a PR.
+
+2. Start the dev server with the `--tunnel` flag. By default, when tunneling, the dev server will minify your code and not generate sourcemaps to reduce bandwidth usage.
 
 ```
-ipconfig # Windows
-ifconfig # Mac/Linux
+npm run dev MyApp -- --tunnel ngrok
 ```
 
-3. On another device, open the url from step 1, adding the IP address from step 2 as a query parameter:
-
-`[url from step 1]&devLocalIp=[ip from step 2]`
+3. Rather than automatically opening `magicsandbox.DevLocal` in your default browser, you'll see a message in the console "Open this url on any device: ...". Open this url on any device to access the dev server using HTTPS.

@@ -26,20 +26,20 @@ function App({ urlParams }) {
     async function init() {
       try {
         const {
-          devLocalPort: port,
           devLocalToken: token,
+          devLocalPort: port,
+          devLocalUrl: url,
           devLocalAutoInit: autoInit,
-          devLocalIp: ip,
         } = urlParams;
-        if (!port || !token) {
+        if (!token || (!port && !url)) {
           setState("error");
           return;
         }
         urlParamsRef.current = {
-          port,
           token,
+          port,
+          url,
           autoInit: autoInit === "false" ? false : true,
-          ip: ip ? ip : "localhost",
         };
         await previewApp();
       } catch (error) {
@@ -54,14 +54,20 @@ function App({ urlParams }) {
     const sandboxId = previewRef.current.getSandboxId();
     let response;
     try {
-      response = await requestFetch(
-        `http://${urlParamsRef.current.ip}:${urlParamsRef.current.port}`,
-        {
-          headers: {
-            "x-token": urlParamsRef.current.token,
-          },
-        },
-      );
+      let url;
+      const headers = {
+        "x-token": urlParamsRef.current.token,
+        //todo targetAddressSpace?
+      };
+      if (urlParamsRef.current.url) {
+        url = urlParamsRef.current.url;
+        if (url.toLowerCase().includes("ngrok")) {
+          headers["ngrok-skip-browser-warning"] = "1";
+        }
+      } else {
+        url = `http://localhost:${urlParamsRef.current.port}`;
+      }
+      response = await requestFetch(url, { headers });
     } catch (error) {
       console.error(error);
       throw new Error("Unexpected error. Is your development server running?");
@@ -119,9 +125,6 @@ function App({ urlParams }) {
     }
   }
 
-  const buttonStyle =
-    "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
-
   if (state === "error") {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-lg font-semibold text-stone-700">
@@ -129,7 +132,10 @@ function App({ urlParams }) {
           magicsandbox.DevLocal is intended for use with the{" "}
           <DocsLink>@magicsandbox.ai/dev</DocsLink> package.
         </p>
-        <p>Your URL is invalid. It should include a port and a token.</p>
+        <p>
+          Your URL is invalid. It should include a token and either a port or a
+          tunnel URL.
+        </p>
         <p>
           You may have navigated to this page directly. Refer to the{" "}
           <DocsLink>docs</DocsLink> for help getting started.
@@ -140,6 +146,9 @@ function App({ urlParams }) {
 
   appState.previewRef = previewRef;
 
+  const buttonStyle =
+    "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
+
   return (
     <div className="flex h-screen flex-col items-center text-stone-700">
       <div className="w-full border-b border-stone-500 px-2">
@@ -147,19 +156,19 @@ function App({ urlParams }) {
           Update Preview
         </button>
         <button
-          className={buttonStyle}
+          className={buttonStyle + " hidden md:inline-block"}
           onClick={() => handleResizePreview("mobile")}
         >
           Preview Mobile
         </button>
         <button
-          className={buttonStyle}
+          className={buttonStyle + " hidden md:inline-block"}
           onClick={() => handleResizePreview("tablet")}
         >
           Preview Tablet
         </button>
         <button
-          className={buttonStyle}
+          className={buttonStyle + " hidden md:inline-block"}
           onClick={() => handleResizePreview("desktop")}
         >
           Preview Desktop

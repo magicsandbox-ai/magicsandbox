@@ -1,6 +1,6 @@
 {
   "name": "@magicsandbox.ai/dev",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
     "golden-fleece": "^1.0.9",
     "json5": "^2.2.3",
     "open": "^10.1.0",
+    "default-browser": "^5.2.1",
     "zod": "^3.23.8"
   }
 }

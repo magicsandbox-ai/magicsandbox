@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { init, dev, publish, install } from "../src/index.js";
+import { tunnelProviders } from "../src/dev.js";
 import { Command, Option } from "commander";
 import path from "path";
 
@@ -28,6 +29,11 @@ const urlOption = new Option("--url <url>")
   .default("https://magicsandbox.ai")
   .hideHelp();
 
+const tunnelOption = new Option(
+  "--tunnel [provider]",
+  "Start a tunnel to make the dev server accessible from another device. Defaults to ngrok if provider not specified",
+).choices(Object.keys(tunnelProviders));
+
 program
   .command("dev")
   .description("Start dev server for a Magic Sandbox App")
@@ -36,12 +42,14 @@ program
   .option("--debug", "Debug build")
   .option("-p, --port <number>", "Port to run dev server on", "3000")
   .addOption(urlOption)
-  .action((appPath, options) => {
-    dev({
+  .addOption(tunnelOption)
+  .action(async (appPath, options) => {
+    await dev({
       magicPath: handlePath(appPath, options.dir),
       debug: options.debug,
       port: parseInt(options.port),
       url: options.url,
+      tunnel: options.tunnel === true ? "ngrok" : options.tunnel, // if --tunnel with no value (true), use ngrok
     });
   });
 

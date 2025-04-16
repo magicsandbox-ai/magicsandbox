@@ -514,7 +514,7 @@ function App() {
   };
 
   const buttonStyle =
-    "px-2 py-1 text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
+    "px-2 py-1 text-xs md:text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
   const approveButtonStyle =
     "rounded-lg border border-stone-500 py-1 text-sm w-28 font-medium";
 
