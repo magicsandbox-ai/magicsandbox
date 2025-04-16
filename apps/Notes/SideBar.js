@@ -155,6 +155,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
           autoFocus
           onFocus={(e) => e.target.select()}
           aria-label="Rename"
+          enterKeyHint="done"
         />
       </form>
     );

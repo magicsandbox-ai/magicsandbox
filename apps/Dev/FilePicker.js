@@ -71,6 +71,7 @@ export default function FilePicker({
             onChange={(e) => setNewFilename(e.target.value)}
             placeholder="New file"
             aria-label="New file"
+            enterKeyHint="done"
           />
           <button type="submit">
             <Plus size={16} />

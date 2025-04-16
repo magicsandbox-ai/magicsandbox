@@ -224,6 +224,7 @@ async function isRunning(magicPath) {
 export { dev, isRunning, tunnelProviders };
 
 function killProcessAndChildren(proc) {
+  // I thought ngrok spawned a child process that needed to be killed, but maybe not? might need to revisit this
   // const pid = proc.pid;
   // if (process.platform === "win32") {
   //   let childrenString = execSync(

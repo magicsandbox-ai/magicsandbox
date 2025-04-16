@@ -56,6 +56,7 @@ const ChatHistory = memo(function ChatHistory({
                   summary,
                   currentConversationId,
                   assistantRef,
+                  setShow,
                 }}
               />
             ))}
@@ -80,6 +81,7 @@ function ChatButton({
   summary,
   currentConversationId,
   assistantRef,
+  setShow,
 }) {
   const [renameValue, setRenameValue] = useState(null);
 
@@ -110,6 +112,7 @@ function ChatButton({
           autoFocus
           onFocus={(e) => e.target.select()}
           aria-label="Rename"
+          enterKeyHint="done"
         />
       </form>
     );
@@ -122,9 +125,12 @@ function ChatButton({
           ? "bg-stone-200 outline outline-1 outline-stone-500"
           : ""
       }`}
-      onClick={() =>
-        assistantRef.current.handleSwitchConversation(conversationId)
-      }
+      onClick={() => {
+        assistantRef.current.handleSwitchConversation(conversationId);
+        if (window.innerWidth <= 768) {
+          setShow(false); //close on mobile when clicking a chat
+        }
+      }}
       onDoubleClick={() => setRenameValue(summary)}
       title={summary}
     >

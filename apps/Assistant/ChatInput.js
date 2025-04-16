@@ -48,6 +48,7 @@ function ChatInput({
       rows={1}
       placeholder={placeholder}
       aria-label="Chat with your Assistant"
+      enterKeyHint="send"
     />
   );
 }

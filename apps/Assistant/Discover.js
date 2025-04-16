@@ -93,13 +93,14 @@ function DiscoverInner({
       <form onSubmit={handleSearch}>
         <div className="flex gap-2">
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={placeholder}
             className="min-w-0 flex-1 rounded border border-stone-200 p-2"
             autoFocus
             aria-label={placeholder}
+            enterKeyHint="search"
           />
           <button
             type="submit"
