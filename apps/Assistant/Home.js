@@ -35,7 +35,7 @@ function Home({
         </p>
         <div className="mx-1 flex rounded-xl border border-stone-500 py-1 outline-1 focus-within:outline focus-within:outline-stone-500">
           <ChatInput
-            className="mx-2 max-h-[148px] grow resize-none outline-0"
+            className="mx-2 max-h-[148px] grow resize-none outline-none"
             input={input}
             setInput={setInput}
             handleInput={handleInput}

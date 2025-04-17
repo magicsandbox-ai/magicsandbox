@@ -37,6 +37,10 @@ function SearchInner({ nodes, onClickResult, placeholder }) {
 
   function handleSearch(e) {
     e.preventDefault();
+    if (window.innerWidth < 768) {
+      //hide virtual keyboard on mobile
+      e.target.querySelector('input[type="search"]').blur();
+    }
     const searchTerms = searchQuery.toLowerCase().split(" ");
     const newSearchResults = [];
     nodes.forEach((node) => {

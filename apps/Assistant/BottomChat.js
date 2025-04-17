@@ -140,8 +140,10 @@ function BottomChat({
             )}
             <div className="flex items-center">
               <ChatInput
-                className={`max-h-[148px] grow resize-none px-1 ${
-                  collapsed ? "mx-1 outline-0" : "mx-2"
+                className={`max-h-[148px] grow resize-none px-1 outline-none ${
+                  collapsed
+                    ? "mx-1"
+                    : "mx-2 focus:outline-2 focus:outline-stone-500"
                 }`}
                 input={input}
                 setInput={setInput}

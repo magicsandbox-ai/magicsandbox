@@ -112,6 +112,9 @@ function App({ user, urlApp, initData, initConversation }) {
   const [showDiscover, setShowDiscover] = useState(false);
   const [showApps, setShowApps] = useState(false);
   const [popularAppData, setPopularAppData] = useState(initData.popularAppData); // {ts, apps}
+  const [showChatHistory, setShowChatHistory] = useState(
+    window.innerWidth > 768,
+  );
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -393,7 +396,18 @@ function App({ user, urlApp, initData, initConversation }) {
   }
 
   return (
-    <main className="flex h-screen">
+    <main
+      className="flex h-screen"
+      onClick={(e) => {
+        if (
+          window.innerWidth <= 768 &&
+          showChatHistory &&
+          !e.target.closest("nav")
+        ) {
+          setShowChatHistory(false);
+        }
+      }}
+    >
       {app === null && (
         <ChatHistory
           {...{
@@ -404,6 +418,8 @@ function App({ user, urlApp, initData, initConversation }) {
             assistantRef,
             setShowSearch,
             setShowDelete,
+            show: showChatHistory,
+            setShow: setShowChatHistory,
           }}
         />
       )}

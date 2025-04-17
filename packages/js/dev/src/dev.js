@@ -136,9 +136,11 @@ async function dev({ magicPath, debug, port, url, autoOpen = true, tunnel }) {
 
     const devServerUrl = `http://localhost:${port}`;
     console.log(`Magic Sandbox dev server running at ${devServerUrl}`);
-    let appUrl = `${url}?_app=magicsandbox.DevLocal&devLocalPort=${port}&devLocalToken=${token}`;
+    let appUrl = `${url}?_app=magicsandbox.DevLocal&devLocalToken=${token}`;
     if (devLocalUrl) {
       appUrl += `&devLocalUrl=${devLocalUrl}`;
+    } else {
+      appUrl += `&devLocalPort=${port}`;
     }
     if (autoOpen && !devLocalUrl) {
       const browser = await defaultBrowser();

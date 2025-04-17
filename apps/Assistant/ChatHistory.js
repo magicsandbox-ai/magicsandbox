@@ -10,9 +10,9 @@ const ChatHistory = memo(function ChatHistory({
   assistantRef,
   setShowSearch,
   setShowDelete,
+  show,
+  setShow,
 }) {
-  const [show, setShow] = useState(window.innerWidth > 768);
-
   function handleSearch() {
     setShowSearch(true);
   }
@@ -37,7 +37,14 @@ const ChatHistory = memo(function ChatHistory({
             <Trash2 />
             <span className="sr-only">Delete</span>
           </button>
-          <button onClick={() => assistantRef.current.handleNewConversation()}>
+          <button
+            onClick={() => {
+              assistantRef.current.handleNewConversation();
+              if (window.innerWidth <= 768) {
+                setShow(false); //close on mobile when clicking new chat
+              }
+            }}
+          >
             <Plus />
             <span className="sr-only">New chat</span>
           </button>
