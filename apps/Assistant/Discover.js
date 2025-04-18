@@ -57,6 +57,10 @@ function DiscoverInner({
 
   async function handleSearch(e) {
     e.preventDefault();
+    if (window.innerWidth < 768) {
+      //hide virtual keyboard on mobile
+      e.target.querySelector('input[type="search"]').blur();
+    }
     setStatus("loading");
     try {
       const { result } = await requestFunction("magicsandbox.discover", {

@@ -107,7 +107,7 @@ class Assistant {
   }
   handleNewConversation() {
     this.handleStopConversation();
-    const conversationId = Date.now();
+    const conversationId = String(Date.now()); //numeric keys are coerced to string, so make id a string to avoid bugs
     const conversation = {
       conversationId,
       messages: [],
@@ -514,7 +514,7 @@ class Assistant {
         if (abortSignal.aborted) return;
         userMessage.tags.push({
           tag: "app_context",
-          content: `\n${context || "App did not provide context"}\n`,
+          content: `\n${context || `App did not provide context. The app is ${this.app.app}: ${this.app.description}`}\n`,
         });
         if (selection && selection.length < 1000) {
           userMessage.tags.push({

@@ -149,7 +149,7 @@ function BottomChat({
                 setInput={setInput}
                 handleInput={handleInput}
                 placeholder={placeholder}
-                focus={false}
+                focus={window.innerWidth > 768} //don't focus on mobile
               />
               {collapsed && maximizeComponent}
             </div>

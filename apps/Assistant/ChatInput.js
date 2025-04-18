@@ -33,6 +33,10 @@ function ChatInput({
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault(); //this is needed to prevent creating a newline after setInput('')
+      if (window.innerWidth < 768) {
+        //hide virtual keyboard on mobile
+        e.target.blur();
+      }
       handleInput(input);
     }
   }

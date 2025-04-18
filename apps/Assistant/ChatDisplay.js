@@ -27,8 +27,8 @@ function ChatDisplay({
     scrollToBottomRef.current = false;
   }
 
-  const handleComplete = useCallback(() => {
-    if (ref.current && scrollToBottomRef.current) {
+  const handleComplete = useCallback((lastUserMessage) => {
+    if (ref.current && (scrollToBottomRef.current || lastUserMessage)) {
       ref.current.scrollTop = ref.current.scrollHeight;
     }
   }, []);
@@ -45,6 +45,10 @@ function ChatDisplay({
     };
   }
 
+  const lastUserMessageIndex = messages.findLastIndex(
+    (message) => message.role === "user",
+  );
+
   return (
     <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>
       <div className={`mb-4 flex flex-col gap-5 ${innerClassName}`}>
@@ -55,6 +59,7 @@ function ChatDisplay({
             onComplete={handleComplete}
             setShowDiscover={setShowDiscover}
             assistantRef={assistantRef}
+            lastUserMessage={lastUserMessageIndex === i}
           />
         ))}
         {promptToContinue && (
@@ -75,7 +80,8 @@ function ChatDisplay({
   );
 }
 
-const messageStyle = "prose prose-stone mx-3 max-w-full ";
+const messageStyle =
+  "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 max-w-full ";
 const assistantMessageStyle = messageStyle;
 const userMessageStyle =
   messageStyle + "bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
@@ -88,6 +94,7 @@ const Message = memo(function Message({
   onComplete,
   setShowDiscover,
   assistantRef,
+  lastUserMessage,
 }) {
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
@@ -147,7 +154,9 @@ const Message = memo(function Message({
         rehypeSanitizeOptions={
           message.welcome ? welcomeRehypeSanitizeOptions : rehypeSanitizeOptions
         }
-        onComplete={onComplete}
+        onComplete={() => {
+          onComplete(lastUserMessage);
+        }}
       >
         {formattedMessage}
       </Markdown>

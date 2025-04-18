@@ -25,7 +25,7 @@ async function init({ user } = {}) {
     }),
   ]);
   const initConversation = {
-    conversationId: Date.now(),
+    conversationId: String(Date.now()), //numeric keys are coerced to string, so make id a string to avoid bugs
     messages: [],
     summary: null,
     lastUpdated: Date.now(),

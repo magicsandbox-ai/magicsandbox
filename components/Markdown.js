@@ -74,7 +74,15 @@ const Markdown = memo(function Markdown({
 
 function Pre({ children, ...props }) {
   const [copied, setCopied] = useState(false);
+  const [isSingleLine, setIsSingleLine] = useState(false);
+
   const ref = useRef();
+
+  useLayoutEffect(() => {
+    if (ref.current) {
+      setIsSingleLine(ref.current.offsetHeight <= 40);
+    }
+  }, [children]);
 
   const handleCopy = () => {
     const code = ref.current.innerText.trim();
@@ -88,7 +96,9 @@ function Pre({ children, ...props }) {
     <div className="group/code relative">
       <button
         onClick={handleCopy}
-        className="absolute right-2 top-2 rounded border border-stone-500 px-2 py-1 text-sm font-bold opacity-0 transition-opacity duration-200 hover:bg-stone-200 group-hover/code:opacity-100"
+        className={`absolute right-2 rounded border border-stone-500 px-2 py-1 text-sm font-bold opacity-0 transition-opacity duration-200 hover:bg-stone-200 group-hover/code:opacity-100 ${
+          isSingleLine ? "top-1" : "top-2"
+        }`}
       >
         {copied ? "Copied!" : "Copy"}
       </button>
