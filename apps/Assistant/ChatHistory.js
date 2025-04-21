@@ -23,7 +23,7 @@ const ChatHistory = memo(function ChatHistory({
 
   if (show) {
     return (
-      <nav className="absolute z-30 flex h-full w-64 flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
+      <nav className="absolute z-30 flex h-full w-64 flex-none flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <button onClick={() => setShow(!show)}>
             <Menu />

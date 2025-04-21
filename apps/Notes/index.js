@@ -127,7 +127,18 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen">
+    <div
+      className="flex h-screen w-screen"
+      onClick={(e) => {
+        if (
+          window.innerWidth <= 768 &&
+          showSideBar &&
+          !e.target.closest("nav")
+        ) {
+          setShowSideBar(false);
+        }
+      }}
+    >
       <SideBar
         {...{
           notesState,

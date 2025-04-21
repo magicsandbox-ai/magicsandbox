@@ -13,8 +13,20 @@ rename/delete
 test.use({ appOptions: { autoConfirm: true } });
 
 test("Assistant", async ({ app }) => {
-  //discover
-  await app.getByRole("button", { name: "Discover Apps" }).click();
+  //search
+  await app.getByRole("button", { name: "Search" }).click();
+  const searchInput = app.getByLabel("Search chats...");
+  await searchInput.fill("Welcome");
+  await searchInput.press("Enter");
+  await app
+    .getByRole("dialog")
+    .getByRole("button", { name: "Welcome to Magic Sandbox!" })
+    .nth(0)
+    .click();
+  await expect(app.getByRole("dialog")).not.toBeVisible();
+
+  //welcome message - app fixture tests opening apps so no need to test here
+  await app.getByRole("button", { name: "Discover apps" }).nth(0).click();
   await expect(app.getByRole("dialog")).toBeVisible();
   const discoverInput = app.getByLabel("Search for apps...");
   await discoverInput.fill("Notes");
@@ -25,23 +37,6 @@ test("Assistant", async ({ app }) => {
   await expect(app.getByRole("dialog").getByRole("button").nth(1)).toBeVisible({
     timeout: 15000,
   });
-  await app.getByRole("dialog").press("Escape");
-  await expect(app.getByRole("dialog")).not.toBeVisible();
-
-  //search
-  await app.getByRole("button", { name: "Search" }).click();
-  const searchInput = app.getByLabel("Search chats...");
-  await searchInput.fill("Welcome");
-  await searchInput.press("Enter");
-  await app
-    .getByRole("dialog")
-    .getByRole("button", { name: "Welcome to Magic Sandbox!" })
-    .click();
-  await expect(app.getByRole("dialog")).not.toBeVisible();
-
-  //welcome message - app fixture tests opening apps so no need to test here
-  await app.getByRole("button", { name: "Discover apps" }).click();
-  await expect(app.getByRole("dialog")).toBeVisible();
   await app.getByRole("dialog").press("Escape");
   await expect(app.getByRole("dialog")).not.toBeVisible();
 

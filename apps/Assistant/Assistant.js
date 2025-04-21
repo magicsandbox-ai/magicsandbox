@@ -20,6 +20,7 @@ import {
 } from "./prompt.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
+import { createWelcomeConversation } from "./welcomeMessage.js";
 
 const includeMetadata = ["id", "description", "minCost", "finalCost", "status"];
 const defaultInputBytesPerToken = 4;
@@ -215,6 +216,14 @@ class Assistant {
     }
   }
   async _handleDeleteConversation(conversationId) {
+    if (conversationId === "0") {
+      const welcomeConversation = await createWelcomeConversation();
+      this.handleUpdateConversation({
+        conversationId,
+        messages: welcomeConversation.messages,
+      });
+      return;
+    }
     delete this.conversationsRef.current[conversationId];
     await requestDeleteData(conversationId, {
       app: "magicsandbox.Assistant",
@@ -235,6 +244,7 @@ class Assistant {
       this.toastsRef.current.addToast(`Error: failed to delete chat`, "error");
     }
     conversationIds = new Set(conversationIds);
+    conversationIds.delete("0"); //don't delete welcome conversation
     this.setConversationSummaries((conversationSummaries) =>
       conversationSummaries.filter(
         (conversationSummary) =>

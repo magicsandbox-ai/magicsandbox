@@ -12,7 +12,7 @@ import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
 import { formatAsDollars, getMinCost } from "./utils.js";
-import { welcomeMessage } from "./welcomeMessage.js";
+import { createWelcomeConversation } from "./welcomeMessage.js";
 import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.js";
@@ -25,20 +25,15 @@ async function init({ user } = {}) {
       app: "magicsandbox.Assistant",
     }),
   ]);
-  const initConversation = {
+  let initConversation = {
     conversationId: String(Date.now()), //numeric keys are coerced to string, so make id a string to avoid bugs
     messages: [],
     summary: null,
     lastUpdated: Date.now(),
   };
   let urlApp;
-  if (Object.keys(initData).length === 0) {
-    const message = await welcomeMessage(urlParams._app);
-    initConversation.messages.push(message);
-    initConversation.summary = "Welcome to Magic Sandbox!";
-    requestPutData(initConversation.conversationId, initConversation, {
-      app: "magicsandbox.Assistant",
-    }).catch(console.error);
+  if (!("0" in initData)) {
+    initConversation = await createWelcomeConversation(urlParams._app);
   } else {
     urlApp = urlParams._app;
   }
@@ -78,8 +73,9 @@ function App({ user, urlApp, initData, initConversation }) {
   - promptToContinue: if populated, string to use to prompt the user to continue
   - continueSystemPrompt: "chat" | "init" | "context", the system prompt used to continue
   - model: the model used to generate the message
-  - welcome: boolean indicating whether the message is the special welcome message
-  - welcomeMinCost: minCost of the app suggested in the welcome message
+  - welcome: populated on the welcome message, an object with keys:
+    - app: the app to suggest in the welcome message
+    - minCost: the minCost of the app suggested in the welcome message
 
   currentConversation is an object with keys:
   - conversationId

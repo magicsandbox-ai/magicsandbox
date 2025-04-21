@@ -3,6 +3,7 @@ import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
+import { getWelcomeMessage } from "./welcomeMessage.js";
 
 function ChatDisplay({
   outerClassName = "",
@@ -81,13 +82,13 @@ function ChatDisplay({
 }
 
 const messageStyle =
-  "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 max-w-full ";
-const assistantMessageStyle = messageStyle;
+  "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 ";
+const assistantMessageStyle = messageStyle + "max-w-full";
 const userMessageStyle =
-  messageStyle + "bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
+  messageStyle +
+  "self-end max-w-[80%] whitespace-pre-wrap bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
 
 const assistantMessageContainerStyle = "group";
-const userMessageContainerStyle = "self-end max-w-[80%]";
 
 const Message = memo(function Message({
   message,
@@ -96,6 +97,9 @@ const Message = memo(function Message({
   assistantRef,
   lastUserMessage,
 }) {
+  if (message.welcome) {
+    message = getWelcomeMessage(message);
+  }
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
 
@@ -132,19 +136,26 @@ const Message = memo(function Message({
     }
   };
 
+  if (message.role === "user") {
+    return (
+      <div
+        ref={(el) => {
+          if (el) {
+            onComplete(lastUserMessage);
+          }
+        }}
+        className={userMessageStyle}
+        onClick={handleClick}
+      >
+        {formattedMessage}
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={
-        message.role === "user"
-          ? userMessageContainerStyle
-          : assistantMessageContainerStyle
-      }
-      onClick={handleClick}
-    >
+    <div className={assistantMessageContainerStyle} onClick={handleClick}>
       <Markdown
-        className={
-          message.role === "user" ? userMessageStyle : assistantMessageStyle
-        }
+        className={assistantMessageStyle}
         remarkPlugins={remarkPlugins}
         rehypePlugins={
           message.welcome
@@ -187,8 +198,8 @@ function formatTag({ tag, content }) {
   if (tag === "intermediate_script" || tag === "final_script") {
     return `~~~magicscript\n${content.trim()}\n~~~`;
   } else if (tag === "user_request") {
-    //improve markdown formatting by replacing single line breaks with double line breaks
-    return content.trim().replace(/([^\n])\n(?!\n)/g, "$1\n\n");
+    //added line breaks when wrapping in <user_request>
+    return content.trim();
   }
   return content;
 }
@@ -238,7 +249,7 @@ function rehypeCode() {
   };
 }
 
-const welcomeButtonStyle = "underline";
+const welcomeButtonStyle = "underline text-blue-600 welcome-button";
 
 function rehypeWelcomeButton() {
   return (tree) => {

@@ -12,6 +12,10 @@
   @apply -m-0.5 box-content rounded-lg p-0.5 hover:bg-stone-300;
 }
 
+.welcome-button strong {
+  color: inherit;
+}
+
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
 /*
 pre code.hljs {
