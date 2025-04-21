@@ -227,7 +227,7 @@ function Note({ notesState, showSideBar }) {
       <div
         className={`mb-2 flex cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
-        <h1 className="text-2xl font-bold leading-none">{currentNode.path}</h1>
+        <NoteTitle currentNode={currentNode} notesState={notesState} />
         {currentNode.changeDetails && (
           <span className="italic leading-none text-stone-500">
             ({currentNode.changeDetails})
@@ -303,6 +303,48 @@ function Note({ notesState, showSideBar }) {
         />
       )}
     </main>
+  );
+}
+
+function NoteTitle({ currentNode, notesState }) {
+  const [renameValue, setRenameValue] = useState(currentNode.name);
+
+  const inputRef = useRef(null);
+
+  function handleRename(e) {
+    e.preventDefault();
+    const newName = renameValue.trim();
+    if (newName.length > 0) {
+      notesState.updateNode({
+        uuid: currentNode.uuid,
+        name: newName,
+      });
+    } else {
+      setRenameValue(currentNode.name);
+    }
+    inputRef.current.blur();
+  }
+
+  const baseClassName = "text-2xl font-bold";
+
+  return (
+    <div className="flex">
+      <h1 className={baseClassName} onClick={() => inputRef.current.focus()}>
+        {currentNode.path.slice(0, -1 * currentNode.name.length)}
+      </h1>
+      <form onSubmit={handleRename}>
+        <input
+          ref={inputRef}
+          className={baseClassName}
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onBlur={handleRename}
+          onFocus={(e) => e.target.select()}
+          aria-label="Rename"
+          enterKeyHint="done"
+        />
+      </form>
+    </div>
   );
 }
 

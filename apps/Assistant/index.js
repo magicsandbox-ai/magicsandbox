@@ -34,6 +34,9 @@ async function init({ user } = {}) {
   let urlApp;
   if (!("0" in initData)) {
     initConversation = await createWelcomeConversation(urlParams._app);
+    requestPutData(initConversation.conversationId, initConversation, {
+      app: "magicsandbox.Assistant",
+    }).catch(console.error);
   } else {
     urlApp = urlParams._app;
   }
