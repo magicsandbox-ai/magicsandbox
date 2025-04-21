@@ -16,6 +16,7 @@ import { welcomeMessage } from "./welcomeMessage.js";
 import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.js";
+import ChatToolbar from "./ChatToolbar.js";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -99,6 +100,11 @@ function App({ user, urlApp, initData, initConversation }) {
     },
   ]);
   const [collapsed, setCollapsed] = useState(true);
+  const [shouldFocusCollapseButton, setShouldFocusCollapseButton] =
+    useState(false);
+  const [docked, setDocked] = useState(
+    window.innerWidth > 768 && (initData.docked || false),
+  );
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
@@ -296,6 +302,15 @@ function App({ user, urlApp, initData, initConversation }) {
   }, [conversationSummaries]);
 
   useEffect(() => {
+    if (window.innerWidth > 768) {
+      requestPutData("docked", docked, {
+        app: "magicsandbox.Assistant",
+        evictionPolicy: "fifo",
+      }).catch(console.error);
+    }
+  }, [docked]);
+
+  useEffect(() => {
     appDataRef.current = appData;
     if (Object.keys(appData).length > 0) {
       requestPutData("appData", appData, {
@@ -436,24 +451,52 @@ function App({ user, urlApp, initData, initConversation }) {
             }}
           />
         )}
-        {messages.length > 0 && app === null && (
-          <ChatDisplay
-            outerClassName="py-6 flex grow flex-col items-center"
-            innerClassName="w-full max-w-screen-lg"
-            messages={messages}
-            assistantRef={assistantRef}
-            setShowDiscover={setShowDiscover}
+        <div className="flex min-h-0 grow">
+          {((messages.length > 0 && app === null) ||
+            (docked && !collapsed)) && (
+            <div
+              className={`flex min-w-0 flex-1 flex-col ${
+                app !== null ? "border-r border-stone-500" : ""
+              }`}
+            >
+              {app !== null && (
+                <ChatToolbar
+                  containerClassName="mx-3 mt-3 flex items-center justify-between gap-2"
+                  {...{
+                    model,
+                    setModel,
+                    assistantRef,
+                    docked,
+                    setDocked,
+                    setCollapsed,
+                    shouldFocusCollapseButton,
+                    setShouldFocusCollapseButton,
+                  }}
+                />
+              )}
+              <ChatDisplay
+                outerClassName="py-6 flex grow flex-col items-center"
+                innerClassName="w-full max-w-screen-lg"
+                messages={messages}
+                assistantRef={assistantRef}
+                setShowDiscover={setShowDiscover}
+              />
+            </div>
+          )}
+          <Sandbox
+            ref={sandboxRef}
+            className={`w-full ${app !== null ? "flex-1" : "hidden"}`}
           />
-        )}
-        <Sandbox
-          ref={sandboxRef}
-          className={`w-full ${app !== null ? "grow" : "hidden"}`}
-        />
+        </div>
         {(messages.length > 0 || app !== null) && (
           <BottomChat
             {...{
               collapsed,
               setCollapsed,
+              shouldFocusCollapseButton,
+              setShouldFocusCollapseButton,
+              docked,
+              setDocked,
               toastsRef,
               assistantRef,
               messages,

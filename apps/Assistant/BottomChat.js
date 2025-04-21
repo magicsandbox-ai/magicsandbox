@@ -1,21 +1,24 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Star,
   Ban,
   CircleArrowUp,
   Maximize2,
   OctagonPause,
-  Plus,
   LayoutGrid,
   Sparkles,
 } from "lucide-react";
 import ChatInput from "./ChatInput.js";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
-import { ModelPicker } from "./ModelPicker.js";
+import ChatToolbar from "./ChatToolbar.js";
 
 function BottomChat({
   collapsed,
   setCollapsed,
+  shouldFocusCollapseButton,
+  setShouldFocusCollapseButton,
+  docked,
+  setDocked,
   toastsRef,
   assistantRef,
   messages,
@@ -27,16 +30,6 @@ function BottomChat({
   setShowApps,
 }) {
   const [input, setInput] = useState("");
-
-  const maximizeButtonRef = useRef(null);
-  const shouldFocusMaximizeButtonRef = useRef(false);
-
-  useEffect(() => {
-    if (shouldFocusMaximizeButtonRef.current) {
-      maximizeButtonRef.current.focus();
-      shouldFocusMaximizeButtonRef.current = false;
-    }
-  }, [collapsed]);
 
   function handleEscape(e) {
     if (e.key === "Escape") {
@@ -63,25 +56,6 @@ function BottomChat({
     }
   }
 
-  function handleMaximize() {
-    setCollapsed(!collapsed);
-    shouldFocusMaximizeButtonRef.current = true;
-  }
-
-  let maximizeComponent = null;
-  if (app !== null) {
-    maximizeComponent = (
-      <button
-        ref={maximizeButtonRef}
-        className={collapsed ? "mx-2" : ""}
-        onClick={handleMaximize}
-      >
-        <Maximize2 />
-        <span className="sr-only">{collapsed ? "Expand" : "Collapse"}</span>
-      </button>
-    );
-  }
-
   let placeholder;
   if (collapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -104,31 +78,28 @@ function BottomChat({
         <div className="relative flex min-h-12 w-full max-w-screen-lg flex-initial items-center py-1.5">
           <div
             className={`flex w-full flex-col justify-center gap-2 rounded-xl border-stone-500 bg-white py-1 outline-1 ${
-              collapsed
+              collapsed || docked
                 ? "border focus-within:outline focus-within:outline-stone-500"
                 : "absolute bottom-1.5 z-10 border-2 py-2"
             }`}
             onKeyDown={handleEscape}
             tabIndex={-1}
           >
-            {!collapsed && (
+            {!collapsed && !docked && (
               <>
-                <div className="mx-2 flex items-center justify-between gap-2">
-                  <div className="flex grow items-center">
-                    <ModelPicker model={model} setModel={setModel} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        assistantRef.current.handleNewConversation()
-                      }
-                    >
-                      <Plus />
-                      <span className="sr-only">New chat</span>
-                    </button>
-                    {maximizeComponent}
-                  </div>
-                </div>
+                <ChatToolbar
+                  containerClassName="mx-3 flex items-center justify-between gap-2"
+                  {...{
+                    model,
+                    setModel,
+                    assistantRef,
+                    docked,
+                    setDocked,
+                    setCollapsed,
+                    shouldFocusCollapseButton,
+                    setShouldFocusCollapseButton,
+                  }}
+                />
                 <ChatDisplay
                   outerClassName="max-h-[70vh]"
                   messages={messages}
@@ -141,7 +112,7 @@ function BottomChat({
             <div className="flex items-center">
               <ChatInput
                 className={`max-h-[148px] grow resize-none px-1 outline-none ${
-                  collapsed
+                  collapsed || docked
                     ? "mx-1"
                     : "mx-2 focus:outline-2 focus:outline-stone-500"
                 }`}
@@ -151,7 +122,24 @@ function BottomChat({
                 placeholder={placeholder}
                 focus={window.innerWidth > 768} //don't focus on mobile
               />
-              {collapsed && maximizeComponent}
+              {collapsed && app !== null && (
+                <button
+                  ref={(el) => {
+                    if (el && shouldFocusCollapseButton) {
+                      el.focus();
+                      setShouldFocusCollapseButton(false);
+                    }
+                  }}
+                  className="mx-2"
+                  onClick={() => {
+                    setCollapsed(false);
+                    setShouldFocusCollapseButton(true);
+                  }}
+                >
+                  <Maximize2 />
+                  <span className="sr-only">Expand</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
