@@ -101,7 +101,7 @@ function BottomChat({
                   }}
                 />
                 <ChatDisplay
-                  outerClassName="max-h-[70vh]"
+                  outerClassName="max-h-[60vh]"
                   messages={messages}
                   assistantRef={assistantRef}
                   setShowDiscover={setShowDiscover}

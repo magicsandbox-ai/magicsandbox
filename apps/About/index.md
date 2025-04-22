@@ -57,7 +57,7 @@ By default, Magic Sandbox apps save data using your browser's storage, which mea
 - If you clear your browser's "site data", your data will be lost
 - If you use incognito mode, your data will not be saved
 
-Upgrade to [Magic Sandbox Plus](https://magicsandbox.ai/upgrade) to backup your data to the cloud and sync it across all your devices.
+Upgrade to [Magic Sandbox Plus](https://magicsandbox.ai/account/upgrade) to backup your data to the cloud and sync it across all your devices.
 
 If using a shared device, create your own profile in your browser to keep your data private.
 

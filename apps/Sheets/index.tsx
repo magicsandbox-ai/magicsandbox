@@ -2,13 +2,17 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
 import { Loader } from "lucide-react";
+import wasm from "@ironcalc/wasm/wasm_bg.wasm";
 
 async function initWasm() {
-  const response = await requestFetch(
-    "https://esm.sh/@ironcalc/wasm@0.3.2/wasm_bg.wasm",
-    { responseType: "bytes" },
-  );
-  const module = await WebAssembly.compile(response.body);
+  // const response = await requestFetch(
+  //   "https://esm.sh/@ironcalc/wasm@0.3.2/wasm_bg.wasm",
+  //   { responseType: "bytes" },
+  // );
+  // const module = await WebAssembly.compile(response.body);
+
+  // @ts-ignore
+  const module = await WebAssembly.compile(wasm);
   return await _initWasm(module);
 }
 
@@ -47,6 +51,12 @@ function App() {
 
   return (
     <div className="h-screen w-screen">
+      <button
+        className="absolute right-4 top-4 z-50 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+        onClick={() => console.log(model.getWorkbookData())}
+      >
+        Log Workbook Data
+      </button>
       <IronCalc model={model} />
     </div>
   );
