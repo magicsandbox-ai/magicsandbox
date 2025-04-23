@@ -4,6 +4,9 @@ import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
 import { Loader, Upload, Download } from "lucide-react";
 import wasm from "@ironcalc/wasm/wasm_bg.wasm";
 import { context as _context } from "./context.ts";
+import { addSheet } from "./api.ts";
+
+let _model: Model | null = null;
 
 async function initWasm() {
   // const response = await requestFetch(
@@ -14,32 +17,31 @@ async function initWasm() {
 
   // @ts-ignore
   const module = await WebAssembly.compile(wasm);
-  return await _initWasm(module);
+  await _initWasm(module);
+  _model = new Model("New Workbook", "en", "UTC");
 }
 
 const initWasmPromise = initWasm();
 
-const state = {
-  model: null as Model | null,
-};
-
-function init() {
+async function init() {
   createRoot(document.getElementById("root")!).render(<App />);
+  await initWasmPromise;
+  return context();
 }
 
 function App() {
   const [model, setModel] = useState<Model | null>(null);
 
   useEffect(() => {
-    async function init() {
+    async function initModel() {
       await initWasmPromise;
-      setModel(new Model("New Workbook", "en", "UTC"));
+      setModel(_model);
     }
-    init();
+    initModel();
   }, []);
 
   useEffect(() => {
-    state.model = model;
+    _model = model;
   }, [model]);
 
   if (model === null) {
@@ -94,10 +96,11 @@ function App() {
 }
 
 function context() {
-  if (state.model === null) {
-    return "";
-  }
-  return _context(state.model);
+  return _context(_model!);
 }
 
-export { init, context };
+const api = {
+  addSheet: (name: string) => addSheet(_model!, name),
+};
+
+export { init, context, api };
