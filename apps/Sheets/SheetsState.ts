@@ -1,0 +1,482 @@
+import type { Model, WorksheetProperties, SheetData } from "@ironcalc/wasm";
+import { columnNameFromNumber, columnNameToNumber } from "./utils.ts";
+
+/*
+context:
+- share what user has selected
+- find ranges
+- truncate huge ranges
+- hidden sheets? include in context but don't show cells
+- explain format
+
+api:
+- duplicate sheet? copy range?
+- if touching a sheet, unhide it? make it current? add style to changed cells?
+- style/formatting
+*/
+
+class SheetsState {
+  private batchUndoTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private undoCounts: number[] = [];
+  private redoCounts: number[] = [];
+  private cachedWorkbookData: SheetData[] | null = null;
+
+  constructor(public model: Model) {}
+
+  batchUndo() {
+    // track all the actions the assistant makes synchronously as a batch that can be undone with a single undo
+    this.cachedWorkbookData = null; // invalidate since making changes
+    if (this.batchUndoTimeoutId !== null) {
+      return;
+    }
+    this.addUndoCounts();
+    this.redoCounts = [];
+    this.batchUndoTimeoutId = setTimeout(() => {
+      this.undoCounts.push(this.model.flushSendQueue().length);
+      this.batchUndoTimeoutId = null;
+    }, 0);
+  }
+
+  addUndoCounts() {
+    const userActionCount = this.model.flushSendQueue().length;
+    if (userActionCount > 0) {
+      this.redoCounts = [];
+      for (let i = 0; i < userActionCount; i++) {
+        this.undoCounts.push(1);
+      }
+    }
+  }
+
+  undo() {
+    this.addUndoCounts();
+    const undoCount = this.undoCounts.pop();
+    if (undoCount === undefined) {
+      return;
+    }
+    this.redoCounts.push(undoCount);
+    for (let i = 0; i < undoCount; i++) {
+      this.model.undo();
+    }
+    this.model.flushSendQueue(); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
+  }
+
+  redo() {
+    this.addUndoCounts();
+    const redoCount = this.redoCounts.pop();
+    if (redoCount === undefined) {
+      return;
+    }
+    this.undoCounts.push(redoCount);
+    for (let i = 0; i < redoCount; i++) {
+      this.model.redo();
+    }
+    this.model.flushSendQueue(); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
+  }
+
+  getModelContext() {
+    const sheetsProperties = this.model.getWorksheetsProperties();
+    const selectedSheet = this.model.getSelectedSheet();
+    const workbookData = this.model.getWorkbookData();
+
+    const getSheetContextArgs: {
+      sheetProperties: WorksheetProperties;
+      sheetData: SheetData;
+    }[] = [];
+    sheetsProperties.forEach((sheetProperties, index) => {
+      if (index === selectedSheet) {
+        getSheetContextArgs.unshift({
+          sheetProperties,
+          sheetData: workbookData[index]!,
+        });
+      } else if (sheetProperties.state === "veryHidden") {
+        // skip
+      } else {
+        getSheetContextArgs.push({
+          sheetProperties,
+          sheetData: workbookData[index]!,
+        });
+      }
+    });
+
+    return getSheetContextArgs.map(this.getSheetContext).join("\n");
+  }
+
+  getSheetContext({
+    sheetProperties,
+    sheetData,
+  }: {
+    sheetProperties: WorksheetProperties;
+    sheetData: SheetData;
+  }) {
+    const sheetDataString = this.sheetDataToString(sheetData, 10000);
+    return `<${sheetProperties.name}>
+  ${sheetDataString}
+  </${sheetProperties.name}>`;
+  }
+
+  filterSheetData(
+    sheetData: SheetData,
+    leftRow: number,
+    leftCol: number,
+    rightRow: number | undefined,
+    rightCol: number | undefined,
+  ): SheetData {
+    return new Map(
+      sheetData
+        .entries()
+        .filter(
+          ([rowIndex]) =>
+            rowIndex >= leftRow && rowIndex <= (rightRow || leftRow),
+        )
+        .map(([rowIndex, colData]) => {
+          return [
+            rowIndex,
+            new Map(
+              colData
+                .entries()
+                .filter(
+                  ([colIndex]) =>
+                    colIndex >= leftCol && colIndex <= (rightCol || leftCol),
+                ),
+            ),
+          ];
+        }),
+    );
+  }
+
+  sheetDataToString(sheetData: SheetData, maxLength: number | undefined) {
+    const rowIndices = Array.from(sheetData.keys()).sort((a, b) => a - b);
+    const allColumnIndices = new Set<number>();
+    rowIndices.forEach((row) => {
+      const rowData = sheetData.get(row);
+      if (rowData) {
+        Array.from(rowData.keys()).forEach((col) => allColumnIndices.add(col));
+      }
+    });
+    const columnIndices = Array.from(allColumnIndices).sort((a, b) => a - b);
+    const sheetDataString = rowIndices
+      .map((row) => {
+        const rowData = sheetData.get(row);
+        return columnIndices
+          .map((col) => {
+            const cell = rowData?.get(col);
+            const cellRef = `${columnNameFromNumber(col)}${row}`;
+            if (cell) {
+              return `${cellRef},${cell.formula || ""},${cell.value}`;
+            }
+            return `${cellRef},,`;
+          })
+          .join("|");
+      })
+      .join("\n");
+    if (maxLength) {
+      return sheetDataString.slice(0, maxLength);
+    }
+    return sheetDataString;
+  }
+
+  context() {
+    const modelContext = this.getModelContext();
+
+    return `# magicsandbox.Sheets
+  
+magicsandbox.Sheets lets users create and edit spreadsheets. Users can upload and download Excel files. magicsandbox.Sheets uses a spreadsheet engine called IronCalc, which aims to be Excel compatible. However, not every Excel function is supported.
+
+## Context
+
+The user's currently selected sheet is listed first.
+
+${modelContext}
+
+## API
+
+### Range Operations
+Each method takes a \`range\` argument, which can take the forms "SheetName!A1" or "SheetName!A1:B2"
+
+- **app.api.getRange(range: string)**  
+  Logs the value of a range of cells. The logs may be truncated if they're too long.
+
+- **app.api.setRange(range: string, value: string)**  
+  Set the value or formula for the specified range.
+  - For values: provide the literal value as a string (e.g., "42" or "Hello"). When setting a range of multiple cells, the same value is copied to all cells in the range.
+  - For formulas: value should start with "=" (e.g., "=A1+B1"). When setting a range of multiple cells, the formula is auto-filled, adjusting relative references (e.g., "=A1" becomes "=A2" in the next row).
+
+- **app.api.clearRange(range: string)**  
+  Clear a range of cells.
+
+### Row Operations
+Each method takes a \`rows\` argument, which can take the forms "SheetName!1" or "SheetName!1:2"
+
+- **app.api.insertRows(rows: string)**  
+  Insert one or more rows.
+
+- **app.api.deleteRows(rows: string)**  
+  Delete one or more rows.
+
+### Column Operations
+Each method takes a \`columns\` argument, which can take the forms "SheetName!A" or "SheetName!A:B"
+
+- **app.api.insertColumns(columns: string)**  
+  Insert one or more columns.
+
+- **app.api.deleteColumns(columns: string)**  
+  Delete one or more columns.
+
+### Sheet Operations
+Each method takes sheet names as arguments.
+- **app.api.addSheet(sheetName: string)**  
+  Add a new sheet.
+
+- **app.api.renameSheet(oldSheetName: string, newSheetName: string)**  
+  Rename a sheet.
+
+- **app.api.deleteSheet(sheetName: string)**  
+  Delete a sheet.
+
+## Instructions
+
+- Explain to the user what actions you're taking - it's not always easy for the user to see every change you make.
+- If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change.
+- If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
+- You're not currently able to view or edit the styles or formatting of the spreadsheet. Explain to the user that you can't do that yet.
+`;
+  }
+
+  getRange(range: string) {
+    if (this.cachedWorkbookData === null) {
+      this.cachedWorkbookData = this.model.getWorkbookData();
+      setTimeout(() => {
+        //create a task to invalidate the cache, since any user action could change the workbook
+        this.cachedWorkbookData = null;
+      }, 0);
+    }
+    const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
+      this.parseRange(range);
+    const sheetData = this.cachedWorkbookData[sheetIndex];
+    if (!sheetData) {
+      throw new Error("Unexpected getRange error");
+    }
+    const filteredSheetData = this.filterSheetData(
+      sheetData,
+      leftRow,
+      leftCol,
+      rightRow,
+      rightCol,
+    );
+    const sheetDataString = this.sheetDataToString(filteredSheetData, 10000);
+    assistant.full(`<${range}>
+${sheetDataString}
+${sheetDataString.length === 10000 ? "[TRUNCATED]\n" : ""}</${range}>`);
+    return filteredSheetData;
+  }
+
+  setRange(range: string, value: string) {
+    this.batchUndo();
+    const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
+      this.parseRange(range);
+    this.model.setUserInput(sheetIndex, leftRow, leftCol, String(value));
+    if (rightCol && rightRow) {
+      if (rightCol !== leftCol) {
+        this.model.autoFillColumns(
+          {
+            sheet: sheetIndex,
+            row: leftRow,
+            column: leftCol,
+            width: 1,
+            height: 1,
+          },
+          rightCol,
+        );
+      }
+      if (rightRow !== leftRow) {
+        this.model.autoFillRows(
+          {
+            sheet: sheetIndex,
+            row: leftRow,
+            column: leftCol,
+            width: rightCol - leftCol + 1,
+            height: 1,
+          },
+          rightRow,
+        );
+      }
+    }
+  }
+
+  clearRange(range: string) {
+    this.batchUndo();
+    const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
+      this.parseRange(range);
+    this.model.rangeClearAll(
+      sheetIndex,
+      leftRow,
+      leftCol,
+      rightRow || leftRow,
+      rightCol || leftCol,
+    );
+  }
+
+  insertRows(rows: string) {
+    this.batchUndo();
+    const { sheetIndex, leftRow, rightRow } = this.parseRows(rows);
+    const rowsToInsert = (rightRow || leftRow) - leftRow + 1;
+    for (let i = 0; i < rowsToInsert; i++) {
+      this.model.insertRow(sheetIndex, leftRow);
+    }
+  }
+
+  deleteRows(rows: string) {
+    this.batchUndo();
+    const { sheetIndex, leftRow, rightRow } = this.parseRows(rows);
+    const rowsToDelete = (rightRow || leftRow) - leftRow + 1;
+    for (let i = 0; i < rowsToDelete; i++) {
+      this.model.deleteRow(sheetIndex, leftRow);
+    }
+  }
+
+  insertColumns(columns: string) {
+    this.batchUndo();
+    const { sheetIndex, leftCol, rightCol } = this.parseColumns(columns);
+    const columnsToInsert = (rightCol || leftCol) - leftCol + 1;
+    for (let i = 0; i < columnsToInsert; i++) {
+      this.model.insertColumn(sheetIndex, leftCol);
+    }
+  }
+
+  deleteColumns(columns: string) {
+    this.batchUndo();
+    const { sheetIndex, leftCol, rightCol } = this.parseColumns(columns);
+    const columnsToDelete = (rightCol || leftCol) - leftCol + 1;
+    for (let i = 0; i < columnsToDelete; i++) {
+      this.model.deleteColumn(sheetIndex, leftCol);
+    }
+  }
+
+  addSheet(name: string) {
+    this.batchUndo();
+    this.model.newSheet();
+    const worksheetsProperties = this.model.getWorksheetsProperties();
+    this.model.renameSheet(worksheetsProperties.length - 1, name);
+  }
+
+  renameSheet(oldName: string, newName: string) {
+    this.batchUndo();
+    const sheetIndex = this.parseSheet(oldName);
+    this.model.renameSheet(sheetIndex, newName);
+  }
+
+  deleteSheet(name: string) {
+    this.batchUndo();
+    const sheetIndex = this.parseSheet(name);
+    this.model.deleteSheet(sheetIndex);
+  }
+
+  parseRange(range: string) {
+    const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
+      this.parseRef(range);
+    if (sheetIndex === -1) {
+      throw new Error("Invalid range, sheet not found: " + range);
+    }
+    if (!leftCol || !leftRow) {
+      throw new Error("Invalid range: " + range);
+    }
+    if ((rightCol && !rightRow) || (rightRow && !rightCol)) {
+      throw new Error("Invalid range: " + range);
+    }
+    return {
+      sheetIndex,
+      leftCol,
+      leftRow,
+      rightCol,
+      rightRow,
+    };
+  }
+
+  parseRows(rows: string) {
+    const { sheetIndex, leftRow, rightRow } = this.parseRef(rows);
+    if (sheetIndex === -1) {
+      throw new Error("Invalid rows, sheet not found: " + rows);
+    }
+    if (!leftRow) {
+      throw new Error("Invalid rows: " + rows);
+    }
+    return {
+      sheetIndex,
+      leftRow,
+      rightRow,
+    };
+  }
+
+  parseColumns(columns: string) {
+    const { sheetIndex, leftCol, rightCol } = this.parseRef(columns);
+    if (sheetIndex === -1) {
+      throw new Error("Invalid columns, sheet not found: " + columns);
+    }
+    if (!leftCol) {
+      throw new Error("Invalid columns: " + columns);
+    }
+    return {
+      sheetIndex,
+      leftCol,
+      rightCol,
+    };
+  }
+
+  parseSheet(sheet: string) {
+    const { sheetIndex } = this.parseRef(sheet);
+    if (sheetIndex === -1) {
+      throw new Error("Invalid sheet: " + sheet);
+    }
+    return sheetIndex;
+  }
+
+  parseRef(ref: string) {
+    const out: {
+      sheetIndex: number;
+      leftCol?: number;
+      leftRow?: number;
+      rightCol?: number;
+      rightRow?: number;
+    } = {
+      sheetIndex: -1,
+    };
+    const [sheetName, rangeString] = ref.split("!");
+    if (!sheetName) {
+      return out;
+    }
+    const worksheetsProperties = this.model.getWorksheetsProperties();
+    const sheetIndex = worksheetsProperties.findIndex(
+      (sheet) => sheet.name === sheetName,
+    );
+    out.sheetIndex = sheetIndex;
+    if (!rangeString) {
+      return out;
+    }
+    const [leftCellString, rightCellString] = rangeString.split(":");
+    if (leftCellString) {
+      const leftCell = this.parseCellString(leftCellString);
+      out.leftCol = leftCell.col;
+      out.leftRow = leftCell.row;
+    }
+    if (rightCellString) {
+      const rightCell = this.parseCellString(rightCellString);
+      out.rightCol = rightCell.col;
+      out.rightRow = rightCell.row;
+    }
+    return out;
+  }
+
+  parseCellString(cellString: string) {
+    const out: { col?: number; row?: number } = {};
+    const match = cellString.toUpperCase().match(/^([A-Z]+)(\d+)$/);
+    if (match?.[1]) {
+      out.col = columnNameToNumber(match[1]);
+    }
+    if (match?.[2]) {
+      out.row = parseInt(match[2]);
+    }
+    return out;
+  }
+}
+
+export { SheetsState };
