@@ -7,4 +7,10 @@ function columnNameFromNumber(column: number): string {
   return name;
 }
 
-export { columnNameFromNumber };
+function columnNameToNumber(name: string): number {
+  return name.split("").reduce((acc, char) => {
+    return acc * 26 + (char.charCodeAt(0) - 64);
+  }, 0);
+}
+
+export { columnNameFromNumber, columnNameToNumber };

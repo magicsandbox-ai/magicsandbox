@@ -161,6 +161,15 @@ declare global {
   ): Promise<{ [key: string]: string }>;
 
   function requestSandbox(request: string, args?: any): Promise<any>;
+
+  var assistant: {
+    log: (...args: any[]) => void;
+    full: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+    warn: (...args: any[]) => void;
+    info: (...args: any[]) => void;
+    debug: (...args: any[]) => void;
+  };
 }
 
 export {};

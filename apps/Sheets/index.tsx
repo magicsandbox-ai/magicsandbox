@@ -3,10 +3,9 @@ import { createRoot } from "react-dom/client";
 import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
 import { Loader, Upload, Download } from "lucide-react";
 import wasm from "@ironcalc/wasm/wasm_bg.wasm";
-import { context as _context } from "./context.ts";
-import { addSheet } from "./api.ts";
+import { SheetsState } from "./SheetsState.ts";
 
-let _model: Model | null = null;
+let sheetsState: SheetsState | null = null;
 
 async function initWasm() {
   // const response = await requestFetch(
@@ -18,7 +17,7 @@ async function initWasm() {
   // @ts-ignore
   const module = await WebAssembly.compile(wasm);
   await _initWasm(module);
-  _model = new Model("New Workbook", "en", "UTC");
+  sheetsState = new SheetsState(new Model("New Workbook", "en", "UTC"));
 }
 
 const initWasmPromise = initWasm();
@@ -26,23 +25,36 @@ const initWasmPromise = initWasm();
 async function init() {
   createRoot(document.getElementById("root")!).render(<App />);
   await initWasmPromise;
-  return context();
+  return sheetsState?.context();
 }
 
 function App() {
-  const [model, setModel] = useState<Model | null>(null);
+  const [model, _setModel] = useState<Model | null>(null);
+
+  function setModel(newModel: Model) {
+    const newModelProxy = new Proxy(newModel, {
+      get(target, prop, receiver) {
+        if (prop === "undo") {
+          sheetsState!.undo();
+          return () => {};
+        } else if (prop === "redo") {
+          sheetsState!.redo();
+          return () => {};
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    _setModel(newModelProxy);
+    sheetsState!.model = newModelProxy;
+  }
 
   useEffect(() => {
     async function initModel() {
       await initWasmPromise;
-      setModel(_model);
+      setModel(sheetsState!.model);
     }
     initModel();
   }, []);
-
-  useEffect(() => {
-    _model = model;
-  }, [model]);
 
   if (model === null) {
     return (
@@ -53,6 +65,7 @@ function App() {
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    //todo handle errors
     const file = e.target.files?.[0];
     if (!file) return;
     const bytes = await file.arrayBuffer();
@@ -67,6 +80,7 @@ function App() {
   }
 
   async function handleDownload() {
+    //todo handle errors
     const bytes = model?.toXlsx();
     if (!bytes) return;
     await requestDownload(`${model?.getName()}.xlsx`, bytes);
@@ -96,11 +110,30 @@ function App() {
 }
 
 function context() {
-  return _context(_model!);
+  return sheetsState!.context();
 }
 
 const api = {
-  addSheet: (name: string) => addSheet(_model!, name),
+  getRange: (...args: Parameters<SheetsState["getRange"]>) =>
+    sheetsState!.getRange(...args),
+  setRange: (...args: Parameters<SheetsState["setRange"]>) =>
+    sheetsState!.setRange(...args),
+  clearRange: (...args: Parameters<SheetsState["clearRange"]>) =>
+    sheetsState!.clearRange(...args),
+  insertRows: (...args: Parameters<SheetsState["insertRows"]>) =>
+    sheetsState!.insertRows(...args),
+  deleteRows: (...args: Parameters<SheetsState["deleteRows"]>) =>
+    sheetsState!.deleteRows(...args),
+  insertColumns: (...args: Parameters<SheetsState["insertColumns"]>) =>
+    sheetsState!.insertColumns(...args),
+  deleteColumns: (...args: Parameters<SheetsState["deleteColumns"]>) =>
+    sheetsState!.deleteColumns(...args),
+  addSheet: (...args: Parameters<SheetsState["addSheet"]>) =>
+    sheetsState!.addSheet(...args),
+  renameSheet: (...args: Parameters<SheetsState["renameSheet"]>) =>
+    sheetsState!.renameSheet(...args),
+  deleteSheet: (...args: Parameters<SheetsState["deleteSheet"]>) =>
+    sheetsState!.deleteSheet(...args),
 };
 
 export { init, context, api };

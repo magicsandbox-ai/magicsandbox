@@ -291,7 +291,7 @@ function App() {
   }
 
   async function handleKeyDown(event) {
-    if (event.ctrlKey && event.key.toLowerCase() === "s") {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       await handleSave();
     }

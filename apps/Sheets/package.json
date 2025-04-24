@@ -6,9 +6,9 @@
     "@ironcalc/workbook": "^0.3.2",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
+    "lucide-react": "^0.408.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "lucide-react": "^0.408.0"
+    "react-dom": "^19.0.0"
   },
   "overrides": {
     "@ironcalc/wasm": "file:C:/Users/kevin/IronCalc/bindings/wasm/pkg"

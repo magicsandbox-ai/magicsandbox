@@ -217,7 +217,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
   }
 
   function handleClick(event) {
-    if (event.ctrlKey) {
+    if (event.ctrlKey || event.metaKey) {
       const descendants = notesState.getDescendants(node.uuid);
       let newChecked = false; //if all notes are checked, we'll uncheck
       for (const node of descendants) {
