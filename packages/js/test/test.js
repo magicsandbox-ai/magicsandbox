@@ -47,7 +47,7 @@ const test = base.extend({
     const devLocal = assistant.childFrames()[0];
     await waitForFrame(devLocal);
     const app = devLocal.childFrames()[0];
-    await waitForCustomEvent(app.page(), "message");
+    await waitForMessage(app);
     await use(app);
   },
 });
@@ -58,17 +58,25 @@ async function waitForFrame(page) {
   await expect(page.locator("iframe")).toHaveCount(1, { timeout: 10000 });
 }
 
-async function waitForCustomEvent(page, event) {
+async function waitForMessage(app) {
   const promise = createDeferredPromise();
-  await page.exposeFunction("_handleCustomEvent", async (event) => {
-    promise.resolve(event);
-    await page.evaluate(() => {
-      window.removeEventListener(event, window._handleCustomEvent);
+  const page = app.page();
+  await page.exposeFunction("_handleCustomEvent", async (eventDataKeys) => {
+    if (eventDataKeys.includes("script")) {
+      promise.resolve();
+    }
+  });
+  await app.evaluate(() => {
+    window.addEventListener("message", (event) => {
+      /*
+      while trying to fix an unrelated bug, I had a theory that event was not being passed correctly to handleCustomEvent because it was too large
+      this github issue also hints that large payloads could be an issue: https://github.com/microsoft/playwright/issues/28146
+      the bug was unrelated, but it's probably still better to pass only eventDataKeys into handleCustomEvent rather than the whole event
+      */
+      const eventDataKeys = Object.keys(event.data || {});
+      window._handleCustomEvent(eventDataKeys);
     });
   });
-  await page.evaluate((event) => {
-    window.addEventListener(event, window._handleCustomEvent);
-  }, event);
   return await promise;
 }
 

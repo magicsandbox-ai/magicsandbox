@@ -2,6 +2,8 @@ import type { Model, WorksheetProperties, SheetData } from "@ironcalc/wasm";
 import { columnNameFromNumber, columnNameToNumber } from "./utils.ts";
 
 /*
+how to handle files/saving?
+
 context:
 - share what user has selected
 - find ranges
@@ -20,6 +22,9 @@ class SheetsState {
   private undoCounts: number[] = [];
   private redoCounts: number[] = [];
   private cachedWorkbookData: SheetData[] | null = null;
+  public modelUndo: () => void = () => {};
+  public modelRedo: () => void = () => {};
+  public redraw: () => void = () => {};
 
   constructor(public model: Model) {}
 
@@ -32,13 +37,14 @@ class SheetsState {
     this.addUndoCounts();
     this.redoCounts = [];
     this.batchUndoTimeoutId = setTimeout(() => {
-      this.undoCounts.push(this.model.flushSendQueue().length);
+      this.undoCounts.push(this.flushSendQueue("batchUndo").length);
       this.batchUndoTimeoutId = null;
+      this.redraw();
     }, 0);
   }
 
   addUndoCounts() {
-    const userActionCount = this.model.flushSendQueue().length;
+    const userActionCount = this.flushSendQueue("addUndoCounts").length;
     if (userActionCount > 0) {
       this.redoCounts = [];
       for (let i = 0; i < userActionCount; i++) {
@@ -55,9 +61,9 @@ class SheetsState {
     }
     this.redoCounts.push(undoCount);
     for (let i = 0; i < undoCount; i++) {
-      this.model.undo();
+      this.modelUndo(); //calling model.undo creates an infinite loop due to the Proxy
     }
-    this.model.flushSendQueue(); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.flushSendQueue("undo"); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
   }
 
   redo() {
@@ -68,9 +74,15 @@ class SheetsState {
     }
     this.undoCounts.push(redoCount);
     for (let i = 0; i < redoCount; i++) {
-      this.model.redo();
+      this.modelRedo(); //calling model.redo creates an infinite loop due to the Proxy
     }
-    this.model.flushSendQueue(); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.flushSendQueue("redo"); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
+  }
+
+  flushSendQueue(debug: string) {
+    const q = this.model.debugFlushSendQueue();
+    console.log(debug, q);
+    return q;
   }
 
   getModelContext() {
@@ -98,7 +110,9 @@ class SheetsState {
       }
     });
 
-    return getSheetContextArgs.map(this.getSheetContext).join("\n");
+    return getSheetContextArgs
+      .map((args) => this.getSheetContext(args))
+      .join("\n");
   }
 
   getSheetContext({
@@ -111,7 +125,7 @@ class SheetsState {
     const sheetDataString = this.sheetDataToString(sheetData, 10000);
     return `<${sheetProperties.name}>
   ${sheetDataString}
-  </${sheetProperties.name}>`;
+</${sheetProperties.name}>`;
   }
 
   filterSheetData(
@@ -199,7 +213,7 @@ Each method takes a \`range\` argument, which can take the forms "SheetName!A1" 
 - **app.api.setRange(range: string, value: string)**  
   Set the value or formula for the specified range.
   - For values: provide the literal value as a string (e.g., "42" or "Hello"). When setting a range of multiple cells, the same value is copied to all cells in the range.
-  - For formulas: value should start with "=" (e.g., "=A1+B1"). When setting a range of multiple cells, the formula is auto-filled, adjusting relative references (e.g., "=A1" becomes "=A2" in the next row).
+  - For formulas: value should start with "=" (e.g., "=A1+B1"). When setting a range of multiple cells, write the formula as it should appear in the first cell of the range. The formula will then be auto-filled to subsequent cells, adjusting relative references appropriately. For example, \`app.api.setRange("SheetName!C1:C2", "=A1+B1")\` will put "=A1+B1" in C1 and "=A2+B2" in C2.
 
 - **app.api.clearRange(range: string)**  
   Clear a range of cells.
@@ -468,7 +482,7 @@ ${sheetDataString.length === 10000 ? "[TRUNCATED]\n" : ""}</${range}>`);
 
   parseCellString(cellString: string) {
     const out: { col?: number; row?: number } = {};
-    const match = cellString.toUpperCase().match(/^([A-Z]+)(\d+)$/);
+    const match = cellString.toUpperCase().match(/^([A-Z]*)(\d*)$/);
     if (match?.[1]) {
       out.col = columnNameToNumber(match[1]);
     }

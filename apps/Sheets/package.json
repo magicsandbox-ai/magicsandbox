@@ -2,6 +2,7 @@
   "name": "Sheets",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@ironcalc/workbook": "^0.3.2",
     "@types/react": "^19.0.12",

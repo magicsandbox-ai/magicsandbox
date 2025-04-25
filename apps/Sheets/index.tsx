@@ -30,8 +30,11 @@ async function init() {
 
 function App() {
   const [model, _setModel] = useState<Model | null>(null);
+  const [redrawId, setRedrawId] = useState(0);
 
   function setModel(newModel: Model) {
+    sheetsState!.modelUndo = newModel.undo.bind(newModel);
+    sheetsState!.modelRedo = newModel.redo.bind(newModel);
     const newModelProxy = new Proxy(newModel, {
       get(target, prop, receiver) {
         if (prop === "undo") {
@@ -52,6 +55,7 @@ function App() {
     async function initModel() {
       await initWasmPromise;
       setModel(sheetsState!.model);
+      sheetsState!.redraw = () => setRedrawId((id) => id + 1);
     }
     initModel();
   }, []);
