@@ -2,10 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply text-stone-700;
+.mock-ironcalc-button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
-.lucide {
-  @apply -m-0.5 box-content rounded-lg p-0.5 hover:bg-stone-300;
+.mock-ironcalc-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mock-ironcalc-button:hover {
+  outline: 1px solid #eeeeee;
 }

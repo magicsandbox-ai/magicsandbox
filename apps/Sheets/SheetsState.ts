@@ -2,8 +2,6 @@ import type { Model, WorksheetProperties, SheetData } from "@ironcalc/wasm";
 import { columnNameFromNumber, columnNameToNumber } from "./utils.ts";
 
 /*
-how to handle files/saving?
-
 context:
 - share what user has selected
 - find ranges
@@ -22,11 +20,52 @@ class SheetsState {
   private undoCounts: number[] = [];
   private redoCounts: number[] = [];
   private cachedWorkbookData: SheetData[] | null = null;
+  private lastErrorToastTime: number = 0;
   public modelUndo: () => void = () => {};
   public modelRedo: () => void = () => {};
   public redraw: () => void = () => {};
+  public addToast: (message: string, type: string) => void = () => {};
 
-  constructor(public model: Model) {}
+  constructor(public model: Model) {
+    setInterval(() => {
+      this.save();
+    }, 3000);
+  }
+
+  async save() {
+    const userActionCount = this.addUndoCounts();
+    if (userActionCount > 0) {
+      try {
+        await requestPutData("modelBytes", this.model.toBytes());
+      } catch (e) {
+        let message = "Unexpected error saving data";
+        if (
+          e instanceof Error &&
+          e.message === "Database size limit exceeded"
+        ) {
+          message =
+            "Error: spreadsheet too large to save. Make sure to download it to save your progress.";
+        }
+        const now = Date.now();
+        if (now - this.lastErrorToastTime >= 5 * 60 * 1000) {
+          console.error(e);
+          this.addToast(message, "error");
+          this.lastErrorToastTime = now;
+        }
+      }
+    }
+  }
+
+  addUndoCounts() {
+    const userActionCount = this.flushSendQueue("addUndoCounts").length;
+    if (userActionCount > 0) {
+      this.redoCounts = [];
+      for (let i = 0; i < userActionCount; i++) {
+        this.undoCounts.push(1);
+      }
+    }
+    return userActionCount;
+  }
 
   batchUndo() {
     // track all the actions the assistant makes synchronously as a batch that can be undone with a single undo
@@ -41,16 +80,6 @@ class SheetsState {
       this.batchUndoTimeoutId = null;
       this.redraw();
     }, 0);
-  }
-
-  addUndoCounts() {
-    const userActionCount = this.flushSendQueue("addUndoCounts").length;
-    if (userActionCount > 0) {
-      this.redoCounts = [];
-      for (let i = 0; i < userActionCount; i++) {
-        this.undoCounts.push(1);
-      }
-    }
   }
 
   undo() {
@@ -81,7 +110,7 @@ class SheetsState {
 
   flushSendQueue(debug: string) {
     const q = this.model.debugFlushSendQueue();
-    console.log(debug, q);
+    // console.log(debug, q);
     return q;
   }
 
@@ -250,9 +279,10 @@ Each method takes sheet names as arguments.
 ## Instructions
 
 - Explain to the user what actions you're taking - it's not always easy for the user to see every change you make.
-- If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change.
+- If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change. Note: when you execute a script with multiple synchronous operations (like setting multiple cells), all those operations are batched together - when the user undoes one change from that script, all operations in the batch will be undone together.
 - If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
 - You're not currently able to view or edit the styles or formatting of the spreadsheet. Explain to the user that you can't do that yet.
+- IronCalc is not yet completely compatible with Excel. If you run into an issue, apologize to the user and offer guidance on how they can accomplish their goal using Excel.
 `;
   }
 

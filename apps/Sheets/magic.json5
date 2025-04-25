@@ -6,6 +6,14 @@
   esbuildOptions: {
     loader: {
       ".wasm": "binary",
+      ".js": "jsx",
     },
+    //the dependencies for components are in node_modules
+    //but node_modules is not a parent of components
+    //so we need to add node_modules to nodePaths
+    nodePaths: ["./node_modules"],
+  },
+  tailwindConfig: {
+    content: ["apps/Sheets/**/*.tsx", "components/**/*.js"],
   },
 }

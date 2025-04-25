@@ -1,6 +1,7 @@
 import React from "react";
 
 // keep these in sync with llm/main.py - need a better way to do this
+// todo use knowledge_cutoff in prompt
 
 const models = {
   auto: {
@@ -10,11 +11,13 @@ const models = {
     name: "Claude 3.7 Sonnet",
     input_cost_per_token: 3 / 1000000,
     output_cost_per_token: 15 / 1000000,
+    knowledge_cutoff: "October 2024",
   },
   "gpt-4o-2024-08-06": {
     name: "GPT 4o",
     input_cost_per_token: 2.5 / 1000000,
     output_cost_per_token: 10 / 1000000,
+    knowledge_cutoff: "September 2023",
   },
   "gemini-2.0-flash-001": {
     name: "Gemini 2.0 Flash",
@@ -25,6 +28,7 @@ const models = {
     name: "GPT 4o Mini",
     input_cost_per_token: 0.15 / 1000000,
     output_cost_per_token: 0.6 / 1000000,
+    knowledge_cutoff: "September 2023",
   },
   "gemini-2.0-flash-lite-001": {
     name: "Gemini 2.0 Flash Lite",

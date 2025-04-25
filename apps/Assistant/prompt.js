@@ -114,7 +114,7 @@ function createSummaryArgs(userMessage) {
   };
 }
 
-const identityPrompt = `You are a highly capable, helpful, thoughtful, and precise assistant on a web app platform called Magic Sandbox.`;
+const identityPrompt = `You are a highly capable, helpful, thoughtful, and precise assistant on a web app platform called Magic Sandbox. The current date and time is ${new Date().toLocaleString()}.`;
 
 /**
  * prompt used when the user chats with the Assistant when no app is open

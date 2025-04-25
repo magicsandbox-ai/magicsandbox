@@ -34,7 +34,9 @@ test("Sheets", async ({ app }) => {
   //undo should undo both assistant setRange actions as a batch
   await app.getByRole("button", { name: "Undo" }).click();
   const rangeData3 = await getRange(app, "Sheet1!A1:D3");
-  expect(Object.keys(rangeData3).length).toBe(0);
+  expect(rangeData3[1][1].value).toBe("Hello");
+  expect(rangeData3[1][4]).toBeUndefined();
+  expect(rangeData3[3]?.[4]).toBeUndefined();
 
   //redo should redo both assistant setRange actions as a batch
   await app.getByRole("button", { name: "Redo" }).click();
