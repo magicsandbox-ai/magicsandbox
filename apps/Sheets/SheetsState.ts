@@ -1,14 +1,28 @@
-import type { Model, WorksheetProperties, SheetData } from "@ironcalc/wasm";
-import { columnNameFromNumber, columnNameToNumber } from "./utils.ts";
+import type {
+  Model,
+  WorksheetProperties,
+  SheetData,
+  SelectedView,
+} from "@ironcalc/wasm";
+//todo - it's confusing to use range as a string and also as a type
+//plus in the result from parseRange, rightCol and rightRow are optional, but they're required in Range
+import type { Range } from "./utils.ts";
+import {
+  columnNameFromNumber,
+  columnNameToNumber,
+  rangeToString,
+  getRanges,
+} from "./utils.ts";
+
+const TOKEN_BUDGET = 25000; //todo make configurable
+
+interface GetSheetContextArgs {
+  sheetProperties: WorksheetProperties;
+  selectedView?: SelectedView;
+  sheetData: SheetData;
+}
 
 /*
-context:
-- share what user has selected
-- find ranges
-- truncate huge ranges
-- hidden sheets? include in context but don't show cells
-- explain format
-
 api:
 - duplicate sheet? copy range?
 - if touching a sheet, unhide it? make it current? add style to changed cells?
@@ -109,24 +123,24 @@ class SheetsState {
   }
 
   flushSendQueue(debug: string) {
-    const q = this.model.debugFlushSendQueue();
+    // const q = this.model.debugFlushSendQueue();
     // console.log(debug, q);
+    const q = this.model.flushSendQueue();
     return q;
   }
 
   getModelContext() {
     const sheetsProperties = this.model.getWorksheetsProperties();
-    const selectedSheet = this.model.getSelectedSheet();
+    const selectedView = this.model.getSelectedView();
+    const selectedSheet = selectedView.sheet;
     const workbookData = this.model.getWorkbookData();
 
-    const getSheetContextArgs: {
-      sheetProperties: WorksheetProperties;
-      sheetData: SheetData;
-    }[] = [];
+    const getSheetContextArgs: GetSheetContextArgs[] = [];
     sheetsProperties.forEach((sheetProperties, index) => {
       if (index === selectedSheet) {
         getSheetContextArgs.unshift({
           sheetProperties,
+          selectedView,
           sheetData: workbookData[index]!,
         });
       } else if (sheetProperties.state === "veryHidden") {
@@ -139,83 +153,69 @@ class SheetsState {
       }
     });
 
-    return getSheetContextArgs
-      .map((args) => this.getSheetContext(args))
-      .join("\n");
-  }
-
-  getSheetContext({
-    sheetProperties,
-    sheetData,
-  }: {
-    sheetProperties: WorksheetProperties;
-    sheetData: SheetData;
-  }) {
-    const sheetDataString = this.sheetDataToString(sheetData, 10000);
-    return `<${sheetProperties.name}>
-  ${sheetDataString}
-</${sheetProperties.name}>`;
-  }
-
-  filterSheetData(
-    sheetData: SheetData,
-    leftRow: number,
-    leftCol: number,
-    rightRow: number | undefined,
-    rightCol: number | undefined,
-  ): SheetData {
-    return new Map(
-      sheetData
-        .entries()
-        .filter(
-          ([rowIndex]) =>
-            rowIndex >= leftRow && rowIndex <= (rightRow || leftRow),
-        )
-        .map(([rowIndex, colData]) => {
-          return [
-            rowIndex,
-            new Map(
-              colData
-                .entries()
-                .filter(
-                  ([colIndex]) =>
-                    colIndex >= leftCol && colIndex <= (rightCol || leftCol),
-                ),
-            ),
-          ];
-        }),
-    );
-  }
-
-  sheetDataToString(sheetData: SheetData, maxLength: number | undefined) {
-    const rowIndices = Array.from(sheetData.keys()).sort((a, b) => a - b);
-    const allColumnIndices = new Set<number>();
-    rowIndices.forEach((row) => {
-      const rowData = sheetData.get(row);
-      if (rowData) {
-        Array.from(rowData.keys()).forEach((col) => allColumnIndices.add(col));
-      }
-    });
-    const columnIndices = Array.from(allColumnIndices).sort((a, b) => a - b);
-    const sheetDataString = rowIndices
-      .map((row) => {
-        const rowData = sheetData.get(row);
-        return columnIndices
-          .map((col) => {
-            const cell = rowData?.get(col);
-            const cellRef = `${columnNameFromNumber(col)}${row}`;
-            if (cell) {
-              return `${cellRef},${cell.formula || ""},${cell.value}`;
-            }
-            return `${cellRef},,`;
-          })
-          .join("|");
-      })
-      .join("\n");
-    if (maxLength) {
-      return sheetDataString.slice(0, maxLength);
+    let tokenBudget = TOKEN_BUDGET;
+    const sheetContexts: string[] = [];
+    for (const args of getSheetContextArgs) {
+      const sheetContext = this.getSheetContext(args, tokenBudget);
+      tokenBudget -= sheetContext.length;
+      sheetContexts.push(sheetContext);
     }
-    return sheetDataString;
+
+    return `<spreadsheet>
+${sheetContexts.join("\n")}
+</spreadsheet>`;
+  }
+
+  getSheetContext(
+    { sheetProperties, selectedView, sheetData }: GetSheetContextArgs,
+    tokenBudget: number,
+  ) {
+    const props: Record<string, string> = {
+      name: sheetProperties.name,
+    };
+    if (sheetProperties.state === "hidden") {
+      props.hidden = "true";
+    }
+    if (selectedView) {
+      const range = {
+        leftCol: selectedView.range[1],
+        leftRow: selectedView.range[0],
+        rightCol: selectedView.range[3],
+        rightRow: selectedView.range[2],
+      };
+      props.selected = rangeToString(range);
+    }
+    const propsString = Object.entries(props)
+      .map(([key, value]) => `${key}="${value}"`)
+      .join(" ");
+    const ranges = getRanges(sheetData);
+    const rangeContexts: string[] = [];
+    //todo - prioritize range(s) that contain selectedView?
+    for (const range of ranges) {
+      const rangeContext = this.getRangeContext(
+        sheetData,
+        range,
+        tokenBudget,
+        selectedView,
+      );
+      tokenBudget -= rangeContext.length;
+      rangeContexts.push(rangeContext);
+    }
+    return `<sheet ${propsString}>
+${rangeContexts.join("\n")}
+</sheet>`;
+  }
+
+  getRangeContext(
+    sheetData: SheetData,
+    range: Range,
+    tokenBudget: number,
+    selectedView?: SelectedView,
+  ) {
+    const rangeString = rangeToString(range);
+    return `<range ref="${rangeString}">
+todo
+</range>`;
   }
 
   context() {
@@ -227,7 +227,17 @@ magicsandbox.Sheets lets users create and edit spreadsheets. Users can upload an
 
 ## Context
 
-The user's currently selected sheet is listed first.
+An XML representation of the user's spreadsheet is shown below. A few notes on this representation:
+
+- Each sheet is represented by a <sheet> tag with a name attribute containing the sheet's name.
+  - If the sheet is hidden, it will have hidden="true".
+  - The user's currently selected sheet is listed first and will have a selected="A1" or selected="A1:B2" attribute indicating the selected cell or range.
+- Each sheet is divided into one or more <range> tags, each with a ref attribute specifying the cell range it covers (e.g., ref="A1:B2").
+  - Ranges are contiguous blocks of cells separated by one or more empty rows or columns. This helps group logical sections and omits large empty areas.
+  - Within a range, entire or partial rows may be truncated for brevity. Truncation is indicated by a comment containing ellipses: "<!-- ... -->".
+- Each cell within a range is represented as cellRef,formula,value (e.g., A1,=SUM(B1:B2),10), with cells separated by | and rows separated by newlines.
+  - If a cell has no formula, the formula field is left empty (e.g., A1,,10).
+  - If a cell is blank, both fields are left empty (e.g., A1,,).
 
 ${modelContext}
 
@@ -278,6 +288,7 @@ Each method takes sheet names as arguments.
 
 ## Instructions
 
+- If the user's question or request is vague (e.g., "help me fix this formula"), focus on their selected cell/range when answering.
 - Explain to the user what actions you're taking - it's not always easy for the user to see every change you make.
 - If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change. Note: when you execute a script with multiple synchronous operations (like setting multiple cells), all those operations are batched together - when the user undoes one change from that script, all operations in the batch will be undone together.
 - If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
@@ -300,18 +311,18 @@ Each method takes sheet names as arguments.
     if (!sheetData) {
       throw new Error("Unexpected getRange error");
     }
-    const filteredSheetData = this.filterSheetData(
+    const rangeContext = this.getRangeContext(
       sheetData,
-      leftRow,
-      leftCol,
-      rightRow,
-      rightCol,
+      {
+        leftCol,
+        leftRow,
+        rightCol: rightCol || leftCol,
+        rightRow: rightRow || leftRow,
+      },
+      10000,
     );
-    const sheetDataString = this.sheetDataToString(filteredSheetData, 10000);
-    assistant.full(`<${range}>
-${sheetDataString}
-${sheetDataString.length === 10000 ? "[TRUNCATED]\n" : ""}</${range}>`);
-    return filteredSheetData;
+    assistant.full(rangeContext);
+    return rangeContext;
   }
 
   setRange(range: string, value: string) {
