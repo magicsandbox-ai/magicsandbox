@@ -19,62 +19,78 @@ test("Sheets", async ({ app }) => {
     app.api.setRange("Sheet1!A1", "Hello");
   });
   const rangeData1 = await getRange(app, "Sheet1!A1");
-  expect(rangeData1[1][1].value).toBe("Hello");
+  expect(rangeData1).toBe(`<range ref="Sheet1!A1">
+A1,,Hello
+</range>`);
 
   await app.evaluate(() => {
     app.api.setRange("Sheet1!A1:C3", "1");
     app.api.setRange("Sheet1!D1:D3", "=SUM(A1:C1)");
   });
   const rangeData2 = await getRange(app, "Sheet1!A1:D3");
-  expect(rangeData2[1][1].value).toBe("1");
-  expect(rangeData2[1][4].value).toBe("3");
-  expect(rangeData2[3][4].value).toBe("3");
-  expect(rangeData2[3][4].formula).toBe("=SUM(A3:C3)");
+  expect(rangeData2).toBe(`<range ref="Sheet1!A1:D3">
+A1,,1|B1,,1|C1,,1|D1,=SUM(A1:C1),3
+A2,,1|B2,,1|C2,,1|D2,=SUM(A2:C2),3
+A3,,1|B3,,1|C3,,1|D3,=SUM(A3:C3),3
+</range>`);
 
   //undo should undo both assistant setRange actions as a batch
   await app.getByRole("button", { name: "Undo" }).click();
   const rangeData3 = await getRange(app, "Sheet1!A1:D3");
-  expect(rangeData3[1][1].value).toBe("Hello");
-  expect(rangeData3[1][4]).toBeUndefined();
-  expect(rangeData3[3]?.[4]).toBeUndefined();
+  expect(rangeData3).toBe(`<range ref="Sheet1!A1:D3">
+A1,,Hello|B1,,|C1,,|D1,,
+A2,,|B2,,|C2,,|D2,,
+A3,,|B3,,|C3,,|D3,,
+</range>`);
 
   //redo should redo both assistant setRange actions as a batch
   await app.getByRole("button", { name: "Redo" }).click();
   const rangeData4 = await getRange(app, "Sheet1!A1:D3");
-  expect(rangeData4[1][1].value).toBe("1");
-  expect(rangeData4[1][4].value).toBe("3");
-  expect(rangeData4[3][4].value).toBe("3");
-  expect(rangeData4[3][4].formula).toBe("=SUM(A3:C3)");
+  expect(rangeData4).toBe(`<range ref="Sheet1!A1:D3">
+A1,,1|B1,,1|C1,,1|D1,=SUM(A1:C1),3
+A2,,1|B2,,1|C2,,1|D2,=SUM(A2:C2),3
+A3,,1|B3,,1|C3,,1|D3,=SUM(A3:C3),3
+</range>`);
 
   await app.evaluate(() => {
     app.api.clearRange("Sheet1!B1");
   });
   const rangeData5 = await getRange(app, "Sheet1!B1");
-  expect(rangeData5[1][2]).toBeUndefined();
+  expect(rangeData5).toBe(`<range ref="Sheet1!B1">
+B1,,
+</range>`);
 
   await app.evaluate(() => {
     app.api.clearRange("Sheet1!B2:B3");
   });
   const rangeData6 = await getRange(app, "Sheet1!B2:B3");
-  expect(rangeData6[2][2]).toBeUndefined();
-  expect(rangeData6[3][2]).toBeUndefined();
+  expect(rangeData6).toBe(`<range ref="Sheet1!B2:B3">
+B2,,
+B3,,
+</range>`);
 
   await app.evaluate(() => {
     //note: there's a bug in IronCalc where deleting columns A or C would create a reference error
     app.api.deleteColumns("Sheet1!B");
   });
   const rangeData7 = await getRange(app, "Sheet1!A1:C3");
-  expect(rangeData7[1][1].value).toBe("1");
-  expect(rangeData7[1][3].value).toBe("2");
+  expect(rangeData7).toBe(`<range ref="Sheet1!A1:C3">
+A1,,1|B1,,1|C1,=SUM(A1:B1),2
+A2,,1|B2,,1|C2,=SUM(A2:B2),2
+A3,,1|B3,,1|C3,=SUM(A3:B3),2
+</range>`);
 
   await app.evaluate(() => {
     app.api.insertRows("Sheet1!2:3");
   });
   const rangeData8 = await getRange(app, "Sheet1!A1:C5");
-  expect(rangeData8[1][1].value).toBe("1");
-  expect(rangeData8[1][3].value).toBe("2");
-  expect(rangeData8[2]).toBeUndefined();
-  expect(rangeData8[5][3].value).toBe("2");
+  expect(rangeData8).toBe(`<range ref="Sheet1!A1:C5">
+A1,,1|B1,,1|C1,=SUM(A1:B1),2
+A2,,|B2,,|C2,,
+A3,,|B3,,|C3,,
+A4,,1|B4,,1|C4,=SUM(A4:B4),2
+A5,,1|B5,,1|C5,=SUM(A5:B5),2
+</range>`);
 
   await app.evaluate(() => {
     app.api.addSheet("API Sheet");
@@ -94,15 +110,6 @@ test("Sheets", async ({ app }) => {
 
 async function getRange(app, range) {
   return await app.evaluate((range) => {
-    const rangeData = app.api.getRange(range);
-    // rangeData is Map<number, Map<number, CellData>>;
-    // convert to an object so Playwright can serialize it
-    const serializable = Object.fromEntries(
-      Array.from(rangeData).map(([rowKey, rowMap]) => [
-        rowKey,
-        Object.fromEntries(rowMap),
-      ]),
-    );
-    return serializable;
+    return app.api.getRange(range);
   }, range);
 }

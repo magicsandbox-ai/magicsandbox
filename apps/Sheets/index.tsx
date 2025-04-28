@@ -1,11 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
-import { Loader, Upload, Download } from "lucide-react";
+import { Loader, CirclePlus, Upload, Download } from "lucide-react";
 import wasm from "@ironcalc/wasm/wasm_bg.wasm";
 import { SheetsState } from "./SheetsState.ts";
 import { Toasts } from "@components/Toasts.js";
-import UploadConfirm from "./UploadConfirm.tsx";
+import Confirm from "./Confirm.tsx";
+
+/*
+for some reason, IronCalc uses sessionStorage to store a clipboardId
+it doesn't appear the clipboardId is actually used anywhere
+and sessionStorage is not available in the sandboxed iframe
+so we need to mock it
+*/
+Object.defineProperty(window, "sessionStorage", {
+  value: {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+    key: () => null,
+    length: 0,
+  },
+});
 
 let sheetsState: SheetsState | null = null;
 
@@ -40,7 +57,7 @@ async function init() {
 function App() {
   const [model, _setModel] = useState<Model | null>(null);
   const [_redrawId, setRedrawId] = useState(0);
-  const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [showConfirm, setShowConfirm] = useState<"upload" | "new" | null>(null);
 
   function setModel(newModel: Model) {
     sheetsState!.modelUndo = newModel.undo.bind(newModel);
@@ -99,7 +116,7 @@ function App() {
     const firstButton = document.querySelector(".ironcalc button");
     const toolbar = firstButton?.parentElement;
     if (toolbar) {
-      toolbar.style.marginLeft = "64px";
+      toolbar.style.marginLeft = "92px";
       toolbar.style.paddingLeft = "4px";
     }
   }, [model]); //todo when to run this?
@@ -110,6 +127,10 @@ function App() {
         <Loader className="h-10 w-10 animate-spin" />
       </div>
     );
+  }
+
+  function handleNewSpreadsheet() {
+    setModel(new Model("New Workbook", "en", "UTC"));
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -152,10 +173,21 @@ function App() {
       <div className="absolute z-50 flex h-12 items-center gap-1 border-b border-[#E0E0E0] pl-3">
         <button
           className={buttonClassName}
-          onClick={() => setShowUploadConfirm(true)}
+          onClick={() => {
+            setShowConfirm("new");
+          }}
+          title="New spreadsheet"
+        >
+          <CirclePlus />
+          <span className="sr-only">New spreadsheet</span>
+        </button>
+        <button
+          className={buttonClassName}
+          onClick={() => setShowConfirm("upload")}
+          title="Upload file"
         >
           <Upload />
-          <span className="sr-only">Upload File</span>
+          <span className="sr-only">Upload file</span>
         </button>
         <input
           ref={fileInputRef}
@@ -164,19 +196,25 @@ function App() {
           onChange={handleUpload}
           accept=".xlsx,.xls"
         />
-        <button className={buttonClassName} onClick={handleDownload}>
+        <button
+          className={buttonClassName}
+          onClick={handleDownload}
+          title="Download file"
+        >
           <Download />
-          <span className="sr-only">Download File</span>
+          <span className="sr-only">Download file</span>
         </button>
       </div>
       <div className="ironcalc grow">
         <IronCalc model={model} />
       </div>
       <Toasts className="top-2" ref={toastsRef} />
-      {showUploadConfirm && (
-        <UploadConfirm
-          setShowUploadConfirm={setShowUploadConfirm}
+      {showConfirm && (
+        <Confirm
+          setShowConfirm={setShowConfirm}
           fileInputRef={fileInputRef}
+          mode={showConfirm}
+          onNewSpreadsheet={handleNewSpreadsheet}
         />
       )}
     </div>

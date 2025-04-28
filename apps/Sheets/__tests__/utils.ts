@@ -40,12 +40,6 @@ function makeSheetData(cells: Array<[number, number]>): SheetData {
   return sheet;
 }
 
-function compareRanges(ranges: Range[], expected: Range[]) {
-  // order of ranges may vary, so sort for comparison
-  ranges.sort((a, b) => a.leftRow - b.leftRow || a.leftCol - b.leftCol);
-  expect(ranges).toEqual(expected);
-}
-
 describe("getRanges", () => {
   test("works", () => {
     const sheetData = makeSheetData([
@@ -59,7 +53,7 @@ describe("getRanges", () => {
     const expected: Range[] = [
       { leftRow: 1, leftCol: 1, rightRow: 3, rightCol: 3 },
     ];
-    compareRanges(ranges, expected);
+    expect(ranges).toEqual(expected);
   });
 
   test("handles multiple ranges", () => {
@@ -77,6 +71,6 @@ describe("getRanges", () => {
       { leftRow: 1, leftCol: 1, rightRow: 2, rightCol: 2 },
       { leftRow: 4, leftCol: 1, rightRow: 5, rightCol: 3 },
     ];
-    compareRanges(ranges, expected);
+    expect(ranges).toEqual(expected);
   });
 });

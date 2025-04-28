@@ -1,26 +1,6 @@
-import type {
-  Model,
-  WorksheetProperties,
-  SheetData,
-  SelectedView,
-} from "@ironcalc/wasm";
-//todo - it's confusing to use range as a string and also as a type
-//plus in the result from parseRange, rightCol and rightRow are optional, but they're required in Range
-import type { Range } from "./utils.ts";
-import {
-  columnNameFromNumber,
-  columnNameToNumber,
-  rangeToString,
-  getRanges,
-} from "./utils.ts";
-
-const TOKEN_BUDGET = 25000; //todo make configurable
-
-interface GetSheetContextArgs {
-  sheetProperties: WorksheetProperties;
-  selectedView?: SelectedView;
-  sheetData: SheetData;
-}
+import type { Model, SheetData } from "@ironcalc/wasm";
+import { columnNameToNumber } from "./utils.ts";
+import { getContext, getRangeContext } from "./context.ts";
 
 /*
 api:
@@ -122,6 +102,7 @@ class SheetsState {
     this.flushSendQueue("redo"); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
   }
 
+  // @ts-ignore
   flushSendQueue(debug: string) {
     // const q = this.model.debugFlushSendQueue();
     // console.log(debug, q);
@@ -129,97 +110,8 @@ class SheetsState {
     return q;
   }
 
-  getModelContext() {
-    const sheetsProperties = this.model.getWorksheetsProperties();
-    const selectedView = this.model.getSelectedView();
-    const selectedSheet = selectedView.sheet;
-    const workbookData = this.model.getWorkbookData();
-
-    const getSheetContextArgs: GetSheetContextArgs[] = [];
-    sheetsProperties.forEach((sheetProperties, index) => {
-      if (index === selectedSheet) {
-        getSheetContextArgs.unshift({
-          sheetProperties,
-          selectedView,
-          sheetData: workbookData[index]!,
-        });
-      } else if (sheetProperties.state === "veryHidden") {
-        // skip
-      } else {
-        getSheetContextArgs.push({
-          sheetProperties,
-          sheetData: workbookData[index]!,
-        });
-      }
-    });
-
-    let tokenBudget = TOKEN_BUDGET;
-    const sheetContexts: string[] = [];
-    for (const args of getSheetContextArgs) {
-      const sheetContext = this.getSheetContext(args, tokenBudget);
-      tokenBudget -= sheetContext.length;
-      sheetContexts.push(sheetContext);
-    }
-
-    return `<spreadsheet>
-${sheetContexts.join("\n")}
-</spreadsheet>`;
-  }
-
-  getSheetContext(
-    { sheetProperties, selectedView, sheetData }: GetSheetContextArgs,
-    tokenBudget: number,
-  ) {
-    const props: Record<string, string> = {
-      name: sheetProperties.name,
-    };
-    if (sheetProperties.state === "hidden") {
-      props.hidden = "true";
-    }
-    if (selectedView) {
-      const range = {
-        leftCol: selectedView.range[1],
-        leftRow: selectedView.range[0],
-        rightCol: selectedView.range[3],
-        rightRow: selectedView.range[2],
-      };
-      props.selected = rangeToString(range);
-    }
-    const propsString = Object.entries(props)
-      .map(([key, value]) => `${key}="${value}"`)
-      .join(" ");
-    const ranges = getRanges(sheetData);
-    const rangeContexts: string[] = [];
-    //todo - prioritize range(s) that contain selectedView?
-    for (const range of ranges) {
-      const rangeContext = this.getRangeContext(
-        sheetData,
-        range,
-        tokenBudget,
-        selectedView,
-      );
-      tokenBudget -= rangeContext.length;
-      rangeContexts.push(rangeContext);
-    }
-    return `<sheet ${propsString}>
-${rangeContexts.join("\n")}
-</sheet>`;
-  }
-
-  getRangeContext(
-    sheetData: SheetData,
-    range: Range,
-    tokenBudget: number,
-    selectedView?: SelectedView,
-  ) {
-    const rangeString = rangeToString(range);
-    return `<range ref="${rangeString}">
-todo
-</range>`;
-  }
-
   context() {
-    const modelContext = this.getModelContext();
+    const modelContext = getContext(this.model);
 
     return `# magicsandbox.Sheets
   
@@ -232,7 +124,7 @@ An XML representation of the user's spreadsheet is shown below. A few notes on t
 - Each sheet is represented by a <sheet> tag with a name attribute containing the sheet's name.
   - If the sheet is hidden, it will have hidden="true".
   - The user's currently selected sheet is listed first and will have a selected="A1" or selected="A1:B2" attribute indicating the selected cell or range.
-- Each sheet is divided into one or more <range> tags, each with a ref attribute specifying the cell range it covers (e.g., ref="A1:B2").
+- Each sheet is divided into <range> tags, each with a ref attribute specifying the cell range it covers (e.g., ref="A1:B2").
   - Ranges are contiguous blocks of cells separated by one or more empty rows or columns. This helps group logical sections and omits large empty areas.
   - Within a range, entire or partial rows may be truncated for brevity. Truncation is indicated by a comment containing ellipses: "<!-- ... -->".
 - Each cell within a range is represented as cellRef,formula,value (e.g., A1,=SUM(B1:B2),10), with cells separated by | and rows separated by newlines.
@@ -288,7 +180,12 @@ Each method takes sheet names as arguments.
 
 ## Instructions
 
-- If the user's question or request is vague (e.g., "help me fix this formula"), focus on their selected cell/range when answering.
+- If the user's request is vague (e.g., "help me fix this formula"), focus on their selected cell/range when answering.
+- The user's spreadsheet is saved across sessions, so if the user has just started a session, the current spreadsheet may be irrelevant to their request. Use your judgment to determine the best course of action:
+  - If the user's request is related to the current spreadsheet, use the current spreadsheet.
+  - If the user's request is unrelated to the current spreadsheet but simple (e.g., "help me build a formula that does X"), add a new sheet to use for this request.
+  - If the user's request is unrelated to the current spreadsheet and complex (e.g., "help me build a financial model to value a company"), suggest that the user start a new spreadsheet.
+  - If you can infer from the user's request that they have an existing spreadsheet they'd like help with, suggest that they upload it.
 - Explain to the user what actions you're taking - it's not always easy for the user to see every change you make.
 - If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change. Note: when you execute a script with multiple synchronous operations (like setting multiple cells), all those operations are batched together - when the user undoes one change from that script, all operations in the batch will be undone together.
 - If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
@@ -311,15 +208,17 @@ Each method takes sheet names as arguments.
     if (!sheetData) {
       throw new Error("Unexpected getRange error");
     }
-    const rangeContext = this.getRangeContext(
-      sheetData,
+    const [sheetName] = range.split("!");
+    const rangeContext = getRangeContext(
+      this.model,
       {
         leftCol,
         leftRow,
         rightCol: rightCol || leftCol,
         rightRow: rightRow || leftRow,
       },
-      10000,
+      sheetData,
+      sheetName || "",
     );
     assistant.full(rangeContext);
     return rangeContext;

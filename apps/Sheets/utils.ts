@@ -37,6 +37,15 @@ function rangeToString(range: Range): string {
   return `${columnNameFromNumber(range.leftCol)}${range.leftRow}:${columnNameFromNumber(range.rightCol)}${range.rightRow}`;
 }
 
+function intersectRanges(range1: Range, range2: Range): Range {
+  return {
+    leftCol: Math.max(range1.leftCol, range2.leftCol),
+    leftRow: Math.max(range1.leftRow, range2.leftRow),
+    rightCol: Math.min(range1.rightCol, range2.rightCol),
+    rightRow: Math.min(range1.rightRow, range2.rightRow),
+  };
+}
+
 function getRanges(sheetData: SheetData): Range[] {
   const ranges: Range[] = [];
   let remainingCells: Cell[] = [];
@@ -73,6 +82,7 @@ function getRanges(sheetData: SheetData): Range[] {
     });
     ranges.push(currentRange);
   }
+  ranges.sort((a, b) => a.leftRow - b.leftRow || a.leftCol - b.leftCol);
   return ranges;
 }
 
@@ -161,5 +171,11 @@ function _expandRange(
   return false;
 }
 
-export { columnNameFromNumber, columnNameToNumber, rangeToString, getRanges };
+export {
+  columnNameFromNumber,
+  columnNameToNumber,
+  rangeToString,
+  intersectRanges,
+  getRanges,
+};
 export type { Range };
