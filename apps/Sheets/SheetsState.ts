@@ -11,8 +11,8 @@ api:
 
 class SheetsState {
   private batchUndoTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private undoCounts: number[] = [];
-  private redoCounts: number[] = [];
+  public undoCounts: number[] = [];
+  public redoCounts: number[] = [];
   private cachedWorkbookData: SheetData[] | null = null;
   private lastErrorToastTime: number = 0;
   public modelUndo: () => void = () => {};
@@ -51,7 +51,7 @@ class SheetsState {
   }
 
   addUndoCounts() {
-    const userActionCount = this.flushSendQueue("addUndoCounts").length;
+    const userActionCount = this.flushSendQueue();
     if (userActionCount > 0) {
       this.redoCounts = [];
       for (let i = 0; i < userActionCount; i++) {
@@ -70,7 +70,7 @@ class SheetsState {
     this.addUndoCounts();
     this.redoCounts = [];
     this.batchUndoTimeoutId = setTimeout(() => {
-      this.undoCounts.push(this.flushSendQueue("batchUndo").length);
+      this.undoCounts.push(this.flushSendQueue());
       this.batchUndoTimeoutId = null;
       this.redraw();
     }, 0);
@@ -86,7 +86,7 @@ class SheetsState {
     for (let i = 0; i < undoCount; i++) {
       this.modelUndo(); //calling model.undo creates an infinite loop due to the Proxy
     }
-    this.flushSendQueue("undo"); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.flushSendQueue(); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
   }
 
   redo() {
@@ -99,15 +99,11 @@ class SheetsState {
     for (let i = 0; i < redoCount; i++) {
       this.modelRedo(); //calling model.redo creates an infinite loop due to the Proxy
     }
-    this.flushSendQueue("redo"); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.flushSendQueue(); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
   }
 
-  // @ts-ignore
-  flushSendQueue(debug: string) {
-    // const q = this.model.debugFlushSendQueue();
-    // console.log(debug, q);
-    const q = this.model.flushSendQueue();
-    return q;
+  flushSendQueue() {
+    return this.model.flushSendQueueCount();
   }
 
   context() {
@@ -130,6 +126,7 @@ An XML representation of the user's spreadsheet is shown below. A few notes on t
 - Each cell within a range is represented as cellRef,formula,value (e.g., A1,=SUM(B1:B2),10), with cells separated by | and rows separated by newlines.
   - If a cell has no formula, the formula field is left empty (e.g., A1,,10).
   - If a cell is blank, both fields are left empty (e.g., A1,,).
+  - If a cell has an error, the value shows as an error constant followed by the error message (e.g., "#DIV/0!: Divide by 0")
 
 ${modelContext}
 

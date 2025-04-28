@@ -167,7 +167,7 @@ class RangeContext {
   private openTag: string = "";
   private closeTag: string = "";
   private priorityRows: number[] = [];
-  private nextRow: number = 0;
+  private nextRow: number;
   private rows: Map<number, string> = new Map();
 
   constructor({
@@ -194,7 +194,6 @@ class RangeContext {
       this.range.leftRow, //first row
       this.range.rightRow, //last row
     ];
-
     if (selectedRange) {
       const intersectedRange = intersectRanges(this.range, selectedRange);
       //first 5 rows of selected range
@@ -208,11 +207,12 @@ class RangeContext {
         intersectedRange.rightRow,
       );
     }
-
     //first 5 rows of range (first already added)
     this.addPriorityRows(this.range.leftRow + 1, this.range.leftRow + 4);
     //last 5 rows of range (last already added)
     this.addPriorityRows(this.range.rightRow - 4, this.range.rightRow - 1);
+
+    this.nextRow = this.range.leftRow;
   }
 
   /**
@@ -273,7 +273,12 @@ class RangeContext {
     for (let col = this.range.leftCol; col <= this.range.rightCol; col++) {
       const cell = colMap?.get(col);
       const cellRef = `${columnNameFromNumber(col)}${row}`;
-      cols.push(`${cellRef},${cell?.formula || ""},${cell?.value || ""}`);
+      const formula = cell?.formula || "";
+      let value = cell?.value || "";
+      if (cell?.error) {
+        value += `: ${cell.error}`;
+      }
+      cols.push(`${cellRef},${formula},${value}`);
     }
     return cols.join("|");
   }

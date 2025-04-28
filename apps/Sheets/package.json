@@ -4,14 +4,12 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@ironcalc/workbook": "^0.3.2",
+    "@ironcalc/wasm": "file:../../../../IronCalc/bindings/wasm/pkg",
+    "@ironcalc/workbook": "file:../../../../IronCalc/webapp/IronCalc",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "lucide-react": "^0.408.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  },
-  "overrides": {
-    "@ironcalc/wasm": "file:C:/Users/kevin/IronCalc/bindings/wasm/pkg"
   }
 }

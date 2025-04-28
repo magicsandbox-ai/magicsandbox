@@ -35,7 +35,7 @@ function makeSheetData(cells: Array<[number, number]>): SheetData {
   const sheet: SheetData = new Map();
   for (const [row, col] of cells) {
     if (!sheet.has(row)) sheet.set(row, new Map());
-    sheet.get(row)!.set(col, { value: "1", formula: null });
+    sheet.get(row)!.set(col, { value: "1" });
   }
   return sheet;
 }

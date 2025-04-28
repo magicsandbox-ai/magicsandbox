@@ -60,6 +60,8 @@ function App() {
   const [showConfirm, setShowConfirm] = useState<"upload" | "new" | null>(null);
 
   function setModel(newModel: Model) {
+    sheetsState!.undoCounts = [];
+    sheetsState!.redoCounts = [];
     sheetsState!.modelUndo = newModel.undo.bind(newModel);
     sheetsState!.modelRedo = newModel.redo.bind(newModel);
     const newModelProxy = new Proxy(newModel, {
