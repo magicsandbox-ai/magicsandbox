@@ -1,6 +1,6 @@
 {
   name: "llm",
   version: "0.1.0",
-  description: "",
+  description: "Call LLMs using an OpenAI compatible API",
   endpoint: "https://magicsandbox.ai/endpoint/llm",
 }

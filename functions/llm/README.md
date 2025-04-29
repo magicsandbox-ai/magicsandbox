@@ -10,16 +10,27 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 
 - `messages` _(**required**)_
 - `model`: supported models are:
+
   - `claude-3-7-sonnet-20250219`
     - Prompt caching is not supported
-  - `gpt-4o-2024-08-06`
+  - `gemini-2.5-pro-preview-03-25`
+    - Limited to 200k input tokens
+    - Prompt caching is not supported
+    - Multimodal inputs (images, audio, video) are not supported
+  - `gpt-4.1-2025-04-14`
+  - `gemini-2.5-flash-preview-04-17`
+    - Prompt caching is not supported
+    - Multimodal inputs (images, audio, video) are not supported
+  - `gpt-4.1-mini-2025-04-14`
   - `gemini-2.0-flash-001`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
-  - `gpt-4o-mini-2024-07-18`
   - `gemini-2.0-flash-lite-001`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
+  - `gpt-4o-2024-08-06`
+  - `gpt-4o-mini-2024-07-18`
+
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
 - `response_format`
 - `temperature`
@@ -27,6 +38,7 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `frequency_penalty`
 - `presence_penalty`
 - `logit_bias`
+- `reasoning_effort`
 
 Or, to generate multiple responses, you can pass an array of up to 10 objects with the above keys. In this case, you can also provide an additional `maxCost` key indicating how to split `maxCost` across the responses.
 

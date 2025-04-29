@@ -1,4 +1,4 @@
-import { prePublish, postPublish } from "./publishUtils.js";
+import { prePublish, postPublish, getTagTimestamp } from "./publishUtils.js";
 import { publish } from "@magicsandbox.ai/dev";
 import { join } from "path";
 
@@ -16,7 +16,7 @@ if (!path.startsWith("apps/") && !path.startsWith("functions/")) {
 prePublish();
 
 const magicObj = await publish(join(process.cwd(), path));
-const tag = `${path}@${magicObj.version}`;
+const tag = `${path}@${magicObj.version}-${getTagTimestamp()}`;
 
 postPublish(tag);
 

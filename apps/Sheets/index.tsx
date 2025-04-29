@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
 import { Loader, CirclePlus, Upload, Download } from "lucide-react";
-import wasm from "@ironcalc/wasm/wasm_bg.wasm";
+//import wasm from "@ironcalc/wasm/wasm_bg.wasm";
 import { SheetsState } from "./SheetsState.ts";
 import { Toasts } from "@components/Toasts.js";
 import Confirm from "./Confirm.tsx";
@@ -27,14 +27,16 @@ Object.defineProperty(window, "sessionStorage", {
 let sheetsState: SheetsState | null = null;
 
 async function initWasm() {
-  // const response = await requestFetch(
-  //   "https://esm.sh/@ironcalc/wasm@0.3.2/wasm_bg.wasm",
-  //   { responseType: "bytes" },
-  // );
-  // const module = await WebAssembly.compile(response.body);
+  const response = await requestFetch(
+    //"https://esm.sh/@ironcalc/wasm@0.3.2/wasm_bg.wasm",
+    "https://assets.magicsandbox.ai/public/wasm_bg@0.1.0.wasm",
+    { responseType: "bytes" },
+  );
+  const module = await WebAssembly.compile(response.body);
 
   // @ts-ignore
-  const module = await WebAssembly.compile(wasm);
+  //const module = await WebAssembly.compile(wasm);
+
   await _initWasm(module);
   const modelBytes = (await requestGetData("modelBytes")) as
     | Uint8Array

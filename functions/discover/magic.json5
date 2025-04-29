@@ -1,5 +1,6 @@
 {
   name: "discover",
   version: "0.0.1",
+  description: "Discover Magic Sandbox apps and functions",
   endpoint: "https://magicsandbox.ai/endpoint/discover",
 }

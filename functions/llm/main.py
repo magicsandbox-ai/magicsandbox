@@ -10,6 +10,7 @@ from magicsandbox_streaming import length_prefix_transform #type: ignore
 import logging
 import asyncio
 from aiostream.stream import merge
+from typing import Literal
 
 logger = logging.getLogger("magicsandbox.llm")
 
@@ -23,6 +24,7 @@ class LlmArgs(BaseModel):
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
     logit_bias: dict | None = None
+    reasoning_effort: Literal["low", "medium", "high"] | None = None
     ## these would require returning the whole object, not just the content
     ## careful with token_counter if enabling these. and trim_messages: https://github.com/BerriAI/litellm/issues/4931
     # 'logprobs',
@@ -52,7 +54,6 @@ gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
 gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002') # google has not yet updated model to tokenizer map for gemini 2.0
 default_tokenizer = DefaultTokenizer()
 
-# THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
 # keep these in sync with Assistant/ModelPicker.js (and the README) - need a better way to do this
 supported_models = {
     'claude-3-7-sonnet-20250219': {
@@ -63,13 +64,42 @@ supported_models = {
         'tokenizer': default_tokenizer,
         'max_vision_tokens': 1600,
     },
-    'gpt-4o-2024-08-06': {
-        'max_input_tokens': 128000,
-        'max_output_tokens': 16384,
-        'input_cost_per_token': 2.5 / 1000000,
+    'gemini-2.5-pro-preview-03-25': {
+        'api_name': 'gemini/gemini-2.5-pro-preview-03-25',
+        'max_input_tokens': 200000, #1048576, #limit to 200k for now until figure out how to handle cost that depends on number of input tokens
+        'max_output_tokens': 65536,
+        'input_cost_per_token': 1.25 / 1000000,
         'output_cost_per_token': 10 / 1000000,
+        'tokenizer': gemini_tokenizer,
+        'max_vision_tokens': 0,
+        'multimodal_disabled': True,
+    },
+    'gpt-4.1-2025-04-14': {
+        'max_input_tokens': 1047576,
+        'max_output_tokens': 32768,
+        'input_cost_per_token': 2 / 1000000,
+        'output_cost_per_token': 8 / 1000000,
         'tokenizer': gpt_4o_tokenizer,
         'max_vision_tokens': 1445,
+    },
+    'gemini-2.5-flash-preview-04-17': {
+        'api_name': 'gemini/gemini-2.5-flash-preview-04-17',
+        'max_input_tokens': 1048576,
+        'max_output_tokens': 65536,
+        'input_cost_per_token': 0.15 / 1000000,
+        'output_cost_per_token': 0.6 / 1000000,
+        'tokenizer': gemini_tokenizer,
+        'max_vision_tokens': 0,
+        'multimodal_disabled': True,
+        'reasoning_disabled': True, #since output_cost is different for reasoning tokens - need to handle before can enable
+    },
+    'gpt-4.1-mini-2025-04-14': {
+        'max_input_tokens': 1047576,
+        'max_output_tokens': 32768,
+        'input_cost_per_token': 0.4 / 1000000,
+        'output_cost_per_token': 1.6 / 1000000,
+        'tokenizer': gpt_4o_tokenizer,
+        'max_vision_tokens': 2489,
     },
     'gemini-2.0-flash-001': {
         'api_name': 'gemini/gemini-2.0-flash-001',
@@ -81,14 +111,6 @@ supported_models = {
         'max_vision_tokens': 0,
         'multimodal_disabled': True, # can't compute cost for audio/video so need to disable it
     },
-    'gpt-4o-mini-2024-07-18': {
-        'max_input_tokens': 128000,
-        'max_output_tokens': 16384,
-        'input_cost_per_token': 0.15 / 1000000,
-        'output_cost_per_token': 0.6 / 1000000,
-        'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
-        'max_vision_tokens': 1445,
-    },
     'gemini-2.0-flash-lite-001': {
         'api_name': 'gemini/gemini-2.0-flash-lite-001',
         'max_input_tokens': 1048576,
@@ -98,8 +120,35 @@ supported_models = {
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'multimodal_disabled': True,
-    }
+    },
+    'gpt-4o-2024-08-06': {
+        'max_input_tokens': 128000,
+        'max_output_tokens': 16384,
+        'input_cost_per_token': 2.5 / 1000000,
+        'output_cost_per_token': 10 / 1000000,
+        'tokenizer': gpt_4o_tokenizer,
+        'max_vision_tokens': 1445,
+    },
+    'gpt-4o-mini-2024-07-18': {
+        'max_input_tokens': 128000,
+        'max_output_tokens': 16384,
+        'input_cost_per_token': 0.15 / 1000000,
+        'output_cost_per_token': 0.6 / 1000000,
+        'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
+        'max_vision_tokens': 48169,
+    },
 }
+
+# THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
+default_models = [
+    'claude-3-7-sonnet-20250219',
+    'gemini-2.5-pro-preview-03-25',
+    'gpt-4.1-2025-04-14',
+    'gemini-2.5-flash-preview-04-17',
+    'gpt-4.1-mini-2025-04-14',
+    'gemini-2.0-flash-001',
+    'gemini-2.0-flash-lite-001',
+]
 
 async def llm(body: LlmBody, test=False):
     if isinstance(body.args, str):
@@ -134,6 +183,8 @@ async def get_response(args: LlmArgs, stream: bool, maxCost: float, test=None):
         # because max command object size is 100KB
         raise HTTPException(status_code=400, detail='max_completion_tokens must be less than 99000 when streaming is disabled')
     model, expected_cost = find_model(args, maxCost) # note that this may modify args.messages and args.max_completion_tokens
+    if supported_models[model].get('reasoning_disabled', False):
+        args.reasoning_effort = None
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
     api_args.pop('maxCost', None) # remove custom args or litellm will throw an error
@@ -164,14 +215,16 @@ def process_messages(model, args):
 
 def find_model(args: LlmArgs, maxCost: float):
     model = args.model
-    supported_models_list = list(supported_models.keys())
     if model is not None and model not in supported_models:
         raise HTTPException(status_code=400, detail=f'Model {model} not supported')
     elif model is not None:
-        model_index = supported_models_list.index(model)
-        models = supported_models_list[model_index:]
+        try:
+            model_index = default_models.index(model)
+            models = default_models[model_index:]
+        except ValueError:
+            models = [model] + default_models
     else:
-        models = supported_models_list
+        models = default_models
     token_counts = {}
     for model in models:
         model_info = supported_models[model]

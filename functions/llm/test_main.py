@@ -4,6 +4,7 @@ from .main import llm, LlmBody, LlmArgs, trim_messages_for_tokens, trim_messages
 
 '''
 npm run pytest -- functions/llm/test_main.py
+WARNING: test_all_models makes real API calls and incurs costs!
 '''
 
 @pytest.mark.asyncio
@@ -19,10 +20,13 @@ async def test_string():
     response = await llm(body, test=True)
     validate_response(response)
 
-def validate_response(response, model=None):
+def validate_response(response, model=None, test=True):
     assert response.headers.get('x-command-object') == 'true'
     response_body = json.loads(response.body)
-    assert response_body['result']['content'] == 'This is mock content 0'
+    if test:
+        assert response_body['result']['content'] == 'This is mock content 0'
+    else:
+        assert isinstance(response_body['result']['content'], str)
     assert isinstance(response_body['result']['model'], str)
     if model is not None:
         assert response_body['result']['model'] == model
@@ -31,8 +35,7 @@ def validate_response(response, model=None):
     assert isinstance(response_body['result']['usage']['completion_tokens'], int)
     assert isinstance(response_body['__command']['finalCost'], float)
 
-@pytest.mark.asyncio
-async def test_args():
+async def test_helper(model, test):
     body = LlmBody(
         id='magicsandbox.llm@0.1.0',
         options={
@@ -40,18 +43,21 @@ async def test_args():
             'stream': False,
         },
         args={
-            'model': 'gpt-4o-mini-2024-07-18',
+            'model': model,
             'messages': [
                 {'role': 'system', 'content': 'You are a helpful assistant.'},
                 {'role': 'user', 'content': 'Hello, world!'},
             ],
         },
     )
-    response = await llm(body, test=True)
-    validate_response(response, model='gpt-4o-mini-2024-07-18')
+    response = await llm(body, test=test)
+    validate_response(response, model=model, test=test)
 
 @pytest.mark.asyncio
-async def test_stream():
+async def test_args():
+    await test_helper('gpt-4o-mini-2024-07-18', test=True)
+
+async def test_stream_helper(model, test):
     body = LlmBody(
         id='magicsandbox.llm@0.1.0',
         options={
@@ -59,14 +65,14 @@ async def test_stream():
             'stream': True,
         },
         args={
-            'model': 'gpt-4o-mini-2024-07-18',
+            'model': model,
             'messages': [
                 {'role': 'system', 'content': 'You are a helpful assistant.'},
                 {'role': 'user', 'content': 'Hello, world!'},
             ],
         },
     )
-    response = await llm(body, test=True)
+    response = await llm(body, test=test)
     assert response.headers.get('x-length-prefix') == 'true'
     chunks = []
     async for chunk in response.body_iterator:
@@ -76,7 +82,7 @@ async def test_stream():
     content = ''
     for i, chunk in enumerate(chunks):
         if i == 0:
-            assert chunk['model'] == 'gpt-4o-mini-2024-07-18'
+            assert chunk['model'] == model
             content = chunk['content']
         elif i == len(chunks) - 2:
             assert isinstance(chunk['finish_reason'], str)
@@ -89,7 +95,12 @@ async def test_stream():
             assert 'model' not in chunk
             assert '__command' not in chunk
             content += chunk['content']
-    assert content == 'This is mock content 0'
+    if test:
+        assert content == 'This is mock content 0'
+
+@pytest.mark.asyncio
+async def test_stream():
+    await test_stream_helper('gpt-4o-mini-2024-07-18', test=True)
 
 @pytest.mark.asyncio
 async def test_multiple():
@@ -191,3 +202,20 @@ async def test_trim_messages_for_cost():
     trimmed_messages = trim_messages_for_cost(args, model_info, input_tokens, max_cost)    
     assert trimmed_messages[0]['content'] == messages[0]['content']  # System message should be preserved
     assert len(trimmed_messages[1]['content']) < len(messages[1]['content'])  # User message should be trimmed
+
+@pytest.mark.asyncio
+async def test_all_models():
+    for model in supported_models.keys():
+        try:
+            await test_helper(model, test=False)
+        except Exception as e:
+            raise Exception(f"Error testing model '{model}': {str(e)}") from e
+
+@pytest.mark.asyncio
+async def test_all_models_stream():
+    for model in supported_models.keys():
+        try:
+            await test_stream_helper(model, test=False)
+        except Exception as e:
+            raise Exception(f"Error testing model '{model}': {str(e)}") from e
+
