@@ -232,6 +232,8 @@ const api = {
     sheetsState!.getRange(...args),
   setRange: (...args: Parameters<SheetsState["setRange"]>) =>
     sheetsState!.setRange(...args),
+  fillRange: (...args: Parameters<SheetsState["fillRange"]>) =>
+    sheetsState!.fillRange(...args),
   clearRange: (...args: Parameters<SheetsState["clearRange"]>) =>
     sheetsState!.clearRange(...args),
   insertRows: (...args: Parameters<SheetsState["insertRows"]>) =>

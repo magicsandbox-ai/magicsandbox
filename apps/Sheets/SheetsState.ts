@@ -9,6 +9,14 @@ api:
 - style/formatting
 */
 
+type SheetRange = {
+  sheetIndex: number;
+  leftCol: number;
+  leftRow: number;
+  rightCol: number;
+  rightRow: number;
+};
+
 class SheetsState {
   private batchUndoTimeoutId: ReturnType<typeof setTimeout> | null = null;
   public undoCounts: number[] = [];
@@ -140,8 +148,11 @@ Each method takes a \`range\` argument, which can take the forms "SheetName!A1" 
 
 - **app.api.setRange(range: string, value: string)**  
   Set the value or formula for the specified range.
-  - For values: provide the literal value as a string (e.g., "42" or "Hello"). When setting a range of multiple cells, the same value is copied to all cells in the range.
-  - For formulas: value should start with "=" (e.g., "=A1+B1"). When setting a range of multiple cells, write the formula as it should appear in the first cell of the range. The formula will then be auto-filled to subsequent cells, adjusting relative references appropriately. For example, \`app.api.setRange("SheetName!C1:C2", "=A1+B1")\` will put "=A1+B1" in C1 and "=A2+B2" in C2.
+  - For values: provide the literal value as a string (e.g., "42" or "Hello"). When setting a range of multiple cells, the same value is copied to all cells in the range To set different values in different cells, call setRange multiple times.
+  - For formulas: value should start with \`=\` (e.g., \`=A1+B1\`). When setting a range of multiple cells, write the formula as it should appear in the first cell of the range. The formula will then be auto-filled to subsequent cells, adjusting relative references appropriately. For example, \`app.api.setRange("SheetName!C1:C2", \`=A1+B1\`)\` will put \`=A1+B1\` in C1 and \`=A2+B2\` in C2. Consider whether the formula should use absolute or relative references. Always use backticks when writing formulas to avoid the need to escape quotes.
+
+- **app.api.fillRange(sourceRange: string, targetRange: string)**  
+  Fill a target range from a source range. Values are copied and relative references in formulas are adjusted. Can fill in all four directions.
 
 - **app.api.clearRange(range: string)**  
   Clear a range of cells.
@@ -177,13 +188,16 @@ Each method takes sheet names as arguments.
 
 ## Instructions
 
-- If the user's request is vague (e.g., "help me fix this formula"), focus on their selected cell/range when answering.
 - The user's spreadsheet is saved across sessions, so if the user has just started a session, the current spreadsheet may be irrelevant to their request. Use your judgment to determine the best course of action:
   - If the user's request is related to the current spreadsheet, use the current spreadsheet.
   - If the user's request is unrelated to the current spreadsheet but simple (e.g., "help me build a formula that does X"), add a new sheet to use for this request.
   - If the user's request is unrelated to the current spreadsheet and complex (e.g., "help me build a financial model to value a company"), suggest that the user start a new spreadsheet.
   - If you can infer from the user's request that they have an existing spreadsheet they'd like help with, suggest that they upload it.
-- Explain to the user what actions you're taking - it's not always easy for the user to see every change you make.
+- If the user's request is vague (e.g., "help me fix this formula"), focus on their selected cell/range when answering.
+- If the user asks for help creating a formula:
+  - If it's clear the user has data they want to use in the formula (e.g., "can you create a formula that gets the first 5 letters from column A"), reference the existing data in the formula.
+  - Otherwise, create some sample data to use in the formula.
+- Create a detailed plan to solve the user's request before executing a script - this both helps the user understand what you're doing and helps ensure the accuracy of your script. At each step in the plan, include explicit references to the cells you plan to change, ensuring the cell references account for any changes due to inserting or deleting rows or columns. If needed, for complex plans, use multiple scripts so you can verify your incremental progress.
 - If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change. Note: when you execute a script with multiple synchronous operations (like setting multiple cells), all those operations are batched together - when the user undoes one change from that script, all operations in the batch will be undone together.
 - If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
 - You're not currently able to view or edit the styles or formatting of the spreadsheet. Explain to the user that you can't do that yet.
@@ -226,31 +240,107 @@ Each method takes sheet names as arguments.
     const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
       this.parseRange(range);
     this.model.setUserInput(sheetIndex, leftRow, leftCol, String(value));
-    if (rightCol && rightRow) {
-      if (rightCol !== leftCol) {
-        this.model.autoFillColumns(
-          {
-            sheet: sheetIndex,
-            row: leftRow,
-            column: leftCol,
-            width: 1,
-            height: 1,
-          },
-          rightCol,
-        );
-      }
-      if (rightRow !== leftRow) {
-        this.model.autoFillRows(
-          {
-            sheet: sheetIndex,
-            row: leftRow,
-            column: leftCol,
-            width: rightCol - leftCol + 1,
-            height: 1,
-          },
-          rightRow,
-        );
-      }
+    this.fillRange(
+      { sheetIndex, leftCol, leftRow, rightCol: leftCol, rightRow: leftRow },
+      {
+        sheetIndex,
+        leftCol,
+        leftRow,
+        rightCol: rightCol || leftCol,
+        rightRow: rightRow || leftRow,
+      },
+    );
+  }
+
+  fillRange(
+    sourceRange: string | SheetRange,
+    targetRange: string | SheetRange,
+  ) {
+    this.batchUndo();
+    let source: SheetRange;
+    let target: SheetRange;
+    if (typeof sourceRange === "string") {
+      const parsedSource = this.parseRange(sourceRange);
+      source = {
+        sheetIndex: parsedSource.sheetIndex,
+        leftCol: parsedSource.leftCol,
+        leftRow: parsedSource.leftRow,
+        rightCol: parsedSource.rightCol || parsedSource.leftCol,
+        rightRow: parsedSource.rightRow || parsedSource.leftRow,
+      };
+    } else {
+      source = sourceRange;
+    }
+    if (typeof targetRange === "string") {
+      const parsedTarget = this.parseRange(targetRange);
+      target = {
+        sheetIndex: parsedTarget.sheetIndex,
+        leftCol: parsedTarget.leftCol,
+        leftRow: parsedTarget.leftRow,
+        rightCol: parsedTarget.rightCol || parsedTarget.leftCol,
+        rightRow: parsedTarget.rightRow || parsedTarget.leftRow,
+      };
+    } else {
+      target = targetRange;
+    }
+    if (source.sheetIndex !== target.sheetIndex) {
+      throw new Error(
+        `fillRange: sourceRange ${sourceRange} and targetRange ${targetRange} must be on the same sheet`,
+      );
+    }
+    if (
+      //fillRange("SheetName!A1:B1", "SheetName!D1:E1")
+      (target.rightCol > source.rightCol &&
+        target.leftCol - source.rightCol > 1) ||
+      //fillRange("SheetName!A1:A2", "SheetName!A4:A5")
+      (target.rightRow > source.rightRow &&
+        target.leftRow - source.rightRow > 1) ||
+      //fillRange("SheetName!D1:E1", "SheetName!A1:B1")
+      (target.leftCol < source.leftCol &&
+        target.rightCol - source.leftCol < -1) ||
+      //fillRange("SheetName!A4:A5", "SheetName!A1:A2")
+      (target.leftRow < source.leftRow && target.rightRow - source.leftRow < -1)
+    ) {
+      throw new Error(
+        `fillRange: sourceRange ${sourceRange} and targetRange ${targetRange} must be adjacent`,
+      );
+    }
+    const sheetRange = {
+      sheetIndex: source.sheetIndex,
+      leftRow: source.leftRow,
+      leftCol: source.leftCol,
+      rightRow: source.rightRow,
+      rightCol: source.rightCol,
+    };
+    function areaFromSheetRange(sheetRange: SheetRange) {
+      return {
+        sheet: sheetRange.sheetIndex,
+        row: sheetRange.leftRow,
+        column: sheetRange.leftCol,
+        width: sheetRange.rightCol - sheetRange.leftCol + 1,
+        height: sheetRange.rightRow - sheetRange.leftRow + 1,
+      };
+    }
+    if (target.rightCol > source.rightCol) {
+      this.model.autoFillColumns(
+        areaFromSheetRange(sheetRange),
+        target.rightCol,
+      );
+      sheetRange.rightCol = target.rightCol;
+    }
+    if (target.rightRow > source.rightRow) {
+      this.model.autoFillRows(areaFromSheetRange(sheetRange), target.rightRow);
+      sheetRange.rightRow = target.rightRow;
+    }
+    if (target.leftCol < source.leftCol) {
+      this.model.autoFillColumns(
+        areaFromSheetRange(sheetRange),
+        target.leftCol,
+      );
+      sheetRange.leftCol = target.leftCol;
+    }
+    if (target.leftRow < source.leftRow) {
+      this.model.autoFillRows(areaFromSheetRange(sheetRange), target.leftRow);
     }
   }
 
@@ -320,6 +410,18 @@ Each method takes sheet names as arguments.
     this.batchUndo();
     const sheetIndex = this.parseSheet(name);
     this.model.deleteSheet(sheetIndex);
+  }
+
+  parseSheetRange(range: string): SheetRange {
+    const { sheetIndex, leftCol, leftRow, rightCol, rightRow } =
+      this.parseRange(range);
+    return {
+      sheetIndex,
+      leftCol,
+      leftRow,
+      rightCol: rightCol || leftCol,
+      rightRow: rightRow || leftRow,
+    };
   }
 
   parseRange(range: string) {
@@ -413,6 +515,18 @@ Each method takes sheet names as arguments.
       const rightCell = this.parseCellString(rightCellString);
       out.rightCol = rightCell.col;
       out.rightRow = rightCell.row;
+    }
+    // ensure rightCol >= leftCol
+    if (out.rightCol && out.leftCol && out.rightCol < out.leftCol) {
+      const t = out.rightCol;
+      out.rightCol = out.leftCol;
+      out.leftCol = t;
+    }
+    // ensure rightRow >= leftRow
+    if (out.rightRow && out.leftRow && out.rightRow < out.leftRow) {
+      const t = out.rightRow;
+      out.rightRow = out.leftRow;
+      out.leftRow = t;
     }
     return out;
   }

@@ -93,6 +93,18 @@ A5,,1|B5,,1|C5,=SUM(A5:B5),2
 </range>`);
 
   await app.evaluate(() => {
+    app.api.clearRange("Sheet1!A1:C5");
+    app.api.setRange("Sheet1!B2", "1");
+    app.api.fillRange("Sheet1!B2", "Sheet1!A1:C3");
+  });
+  const rangeData9 = await getRange(app, "Sheet1!A1:C3");
+  expect(rangeData9).toBe(`<range ref="Sheet1!A1:C3">
+A1,,1|B1,,1|C1,,1
+A2,,1|B2,,1|C2,,1
+A3,,1|B3,,1|C3,,1
+</range>`);
+
+  await app.evaluate(() => {
     app.api.addSheet("API Sheet");
   });
   await expect(app.getByText("API Sheet")).toBeVisible();
