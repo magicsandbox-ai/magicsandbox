@@ -29,7 +29,7 @@ let sheetsState: SheetsState | null = null;
 async function initWasm() {
   const response = await requestFetch(
     //"https://esm.sh/@ironcalc/wasm@0.3.2/wasm_bg.wasm",
-    "https://assets.magicsandbox.ai/public/wasm_bg@0.1.0.wasm",
+    "https://assets.magicsandbox.ai/public/ironcalc1746023077218.wasm",
     { responseType: "bytes" },
   );
   const module = await WebAssembly.compile(response.body);

@@ -17,6 +17,7 @@ import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.js";
 import ChatToolbar from "./ChatToolbar.js";
+import { models } from "./ModelPicker.js";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -175,7 +176,9 @@ function App({ user, urlApp, initData, initConversation }) {
           })
           .catch(console.error);
       }
-      const model = initData.selectedModel || "auto";
+      const model = models[initData.selectedModel]
+        ? initData.selectedModel
+        : "auto";
       modelRef.current = model;
       setModel(model);
       assistantRef.current = new Assistant({
