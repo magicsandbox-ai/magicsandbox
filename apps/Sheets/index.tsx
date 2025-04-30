@@ -105,8 +105,7 @@ function App() {
       const link = target.closest("a[href]") as HTMLAnchorElement;
       if (link) {
         e.preventDefault();
-        //requestOpenUrl(link.href);
-        console.log(context());
+        requestOpenUrl(link.href);
       }
     };
     document.addEventListener("click", handleClick);

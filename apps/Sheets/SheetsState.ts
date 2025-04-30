@@ -30,30 +30,31 @@ class SheetsState {
 
   constructor(public model: Model) {
     setInterval(() => {
-      this.save();
+      this.maybeSave();
     }, 3000);
   }
 
-  async save() {
+  async maybeSave() {
     const userActionCount = this.addUndoCounts();
     if (userActionCount > 0) {
-      try {
-        await requestPutData("modelBytes", this.model.toBytes());
-      } catch (e) {
-        let message = "Unexpected error saving data";
-        if (
-          e instanceof Error &&
-          e.message === "Database size limit exceeded"
-        ) {
-          message =
-            "Error: spreadsheet too large to save. Make sure to download it to save your progress.";
-        }
-        const now = Date.now();
-        if (now - this.lastErrorToastTime >= 5 * 60 * 1000) {
-          console.error(e);
-          this.addToast(message, "error");
-          this.lastErrorToastTime = now;
-        }
+      this.save();
+    }
+  }
+
+  async save() {
+    try {
+      await requestPutData("modelBytes", this.model.toBytes());
+    } catch (e) {
+      let message = "Unexpected error saving data";
+      if (e instanceof Error && e.message === "Database size limit exceeded") {
+        message =
+          "Error: spreadsheet too large to save. Make sure to download it to save your progress.";
+      }
+      const now = Date.now();
+      if (now - this.lastErrorToastTime >= 5 * 60 * 1000) {
+        console.error(e);
+        this.addToast(message, "error");
+        this.lastErrorToastTime = now;
       }
     }
   }
@@ -81,6 +82,7 @@ class SheetsState {
       this.undoCounts.push(this.flushSendQueue());
       this.batchUndoTimeoutId = null;
       this.redraw();
+      this.save();
     }, 0);
   }
 
@@ -95,6 +97,7 @@ class SheetsState {
       this.modelUndo(); //calling model.undo creates an infinite loop due to the Proxy
     }
     this.flushSendQueue(); // undo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.save();
   }
 
   redo() {
@@ -108,6 +111,7 @@ class SheetsState {
       this.modelRedo(); //calling model.redo creates an infinite loop due to the Proxy
     }
     this.flushSendQueue(); // redo adds to send queue, but we want to remove it so that the next userActionCount is correct
+    this.save();
   }
 
   flushSendQueue() {
@@ -149,7 +153,7 @@ Each method takes a \`range\` argument, which can take the forms "SheetName!A1" 
 - **app.api.setRange(range: string, value: string)**  
   Set the value or formula for the specified range.
   - For values: provide the literal value as a string (e.g., "42" or "Hello"). When setting a range of multiple cells, the same value is copied to all cells in the range To set different values in different cells, call setRange multiple times.
-  - For formulas: value should start with \`=\` (e.g., \`=A1+B1\`). When setting a range of multiple cells, write the formula as it should appear in the first cell of the range. The formula will then be auto-filled to subsequent cells, adjusting relative references appropriately. For example, \`app.api.setRange("SheetName!C1:C2", \`=A1+B1\`)\` will put \`=A1+B1\` in C1 and \`=A2+B2\` in C2. Consider whether the formula should use absolute or relative references. Always use backticks when writing formulas to avoid the need to escape quotes.
+  - For formulas: value should start with "=" (e.g., "=A1+B1"). When setting a range of multiple cells, write the formula as it should appear in the first cell of the range. The formula will then be auto-filled to subsequent cells, adjusting relative references appropriately. For example, \`app.api.setRange("SheetName!C1:C2", "=A1+B1")\` will put "=A1+B1" in C1 and "=A2+B2" in C2. Consider whether the formula should use absolute or relative references.
 
 - **app.api.fillRange(sourceRange: string, targetRange: string)**  
   Fill a target range from a source range. Values are copied and relative references in formulas are adjusted. Can fill in all four directions.
@@ -198,6 +202,7 @@ Each method takes sheet names as arguments.
   - If it's clear the user has data they want to use in the formula (e.g., "can you create a formula that gets the first 5 letters from column A"), reference the existing data in the formula.
   - Otherwise, create some sample data to use in the formula.
 - Create a detailed plan to solve the user's request before executing a script - this both helps the user understand what you're doing and helps ensure the accuracy of your script. At each step in the plan, include explicit references to the cells you plan to change, ensuring the cell references account for any changes due to inserting or deleting rows or columns. If needed, for complex plans, use multiple scripts so you can verify your incremental progress.
+- Follow best practices when writing formulas rather than solely focusing on the user's current request. For example, use absolute references where appropriate so that the user can copy the formula to other cells without it breaking. Explain how your formulas work to the user and why you chose specific approaches over alternatives.
 - If the user wants to undo a change you've made, suggest they use Ctrl+Z or the undo button in the toolbar - this is more reliable than you attempting to reverse the change. If the user is persistent, then attempt to reverse the change. Note: when you execute a script with multiple synchronous operations (like setting multiple cells), all those operations are batched together - when the user undoes one change from that script, all operations in the batch will be undone together.
 - If the user asks you to calculate something, use a formula to do so to ensure accuracy. Don't attempt to do arithmetic.
 - You're not currently able to view or edit the styles or formatting of the spreadsheet. Explain to the user that you can't do that yet.
