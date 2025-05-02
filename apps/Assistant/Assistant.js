@@ -615,7 +615,7 @@ class Assistant {
         llmArgs.push(summaryArgs);
         maxCost += summaryArgs.maxCost;
       }
-      const stream = await requestFunction("magicsandbox.llm", llmArgs, {
+      const stream = await requestFunction("magicsandbox.llm@0.1", llmArgs, {
         maxCost,
         stream: true,
       });

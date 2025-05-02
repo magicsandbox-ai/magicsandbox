@@ -339,7 +339,7 @@ function App({ user, urlApp, initData, initConversation }) {
         Date.now() - (popularAppData?.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
         !navigator.webdriver
       ) {
-        const { result } = await requestFunction("magicsandbox.discover", {
+        const { result } = await requestFunction("magicsandbox.discover@0.1", {
           includeMetadata: discoverMetadata,
           kind: "app",
           limit: 100,

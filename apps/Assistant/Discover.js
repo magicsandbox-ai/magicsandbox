@@ -63,7 +63,7 @@ function DiscoverInner({
     }
     setStatus("loading");
     try {
-      const { result } = await requestFunction("magicsandbox.discover", {
+      const { result } = await requestFunction("magicsandbox.discover@0.1", {
         query: searchQuery,
         includeMetadata: discoverMetadata,
         kind: "app",

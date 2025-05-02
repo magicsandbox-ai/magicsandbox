@@ -40,7 +40,7 @@ function getWelcomeMessage(message) {
 
 - **I can open and interact with apps** - that means I can handle tasks for you!
 - **I can answer questions related to the app you have open** - I automatically understand what you're working on. No more copy/pasting!
-- **And, of course, I can chat** - with Magic Sandbox, you can chat with all the latest AI models, including **ChatGPT**, **Claude**, and **Gemini**.
+- **And, of course, I can chat** - with Magic Sandbox, you can chat with all the latest AI models, including **Claude**, **Gemini**, and **GPT**.
 
 **Let's get started!** Here's what you can do next:
 

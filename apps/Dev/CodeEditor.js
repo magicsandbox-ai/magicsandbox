@@ -53,7 +53,9 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
     const word = getWordAtIndex(text, index);
     if (!word) return;
     const modifiers = word.split(":");
-    const content = cssClassMap[modifiers[modifiers.length - 1]];
+    const className = modifiers[modifiers.length - 1];
+    const content = cssClassMap[className];
+    if (typeof content !== "string") return; //if className is "__proto__", content is an object and attempting to render it will crash the app
     if (content && content !== hover.content) {
       setHover({
         content,
