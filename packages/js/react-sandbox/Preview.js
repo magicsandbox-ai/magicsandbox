@@ -55,6 +55,15 @@ const Preview = forwardRef(function Preview(
   }
 
   async function update(sandboxId, appObj, timeout, init = true) {
+    /*
+    call setState("ready") to display the iframe
+    we can't check whether the state is already "ready" because the caller may call reload() then update() synchronously
+    then we wait for a frame for the iframe to display
+    then we can send the html/style/script
+    otherwise, if the script immediately examines the size of any html elements, they'll be wrong because the iframe is not displayed
+    */
+    setState("ready");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     appObjRef.current = appObj;
     sandboxRef.current.postMessage(sandboxId, {
       html: appObj.html,
@@ -85,7 +94,6 @@ const Preview = forwardRef(function Preview(
         })
         .catch(() => {}); //ignore
     }
-    setState("ready");
     return { logs };
   }
 
