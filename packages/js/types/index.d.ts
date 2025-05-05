@@ -11,7 +11,6 @@ interface Metadata {
   documentation: string;
   type: string;
   minCost: number;
-  finalCost: number;
   status: "active" | "deprecated" | "inactive";
   decode: "json" | "msgpack" | "string" | "bytes";
   usage: number; //number of times the App or Function has been used
@@ -25,25 +24,31 @@ interface DatabaseSchema {
   [key: string]: any;
 }
 
+interface MetadataWithFinalCost extends Metadata {
+  finalCost: number;
+}
+
 declare global {
-  function requestApp<TMetadataKeys extends keyof Metadata = never>(
+  function requestApp<
+    TMetadataKeys extends keyof MetadataWithFinalCost = never,
+  >(
     app: string,
     options?: {
-      maxCost?: number;
       includeMetadata?: TMetadataKeys[];
     },
   ): Promise<{
     style?: string;
     html?: string;
     script?: string;
-    metadata: Pick<Metadata, TMetadataKeys>;
+    metadata: Pick<MetadataWithFinalCost, TMetadataKeys>;
   }>;
 
   // streaming
   function requestFunction<
     TArgs = any,
     TResult = any,
-    TMetadataKeys extends keyof Metadata = keyof Metadata,
+    TMetadataKeys extends
+      keyof MetadataWithFinalCost = keyof MetadataWithFinalCost,
   >(
     fn: string,
     args: TArgs,
@@ -56,7 +61,7 @@ declare global {
   ): Promise<
     AsyncIterable<{
       result?: TResult;
-      metadata?: Pick<Metadata, TMetadataKeys>;
+      metadata?: Pick<MetadataWithFinalCost, TMetadataKeys>;
     }>
   >;
 
@@ -64,7 +69,8 @@ declare global {
   function requestFunction<
     TArgs = any,
     TResult = any,
-    TMetadataKeys extends keyof Metadata = keyof Metadata,
+    TMetadataKeys extends
+      keyof MetadataWithFinalCost = keyof MetadataWithFinalCost,
   >(
     fn: string,
     args: TArgs,
@@ -77,7 +83,7 @@ declare global {
     },
   ): Promise<{
     result: TResult;
-    metadata: Pick<Metadata, TMetadataKeys>;
+    metadata: Pick<MetadataWithFinalCost, TMetadataKeys>;
   }>;
 
   function requestMetadata<TMetadataKeys extends keyof Metadata>(

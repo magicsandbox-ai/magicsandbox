@@ -3,13 +3,12 @@ import ModalOverlay from "@components/ModalOverlay.js";
 import { formatAsDollars } from "./utils.js";
 import { Loader } from "lucide-react";
 
-function Discover({ setShowDiscover, assistantRef, appData, popularApps }) {
+function Discover({ setShowDiscover, assistantRef, popularApps }) {
   return (
     <ModalOverlay
       modal={
         <DiscoverInner
           assistantRef={assistantRef}
-          appData={appData}
           setShowDiscover={setShowDiscover}
           popularApps={popularApps}
         />
@@ -24,12 +23,7 @@ function Discover({ setShowDiscover, assistantRef, appData, popularApps }) {
 
 const discoverMetadata = ["id", "description", "minCost", "type", "usage"];
 
-function DiscoverInner({
-  assistantRef,
-  appData,
-  setShowDiscover,
-  popularApps,
-}) {
+function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [apps, setApps] = useState(() => {
     const filteredApps = popularApps?.filter((r) => filterResult(r));
@@ -47,9 +41,6 @@ function DiscoverInner({
     }
     const app = r.id.split("@")[0];
     if (app === "magicsandbox.Docs" || app === "magicsandbox.About") {
-      return false;
-    }
-    if (appData[app]?.blocked) {
       return false;
     }
     return true;
@@ -158,7 +149,7 @@ function App({ app, assistantRef, setShowDiscover }) {
   const appName = app.id.split("@")[0];
 
   function handleClick() {
-    assistantRef.current.handleApp({ app: appName, maxCost: app.minCost });
+    assistantRef.current.handleApp({ app: appName });
     setShowDiscover(false);
   }
 

@@ -18,7 +18,7 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
-import { Star, Ban, MoveVertical } from "lucide-react";
+import { Star, MoveVertical } from "lucide-react";
 
 function AppList({
   appData,
@@ -29,14 +29,11 @@ function AppList({
 }) {
   const [state, setState] = useState("favorited");
 
-  const states = ["favorited", "published", "recent", "blocked"];
+  const states = ["favorited", "published", "recent"];
 
   let message;
   if (state === "favorited") {
     message = "Your Assistant can open your favorited apps";
-  } else if (state === "blocked") {
-    message =
-      "Blocked apps don't appear in searches and can't be opened without approval";
   }
 
   const displayApps = Object.values(appData).filter((app) => app[state]);
@@ -55,7 +52,6 @@ function AppList({
   const ListComponent = sortable ? SortableList : StaticList;
   const favoritable =
     state === "favorited" || state === "published" || state === "recent";
-  const blockable = state === "recent" || state === "blocked";
 
   return (
     <div
@@ -97,7 +93,6 @@ function AppList({
                   app={app}
                   sortable={sortable}
                   favoritable={favoritable}
-                  blockable={blockable}
                   assistantRef={assistantRef}
                   modal={modal}
                   setShowApps={setShowApps}
@@ -186,17 +181,10 @@ function AppListButton({ active, onClick, children, modal }) {
   );
 }
 
-/*
-- expand to see description, minCost, finalCost?, status
-- expand to see versions, pin a version? link to homepage?
-- add bang?
-*/
-
 function AppCard({
   app,
   sortable,
   favoritable,
-  blockable,
   assistantRef,
   modal,
   setShowApps,
@@ -213,7 +201,7 @@ function AppCard({
 
   const handleClick = (e) => {
     if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
-      assistantRef.current.handleApp({ app: app.app, maxCost: app.minCost });
+      assistantRef.current.handleApp({ app: app.app });
       if (modal) {
         setShowApps(false);
       }
@@ -224,7 +212,7 @@ function AppCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex w-full cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
+      className="flex w-full min-w-72 cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
       onClick={handleClick}
     >
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
@@ -232,12 +220,6 @@ function AppCard({
         <button onClick={() => assistantRef.current.handleFavorite(app)}>
           <Star className={app.favorited ? "fill-yellow-200" : ""} />
           <span className="sr-only">Favorite</span>
-        </button>
-      )}
-      {blockable && (
-        <button onClick={() => assistantRef.current.handleBlock(app)}>
-          <Ban className={app.blocked ? "text-red-500" : ""} />
-          <span className="sr-only">Block</span>
         </button>
       )}
       {sortable && (

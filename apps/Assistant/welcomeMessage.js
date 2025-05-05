@@ -1,5 +1,3 @@
-import { getMinCost } from "./utils.js";
-
 async function createWelcomeConversation(app) {
   const welcome = {};
   if (app) {

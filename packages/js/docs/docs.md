@@ -67,22 +67,6 @@ _(string)_
 
 App or Function description. This is used by Assistants and other tools to discover your App or Function, so while not required, you should include it.
 
-### minCost
-
-_(number, default 0.001)_
-
-Minimum cost in dollars required to call your App or Function. Must be between $0.001 and $1.00.
-
-### finalCost
-
-_(number)_
-
-The final cost charged to call your App or Function. Apps and Functions have different behavior when it comes to `finalCost`:
-
-For Apps, `finalCost` is the cost charged to the user and defaults to `minCost` if not provided. So why use `finalCost`? Imagine your App has a `minCost` of $0.01 but immediately upon loading makes an expensive `requestFunction` call that costs $0.10. The user may not have the balance to make the `requestFunction` call, leading to a poor user experience. Instead, you could set `minCost` to $0.11 and `finalCost` to $0.01, still charging the user $0.01 to call your App but ensuring they have the balance to make the required `requestFunction` call. Assistants should allow Apps to spend the difference between `minCost` and `finalCost` without requiring additional confirmation.
-
-For Functions, `finalCost` is not accepted as a key in the App JSON, but instead can be included in an object returned from your Function's endpoint. This enables Functions to charge different costs depending on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
-
 ### private
 
 _(boolean, default false)_
@@ -231,6 +215,12 @@ const hashedKey = crypto.createHash("sha256").update(apiKey).digest("hex");
 // python
 hashed_key = hashlib.sha256(api_key.encode()).hexdigest();
 ```
+
+### minCost
+
+_(number, default 0.001)_
+
+Minimum cost in dollars required to call your Function. Must be between $0.001 and $1.00. Functions can either charge `minCost` for each call or optionally specify a `finalCost` in the response, which enables charging a variable cost based on the arguments to the Function. See [Variable Costs](#variable-costs) for details.
 
 ### documentation
 
@@ -461,7 +451,6 @@ Retrieve an App's `style`, `html`, `script`, and `metadata`.
 
 - `app` _(**required**, string)_: App to call, either in the form author.name@version or just author.name, in which case the latest version is used
 - `options` _(object)_:
-  - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the App call, which should be at least the App's `minCost`. Cannot exceed $1.00. Apps can't charge variable costs, so the user will be charged the App's `finalCost`
   - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
 
 **Returns:** a Promise that resolves to an App:
@@ -688,7 +677,7 @@ If a Sandbox function throws an error, it will have the following properties:
 - `name` (string): "RequestSandboxError"
 - `message` (string): a message describing the error
 - `data?` (object): an optional object containing additional error data
-  - `minCost?` (number): provided if calling `requestApp` or `requestFunction` with a `maxCost` that is less than the App or Function's `minCost`
+  - `minCost?` (number): provided if calling `requestFunction` with a `maxCost` that is less than the Function's `minCost`
 
 # Assistants
 
@@ -730,7 +719,7 @@ When an App calls a Sandbox function, a message is sent to its parent. The Assis
 
 Assistants should consider the following risks when handling Sandbox requests:
 
-- **Financial risk** (`requestApp`, `requestFunction`): Assistants should control how much Apps are allowed to spend. Assistants should allow Apps to spend the difference between `minCost` and `finalCost` without requiring additional confirmation
+- **Financial risk** (`requestApp`, `requestFunction`): Assistants should control how much Apps are allowed to spend.
 - **Publishing risk** (`requestPublish`): Assistants should always ask for user approval when `requestPublish` is called. A malicious App could publish a broken or malicious new version of an App or Function against the author's will
 - **Privacy risk** (`requestGetData`, `requestGetAllData`, `requestGetAllKeysData`): Assistants should ask for user approval before allowing cross-author reads
 - **Data loss risk** (`requestPutData`, `requestDeleteData`): Assistants should ask for user approval before allowing cross-author writes. Assistants can take backups of data by setting a `backup` key in the `options` object to `true` when calling the data Sandbox functions. This backup storage is isolated from the Assistant's main storage, has a size limit of 1 GB, and is not backed up in the cloud or synced to other devices
@@ -782,7 +771,6 @@ Magic Sandbox enables Functions to charge variable costs:
 3. When the Function executes, it can specify `finalCost`, the actual cost the user will be charged.
    - Magic Sandbox ensures `finalCost` is between $0.001 and `maxCost`
    - If `finalCost` is not specified, it defaults to `minCost`
-   - `requestApp` does not support variable costs and always charges `minCost`
 
 To specify `finalCost`, you must:
 
@@ -852,12 +840,13 @@ interface Metadata {
   documentation: string;
   type: string;
   minCost: number;
-  finalCost: number;
   status: "active" | "deprecated" | "inactive";
   decode: "json" | "msgpack" | "string" | "bytes";
   usage: number; //number of times the App or Function has been used
 }
 ```
+
+When calling `requestFunction` or `requestApp`, `includeMetadata` accepts the above keys as well as `finalCost`. For `requestFunction`, `finalCost` represents the cost charged to the user after any [variable costs](#variable-costs). For `requestApp`, `finalCost` is always equal to `minCost`, but is provided for convenience.
 
 App and Function metadata is made publicly available unless the App or Function's `private` key is set to true. This enables things like building an App or Function that can search for relevant Apps or Functions given some criteria.
 

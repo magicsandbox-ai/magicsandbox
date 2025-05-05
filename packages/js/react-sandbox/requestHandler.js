@@ -34,12 +34,8 @@ function validateAndDefaultRequest(request, data, options = {}) {
   // todo more type checking - like making sure urlParams params is an object
   if (request === "app") {
     data.options = {
-      maxCost: data.options?.maxCost || minimumMinCost,
       includeMetadata: data.options?.includeMetadata || [],
     };
-    if (data.options.maxCost > maximumMaxCost) {
-      return `maxCost must be less than or equal to ${maximumMaxCost}`;
-    }
   } else if (request === "function") {
     data.options = {
       maxCost: data.options?.maxCost || minimumMinCost,

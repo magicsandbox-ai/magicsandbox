@@ -5,13 +5,12 @@ import AssistantConfirm from "./AssistantConfirm.js";
 import AssistantSearch from "./AssistantSearch.js";
 import RiskConfirm from "./RiskConfirm.js";
 import DeleteConfirm from "./DeleteConfirm.js";
-import { Toasts, ToastError } from "@components/Toasts.js";
+import { Toasts } from "@components/Toasts.js";
 import { includeMetadata, Assistant } from "./Assistant.js";
 import Home from "./Home.js";
 import BottomChat from "./BottomChat.js";
 import { ChatDisplay } from "./ChatDisplay.js";
 import ChatHistory from "./ChatHistory.js";
-import { formatAsDollars, getMinCost } from "./utils.js";
 import { createWelcomeConversation } from "./welcomeMessage.js";
 import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
@@ -108,7 +107,7 @@ function App({ user, urlApp, initData, initConversation }) {
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
-  //type App {id, app, description, minCost, finalCost, status, favorited, recent, published, blocked}} //todo add versions somehow?
+  //type App {id, app, description, minCost, status, favorited, recent, published}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
   const [app, setApp] = useState(urlApp ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
@@ -215,50 +214,10 @@ function App({ user, urlApp, initData, initConversation }) {
           })),
       );
       if (urlApp) {
-        let appString = urlApp.split("@")[0];
-        const [author, name] = appString.split(".");
-        if (!name) {
-          throw new ToastError("Invalid app in URL", "error");
-        }
-        appString = `${author}.${name[0].toUpperCase()}${name.slice(1)}`;
-        const app = appData[appString] || { app: appString };
-        let maxCost = app.minCost;
-        let messages = [
-          "The link you opened includes a request to open this App",
-        ];
-        if (app.blocked) {
-          messages.push("This App is blocked");
-        } else if (app.favorited || app.published) {
-          messages = []; //no need to confirm
-        } else if (
-          Date.now() - (app.recent || 0) < 1000 * 60 * 60 * 24 * 7 &&
-          maxCost < 0.01
-        ) {
-          //todo enable user to configure thresholds
-          messages = []; //opened in last week and less than a penny, no need to confirm
-        } else if (!maxCost) {
-          try {
-            maxCost = await getMinCost(app.app);
-          } catch (error) {
-            console.error(error);
-            toastsRef.current.addToast(`Invalid app in URL`, "warning");
-          }
-        }
-        if (messages.length > 0 && maxCost) {
-          messages.push(`${app.app} costs ${formatAsDollars(maxCost)}`);
-          const message = messages.join("\n");
-          setConfirm({
-            header: `Open App ${app.app}?`,
-            message,
-            callback: (response) => {
-              if (response) {
-                assistantRef.current.handleApp({ app: app.app, maxCost });
-              }
-            },
-          });
-        } else if (maxCost) {
-          assistantRef.current.handleApp({ app: app.app, maxCost });
-        }
+        assistantRef.current.handleApp({ app: urlApp }).catch((error) => {
+          console.error(error);
+          toastsRef.current.addToast(`Invalid app in URL`, "error");
+        });
       }
     }
     if (assistantRef.current === null) {
@@ -397,7 +356,6 @@ function App({ user, urlApp, initData, initConversation }) {
       <Discover
         setShowDiscover={setShowDiscover}
         assistantRef={assistantRef}
-        appData={appData}
         popularApps={popularAppData?.apps}
       />
     );

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Star,
-  Ban,
   CircleArrowUp,
   Maximize2,
   OctagonPause,
@@ -169,13 +168,6 @@ function BottomChat({
               >
                 <Star className={app.favorited ? "fill-yellow-200" : ""} />
                 <span className="sr-only">Favorite</span>
-              </button>
-              <button
-                onClick={() => assistantRef.current.handleBlock(app)}
-                className={actionButtonStyle}
-              >
-                <Ban className={app.blocked ? "text-red-500" : ""} />
-                <span className="sr-only">Block</span>
               </button>
             </>
           ) : (

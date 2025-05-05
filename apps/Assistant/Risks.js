@@ -1,5 +1,7 @@
 import { formatAsDollars } from "./utils.js";
 
+const minimumMinCost = 0.001;
+
 /**
  * - init (optional)
  * - handleBatch
@@ -102,9 +104,13 @@ class FinancialRisk extends Risk {
       this.pendingCost = 0;
     }
   }
-  handleRequest(_, data, id) {
-    this.pendingRequests[id] = data;
-    this.pendingCost += data.options.maxCost;
+  handleRequest(request, data, id) {
+    const newData = { ...data, options: { ...data.options } }; //avoid mutating data
+    if (request === "app") {
+      newData.options.maxCost = minimumMinCost;
+    }
+    this.pendingRequests[id] = newData;
+    this.pendingCost += newData.options.maxCost;
   }
   handleApprove(approved, askedUser, pendingRequests, newBudget) {
     if (approved) {

@@ -17,7 +17,6 @@ npx tsc -p packages/js/types
 (async () => {
   // options
   const result = await requestApp("magicsandbox.Test", {
-    maxCost: 0.1,
     includeMetadata: ["id", "finalCost"],
   });
   console.log(result.style);
@@ -178,11 +177,11 @@ interface TestResult {
 })();
 
 (async () => {
-  const result = await requestMetadata("magicsandbox", ["id", "finalCost"], {
+  const result = await requestMetadata("magicsandbox", ["id", "minCost"], {
     kind: "app",
   });
   for (const app of result) {
-    console.log(app.id, app.finalCost);
+    console.log(app.id, app.minCost);
     // @ts-expect-error
     console.log(app.name);
   }

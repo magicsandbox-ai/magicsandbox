@@ -44,7 +44,6 @@ cols = {
     'documentation': 'TEXT',
     'type': 'TEXT',
     'minCost': 'NUMERIC',
-    'finalCost': 'NUMERIC',
     'status': 'TEXT',
     'decode': 'TEXT',
     'usage': 'INTEGER',

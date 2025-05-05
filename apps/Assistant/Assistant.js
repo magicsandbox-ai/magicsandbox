@@ -22,7 +22,7 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
 import { createWelcomeConversation } from "./welcomeMessage.js";
 
-const includeMetadata = ["id", "description", "minCost", "finalCost", "status"];
+const includeMetadata = ["id", "description", "minCost", "status"];
 const defaultInputBytesPerToken = 4;
 const defaultOutputTokens = 500;
 const defaultLlmCostThreshold = 0.1;
@@ -674,7 +674,6 @@ class Assistant {
             await this.handleApp({
               input,
               app: app.app,
-              maxCost: app.minCost,
               messages: [...newMessages, llmMessage],
             });
           } else {
@@ -751,7 +750,7 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ input, app, messages, maxCost }) {
+  async handleApp({ input, app, messages }) {
     let conversationId;
     try {
       conversationId = this.currentConversationRef.current.conversationId;
@@ -782,7 +781,7 @@ class Assistant {
           ...currentAppData,
           [app]: appData,
         }));
-        this.budget = result.metadata.minCost - result.metadata.finalCost;
+        this.budget = 0;
         this.sandboxRef.current.postMessage(sandboxId, result);
         this.handleAppUsage(result.metadata.finalCost);
         let initContext;
@@ -806,41 +805,11 @@ class Assistant {
         }
       };
       const requestAppOptions = {
-        maxCost,
-        includeMetadata,
+        includeMetadata: [...includeMetadata, "finalCost"],
       };
-      try {
-        const result = await requestApp(app, requestAppOptions);
-        if (abortSignal.aborted) return;
-        await handleAppResult(result);
-      } catch (error) {
-        if (abortSignal.aborted) return;
-        if (error.data?.minCost) {
-          //maxCost is lower than minCost, prompt user to approve
-          this.setConfirm({
-            header: `Open App ${app}?`,
-            message: `${app} costs ${formatAsDollars(error.data.minCost)}, which is higher than last time you opened it.`,
-            callback: async (response) => {
-              if (response) {
-                try {
-                  const result = await requestApp(app, {
-                    ...requestAppOptions,
-                    maxCost: error.data.minCost,
-                  });
-                  if (abortSignal.aborted) return;
-                  await handleAppResult(result);
-                } catch (error) {
-                  this.handleError(conversationId, error);
-                }
-              } else {
-                this.setDisplayMessage(`${app} not opened`);
-              }
-            },
-          });
-        } else {
-          throw error;
-        }
-      }
+      const result = await requestApp(app, requestAppOptions);
+      if (abortSignal.aborted) return;
+      await handleAppResult(result);
     } catch (error) {
       this.handleError(conversationId, error);
     }
@@ -1011,11 +980,9 @@ class Assistant {
   }
   handleFavorite(app) {
     const favorited = app.favorited ? null : Date.now();
-    const blocked = favorited ? null : app.blocked;
     const appData = {
       ...this.appDataRef.current[app.app],
       favorited,
-      blocked,
       recent: Date.now(),
     };
     if (this.app?.app === app.app) {
@@ -1027,27 +994,6 @@ class Assistant {
     }));
     this.toastsRef.current.addToast(
       `${app.app} ${favorited ? "favorited" : "unfavorited"}`,
-      "info",
-    );
-  }
-  handleBlock(app) {
-    const blocked = app.blocked ? null : Date.now();
-    const favorited = blocked ? null : app.favorited;
-    const appData = {
-      ...this.appDataRef.current[app.app],
-      favorited,
-      blocked,
-      recent: Date.now(),
-    };
-    if (this.app?.app === app.app) {
-      this.setApp(appData);
-    }
-    this.setAppData((currentAppData) => ({
-      ...currentAppData,
-      [app.app]: appData,
-    }));
-    this.toastsRef.current.addToast(
-      `${app.app} ${blocked ? "blocked" : "unblocked"}`,
       "info",
     );
   }

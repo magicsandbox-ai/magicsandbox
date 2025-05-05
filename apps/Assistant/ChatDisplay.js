@@ -119,10 +119,8 @@ const Message = memo(function Message({
         setShowDiscover(true);
       } else if (action.startsWith("open-")) {
         const app = action.slice("open-".length);
-        //const maxCost = await getMinCost(app); //save a request
         assistantRef.current.handleApp({
           app,
-          maxCost: message.welcomeMinCost,
         });
       } else {
         throw new Error(`Unknown action: ${action}`);
