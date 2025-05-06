@@ -3,7 +3,6 @@ import Markdown from "@components/Markdown.js";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
-import { getWelcomeMessage } from "./welcomeMessage.js";
 
 function ChatDisplay({
   outerClassName = "",
@@ -97,9 +96,6 @@ const Message = memo(function Message({
   assistantRef,
   lastUserMessage,
 }) {
-  if (message.welcome) {
-    message = getWelcomeMessage(message);
-  }
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
 
@@ -117,11 +113,6 @@ const Message = memo(function Message({
       if (!action) return;
       if (action === "discover") {
         setShowDiscover(true);
-      } else if (action.startsWith("open-")) {
-        const app = action.slice("open-".length);
-        assistantRef.current.handleApp({
-          app,
-        });
       } else {
         throw new Error(`Unknown action: ${action}`);
       }

@@ -21,8 +21,9 @@ import {
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
 import { createWelcomeConversation } from "./welcomeMessage.js";
+import { ToastError } from "@components/Toasts.js";
 
-const includeMetadata = ["id", "description", "minCost", "status"];
+const includeMetadata = ["id", "description", "status"];
 const defaultInputBytesPerToken = 4;
 const defaultOutputTokens = 500;
 const defaultLlmCostThreshold = 0.1;
@@ -217,7 +218,7 @@ class Assistant {
   }
   async _handleDeleteConversation(conversationId) {
     if (conversationId === "0") {
-      const welcomeConversation = await createWelcomeConversation();
+      const welcomeConversation = createWelcomeConversation();
       this.handleUpdateConversation({
         conversationId,
         messages: welcomeConversation.messages,
@@ -763,55 +764,58 @@ class Assistant {
         // so we call setApp now with the special value of false (rather than null) to avoid the flash
         this.setApp(false);
       }
-      const handleAppResult = async (result) => {
-        this.setDisplayMessage(`${result.metadata.id} loaded`);
-        const app = result.metadata.id.split("@")[0];
-        requestUrlParams({ _app: app }).catch(console.error);
-        const appData = {
-          ...this.appDataRef.current[app],
-          id: result.metadata.id,
-          app,
-          description: result.metadata.description,
-          minCost: result.metadata.minCost,
-          status: result.metadata.status,
-          recent: Date.now(),
-        };
-        this.setApp(appData);
-        this.setAppData((currentAppData) => ({
-          ...currentAppData,
-          [app]: appData,
-        }));
-        this.budget = 0;
-        this.sandboxRef.current.postMessage(sandboxId, result);
-        this.handleAppUsage(result.metadata.finalCost);
-        let initContext;
-        try {
-          initContext = await this.sandboxRef.current.getInit({
-            sandboxId,
-            timeout: 10000,
-          });
-        } catch {
-          //ignore
-        }
-        if (abortSignal.aborted) return;
-        //if loaded from a url, there's no input and the init context is irrelevant
-        if (input && initContext) {
-          //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
-          this.setCollapsed(false);
-          this.handleInput({
-            messages,
-            initContext,
-          });
-        }
-      };
-      const requestAppOptions = {
-        includeMetadata: [...includeMetadata, "finalCost"],
-      };
-      const result = await requestApp(app, requestAppOptions);
+      let result;
+      try {
+        result = await requestApp(app, {
+          includeMetadata: [...includeMetadata, "finalCost"],
+        });
+      } catch (error) {
+        throw new ToastError(
+          `Failed to load ${app}: ${error.message}`,
+          "error",
+        );
+      }
       if (abortSignal.aborted) return;
-      await handleAppResult(result);
+      this.setDisplayMessage(`${result.metadata.id} loaded`);
+      const appNoVersion = result.metadata.id.split("@")[0];
+      requestUrlParams({ _app: appNoVersion }).catch(console.error);
+      const appData = {
+        ...this.appDataRef.current[appNoVersion],
+        id: result.metadata.id,
+        app: appNoVersion,
+        description: result.metadata.description,
+        status: result.metadata.status,
+        recent: Date.now(),
+      };
+      this.setApp(appData);
+      this.setAppData((currentAppData) => ({
+        ...currentAppData,
+        [appNoVersion]: appData,
+      }));
+      this.budget = 0;
+      this.sandboxRef.current.postMessage(sandboxId, result);
+      this.handleAppUsage(result.metadata.finalCost);
+      let initContext;
+      try {
+        initContext = await this.sandboxRef.current.getInit({
+          sandboxId,
+          timeout: 10000,
+        });
+      } catch {
+        //ignore
+      }
+      if (abortSignal.aborted) return;
+      //if loaded from a url, there's no input and the init context is irrelevant
+      if (input && initContext) {
+        //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
+        this.setCollapsed(false);
+        this.handleInput({
+          messages,
+          initContext,
+        });
+      }
     } catch (error) {
-      this.handleError(conversationId, error);
+      this.handleError(error);
     }
   }
   handleRequest(event) {
@@ -968,7 +972,6 @@ class Assistant {
       id,
       app,
       description: magicObj.description,
-      minCost: magicObj.minCost,
       status: magicObj.status,
       published: Date.now(),
       recent: Date.now(),

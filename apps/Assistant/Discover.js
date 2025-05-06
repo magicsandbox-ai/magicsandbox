@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
-import { formatAsDollars } from "./utils.js";
 import { Loader } from "lucide-react";
 
 function Discover({ setShowDiscover, assistantRef, popularApps }) {
@@ -21,7 +20,7 @@ function Discover({ setShowDiscover, assistantRef, popularApps }) {
   );
 }
 
-const discoverMetadata = ["id", "description", "minCost", "type", "usage"];
+const discoverMetadata = ["id", "description", "type", "usage"];
 
 function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,10 +63,7 @@ function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
         .filter((r) => filterResult(r))
         .map((r) => ({
           ...r,
-          score:
-            r.relevance *
-            (1 - r.minCost * 0.5) *
-            Math.min(Math.log10(r.usage + 1) / 4 + 0.5, 2),
+          score: r.relevance * Math.min(Math.log10(r.usage + 1) / 4 + 0.5, 2),
         }))
         .sort((a, b) => b.score - a.score);
       setApps(newApps);
@@ -153,8 +149,6 @@ function App({ app, assistantRef, setShowDiscover }) {
     setShowDiscover(false);
   }
 
-  //todo display usage?
-
   return (
     <button
       className="mb-4 w-full rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
@@ -163,7 +157,6 @@ function App({ app, assistantRef, setShowDiscover }) {
     >
       <div className="flex items-center justify-between">
         <div className="mb-1 font-medium">{appName}</div>
-        <div>{formatAsDollars(app.minCost)}</div>
       </div>
       <div className="line-clamp-2">{app.description}</div>
     </button>

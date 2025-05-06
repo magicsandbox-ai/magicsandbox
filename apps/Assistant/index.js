@@ -31,14 +31,11 @@ async function init({ user } = {}) {
     summary: null,
     lastUpdated: Date.now(),
   };
-  let urlApp;
   if (!("0" in initData)) {
-    initConversation = await createWelcomeConversation(urlParams._app);
+    initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
     }).catch(console.error);
-  } else {
-    urlApp = urlParams._app;
   }
   createRoot(document.getElementById("root")).render(
     <ErrorBoundary
@@ -50,7 +47,7 @@ async function init({ user } = {}) {
     >
       <App
         user={user}
-        urlApp={urlApp}
+        urlParams={urlParams}
         initData={initData}
         initConversation={initConversation}
       />
@@ -58,7 +55,7 @@ async function init({ user } = {}) {
   );
 }
 
-function App({ user, urlApp, initData, initConversation }) {
+function App({ user, urlParams, initData, initConversation }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
@@ -76,9 +73,7 @@ function App({ user, urlApp, initData, initConversation }) {
   - promptToContinue: if populated, string to use to prompt the user to continue
   - continueSystemPrompt: "chat" | "init" | "context", the system prompt used to continue
   - model: the model used to generate the message
-  - welcome: populated on the welcome message, an object with keys:
-    - app: the app to suggest in the welcome message
-    - minCost: the minCost of the app suggested in the welcome message
+  - welcome: boolean indicating if the message is the welcome message
 
   currentConversation is an object with keys:
   - conversationId
@@ -107,9 +102,9 @@ function App({ user, urlApp, initData, initConversation }) {
   const [chatLoading, setChatLoading] = useState(false);
   //app can be null, false, or an App, so be careful with boolean checks
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
-  //type App {id, app, description, minCost, status, favorited, recent, published}} //todo add versions somehow?
+  //type App {id, app, description, status, favorited, recent, published}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
-  const [app, setApp] = useState(urlApp ? false : null);
+  const [app, setApp] = useState(urlParams._app ? false : null);
   const [appData, setAppData] = useState({}); // {[app: string]: App}
   const [model, setModel] = useState("auto");
   const [showDelete, setShowDelete] = useState(false);
@@ -140,7 +135,6 @@ function App({ user, urlApp, initData, initConversation }) {
           app: "magicsandbox.Notes",
           description:
             "Take notes, create to-do lists, organize documents, and more",
-          minCost: 0.001,
           status: "active",
           favorited: Date.now(),
         },
@@ -213,11 +207,8 @@ function App({ user, urlApp, initData, initConversation }) {
             summary: conversation.summary,
           })),
       );
-      if (urlApp) {
-        assistantRef.current.handleApp({ app: urlApp }).catch((error) => {
-          console.error(error);
-          toastsRef.current.addToast(`Invalid app in URL`, "error");
-        });
+      if (urlParams._app) {
+        assistantRef.current.handleApp({ app: urlParams._app });
       }
     }
     if (assistantRef.current === null) {
