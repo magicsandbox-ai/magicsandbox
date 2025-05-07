@@ -10,6 +10,7 @@ function ChatDisplay({
   messages,
   assistantRef,
   setShowDiscover,
+  chatLoading,
 }) {
   const ref = useRef(null);
   const scrollToBottomRef = useRef(false);
@@ -60,6 +61,7 @@ function ChatDisplay({
             setShowDiscover={setShowDiscover}
             assistantRef={assistantRef}
             lastUserMessage={lastUserMessageIndex === i}
+            loading={chatLoading && i === messages.length - 1}
           />
         ))}
         {promptToContinue && (
@@ -95,6 +97,7 @@ const Message = memo(function Message({
   setShowDiscover,
   assistantRef,
   lastUserMessage,
+  loading = true,
 }) {
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
@@ -148,8 +151,8 @@ const Message = memo(function Message({
         remarkPlugins={remarkPlugins}
         rehypePlugins={
           message.welcome
-            ? [...rehypePlugins, rehypeWelcomeButton]
-            : rehypePlugins
+            ? [createRehypeCode(loading), rehypeHighlight, rehypeWelcomeButton]
+            : [createRehypeCode(loading), rehypeHighlight]
         }
         rehypeSanitizeOptions={
           message.welcome ? welcomeRehypeSanitizeOptions : rehypeSanitizeOptions
@@ -206,35 +209,51 @@ function remarkHtmlToText() {
 const preStyle =
   "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
 
-function rehypeCode() {
-  return (tree) => {
-    visit(tree, "element", (node) => {
-      if (
-        node.tagName === "pre" &&
-        node.children.length === 1 &&
-        node.children[0].tagName === "code"
-      ) {
-        const code = node.children[0];
-        if (code.properties.className?.includes("language-magicscript")) {
-          code.properties.className = ["language-javascript"]; //fix class name for highlighting
-          const pre = { ...node }; //clone node since we mutate it below
-          pre.properties.className = [preStyle];
-          //now make code block collapsible
-          const summary = {
-            type: "element",
-            tagName: "summary",
-            children: [{ type: "text", value: "Executing Script..." }],
-          };
-          node.tagName = "details";
-          node.properties = {};
-          node.children = [summary, pre];
-        } else {
-          //not collapsible, just style pre
-          node.properties.className = [preStyle];
+function createRehypeCode(loading) {
+  return () => {
+    return (tree) => {
+      visit(tree, "element", (node) => {
+        if (
+          node.tagName === "pre" &&
+          node.children.length === 1 &&
+          node.children[0].tagName === "code"
+        ) {
+          const code = node.children[0];
+          if (code.properties.className?.includes("language-magicscript")) {
+            code.properties.className = ["language-javascript"]; //fix class name for highlighting
+            const pre = { ...node }; //clone node since we mutate it below
+            pre.properties.className = [preStyle];
+            //now make code block collapsible
+            const summary = {
+              type: "element",
+              tagName: "summary",
+              children: [
+                {
+                  type: "element",
+                  tagName: "span",
+                  properties: {
+                    className: loading ? "loading-spinner" : "",
+                  },
+                  children: [
+                    {
+                      type: "text",
+                      value: loading ? "Executing Script" : "Executed Script",
+                    },
+                  ],
+                },
+              ],
+            };
+            node.tagName = "details";
+            node.properties = {};
+            node.children = [summary, pre];
+          } else {
+            //not collapsible, just style pre
+            node.properties.className = [preStyle];
+          }
+          return SKIP; //don't traverse children
         }
-        return SKIP; //don't traverse children
-      }
-    });
+      });
+    };
   };
 }
 
@@ -258,12 +277,14 @@ function rehypeWelcomeButton() {
 }
 
 const remarkPlugins = [remarkHtmlToText];
-const rehypePlugins = [rehypeCode, rehypeHighlight];
 const rehypeSanitizeOptions = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span || []), ["className", /^hljs-./]],
+    span: [
+      ...(defaultSchema.attributes?.span || []),
+      ["className", /^hljs-./, "loading-spinner"],
+    ],
     pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
   },
 };

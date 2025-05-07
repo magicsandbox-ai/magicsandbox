@@ -15,8 +15,7 @@ export default function ChatToolbar({
   docked,
   setDocked,
   setCollapsed,
-  shouldFocusCollapseButton,
-  setShouldFocusCollapseButton,
+  shouldFocusCollapseButtonRef,
 }) {
   return (
     <div className={containerClassName}>
@@ -39,14 +38,14 @@ export default function ChatToolbar({
         </button>
         <button
           ref={(el) => {
-            if (el && shouldFocusCollapseButton) {
+            if (el && shouldFocusCollapseButtonRef.current) {
               el.focus();
-              setShouldFocusCollapseButton(false);
+              shouldFocusCollapseButtonRef.current = false;
             }
           }}
           onClick={() => {
             setCollapsed(true);
-            setShouldFocusCollapseButton(true);
+            shouldFocusCollapseButtonRef.current = true;
           }}
         >
           <Minimize2 />

@@ -94,8 +94,6 @@ function App({ user, urlParams, initData, initConversation }) {
     },
   ]);
   const [collapsed, setCollapsed] = useState(true);
-  const [shouldFocusCollapseButton, setShouldFocusCollapseButton] =
-    useState(false);
   const [docked, setDocked] = useState(
     window.innerWidth > 768 && (initData.docked || false),
   );
@@ -115,6 +113,9 @@ function App({ user, urlParams, initData, initConversation }) {
   const [showChatHistory, setShowChatHistory] = useState(
     window.innerWidth > 768,
   );
+  const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
+    initConversation.conversationId === "0",
+  );
 
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
@@ -126,6 +127,7 @@ function App({ user, urlParams, initData, initConversation }) {
   const currentConversationRef = useRef(currentConversation);
   const conversationSummariesRef = useRef(conversationSummaries);
   const modelRef = useRef(null);
+  const shouldFocusCollapseButtonRef = useRef(false);
 
   useEffect(() => {
     async function init() {
@@ -348,6 +350,7 @@ function App({ user, urlParams, initData, initConversation }) {
         setShowDiscover={setShowDiscover}
         assistantRef={assistantRef}
         popularApps={popularAppData?.apps}
+        appData={appData}
       />
     );
   } else if (showApps) {
@@ -420,8 +423,7 @@ function App({ user, urlParams, initData, initConversation }) {
                     docked,
                     setDocked,
                     setCollapsed,
-                    shouldFocusCollapseButton,
-                    setShouldFocusCollapseButton,
+                    shouldFocusCollapseButtonRef,
                   }}
                 />
               )}
@@ -431,6 +433,7 @@ function App({ user, urlParams, initData, initConversation }) {
                 messages={messages}
                 assistantRef={assistantRef}
                 setShowDiscover={setShowDiscover}
+                chatLoading={chatLoading}
               />
             </div>
           )}
@@ -444,8 +447,7 @@ function App({ user, urlParams, initData, initConversation }) {
             {...{
               collapsed,
               setCollapsed,
-              shouldFocusCollapseButton,
-              setShouldFocusCollapseButton,
+              shouldFocusCollapseButtonRef,
               docked,
               setDocked,
               toastsRef,
@@ -457,6 +459,8 @@ function App({ user, urlParams, initData, initConversation }) {
               setModel,
               setShowDiscover,
               setShowApps,
+              showWelcomeTooltip,
+              setShowWelcomeTooltip,
             }}
           />
         )}

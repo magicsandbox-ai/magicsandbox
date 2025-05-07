@@ -6,6 +6,7 @@ import {
   OctagonPause,
   LayoutGrid,
   Sparkles,
+  X,
 } from "lucide-react";
 import ChatInput from "./ChatInput.js";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
@@ -14,8 +15,7 @@ import ChatToolbar from "./ChatToolbar.js";
 function BottomChat({
   collapsed,
   setCollapsed,
-  shouldFocusCollapseButton,
-  setShouldFocusCollapseButton,
+  shouldFocusCollapseButtonRef,
   docked,
   setDocked,
   toastsRef,
@@ -27,6 +27,8 @@ function BottomChat({
   setModel,
   setShowDiscover,
   setShowApps,
+  showWelcomeTooltip,
+  setShowWelcomeTooltip,
 }) {
   const [input, setInput] = useState("");
 
@@ -95,8 +97,7 @@ function BottomChat({
                     docked,
                     setDocked,
                     setCollapsed,
-                    shouldFocusCollapseButton,
-                    setShouldFocusCollapseButton,
+                    shouldFocusCollapseButtonRef,
                   }}
                 />
                 <ChatDisplay
@@ -104,6 +105,7 @@ function BottomChat({
                   messages={messages}
                   assistantRef={assistantRef}
                   setShowDiscover={setShowDiscover}
+                  chatLoading={chatLoading}
                 />
                 <hr className="mx-2 border-stone-300" />
               </>
@@ -122,22 +124,42 @@ function BottomChat({
                 focus={window.innerWidth > 768} //don't focus on mobile
               />
               {collapsed && app !== null && (
-                <button
-                  ref={(el) => {
-                    if (el && shouldFocusCollapseButton) {
-                      el.focus();
-                      setShouldFocusCollapseButton(false);
-                    }
-                  }}
-                  className="mx-2"
-                  onClick={() => {
-                    setCollapsed(false);
-                    setShouldFocusCollapseButton(true);
-                  }}
-                >
-                  <Maximize2 />
-                  <span className="sr-only">Expand</span>
-                </button>
+                <div className="relative flex items-center">
+                  <button
+                    ref={(el) => {
+                      if (el && shouldFocusCollapseButtonRef.current) {
+                        el.focus();
+                        shouldFocusCollapseButtonRef.current = false;
+                      }
+                    }}
+                    className="mx-2"
+                    onClick={() => {
+                      setCollapsed(false);
+                      shouldFocusCollapseButtonRef.current = true;
+                      setShowWelcomeTooltip(false);
+                    }}
+                  >
+                    <Maximize2 />
+                    <span className="sr-only">Expand</span>
+                  </button>
+                  {showWelcomeTooltip && (
+                    <div className="group absolute bottom-full right-0 mb-3 whitespace-pre rounded-lg bg-stone-700 px-3 py-2 text-center text-sm font-medium text-white shadow">
+                      <button
+                        onClick={() => {
+                          setShowWelcomeTooltip(false);
+                        }}
+                        className="absolute right-1 top-1 hidden rounded bg-stone-200 text-stone-700 hover:bg-stone-300 group-hover:block"
+                      >
+                        <X className="lucide-ignore size-4" />
+                        <span className="sr-only">Dismiss</span>
+                      </button>
+                      Welcome to Magic Sandbox!
+                      <br />
+                      Expand to learn more
+                      <div className="absolute right-3 top-full -mt-1 border-8 border-transparent border-t-stone-700" />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

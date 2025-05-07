@@ -164,10 +164,14 @@ class Assistant {
       } else {
         conversation.messages.push(message);
       }
-      this.setCurrentConversation({
-        conversationId,
-        messages: conversation.messages,
-      });
+      if (
+        conversationId === this.currentConversationRef.current.conversationId
+      ) {
+        this.setCurrentConversation({
+          conversationId,
+          messages: conversation.messages,
+        });
+      }
     }
     const summaryUpdated = summary !== undefined;
     if (summaryUpdated) {
@@ -204,14 +208,25 @@ class Assistant {
     ) {
       clearTimeout(this.saveTimeoutIds[conversationId]);
       this.saveTimeoutIds[conversationId] = setTimeout(() => {
-        requestPutData(
-          conversationId,
-          this.conversationsRef.current[conversationId],
-          {
-            app: "magicsandbox.Assistant",
-            evictionPolicy: "fifo",
-          },
-        ).catch(console.error);
+        const conversationToSave = {
+          ...this.conversationsRef.current[conversationId],
+          messages: messages.map((message) => ({
+            ...message,
+            tags: message.tags.map((tag) => {
+              if (
+                tag.tag === "app_context" ||
+                tag.tag === "user_highlighted_text"
+              ) {
+                return { tag: tag.tag, content: "" }; //don't bother saving - waste of space
+              }
+              return tag;
+            }),
+          })),
+        };
+        requestPutData(conversationId, conversationToSave, {
+          app: "magicsandbox.Assistant",
+          evictionPolicy: "fifo",
+        }).catch(console.error);
         delete this.saveTimeoutIds[conversationId];
       }, 500);
     }
@@ -283,7 +298,7 @@ class Assistant {
       const now = Date.now();
       if (ts) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
-        const alpha = 0.1;
+        const alpha = 0.05;
         this.appUsage.daysBetweenCalls =
           alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
         this.appUsage.usagePerCall =
@@ -329,7 +344,7 @@ class Assistant {
       const now = Date.now();
       if (ts) {
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
-        let alpha = 0.1;
+        let alpha = 0.05;
         this.llmUsage.daysBetweenCalls = daysBetweenCalls;
         this.llmUsage.inputBytesPerToken = inputBytesPerToken;
         this.llmUsage.outputTokens = outputTokens;
@@ -643,6 +658,8 @@ class Assistant {
           return content;
         }
       };
+      let sawTag = false;
+      let scriptPromise;
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
@@ -654,6 +671,29 @@ class Assistant {
           lastTag.content += content;
         } else {
           llmMessage.tags.push({ tag, content });
+          if (lastTag?.tag) {
+            if (
+              !sawTag &&
+              (lastTag.tag === "intermediate_script" ||
+                lastTag.tag === "final_script")
+            ) {
+              //the script is done - start executing it now
+              //but we'll let the assistant continue to respond and await scriptPromise once the assistant is done
+              scriptPromise = this.sandboxRef.current
+                .executeScriptAndWaitForResponse({
+                  sandboxId,
+                  script: lastTag.content,
+                  timeout: 30000,
+                })
+                .catch((e) => {
+                  console.error(e);
+                  const logs = ["[Uncaught Error] Error: script timed out"];
+                  const error = new Error("Error: script timed out");
+                  return { logs, error };
+                });
+            }
+            sawTag = true; //we only process one tag
+          }
         }
         this.handleUpdateConversation({
           messages: [...newMessages, { ...llmMessage }], //create new llmMessage since Message component is memoized
@@ -697,19 +737,7 @@ class Assistant {
           tag.tag === "intermediate_script" ||
           tag.tag === "final_script"
         ) {
-          let logs, error;
-          try {
-            ({ logs, error } =
-              await this.sandboxRef.current.executeScriptAndWaitForResponse({
-                sandboxId,
-                script: tag.content,
-                timeout: 30000,
-              }));
-          } catch (e) {
-            error = new Error("Error: script timed out");
-            console.error(e);
-            logs = ["[Uncaught Error] Error: script timed out"];
-          }
+          const { logs, error } = await scriptPromise;
           if (abortSignal.aborted) return;
           const newUserMessage = {
             role: "user",

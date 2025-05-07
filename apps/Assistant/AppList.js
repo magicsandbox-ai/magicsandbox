@@ -212,7 +212,7 @@ function AppCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex w-full min-w-72 cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
+      className="flex w-full cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
       onClick={handleClick}
     >
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>

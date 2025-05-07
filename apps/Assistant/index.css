@@ -8,12 +8,27 @@
   }
 }
 
-.lucide {
+.lucide:not(.lucide-ignore) {
   @apply -m-0.5 box-content rounded-lg p-0.5 hover:bg-stone-300;
 }
 
 .welcome-button strong {
   color: inherit;
+}
+
+.loading-spinner {
+  @apply inline-flex items-center gap-2;
+}
+.loading-spinner::after {
+  content: "";
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+  @apply size-4 border-2 border-stone-700 border-t-transparent;
+}
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */

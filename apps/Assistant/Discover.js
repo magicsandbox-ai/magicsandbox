@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
-import { Loader } from "lucide-react";
+import { Loader, Star } from "lucide-react";
 
-function Discover({ setShowDiscover, assistantRef, popularApps }) {
+function Discover({ setShowDiscover, assistantRef, popularApps, appData }) {
   return (
     <ModalOverlay
       modal={
@@ -10,6 +10,7 @@ function Discover({ setShowDiscover, assistantRef, popularApps }) {
           assistantRef={assistantRef}
           setShowDiscover={setShowDiscover}
           popularApps={popularApps}
+          appData={appData}
         />
       }
       onClose={() => {
@@ -22,7 +23,12 @@ function Discover({ setShowDiscover, assistantRef, popularApps }) {
 
 const discoverMetadata = ["id", "description", "type", "usage"];
 
-function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
+function DiscoverInner({
+  assistantRef,
+  setShowDiscover,
+  popularApps,
+  appData,
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [apps, setApps] = useState(() => {
     const filteredApps = popularApps?.filter((r) => filterResult(r));
@@ -130,6 +136,7 @@ function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
                     app={app}
                     assistantRef={assistantRef}
                     setShowDiscover={setShowDiscover}
+                    appData={appData}
                   />
                 ))}
               </>
@@ -141,11 +148,12 @@ function DiscoverInner({ assistantRef, setShowDiscover, popularApps }) {
   );
 }
 
-function App({ app, assistantRef, setShowDiscover }) {
-  const appName = app.id.split("@")[0];
+function App({ app, assistantRef, setShowDiscover, appData }) {
+  app.app = app.id.split("@")[0];
+  app.favorited = appData[app.app]?.favorited;
 
   function handleClick() {
-    assistantRef.current.handleApp({ app: appName });
+    assistantRef.current.handleApp({ app: app.app });
     setShowDiscover(false);
   }
 
@@ -153,14 +161,38 @@ function App({ app, assistantRef, setShowDiscover }) {
     <button
       className="mb-4 w-full rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
       onClick={handleClick}
-      aria-label={appName}
+      aria-label={app.app}
     >
       <div className="flex items-center justify-between">
-        <div className="mb-1 font-medium">{appName}</div>
+        <div className="mb-1 font-medium">{app.app}</div>
+        <div className="text-sm text-stone-500">
+          {`Used ${formatNumber(app.usage)} times`}
+        </div>
       </div>
-      <div className="line-clamp-2">{app.description}</div>
+      <div className="flex items-center justify-between">
+        <div className="line-clamp-2">{app.description}</div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            assistantRef.current.handleFavorite(app);
+          }}
+        >
+          <Star className={app.favorited ? "fill-yellow-200" : ""} />
+          <span className="sr-only">Favorite</span>
+        </button>
+      </div>
     </button>
   );
 }
 
 export { Discover, discoverMetadata };
+
+function formatNumber(num) {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + "M";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + "K";
+  }
+  return num.toString();
+}
