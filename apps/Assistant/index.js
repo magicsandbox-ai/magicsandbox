@@ -35,8 +35,15 @@ async function init({ user } = {}) {
     initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
+      evictionPolicy: "fifo",
     }).catch(console.error);
   }
+  const initConversations = {
+    [initConversation.conversationId]: initConversation,
+    ...Object.fromEntries(
+      Object.entries(initData).filter(([, v]) => v.conversationId),
+    ),
+  };
   createRoot(document.getElementById("root")).render(
     <ErrorBoundary
       fallback={
@@ -50,12 +57,19 @@ async function init({ user } = {}) {
         urlParams={urlParams}
         initData={initData}
         initConversation={initConversation}
+        initConversations={initConversations}
       />
     </ErrorBoundary>,
   );
 }
 
-function App({ user, urlParams, initData, initConversation }) {
+function App({
+  user,
+  urlParams,
+  initData,
+  initConversation,
+  initConversations,
+}) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
   /*
@@ -87,12 +101,14 @@ function App({ user, urlParams, initData, initConversation }) {
     conversationId: initConversation.conversationId,
     messages: initConversation.messages,
   });
-  const [conversationSummaries, setConversationSummaries] = useState([
-    {
-      conversationId: initConversation.conversationId,
-      summary: initConversation.summary,
-    },
-  ]);
+  const [conversationSummaries, setConversationSummaries] = useState(
+    Object.entries(initConversations)
+      .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
+      .map(([conversationId, conversation]) => ({
+        conversationId,
+        summary: conversation.summary,
+      })),
+  );
   const [collapsed, setCollapsed] = useState(true);
   const [docked, setDocked] = useState(
     window.innerWidth > 768 && (initData.docked || false),
@@ -103,8 +119,22 @@ function App({ user, urlParams, initData, initConversation }) {
   //type App {id, app, description, status, favorited, recent, published}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
   const [app, setApp] = useState(urlParams._app ? false : null);
-  const [appData, setAppData] = useState({}); // {[app: string]: App}
-  const [model, setModel] = useState("auto");
+  // {[app: string]: App}
+  const [appData, setAppData] = useState(
+    initData.appData || {
+      "magicsandbox.Notes": {
+        //id not needed?
+        app: "magicsandbox.Notes",
+        description:
+          "Take notes, create to-do lists, organize documents, and more",
+        status: "active",
+        favorited: Date.now(),
+      },
+    },
+  );
+  const [model, setModel] = useState(
+    models[initData.selectedModel] ? initData.selectedModel : "auto",
+  );
   const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
@@ -117,111 +147,50 @@ function App({ user, urlParams, initData, initConversation }) {
     initConversation.conversationId === "0",
   );
 
+  const firstRenderRef = useRef(true);
   const sandboxRef = useRef(null);
   const toastsRef = useRef(null);
   const assistantRef = useRef(null);
-  const appDataRef = useRef({});
-  const conversationsRef = useRef({
-    [initConversation.conversationId]: initConversation,
-  });
+  const appDataRef = useRef(appData);
+  const conversationsRef = useRef(initConversations);
   const currentConversationRef = useRef(currentConversation);
   const conversationSummariesRef = useRef(conversationSummaries);
-  const modelRef = useRef(null);
+  const modelRef = useRef(model);
   const shouldFocusCollapseButtonRef = useRef(false);
 
   useEffect(() => {
-    async function init() {
-      const appData = initData.appData || {
-        "magicsandbox.Notes": {
-          //id not needed?
-          app: "magicsandbox.Notes",
-          description:
-            "Take notes, create to-do lists, organize documents, and more",
-          status: "active",
-          favorited: Date.now(),
-        },
-      };
-      appDataRef.current = appData;
-      setAppData(appData);
-      if (
-        user?.lastPublished > (initData.lastMetadataRefresh || 0) &&
-        !navigator.webdriver
-      ) {
-        requestMetadata(user.name, includeMetadata, {
-          kind: "app",
-          includePrivate: true,
-        })
-          .then(async (metadata) => {
-            setAppData((appData) => {
-              const newAppData = { ...appData };
-              metadata.forEach((m) => {
-                const app = m.id.split("@")[0];
-                newAppData[app] = {
-                  ...newAppData[app],
-                  ...m,
-                  app,
-                  published: newAppData[app]?.published || Date.now(),
-                };
-              });
-              return newAppData;
-            });
-            await requestPutData("lastMetadataRefresh", user.lastPublished, {
-              app: "magicsandbox.Assistant",
-            });
-          })
-          .catch(console.error);
-      }
-      const model = models[initData.selectedModel]
-        ? initData.selectedModel
-        : "auto";
-      modelRef.current = model;
-      setModel(model);
-      assistantRef.current = new Assistant({
-        user,
-        sandboxRef,
-        toastsRef,
-        appDataRef,
-        conversationsRef,
-        currentConversationRef,
-        conversationSummariesRef,
-        modelRef,
-        setConfirm,
-        setRisk,
-        setCurrentConversation,
-        setConversationSummaries,
-        setChatLoading,
-        setCollapsed,
-        setApp,
-        setAppData,
-        initData,
-      });
-      conversationsRef.current = {
-        ...conversationsRef.current, //keep initConversation
-        ...Object.fromEntries(
-          Object.entries(initData).filter(([, v]) => v.conversationId),
-        ),
-      };
-      setConversationSummaries(
-        Object.entries(conversationsRef.current)
-          .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
-          .map(([conversationId, conversation]) => ({
-            conversationId,
-            summary: conversation.summary,
-          })),
-      );
-      if (urlParams._app) {
-        assistantRef.current.handleApp({ app: urlParams._app });
-      }
-    }
-    if (assistantRef.current === null) {
-      init().catch((error) => {
+    if (firstRenderRef.current) {
+      try {
+        assistantRef.current = new Assistant({
+          user,
+          sandboxRef,
+          toastsRef,
+          appDataRef,
+          conversationsRef,
+          currentConversationRef,
+          conversationSummariesRef,
+          modelRef,
+          setConfirm,
+          setRisk,
+          setCurrentConversation,
+          setConversationSummaries,
+          setChatLoading,
+          setCollapsed,
+          setApp,
+          setAppData,
+          initData,
+        });
+        if (urlParams._app) {
+          assistantRef.current.handleApp({ app: urlParams._app });
+        }
+      } catch (error) {
         console.error(error);
         if (error.name === "ToastError") {
           toastsRef.current.addToast(error.message, error.type);
         } else {
           toastsRef.current.addToast("Error: please try again", "error");
         }
-      });
+      }
     }
   }, []);
 
@@ -256,7 +225,7 @@ function App({ user, urlParams, initData, initConversation }) {
   }, [conversationSummaries]);
 
   useEffect(() => {
-    if (window.innerWidth > 768) {
+    if (!firstRenderRef.current) {
       requestPutData("docked", docked, {
         app: "magicsandbox.Assistant",
         evictionPolicy: "fifo",
@@ -266,7 +235,7 @@ function App({ user, urlParams, initData, initConversation }) {
 
   useEffect(() => {
     appDataRef.current = appData;
-    if (Object.keys(appData).length > 0) {
+    if (!firstRenderRef.current) {
       requestPutData("appData", appData, {
         app: "magicsandbox.Assistant",
         evictionPolicy: "fifo",
@@ -275,39 +244,89 @@ function App({ user, urlParams, initData, initConversation }) {
   }, [appData]);
 
   useEffect(() => {
-    if (modelRef.current) {
-      //on mount, modelRef.current is null, and model is auto - don't save
+    modelRef.current = model;
+    if (!firstRenderRef.current) {
       requestPutData("selectedModel", model, {
         app: "magicsandbox.Assistant",
         evictionPolicy: "fifo",
       }).catch(console.error);
     }
-    modelRef.current = model;
   }, [model]);
 
   useEffect(() => {
-    async function refreshPopularApps() {
-      if (
-        Date.now() - (popularAppData?.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
-        !navigator.webdriver
-      ) {
-        const { result } = await requestFunction("magicsandbox.discover@0.1", {
-          includeMetadata: discoverMetadata,
-          kind: "app",
-          limit: 100,
-        });
-        const newPopularAppData = {
-          ts: Date.now(),
-          apps: result,
-        };
-        setPopularAppData(newPopularAppData);
-        await requestPutData("popularAppData", newPopularAppData, {
-          app: "magicsandbox.Assistant",
-          evictionPolicy: "fifo",
-        });
+    async function refreshPublishedApps() {
+      try {
+        if (
+          user?.lastPublished > (initData.lastMetadataRefresh || 0) &&
+          !navigator.webdriver
+        ) {
+          const metadata = await requestMetadata(user.name, includeMetadata, {
+            kind: "app",
+            includePrivate: true,
+          });
+          setAppData((appData) => {
+            const newAppData = { ...appData };
+            metadata.forEach((m) => {
+              const app = m.id.split("@")[0];
+              newAppData[app] = {
+                ...newAppData[app],
+                ...m,
+                app,
+                published: newAppData[app]?.published || Date.now(),
+              };
+            });
+            return newAppData;
+          });
+          await requestPutData("lastMetadataRefresh", user.lastPublished, {
+            app: "magicsandbox.Assistant",
+            evictionPolicy: "fifo",
+          });
+        }
+      } catch (error) {
+        console.error(error);
       }
     }
-    refreshPopularApps().catch(console.error);
+    if (firstRenderRef.current) {
+      refreshPublishedApps();
+    }
+  }, []);
+
+  useEffect(() => {
+    async function refreshPopularApps() {
+      try {
+        if (
+          Date.now() - (popularAppData?.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
+          !navigator.webdriver
+        ) {
+          const { result } = await requestFunction(
+            "magicsandbox.discover@0.0",
+            {
+              includeMetadata: discoverMetadata,
+              kind: "app",
+              limit: 100,
+            },
+          );
+          const newPopularAppData = {
+            ts: Date.now(),
+            apps: result,
+          };
+          setPopularAppData(newPopularAppData);
+          await requestPutData("popularAppData", newPopularAppData, {
+            app: "magicsandbox.Assistant",
+            evictionPolicy: "fifo",
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    if (firstRenderRef.current) {
+      refreshPopularApps();
+    }
+  }, []);
+
+  useEffect(() => {
+    firstRenderRef.current = false;
   }, []);
 
   const messages = currentConversation.messages;

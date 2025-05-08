@@ -1,7 +1,7 @@
 function createWelcomeConversation() {
   const content = `## Welcome to Magic Sandbox!
 
-**I'm your AI assistant.** Magic Sandbox gives me some **unique abilities** - here's what I can help you with:
+**I'm your AI assistant.** Think of Magic Sandbox as ChatGPT plus an App Store - I can help you work with Magic Sandbox apps created by the community. Here's what I can do:
 
 - **I can open and interact with apps** - that means I can handle tasks for you!
 - **I can answer questions related to the app you have open** - I automatically understand what you're working on. No more copy/pasting!

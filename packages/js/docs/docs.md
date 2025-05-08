@@ -449,7 +449,11 @@ Retrieve an App's `style`, `html`, `script`, and `metadata`.
 
 **Arguments:**
 
-- `app` _(**required**, string)_: App to call, either in the form author.name@version or just author.name, in which case the latest version is used
+- `app` _(**required**, string)_: App to call, in one of the following forms:
+  - `author.name`: latest version
+  - `author.name@x`: latest version with major version x
+  - `author.name@x.y`: latest version with major version x and minor version y
+  - `author.name@x.y.z`: specific version
 - `options` _(object)_:
   - `includeMetadata` _(string[], default [])_: Array of metadata keys to include. See [here](#app-and-function-metadata) for available keys
 
@@ -472,7 +476,11 @@ Execute a Function and returns the result.
 
 **Arguments:**
 
-- `fn` _(**required**, string)_: Function to call, either in the form author.name@version or just author.name, in which case the latest version is used
+- `fn` _(**required**, string)_: Function to call, in one of the following forms:
+  - `author.name`: latest version
+  - `author.name@x`: latest version with major version x
+  - `author.name@x.y`: latest version with major version x and minor version y
+  - `author.name@x.y.z`: specific version
 - `args` _(**required**, any)_: Arguments to pass to the called Function
 - `options` _(object)_:
   - `maxCost` _(number, default 0.001)_: Maximum cost you're willing to pay for the Function call, which should be at least the Function's `minCost`. Cannot exceed $1.00

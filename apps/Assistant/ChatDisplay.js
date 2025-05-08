@@ -16,8 +16,13 @@ function ChatDisplay({
   const scrollToBottomRef = useRef(false);
 
   if (!ref.current) {
-    //messages are not open, we want to scroll to bottom when they are opened
-    scrollToBottomRef.current = true;
+    if (messages.length === 1 && messages[0].welcome) {
+      //special case for welcome message - we should open it at the top
+      scrollToBottomRef.current = false;
+    } else {
+      //otherwise, messages are not open, we want to scroll to bottom when they are opened
+      scrollToBottomRef.current = true;
+    }
   } else if (
     ref.current.scrollHeight - ref.current.clientHeight <=
     ref.current.scrollTop + 1

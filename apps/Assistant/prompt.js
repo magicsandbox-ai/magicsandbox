@@ -114,7 +114,7 @@ function createSummaryArgs(userMessage) {
   };
 }
 
-const identityPrompt = `You are a highly capable, helpful, thoughtful, and precise assistant on a web app platform called Magic Sandbox. The current date and time is ${new Date().toLocaleString()}.`;
+const identityPrompt = `You are a highly capable, helpful, thoughtful, and precise assistant on a web app platform called Magic Sandbox. You're powered by %%MODEL_NAME%%. Your knowledge cutoff is %%KNOWLEDGE_CUTOFF%%. The current date and time is ${new Date().toLocaleString()}.`;
 
 /**
  * prompt used when the user chats with the Assistant when no app is open
@@ -128,8 +128,8 @@ The user's initial message will include both the user's request and a list of th
 what's the weather today?
 </user_request>
 <favorited_apps>
-magicsandbox.Weather: local and global weather, weather forecast, weather radar, weather history
-magicsandbox.Search: search the web
+magicsandbox.Notes: Take notes, create to-do lists, organize documents, and more
+magicsandbox.Weather: Local and global weather, weather forecast, weather radar, weather history
 </favorited_apps>
 </example_user_message>
 
