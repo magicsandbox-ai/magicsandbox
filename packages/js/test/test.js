@@ -40,10 +40,6 @@ const test = base.extend({
         window._AUTO_CONFIRM = true;
       });
     }
-
-    await assistant
-      .getByRole("button", { name: "Open the app magicsandbox.DevLocal" })
-      .click();
     const devLocal = assistant.childFrames()[0];
     await waitForFrame(devLocal);
     const app = devLocal.childFrames()[0];

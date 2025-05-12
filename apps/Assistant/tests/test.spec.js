@@ -12,7 +12,7 @@ rename/delete
 
 test.use({ appOptions: { autoConfirm: true } });
 
-test("Assistant", async ({ app }) => {
+test("Assistant", async ({ page, app }) => {
   //search
   await app.getByRole("button", { name: "Search" }).click();
   const searchInput = app.getByLabel("Search chats...");
@@ -55,4 +55,13 @@ test("Assistant", async ({ app }) => {
   await expect(
     app.getByRole("button", { name: "Discover Apps" }),
   ).toBeVisible();
+
+  await page.route(/request-function/, (route, request) => {
+    const body = JSON.parse(request.postData());
+    if (body.fn?.startsWith("magicsandbox.llm")) {
+      //todo
+    } else {
+      route.continue();
+    }
+  });
 });

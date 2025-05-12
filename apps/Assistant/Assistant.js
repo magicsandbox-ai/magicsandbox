@@ -17,6 +17,7 @@ import {
   formatLogs,
   prompt,
   createSummaryArgs,
+  newUserInstructions,
 } from "./prompt.js";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
@@ -210,7 +211,9 @@ class Assistant {
       this.saveTimeoutIds[conversationId] = setTimeout(() => {
         const conversationToSave = {
           ...this.conversationsRef.current[conversationId],
-          messages: messages.map((message) => ({
+        };
+        conversationToSave.messages = conversationToSave.messages.map(
+          (message) => ({
             ...message,
             tags: message.tags.map((tag) => {
               if (
@@ -221,8 +224,8 @@ class Assistant {
               }
               return tag;
             }),
-          })),
-        };
+          }),
+        );
         requestPutData(conversationId, conversationToSave, {
           app: "magicsandbox.Assistant",
           evictionPolicy: "fifo",
@@ -473,6 +476,7 @@ class Assistant {
     continueSystemPrompt,
     resetInput = () => {},
   }) {
+    let nextContinueSystemPrompt;
     try {
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const conversationId = this.currentConversationRef.current.conversationId;
@@ -555,12 +559,22 @@ class Assistant {
         });
       }
       if (abortSignal.aborted) return;
-      const { systemPrompt, continueSystemPrompt: nextContinueSystemPrompt } =
+      let systemPrompt;
+      ({ systemPrompt, continueSystemPrompt: nextContinueSystemPrompt } =
         prompt({
           app: this.app,
           initContext,
           continueSystemPrompt,
-        });
+        }));
+      const favoritedApps = Object.values(this.appDataRef.current).filter(
+        (app) => app.favorited,
+      );
+      if (
+        favoritedApps.length === 1 &&
+        favoritedApps[0].app === "magicsandbox.Notes"
+      ) {
+        systemPrompt += newUserInstructions;
+      }
       const llmMessages = [
         {
           role: "system",
@@ -658,46 +672,55 @@ class Assistant {
           return content;
         }
       };
+      let lastTag;
       let sawTag = false;
       let scriptPromise;
+      const handleScript = async (lastTag) => {
+        if (
+          lastTag.tag === "intermediate_script" ||
+          lastTag.tag === "final_script"
+        ) {
+          try {
+            return await this.sandboxRef.current.executeScriptAndWaitForResponse(
+              {
+                sandboxId,
+                script: lastTag.content,
+                timeout: 30000,
+              },
+            );
+          } catch (e) {
+            console.error(e);
+            const logs = ["[Uncaught Error] Error: script timed out"];
+            const error = new Error("Error: script timed out");
+            return { logs, error };
+          }
+        }
+      };
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
         validTags: ["intermediate_script", "final_script", "open_app"],
       })) {
         if (abortSignal.aborted) return;
-        const lastTag = llmMessage.tags[llmMessage.tags.length - 1];
+        lastTag = llmMessage.tags[llmMessage.tags.length - 1];
         if (lastTag && lastTag.tag === tag) {
           lastTag.content += content;
         } else {
           llmMessage.tags.push({ tag, content });
-          if (lastTag?.tag) {
-            if (
-              !sawTag &&
-              (lastTag.tag === "intermediate_script" ||
-                lastTag.tag === "final_script")
-            ) {
-              //the script is done - start executing it now
-              //but we'll let the assistant continue to respond and await scriptPromise once the assistant is done
-              scriptPromise = this.sandboxRef.current
-                .executeScriptAndWaitForResponse({
-                  sandboxId,
-                  script: lastTag.content,
-                  timeout: 30000,
-                })
-                .catch((e) => {
-                  console.error(e);
-                  const logs = ["[Uncaught Error] Error: script timed out"];
-                  const error = new Error("Error: script timed out");
-                  return { logs, error };
-                });
-            }
-            sawTag = true; //we only process one tag
+          if (lastTag?.tag && !sawTag) {
+            //if the script is finished, we want to start executing it now
+            //but we'll let the assistant continue to respond and await scriptPromise once the assistant is done
+            scriptPromise = handleScript(lastTag);
+            sawTag = true;
           }
         }
         this.handleUpdateConversation({
           messages: [...newMessages, { ...llmMessage }], //create new llmMessage since Message component is memoized
         });
+      }
+      //if the script is the final tag, we didn't run it above, so we need to run it now
+      if (!sawTag) {
+        scriptPromise = handleScript(lastTag);
       }
       this.handleLlmUsage({
         inputBytes,
@@ -774,7 +797,21 @@ class Assistant {
         }
       }
     } catch (error) {
-      this.handleError(error);
+      console.error(error);
+      this.handleUpdateConversation({
+        message: {
+          role: "user",
+          tags: [
+            {
+              tag: "logs",
+              content:
+                "Error: unexpected error generating message. Please try again.",
+            },
+          ],
+          promptToContinue: "Error generating message. Try again?",
+          continueSystemPrompt: nextContinueSystemPrompt,
+        },
+      });
     } finally {
       this.setChatLoading(false);
     }
@@ -785,7 +822,12 @@ class Assistant {
       conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      this.setDisplayMessage(`Loading ${app}...`);
+      const newMessages = [...(messages || [])];
+      newMessages.push({
+        role: "display",
+        tags: [{ content: `**Loading ${app}...**` }],
+      });
+      this.handleUpdateConversation({ messages: newMessages });
       if (!messages) {
         // loading from a url or from home page
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
@@ -804,7 +846,11 @@ class Assistant {
         );
       }
       if (abortSignal.aborted) return;
-      this.setDisplayMessage(`${result.metadata.id} loaded`);
+      newMessages.push({
+        role: "display",
+        tags: [{ content: `**${result.metadata.id} loaded**` }],
+      });
+      this.handleUpdateConversation({ messages: newMessages });
       const appNoVersion = result.metadata.id.split("@")[0];
       requestUrlParams({ _app: appNoVersion }).catch(console.error);
       const appData = {
@@ -838,7 +884,7 @@ class Assistant {
         //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
         this.setCollapsed(false);
         this.handleInput({
-          messages,
+          messages: newMessages,
           initContext,
         });
       }
@@ -1027,6 +1073,34 @@ class Assistant {
       `${app.app} ${favorited ? "favorited" : "unfavorited"}`,
       "info",
     );
+  }
+  handleFeedback(feedback) {
+    const encoder = new TextEncoder();
+    let messages = this.currentConversationRef.current.messages;
+    const messagesLength = encoder.encode(JSON.stringify(messages)).length;
+    if (messagesLength > 100000) {
+      messages = messages.map((message, i) => ({
+        role: message.role,
+        tags:
+          i === messages.length - 1
+            ? message.tags
+            : message.tags.filter(
+                ({ tag }) =>
+                  tag !== "app_context" && tag !== "user_highlighted_text",
+              ),
+        model: message.model,
+      }));
+    }
+    requestSandbox("feedback", {
+      feedback: feedback ? "positive" : "negative",
+      app: this.app ? this.app.id : "magicsandbox.Assistant@0.4.0", //todo how to avoid hardcoding version?
+      messages,
+      ts: Date.now(),
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+    });
   }
   reload() {
     this.abortIdController.abort(null);
