@@ -158,9 +158,17 @@ function App({ app, assistantRef, setShowDiscover, appData }) {
   }
 
   return (
-    <button
-      className="mb-4 w-full rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
+    <div
+      className="mb-4 w-full cursor-pointer rounded border border-stone-200 p-3 text-left hover:bg-stone-50"
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      role="button"
+      tabIndex={0}
       aria-label={app.app}
     >
       <div className="flex items-center justify-between">
@@ -181,7 +189,7 @@ function App({ app, assistantRef, setShowDiscover, appData }) {
           <span className="sr-only">Favorite</span>
         </button>
       </div>
-    </button>
+    </div>
   );
 }
 

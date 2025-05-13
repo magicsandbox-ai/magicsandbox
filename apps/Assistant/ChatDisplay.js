@@ -16,8 +16,12 @@ function ChatDisplay({
   const ref = useRef(null);
   const scrollToBottomRef = useRef(false);
 
+  const lastUserMessageIndex = messages.findLastIndex(
+    (message) => message.role === "user",
+  );
+
   if (!ref.current) {
-    if (messages.length === 1 && messages[0].welcome) {
+    if (lastUserMessageIndex === -1 && messages[0].welcome) {
       //special case for welcome message - we should open it at the top
       scrollToBottomRef.current = false;
     } else {
@@ -51,10 +55,6 @@ function ChatDisplay({
       });
     };
   }
-
-  const lastUserMessageIndex = messages.findLastIndex(
-    (message) => message.role === "user",
-  );
 
   return (
     <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>

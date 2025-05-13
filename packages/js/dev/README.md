@@ -120,6 +120,32 @@ This package installs `magicsandbox.ai/types` as a dependency. To get type defin
 
 See [here](https://github.com/magicsandbox-ai/magicsandbox/blob/main/tsconfig.json) for an example `tsconfig.json`.
 
+You can specify generics for additional type safety:
+
+```typescript
+interface MyArgs {
+  myArg: string;
+}
+
+interface MyResult {
+  myResult: string;
+}
+
+const { result } = await requestFunction<MyArgs, MyResult>(
+  "author.myFunction",
+  {
+    myArg: "myArg",
+  },
+);
+
+interface DBSchema {
+  foo: string;
+  bar: number;
+}
+
+const foo = await requestGetData<DBSchema, "foo">("foo");
+```
+
 ## Debugging
 
 Debug your builds with `npm run dev --debug MyApp`.

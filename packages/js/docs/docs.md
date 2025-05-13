@@ -27,7 +27,7 @@ String of JavaScript which is executed in the Sandbox.
 
 _(string)_
 
-String of HTML which is appended to `document.body` in the Sandbox.
+String of HTML which is appended to `document.body` in the Sandbox. Since the content is appended to an existing document, you should not include `<html>`, `<head>`, or `<body>` tags - just include the content that should go inside the body.
 
 ### style
 
@@ -192,6 +192,7 @@ HTTPS URL that Magic Sandbox will call to execute your backend code:
 
 - The request is a POST that will timeout if:
   - Headers are not received within 30 seconds
+  - No data is received for 60 seconds
   - The request is not completed within 180 seconds
 - Includes headers:
   - `Content-Type: application/json`
@@ -615,11 +616,12 @@ interface SerializedResponse {
 Open a URL in a new tab. Traditional links can't be opened in the Sandbox, so use `requestOpenUrl` instead.
 
 ```html
-<!-- don't do this -->
-<a href="https://example.com">Click me</a>
-
-<!-- do this instead -->
-<a onclick="requestOpenUrl('https://example.com')">Click me</a>
+<a
+  href="https://example.com"
+  onclick="requestOpenUrl('https://example.com'); return false;"
+>
+  Click me
+</a>
 ```
 
 **Arguments:**

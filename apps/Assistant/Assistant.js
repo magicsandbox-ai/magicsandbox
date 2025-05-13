@@ -720,7 +720,9 @@ class Assistant {
       }
       //if the script is the final tag, we didn't run it above, so we need to run it now
       if (!sawTag) {
-        scriptPromise = handleScript(lastTag);
+        scriptPromise = handleScript(
+          llmMessage.tags[llmMessage.tags.length - 1],
+        );
       }
       this.handleLlmUsage({
         inputBytes,
@@ -736,7 +738,6 @@ class Assistant {
           const app = this.appDataRef.current[tag.content.trim()];
           if (app?.favorited) {
             await this.handleApp({
-              input,
               app: app.app,
               messages: [...newMessages, llmMessage],
             });
@@ -816,18 +817,19 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ input, app, messages }) {
+  async handleApp({ app, messages }) {
     let conversationId;
     try {
       conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
       const newMessages = [...(messages || [])];
-      newMessages.push({
+      const loadingMessage = {
         role: "display",
         tags: [{ content: `**Loading ${app}...**` }],
-      });
-      this.handleUpdateConversation({ messages: newMessages });
+      };
+      newMessages.push(loadingMessage);
+      this.handleUpdateConversation({ message: loadingMessage });
       if (!messages) {
         // loading from a url or from home page
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
@@ -846,11 +848,12 @@ class Assistant {
         );
       }
       if (abortSignal.aborted) return;
-      newMessages.push({
+      const loadedMessage = {
         role: "display",
         tags: [{ content: `**${result.metadata.id} loaded**` }],
-      });
-      this.handleUpdateConversation({ messages: newMessages });
+      };
+      newMessages.push(loadedMessage);
+      this.handleUpdateConversation({ message: loadedMessage });
       const appNoVersion = result.metadata.id.split("@")[0];
       requestUrlParams({ _app: appNoVersion }).catch(console.error);
       const appData = {
@@ -880,7 +883,7 @@ class Assistant {
       }
       if (abortSignal.aborted) return;
       //if loaded from a url, there's no input and the init context is irrelevant
-      if (input && initContext) {
+      if (messages && initContext) {
         //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
         this.setCollapsed(false);
         this.handleInput({

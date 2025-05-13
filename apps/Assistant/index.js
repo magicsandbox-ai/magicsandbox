@@ -144,7 +144,7 @@ function App({
     window.innerWidth > 768,
   );
   const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
-    initConversation.conversationId === "0",
+    initConversation.conversationId === "0" && !navigator.webdriver,
   );
 
   const firstRenderRef = useRef(true);
