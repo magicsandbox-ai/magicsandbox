@@ -1,8 +1,9 @@
 import { execSync } from "child_process";
 
-function prePublish(commitMessage) {
+function prePublish({ commitMessage, force } = {}) {
   // if commit message provided, doesn't have to be clean
-  if (!commitMessage) {
+  // if force, doesn't have to be clean
+  if (!commitMessage && !force) {
     try {
       execSync("git update-index --refresh"); //in case file is touched but not changed (magic.json)
       execSync("git diff-index --quiet HEAD --");
