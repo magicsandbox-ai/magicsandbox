@@ -1,6 +1,6 @@
 {
   name: "DevLocal",
-  version: "0.2.1",
+  version: "0.2.2",
   private: true, //should only be launched by magicsandbox.ai/dev package
   esbuildOptions: {
     //the dependencies for components are in node_modules
