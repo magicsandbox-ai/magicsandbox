@@ -12,6 +12,9 @@
     "prosemirror-example-setup": "^1.2.3",
     diff: "^7.0.0",
     uuid: "^11.1.0",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@types/diff": "^7.0.2",
   },
   esbuildOptions: {
     //the dependencies for components are in node_modules

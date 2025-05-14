@@ -1,5 +1,6 @@
 import { v4 as uuid } from "uuid";
 import SyncExternalStore from "./SyncExternalStore.ts";
+import type { ToastsRef } from "@components/Toasts.tsx";
 
 declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
 
@@ -49,6 +50,12 @@ interface ChangeData {
 }
 
 type NotesStateUpdate = "tree" | "inContext" | "setTree";
+
+interface CurrentNode {
+  nodeData: NodeData;
+  changeData: ChangeData;
+  treeData: TreeData;
+}
 
 function generateUuid() {
   return uuid();
@@ -183,18 +190,14 @@ class Node {
 }
 
 class NotesState extends SyncExternalStore<{
-  currentNode: {
-    nodeData: NodeData;
-    changeData: ChangeData;
-    treeData: TreeData;
-  };
+  currentNode: CurrentNode;
   tree: TreeNode[];
 }> {
   nodesData: Record<string, NodeData> | undefined;
   nodes: Record<string, Node>;
   currentNodeUuid: string;
   putErrorHandler: (error: Error) => void;
-  _toastsRef?: any;
+  _toastsRef?: ToastsRef;
   _putErrorHandled?: boolean;
   _update?: NotesStateUpdate;
   tree!: TreeNode[];
@@ -243,7 +246,7 @@ class NotesState extends SyncExternalStore<{
           message =
             "Error saving notes: maximum storage limit reached. Delete some notes to free up space.";
         }
-        this._toastsRef.current.addToast(message, "error");
+        this._toastsRef.addToast(message, "error");
         this._putErrorHandled = true; //avoid displaying too many toasts
         setTimeout(() => {
           this._putErrorHandled = false;
@@ -929,4 +932,4 @@ ${note.nodeData.content}
 }
 
 export default NotesState;
-export type { NodeData };
+export type { NodeData, CurrentNode };
