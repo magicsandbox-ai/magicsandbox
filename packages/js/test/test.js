@@ -20,6 +20,8 @@ const test = base.extend({
       async (route, request) => {
         if (request.url() == baseUrl + "/metadata") {
           route.fulfill({ json: {} }); //so app doesn't attempt to sync data
+        } else if (request.url().startsWith(baseUrl + "/push-data")) {
+          route.fulfill({ json: {} }); //otherwise auth error
         } else {
           const headers = await request.allHeaders();
           route.continue({

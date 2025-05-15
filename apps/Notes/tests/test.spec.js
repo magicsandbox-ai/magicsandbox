@@ -28,7 +28,7 @@ test("Notes", async ({ app }) => {
 
   //rename note
   await app.getByRole("button", { name: "New Note" }).dblclick();
-  const renameInput = app.getByLabel("Rename");
+  const renameInput = app.getByLabel("Rename").nth(0); //todo test renaming by clicking title?
   await renameInput.fill("Renamed Note");
   await renameInput.press("Enter");
   await expect(app.getByRole("button", { name: "Renamed Note" })).toBeVisible();

@@ -23,6 +23,6 @@
     nodePaths: ["./node_modules"],
   },
   tailwindConfig: {
-    content: ["apps/Notes/**/*.js", "components/**/*.js"],
+    content: ["apps/Notes/**/*.tsx", "components/*"],
   },
 }

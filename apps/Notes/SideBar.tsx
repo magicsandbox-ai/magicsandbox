@@ -12,7 +12,9 @@ import {
   Check,
   Star,
 } from "lucide-react";
-import Approve from "./Approve.js";
+import Approve from "./Approve.tsx";
+import type NotesState from "./NotesState.ts";
+import type { TreeNode, TreeFolder, TreeNote } from "./NotesState.ts";
 
 /*
 todo drag and drop?
@@ -25,6 +27,13 @@ function SideBar({
   setShowInfo,
   setDeleteUuid,
   setShowSearch,
+}: {
+  notesState: NotesState;
+  showSideBar: boolean;
+  setShowSideBar: (showSideBar: boolean) => void;
+  setShowInfo: (showInfo: boolean) => void;
+  setDeleteUuid: (deleteUuid: string) => void;
+  setShowSearch: (showSearch: boolean) => void;
 }) {
   const tree = useSyncExternalStore(
     notesState.subscribe("tree"),
@@ -35,16 +44,16 @@ function SideBar({
     setShowSearch(true);
   }
 
-  function handleDelete(uuid) {
+  function handleDelete(uuid: string) {
     setDeleteUuid(uuid);
   }
 
-  function handleAdd(parentUuid, type) {
+  function handleAdd(parentUuid: string, type: "folder" | "note") {
     notesState.addNode({ parentUuid, type });
   }
 
   if (showSideBar) {
-    const anyChanges = tree.some((node) => node.change);
+    const anyChanges = tree.some((node) => node.changeData.change);
     return (
       <nav className="absolute flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
@@ -75,10 +84,10 @@ function SideBar({
         </div>
         <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
           {tree
-            .filter((node) => node.display)
+            .filter((node) => node.treeData.display)
             .map((node) => (
               <Node
-                key={node.uuid}
+                key={node.nodeData.uuid}
                 {...{
                   notesState,
                   node,
@@ -111,22 +120,34 @@ function SideBar({
   }
 }
 
-function Node({ notesState, node, handleAdd, handleDelete }) {
-  const [renameValue, setRenameValue] = useState(null);
+function Node({
+  notesState,
+  node,
+  handleAdd,
+  handleDelete,
+}: {
+  notesState: NotesState;
+  node: TreeNode;
+  handleAdd: (parentUuid: string, type: "folder" | "note") => void;
+  handleDelete: (uuid: string) => void;
+}) {
+  const [renameValue, setRenameValue] = useState<string | undefined>(undefined);
 
-  function handleRename(e) {
+  function handleRename(
+    e: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLInputElement>,
+  ) {
     e.preventDefault();
-    const newName = renameValue.trim();
+    const newName = (renameValue || "").trim();
     if (newName.length > 0) {
       notesState.updateNode({
-        uuid: node.uuid,
+        uuid: node.nodeData.uuid,
         name: newName,
       });
     }
-    setRenameValue(null);
+    setRenameValue(undefined);
   }
 
-  const style = { marginLeft: `${(node.depth - 1) * 16}px` };
+  const style = { marginLeft: `${(node.treeData.depth - 1) * 16}px` };
 
   const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
   const renameClassName =
@@ -134,7 +155,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
   const nodeClassName =
     baseClassName +
     `group flex items-center gap-2 hover:bg-stone-300 ${
-      notesState.currentNodeUuid === node.uuid
+      notesState.currentNodeUuid === node.nodeData.uuid
         ? "bg-stone-200 outline outline-1 outline-stone-500"
         : ""
     }`;
@@ -143,7 +164,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
   const hoverButtonClassName =
     "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
 
-  if (renameValue !== null) {
+  if (renameValue !== undefined) {
     return (
       <form onSubmit={handleRename} className="flex">
         <input
@@ -162,30 +183,30 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
   }
   let changesComponent;
   const changesClassName = `font-bold font-mono `;
-  if (node.change === "new") {
+  if (node.changeData.change === "new") {
     changesComponent = (
       <span className={changesClassName + "text-green-500"}>N</span>
     );
-  } else if (node.change === "moved") {
+  } else if (node.changeData.change === "moved") {
     changesComponent = (
       <span className={changesClassName + "text-purple-500"}>M</span>
     );
-  } else if (node.change === "renamed") {
+  } else if (node.changeData.change === "renamed") {
     changesComponent = (
       <span className={changesClassName + "text-amber-500"}>R</span>
     );
-  } else if (node.change === "edited") {
+  } else if (node.changeData.change === "edited") {
     changesComponent = (
       <span className={changesClassName + "text-blue-500"}>E</span>
     );
-  } else if (node.change === "deleted") {
+  } else if (node.changeData.change === "deleted") {
     changesComponent = (
       <span className={changesClassName + "text-red-500"}>D</span>
     );
     nameClassName += " line-through";
   }
   let component;
-  if (node.type === "folder") {
+  if (node.isFolder()) {
     component = (
       <Folder
         {...{
@@ -200,7 +221,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
         }}
       />
     );
-  } else {
+  } else if (node.isNote()) {
     component = (
       <Note
         {...{
@@ -216,24 +237,24 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     );
   }
 
-  function handleClick(event) {
+  function handleClick(event: React.MouseEvent<HTMLDivElement>) {
     if (event.ctrlKey || event.metaKey) {
-      const descendants = notesState.getDescendants(node.uuid);
+      const descendants = notesState.getDescendants(node.nodeData.uuid);
       let newChecked = false; //if all notes are checked, we'll uncheck
       for (const node of descendants) {
-        if (node.type === "note" && !node.checked) {
+        if (node.isNote() && !node.nodeData.checked) {
           newChecked = true; //but if a single note is unchecked, we'll check
         }
       }
       for (const node of descendants) {
-        if (node.type === "note" && node.checked !== newChecked) {
+        if (node.isNote() && node.nodeData.checked !== newChecked) {
           notesState.updateNode({
-            uuid: node.uuid,
+            uuid: node.nodeData.uuid,
             checked: newChecked,
           });
-        } else if (node.collapsed) {
+        } else if (node.isFolder() && node.nodeData.collapsed) {
           notesState.updateNode({
-            uuid: node.uuid,
+            uuid: node.nodeData.uuid,
             collapsed: false,
           });
         }
@@ -241,9 +262,9 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     }
   }
 
-  function handleKeyDown(event) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Delete") {
-      handleDelete(node.uuid);
+      handleDelete(node.nodeData.uuid);
     }
   }
 
@@ -251,7 +272,7 @@ function Node({ notesState, node, handleAdd, handleDelete }) {
     <div
       style={style}
       className={nodeClassName}
-      title={`${node.name}${node.changeDetails ? ` (${node.changeDetails})` : ""}`}
+      title={`${node.nodeData.name}${node.changeData.changeDetails ? ` (${node.changeData.changeDetails})` : ""}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
@@ -269,18 +290,27 @@ function Folder({
   setRenameValue,
   handleAdd,
   changesComponent,
+}: {
+  notesState: NotesState;
+  nameClassName: string;
+  iconClassName: string;
+  hoverButtonClassName: string;
+  node: TreeFolder;
+  setRenameValue: (value: string) => void;
+  handleAdd: (parentUuid: string, type: "folder" | "note") => void;
+  changesComponent: React.ReactNode;
 }) {
   function handleCollapse() {
     notesState.updateNode({
-      uuid: node.uuid,
-      collapsed: !node.collapsed,
+      uuid: node.nodeData.uuid,
+      collapsed: !node.nodeData.collapsed,
     });
   }
 
   return (
     <>
       <button onClick={handleCollapse}>
-        {node.collapsed ? (
+        {node.nodeData.collapsed ? (
           <>
             <ChevronRight className={iconClassName} />
             <span className="sr-only">Expand folder</span>
@@ -294,23 +324,23 @@ function Folder({
       </button>
       <button
         className={nameClassName}
-        onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
-        onDoubleClick={() => setRenameValue(node.name)}
+        onClick={() => notesState.setCurrentNodeUuid(node.nodeData.uuid)}
+        onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >
         {changesComponent}
         {changesComponent && " "}
-        {node.name}
+        {node.nodeData.name}
       </button>
       <button
         className={hoverButtonClassName}
-        onClick={() => handleAdd(node.uuid, "folder")}
+        onClick={() => handleAdd(node.nodeData.uuid, "folder")}
       >
         <FolderPlus className={iconClassName} />
         <span className="sr-only">Add folder</span>
       </button>
       <button
         className={hoverButtonClassName}
-        onClick={() => handleAdd(node.uuid, "note")}
+        onClick={() => handleAdd(node.nodeData.uuid, "note")}
       >
         <Plus className={iconClassName} />
         <span className="sr-only">Add note</span>
@@ -327,28 +357,36 @@ function Note({
   node,
   setRenameValue,
   changesComponent,
+}: {
+  notesState: NotesState;
+  nameClassName: string;
+  iconClassName: string;
+  hoverButtonClassName: string;
+  node: TreeNote;
+  setRenameValue: (value: string) => void;
+  changesComponent: React.ReactNode;
 }) {
   function handleCheck() {
     notesState.updateNode({
-      uuid: node.uuid,
-      checked: !node.checked,
+      uuid: node.nodeData.uuid,
+      checked: !node.nodeData.checked,
     });
   }
 
   function handleStar() {
     notesState.updateNode({
-      uuid: node.uuid,
-      starred: !node.starred,
+      uuid: node.nodeData.uuid,
+      starred: !node.nodeData.starred,
     });
   }
 
   return (
     <>
       <button
-        className={node.checked ? "" : hoverButtonClassName}
+        className={node.nodeData.checked ? "" : hoverButtonClassName}
         onClick={handleCheck}
       >
-        {node.checked ? (
+        {node.nodeData.checked ? (
           <>
             <Check className={iconClassName} />
             <span className="sr-only">Uncheck note</span>
@@ -361,19 +399,19 @@ function Note({
         )}
       </button>
       <button
-        className={`${nameClassName} ${node.inContext ? "font-bold" : ""}`}
-        onClick={() => notesState.setCurrentNodeUuid(node.uuid)}
-        onDoubleClick={() => setRenameValue(node.name)}
+        className={`${nameClassName} ${node.treeData.inContext ? "font-bold" : ""}`}
+        onClick={() => notesState.setCurrentNodeUuid(node.nodeData.uuid)}
+        onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >
         {changesComponent}
         {changesComponent && " "}
-        {node.name}
+        {node.nodeData.name}
       </button>
       <button
-        className={node.starred ? "" : hoverButtonClassName}
+        className={node.nodeData.starred ? "" : hoverButtonClassName}
         onClick={handleStar}
       >
-        {node.starred ? (
+        {node.nodeData.starred ? (
           <>
             <Star className={iconClassName + " fill-yellow-200"} />
             <span className="sr-only">Unstar note</span>

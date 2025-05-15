@@ -23,7 +23,7 @@ import {
 import { diffArrays } from "diff";
 import Approve from "./Approve.tsx";
 import type NotesState from "./NotesState.ts";
-import type { CurrentNode } from "./NotesState.ts";
+import type { ClonedNode } from "./NotesState.ts";
 
 /*
 menu? need prosemirror-view/style/prosemirror.css? just need container relative?
@@ -42,7 +42,7 @@ interface Diff {
   decorationSet: DecorationSet;
 }
 
-let diffPlugin: Plugin | undefined;
+let diffPlugin: Plugin<Diff | undefined> | undefined;
 
 function Note({
   notesState,
@@ -61,13 +61,13 @@ function Note({
   );
   const [diff, setDiff] = useState<Diff | undefined>(undefined);
 
-  const currentNodeRef = useRef<CurrentNode | undefined>(undefined);
+  const currentNodeRef = useRef<ClonedNode | undefined>(undefined);
   const editorStateRef = useRef<Record<string, EditorState>>({});
   const transactionTimeoutIdRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (currentNode.nodeData.type !== "note") {
-      if (currentNodeRef.current?.nodeData.uuid && editorState) {
+    if (!currentNode.isNote()) {
+      if (currentNodeRef.current && editorState) {
         editorStateRef.current[currentNodeRef.current.nodeData.uuid] =
           editorState; //save current state
       }
@@ -78,13 +78,14 @@ function Note({
     const content = currentNode.nodeData.content;
     const prevContent = currentNode.nodeData.prevContent;
     if (
-      content === currentNodeRef.current?.nodeData.content &&
-      prevContent === currentNodeRef.current?.nodeData.prevContent
+      currentNodeRef.current?.isNote() &&
+      content === currentNodeRef.current.nodeData.content &&
+      prevContent === currentNodeRef.current.nodeData.prevContent
     ) {
       return;
     }
     let newDoc, newDiff;
-    if (prevContent === null || content === prevContent) {
+    if (prevContent === undefined || content === prevContent) {
       newDoc = parse(content);
     } else {
       const diff = diffArrays(prevContent.split("\n"), content.split("\n"), {
@@ -162,13 +163,14 @@ function Note({
     }
     setDiff(newDiff);
     let newEditorState;
-    if (currentNode.uuid === currentNodeRef.current?.uuid) {
+    if (currentNode.nodeData.uuid === currentNodeRef.current?.nodeData.uuid) {
       newEditorState = editorState;
     } else {
-      if (currentNodeRef.current?.uuid) {
-        editorStateRef.current[currentNodeRef.current.uuid] = editorState; //save current state
+      if (currentNodeRef.current && editorState) {
+        editorStateRef.current[currentNodeRef.current.nodeData.uuid] =
+          editorState; //save current state
       }
-      newEditorState = editorStateRef.current[currentNode.uuid]; //get new state
+      newEditorState = editorStateRef.current[currentNode.nodeData.uuid]; //get new state
     }
     if (newEditorState) {
       const transaction = newEditorState.tr;
@@ -185,9 +187,10 @@ function Note({
         //DiffStep essentially flags the transaction and ensures we don't call updateNode with content set to a mishmash
         transaction.step(new DiffStep("create", newDiff));
       } else if (
-        prevContent === null &&
-        currentNodeRef.current &&
-        currentNodeRef.current.prevContent !== null
+        prevContent === undefined &&
+        currentNode.nodeData.uuid === currentNodeRef.current?.nodeData.uuid &&
+        currentNodeRef.current.isNote() &&
+        currentNodeRef.current.nodeData.prevContent !== undefined
       ) {
         //either accepting or rejecting a diff
         //apply a DiffStep so we can reverse it if needed
@@ -217,15 +220,14 @@ function Note({
     currentNodeRef.current = currentNode;
   }, [currentNode]);
 
-  function handleTransaction(newState: EditorState) {
-    let content, prevContent;
-    const diffState = diffPlugin?.getState(newState); //todo diffState is any
+  function handleTransaction(newState: EditorState, uuid: string) {
+    let content: string, prevContent: string | undefined;
+    const diffState = diffPlugin?.getState(newState);
     if (diffState) {
       setDiff(diffState);
       ({ content, prevContent } = diffState);
     } else {
       content = serialize(newState.doc);
-      prevContent = null;
     }
     /*
     we need to call updateNode to save any edits
@@ -234,16 +236,25 @@ function Note({
     so we'll update currentNodeRef before calling updateNode
     since we check currentNodeRef in the useEffect and use it to return early
     */
-    const newNode = {
-      uuid: currentNode.nodeData.uuid,
+    const newNode: { uuid: string; content?: string; prevContent?: string } = {
+      uuid,
     };
-    if (content !== currentNodeRef.current?.content) {
+    if (
+      !currentNodeRef.current?.isNote() ||
+      uuid !== currentNodeRef.current.nodeData.uuid
+    ) {
+      //since we debounce handleTransaction, it's possible the uuid has changed. in that case, updateNode no matter what
       newNode.content = content;
-      currentNodeRef.current.content = content;
-    }
-    if (prevContent !== currentNodeRef.current?.prevContent) {
       newNode.prevContent = prevContent;
-      currentNodeRef.current.prevContent = prevContent;
+    } else {
+      if (content !== currentNodeRef.current.nodeData.content) {
+        newNode.content = content;
+        currentNodeRef.current.nodeData.content = content;
+      }
+      if (prevContent !== currentNodeRef.current.nodeData.prevContent) {
+        newNode.prevContent = prevContent;
+        currentNodeRef.current.nodeData.prevContent = prevContent;
+      }
     }
     if (Object.keys(newNode).length > 1) {
       notesState.updateNode(newNode);
@@ -270,7 +281,7 @@ function Note({
             //avoid serializing the potentially large doc too frequently
             clearTimeout(transactionTimeoutIdRef.current);
             transactionTimeoutIdRef.current = setTimeout(() => {
-              handleTransaction(newState);
+              handleTransaction(newState, currentNode.nodeData.uuid);
             }, 100);
           }}
           decorations={() => diff?.decorationSet}
@@ -287,18 +298,19 @@ function Note({
           }}
           transformPasted={(slice) => {
             //https://discuss.prosemirror.net/t/an-extra-br-is-added-in-certain-pasted-content/4730
-            function recurse(item: Node | Fragment): Node | Fragment {
+            //function recurse<T extends Fragment | Node>(item: T): T {
+            function recurse(item: Fragment | Node): Fragment | Node {
               if (item instanceof Fragment) {
-                const nodes = item.content.map(recurse);
+                const nodes = item.content.map(recurse) as Node[];
                 return Fragment.from(nodes);
-              } else if (item instanceof Node) {
-                const fragment = recurse(item.content);
+              } else {
+                const fragment = recurse(item.content) as Fragment;
                 let node;
 
                 if (
                   item.type.isBlock &&
                   item.content.size === 1 &&
-                  item.content.content[0].type === schema.nodes.hard_break
+                  item.content.content[0]?.type === schema.nodes.hard_break
                 ) {
                   node = item.copy();
                 } else {
@@ -309,7 +321,7 @@ function Note({
               }
             }
             return new Slice(
-              recurse(slice.content),
+              recurse(slice.content) as Fragment,
               slice.openStart,
               slice.openEnd,
             );
@@ -341,7 +353,7 @@ function NoteTitle({
   currentNode,
   notesState,
 }: {
-  currentNode: CurrentNode;
+  currentNode: ClonedNode;
   notesState: NotesState;
 }) {
   const [renameValue, setRenameValue] = useState(currentNode.nodeData.name);

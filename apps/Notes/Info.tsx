@@ -26,7 +26,6 @@ function InfoInner() {
         Notes that will be included in the chat are shown in bold in the
         sidebar.
       </p>
-      <p>Double click on a folder or note in the sidebar to rename it.</p>
     </div>
   );
 }

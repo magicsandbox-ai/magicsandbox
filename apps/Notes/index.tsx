@@ -1,9 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Toasts, type ToastsRef } from "@components/Toasts.tsx";
-import SideBar from "./SideBar.js";
+import SideBar from "./SideBar.tsx";
 import Info from "./Info.tsx";
-import Note from "./Note.js";
+import Note from "./Note.tsx";
 import DeleteConfirm from "./DeleteConfirm.tsx";
 import Search from "./Search.tsx";
 import NotesState from "./NotesState.ts";
@@ -26,10 +26,13 @@ function App() {
 
   const toastsRef = useRef<ToastsRef | null>(null);
 
+  useEffect(() => {
+    if (notesState && toastsRef.current) {
+      notesState._toastsRef = toastsRef.current;
+    }
+  }, []);
+
   if (!notesState) return;
-  if (toastsRef.current) {
-    notesState._toastsRef = toastsRef.current;
-  }
 
   let modalComponent;
   if (deleteUuid) {

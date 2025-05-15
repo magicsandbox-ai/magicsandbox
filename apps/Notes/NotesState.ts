@@ -2,47 +2,101 @@ import { v4 as uuid } from "uuid";
 import SyncExternalStore from "./SyncExternalStore.ts";
 import type { ToastsRef } from "@components/Toasts.tsx";
 
+/*
+The database has keys:
+
+- currentNodeUuid: string
+- [uuid]: NodeData
+
+Notes:
+- NodeData is the "source of truth" - this is what's stored in the database
+  - This actually not strictly true - childrenUuids should be moved to TreeData? Or just scrap this approach and do something simpler?
+  - The root node is a folder with uuid "0"
+- ChangeData is computed from NodeData and used to describe changes
+- TreeData is computed from NodeData and used to display the tree, aka folder and note structure
+  - id is an integer that's easy for the assistant to reference vs. a long uuid
+  - The root node has id 0, and the remaining nodes 1...n in depth first order
+- NotesState.tree is an array of nodes, with the index in the array being the node's id
+*/
+
 declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
 
 type NodeType = "folder" | "note";
 
 type NodeState = "new" | "deleted";
 
+/**
+ * Base data structure shared between folders and notes
+ */
 interface BaseData {
+  /** Unique identifier for the node. Root node has uuid "0" */
   uuid: string;
+  /** Type of node - either "folder" or "note" */
   type: NodeType;
+  /** Current state of the node - "new" or "deleted" */
   state?: NodeState;
+  /** Display name of the node */
   name: string;
+  /** Previous name of the node, used for tracking renames */
   prevName?: string;
+  /** UUID of the parent node. Undefined for root node */
   parentUuid?: string;
+  /** Previous parent UUID, used for tracking moves */
   prevParentUuid?: string;
+  /** Position of the node within its parent's children */
   order: number;
 }
 
+/**
+ * Folder specific data
+ */
 interface FolderData {
+  /** Whether the folder is collapsed */
   collapsed: boolean;
+  /** Uuids of the folder's children (not grandchildren, etc.) */
   childrenUuids: string[];
 }
 
+/**
+ * Note specific data
+ */
 interface NoteData {
+  /** Content of the note */
   content: string;
+  /** Previous content of the note, used for tracking edits */
   prevContent?: string;
+  /** Whether the note is checked, impacts inContext */
   checked: boolean;
+  /** Whether the note is starred, impacts inContext */
   starred: boolean;
 }
 
+/**
+ * Combined data structure for folders and notes, source of truth data
+ */
 type NodeData = BaseData & (FolderData | NoteData);
 
+/**
+ * Tree data, computed from NodeData
+ */
 interface TreeData {
+  /** Integer id for the node, easy for the assistant to reference vs. a long uuid. Root node has id 0, and the remaining nodes 1...n in depth first order */
   id: number;
+  /** Depth of the node in the tree */
   depth: number;
+  /** Path of the node in the tree (parent, grandparent, etc. folder names) */
   path: string;
+  /** Uuids of the node's ancestors (parent, grandparent, etc.) */
   ancestorUuids: string[];
+  /** Whether the node is displayed in the tree (i.e. are any of its ancestors collapsed?) */
   display: boolean;
+  /** Whether the note is in context for the assistant - see Info.tsx */
   inContext: boolean;
 }
 
 type TreeNode = Node & { treeData: TreeData };
+type TreeFolder = TreeNode & { nodeData: FolderData };
+type TreeNote = TreeNode & { nodeData: NoteData };
 
 interface ChangeData {
   change?: "new" | "deleted" | "moved" | "renamed" | "edited";
@@ -51,10 +105,22 @@ interface ChangeData {
 
 type NotesStateUpdate = "tree" | "inContext" | "setTree";
 
-interface CurrentNode {
-  nodeData: NodeData;
-  changeData: ChangeData;
-  treeData: TreeData;
+type ClonedNode = Pick<
+  TreeNode,
+  "nodeData" | "changeData" | "treeData" | "isFolder" | "isNote" | "isFolder"
+>;
+
+/**
+ * Clone a node, preserving isFolder and isNote methods
+ */
+function cloneNode(node: TreeNode): ClonedNode {
+  return {
+    nodeData: node.nodeData,
+    changeData: node.changeData,
+    treeData: node.treeData,
+    isFolder: node.isFolder,
+    isNote: node.isNote,
+  };
 }
 
 function generateUuid() {
@@ -106,11 +172,11 @@ class Node {
       // Base data
       uuid: uuid || generateUuid(),
       type,
-      state,
+      state: state || undefined, //for backwards compatibility - at one point this was allowed to be null. null || undefined resolves to undefined
       name: name || (type === "folder" ? "New Folder" : "New Note"),
-      prevName: prevName,
+      prevName: prevName || undefined,
       parentUuid: uuid !== "0" ? parentUuid || "0" : undefined,
-      prevParentUuid: prevParentUuid,
+      prevParentUuid: prevParentUuid || undefined,
       order: order || 0,
       ...(type === "folder"
         ? {
@@ -119,7 +185,7 @@ class Node {
           }
         : {
             content: content || "",
-            prevContent: prevContent,
+            prevContent: prevContent || undefined,
             checked: checked || false,
             starred: starred || false,
           }),
@@ -176,27 +242,26 @@ class Node {
   save() {
     clearTimeout(this.timeoutId);
     this.timeoutId = setTimeout(() => {
-      requestPutData(this.nodeData.uuid, this.nodeData).catch(
-        this.notesState.putErrorHandler,
-      );
+      requestPutData(this.nodeData.uuid, this.nodeData).catch((error) => {
+        this.notesState.putErrorHandler(error);
+      });
     }, 300);
   }
   delete() {
     clearTimeout(this.timeoutId);
-    requestDeleteData(this.nodeData.uuid).catch(
-      this.notesState.putErrorHandler,
-    );
+    requestDeleteData(this.nodeData.uuid).catch((error) => {
+      this.notesState.putErrorHandler(error);
+    });
   }
 }
 
 class NotesState extends SyncExternalStore<{
-  currentNode: CurrentNode;
+  currentNode: ClonedNode;
   tree: TreeNode[];
 }> {
   nodesData: Record<string, NodeData> | undefined;
   nodes: Record<string, Node>;
   currentNodeUuid: string;
-  putErrorHandler: (error: Error) => void;
   _toastsRef?: ToastsRef;
   _putErrorHandled?: boolean;
   _update?: NotesStateUpdate;
@@ -238,22 +303,22 @@ class NotesState extends SyncExternalStore<{
       );
     }
     this.currentNodeUuid = currentNodeUuid || "0";
-    this.putErrorHandler = (error) => {
-      console.error(error);
-      if (this._toastsRef && !this._putErrorHandled) {
-        let message = "Unexpected error saving notes";
-        if (error.message === "Database size limit exceeded") {
-          message =
-            "Error saving notes: maximum storage limit reached. Delete some notes to free up space.";
-        }
-        this._toastsRef.addToast(message, "error");
-        this._putErrorHandled = true; //avoid displaying too many toasts
-        setTimeout(() => {
-          this._putErrorHandled = false;
-        }, 5000);
-      }
-    };
     this._createTree();
+  }
+  putErrorHandler(error: Error) {
+    console.error(error);
+    if (this._toastsRef && !this._putErrorHandled) {
+      let message = "Unexpected error saving notes";
+      if (error.message === "Database size limit exceeded") {
+        message =
+          "Error saving notes: maximum storage limit reached. Delete some notes to free up space.";
+      }
+      this._toastsRef.addToast(message, "error");
+      this._putErrorHandled = true; //avoid displaying too many toasts
+      setTimeout(() => {
+        this._putErrorHandled = false;
+      }, 5000);
+    }
   }
   setCurrentNodeUuid(newCurrentNodeUuid: string, scheduleUpdate = true) {
     if (!(newCurrentNodeUuid in this.nodes)) {
@@ -276,9 +341,9 @@ class NotesState extends SyncExternalStore<{
     this.currentNodeUuid = newCurrentNodeUuid;
     clearTimeout(this._putCurrentNodeUuidTimeoutId);
     this._putCurrentNodeUuidTimeoutId = setTimeout(() => {
-      requestPutData("currentNodeUuid", newCurrentNodeUuid).catch(
-        this.putErrorHandler,
-      );
+      requestPutData("currentNodeUuid", newCurrentNodeUuid).catch((error) => {
+        this.putErrorHandler(error);
+      });
     }, 300);
     if (scheduleUpdate) {
       this._scheduleUpdate("inContext"); //depends on currentNodeUuid
@@ -396,11 +461,7 @@ class NotesState extends SyncExternalStore<{
       }
     });
     this.set("tree", [...this.tree]);
-    this.set("currentNode", {
-      nodeData: currentNode.nodeData,
-      changeData: currentNode.changeData,
-      treeData: currentNode.treeData,
-    });
+    this.set("currentNode", cloneNode(currentNode));
   }
   _scheduleUpdate(update: NotesStateUpdate) {
     //priority: tree > inContext > setTree
@@ -484,11 +545,7 @@ class NotesState extends SyncExternalStore<{
       this._scheduleUpdate("setTree");
     }
     if (this.currentNodeUuid === nodeData.uuid) {
-      this.set("currentNode", {
-        nodeData: node.nodeData,
-        changeData: node.changeData,
-        treeData: node.treeData,
-      });
+      this.set("currentNode", cloneNode(node));
     }
   }
   /**
@@ -932,4 +989,4 @@ ${note.nodeData.content}
 }
 
 export default NotesState;
-export type { NodeData, CurrentNode };
+export type { NodeData, TreeNode, TreeFolder, TreeNote, ClonedNode };
