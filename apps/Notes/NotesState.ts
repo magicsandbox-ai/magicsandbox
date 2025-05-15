@@ -53,7 +53,7 @@ interface BaseData {
 interface FolderData {
   /** Whether the folder is collapsed */
   collapsed: boolean;
-  /** Uuids of the folder's children (not grandchildren, etc.) */
+  /** Uuids of the folder's children (not grandchildren, etc.), sorted by order */
   childrenUuids: string[];
 }
 
@@ -511,16 +511,56 @@ class NotesState extends SyncExternalStore<{
     }
     return descendants;
   }
+  getPrevSibling(uuid: string) {
+    const siblingUuids = this._getSiblingUuids(uuid);
+    const index = siblingUuids.indexOf(uuid);
+    if (index === -1) {
+      throw new Error("Unexpected error");
+    }
+    const prevSiblingUuid = siblingUuids[index - 1];
+    if (!prevSiblingUuid) {
+      return undefined;
+    }
+    const prevSibling = this.nodes[prevSiblingUuid];
+    if (!prevSibling || !prevSibling.treeData) {
+      throw new Error("Unexpected error");
+    }
+    return prevSibling as TreeNode;
+  }
+  getNextSibling(uuid: string) {
+    const siblingUuids = this._getSiblingUuids(uuid);
+    const index = siblingUuids.indexOf(uuid);
+    if (index === -1) {
+      throw new Error("Unexpected error");
+    }
+    const nextSiblingUuid = siblingUuids[index + 1];
+    if (!nextSiblingUuid) {
+      return undefined;
+    }
+    const nextSibling = this.nodes[nextSiblingUuid];
+    if (!nextSibling || !nextSibling.treeData) {
+      throw new Error("Unexpected error");
+    }
+    return nextSibling as TreeNode;
+  }
+  _getSiblingUuids(uuid: string) {
+    const node = this.nodes[uuid];
+    if (!node || node.nodeData.parentUuid === undefined) {
+      throw new Error(`Invalid uuid ${uuid}`);
+    }
+    const parent = this.nodes[node.nodeData.parentUuid];
+    if (!parent || !parent.isFolder()) {
+      throw new Error("Unexpected error");
+    }
+    return parent.nodeData.childrenUuids;
+  }
   /**
    * nodeData must include uuid, otherwise, include only properties that should be updated
    */
   updateNode(nodeData: { uuid: string } & Partial<NodeData>) {
-    const node = this.nodes[nodeData.uuid] as TreeNode;
+    const node = this.nodes[nodeData.uuid];
     if (!node) {
       throw new Error(`Node with uuid ${nodeData.uuid} not found`);
-    }
-    if (!node.treeData) {
-      throw new Error(`Invalid updateNode call`);
     }
     node.update(nodeData);
     const keysThatRebuildTree = [
@@ -544,8 +584,8 @@ class NotesState extends SyncExternalStore<{
       //don't need to rebuild tree or update inContext, but we do need to set it for subscribers
       this._scheduleUpdate("setTree");
     }
-    if (this.currentNodeUuid === nodeData.uuid) {
-      this.set("currentNode", cloneNode(node));
+    if (this.currentNodeUuid === nodeData.uuid && node.treeData) {
+      this.set("currentNode", cloneNode(node as TreeNode));
     }
   }
   /**

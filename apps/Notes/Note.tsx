@@ -265,7 +265,11 @@ function Note({
       <div
         className={`mb-2 flex cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
-        <NoteTitle currentNode={currentNode} notesState={notesState} />
+        <NoteTitle
+          key={currentNode.nodeData.uuid}
+          currentNode={currentNode}
+          notesState={notesState}
+        />
         {currentNode.changeData.changeDetails && (
           <span className="italic leading-none text-stone-500">
             ({currentNode.changeData.changeDetails})

@@ -12,13 +12,27 @@ import {
   Check,
   Star,
 } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragMoveEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Approve from "./Approve.tsx";
 import type NotesState from "./NotesState.ts";
 import type { TreeNode, TreeFolder, TreeNote } from "./NotesState.ts";
 
-/*
-todo drag and drop?
-*/
+const DEPTH_INDENT = 16;
 
 function SideBar({
   notesState,
@@ -39,6 +53,26 @@ function SideBar({
     notesState.subscribe("tree"),
     notesState.getSnapshot("tree"),
   );
+  const [dragParentUuid, setDragParentUuid] = useState<string | undefined>(
+    undefined,
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 100,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: ["Space"],
+        cancel: ["Escape"],
+        end: ["Space"],
+      },
+    }),
+  );
 
   function handleSearch() {
     setShowSearch(true);
@@ -50,6 +84,139 @@ function SideBar({
 
   function handleAdd(parentUuid: string, type: "folder" | "note") {
     notesState.addNode({ parentUuid, type });
+  }
+
+  function getDragParentUuid({
+    over,
+    delta,
+  }: DragMoveEvent | DragEndEvent): string | undefined {
+    if (!over) return;
+    const index = over.data.current!.sortable.index;
+    const overNode = tree[index];
+    if (!overNode) return;
+    let newParentUuid = overNode.nodeData.parentUuid;
+    let targetParentDepth = Math.max(
+      0,
+      overNode.treeData.depth + Math.round(delta.x / DEPTH_INDENT) - 1,
+    );
+    let i = index - 1;
+    const nextSibling = notesState.getNextSibling(overNode.nodeData.uuid);
+    let minTargetDepth: number | undefined;
+    //look at the next sibling - we can't go below this depth without breaking the tree
+    if (nextSibling) {
+      minTargetDepth = nextSibling.treeData.depth;
+    } else {
+      //if no next sibling, look at the next node in the tree
+      const nextNode = tree[index + 1];
+      if (nextNode) {
+        minTargetDepth = nextNode.treeData.depth;
+      } else {
+        minTargetDepth = 0;
+      }
+    }
+    minTargetDepth = Math.max(0, minTargetDepth - 1);
+    targetParentDepth = Math.max(targetParentDepth, minTargetDepth);
+    while (targetParentDepth >= minTargetDepth && i >= 0) {
+      const node = tree[i];
+      if (!node) break;
+      //walk up the tree until we find a node with depth <= targetParentDepth
+      if (node.treeData.depth > targetParentDepth) {
+        i--;
+        //if we found a note, it's not allowed to be a parent. but we can consider the note's ancestors
+      } else if (node.isNote()) {
+        targetParentDepth = Math.min(
+          targetParentDepth,
+          node.treeData.depth - 1,
+        );
+        i--;
+      } else {
+        return node.nodeData.uuid;
+      }
+    }
+    return newParentUuid;
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    setDragParentUuid(getDragParentUuid(event));
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setDragParentUuid(undefined);
+    const newDragParentUuid = getDragParentUuid(event);
+    if (!newDragParentUuid) return;
+    const { over, active } = event;
+    if (!over) return;
+    const overIndex = over.data.current!.sortable.index;
+    const overNode = tree[overIndex];
+    const activeIndex = active.data.current!.sortable.index;
+    const activeNode = tree[activeIndex];
+    if (
+      !overNode ||
+      !activeNode ||
+      (over.id === active.id &&
+        activeNode.nodeData.parentUuid === newDragParentUuid)
+    ) {
+      return;
+    }
+    let newIndex = overIndex;
+    if (activeIndex > overIndex) {
+      newIndex = overIndex - 0.5;
+    } else if (activeIndex < overIndex) {
+      newIndex = overIndex + 0.5;
+    }
+    let prevSibling: TreeNode | undefined;
+    let nextSibling: TreeNode | undefined;
+    for (let i = 0; i < tree.length; i++) {
+      const node = tree[i];
+      if (node?.nodeData.parentUuid === newDragParentUuid) {
+        if (i < newIndex) {
+          prevSibling = node;
+        } else if (i > newIndex) {
+          nextSibling = node;
+          break;
+        }
+      }
+    }
+    let newOrder: number;
+    if (!prevSibling && !nextSibling) {
+      newOrder = 0;
+    } else if (!prevSibling && nextSibling) {
+      newOrder = nextSibling.nodeData.order - 1000;
+    } else if (prevSibling && !nextSibling) {
+      newOrder = prevSibling.nodeData.order + 1000;
+    } else {
+      newOrder =
+        (prevSibling!.nodeData.order + nextSibling!.nodeData.order) / 2;
+    }
+    notesState.updateNode({
+      uuid: activeNode.nodeData.uuid,
+      parentUuid: newDragParentUuid,
+      order: newOrder,
+    });
+    if (
+      prevSibling &&
+      nextSibling &&
+      Math.abs(prevSibling.nodeData.order - nextSibling.nodeData.order) < 1
+    ) {
+      //order is too close together, we'll reset them all
+      //first wait for the batch tree recalculation to finish
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const parent = notesState.nodes[newDragParentUuid];
+      if (!parent || !parent.isFolder()) {
+        return;
+      }
+      const childrenUuids = parent.nodeData.childrenUuids;
+      for (let i = 0; i < childrenUuids.length; i++) {
+        notesState.updateNode({
+          uuid: childrenUuids[i]!,
+          order: i * 1000,
+        });
+      }
+    }
+  }
+
+  function handleDragCancel() {
+    setDragParentUuid(undefined);
   }
 
   if (showSideBar) {
@@ -82,21 +249,35 @@ function SideBar({
             <span className="sr-only">Add note</span>
           </button>
         </div>
-        <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
-          {tree
-            .filter((node) => node.treeData.display)
-            .map((node) => (
-              <Node
-                key={node.nodeData.uuid}
-                {...{
-                  notesState,
-                  node,
-                  handleAdd,
-                  handleDelete,
-                }}
-              />
-            ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <SortableContext
+            items={tree.map((node) => node.nodeData.uuid)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
+              {tree
+                .filter((node) => node.treeData.display)
+                .map((node, index) => (
+                  <Node
+                    key={node.nodeData.uuid}
+                    {...{
+                      notesState,
+                      node,
+                      handleAdd,
+                      handleDelete,
+                      index,
+                      dragParent: dragParentUuid === node.nodeData.uuid,
+                    }}
+                  />
+                ))}
+            </div>
+          </SortableContext>
+        </DndContext>
         {anyChanges && (
           <Approve
             containerClassName="flex-col gap-1.5 pb-3"
@@ -125,13 +306,25 @@ function Node({
   node,
   handleAdd,
   handleDelete,
+  index,
+  dragParent,
 }: {
   notesState: NotesState;
   node: TreeNode;
   handleAdd: (parentUuid: string, type: "folder" | "note") => void;
   handleDelete: (uuid: string) => void;
+  index: number;
+  dragParent: boolean;
 }) {
   const [renameValue, setRenameValue] = useState<string | undefined>(undefined);
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: node.nodeData.uuid, data: { index: index } });
+
+  const style = {
+    marginLeft: `${(node.treeData.depth - 1) * DEPTH_INDENT}px`,
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   function handleRename(
     e: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLInputElement>,
@@ -147,18 +340,21 @@ function Node({
     setRenameValue(undefined);
   }
 
-  const style = { marginLeft: `${(node.treeData.depth - 1) * 16}px` };
-
   const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
   const renameClassName =
     baseClassName + "grow border border-stone-500 bg-white";
-  const nodeClassName =
+  let nodeClassName =
     baseClassName +
     `group flex items-center gap-2 hover:bg-stone-300 ${
       notesState.currentNodeUuid === node.nodeData.uuid
-        ? "bg-stone-200 outline outline-1 outline-stone-500"
+        ? "outline outline-1 outline-stone-500 "
         : ""
     }`;
+  if (dragParent) {
+    nodeClassName += "bg-blue-200";
+  } else if (notesState.currentNodeUuid === node.nodeData.uuid) {
+    nodeClassName += "bg-stone-200";
+  }
   let nameClassName = "grow truncate text-left";
   const iconClassName = "w-4 h-4";
   const hoverButtonClassName =
@@ -270,7 +466,10 @@ function Node({
 
   return (
     <div
+      ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={nodeClassName}
       title={`${node.nodeData.name}${node.changeData.changeDetails ? ` (${node.changeData.changeDetails})` : ""}`}
       onClick={handleClick}
