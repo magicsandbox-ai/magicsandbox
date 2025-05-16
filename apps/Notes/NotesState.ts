@@ -348,7 +348,7 @@ class NotesState extends SyncExternalStore<{
     if (scheduleUpdate) {
       this._scheduleUpdate("inContext"); //depends on currentNodeUuid
     }
-    this._uncollapseAncestors(newCurrentNodeUuid);
+    this.uncollapseAncestors(newCurrentNodeUuid);
   }
   _createTree() {
     //init children array
@@ -510,49 +510,6 @@ class NotesState extends SyncExternalStore<{
       }
     }
     return descendants;
-  }
-  getPrevSibling(uuid: string) {
-    const siblingUuids = this._getSiblingUuids(uuid);
-    const index = siblingUuids.indexOf(uuid);
-    if (index === -1) {
-      throw new Error("Unexpected error");
-    }
-    const prevSiblingUuid = siblingUuids[index - 1];
-    if (!prevSiblingUuid) {
-      return undefined;
-    }
-    const prevSibling = this.nodes[prevSiblingUuid];
-    if (!prevSibling || !prevSibling.treeData) {
-      throw new Error("Unexpected error");
-    }
-    return prevSibling as TreeNode;
-  }
-  getNextSibling(uuid: string) {
-    const siblingUuids = this._getSiblingUuids(uuid);
-    const index = siblingUuids.indexOf(uuid);
-    if (index === -1) {
-      throw new Error("Unexpected error");
-    }
-    const nextSiblingUuid = siblingUuids[index + 1];
-    if (!nextSiblingUuid) {
-      return undefined;
-    }
-    const nextSibling = this.nodes[nextSiblingUuid];
-    if (!nextSibling || !nextSibling.treeData) {
-      throw new Error("Unexpected error");
-    }
-    return nextSibling as TreeNode;
-  }
-  _getSiblingUuids(uuid: string) {
-    const node = this.nodes[uuid];
-    if (!node || node.nodeData.parentUuid === undefined) {
-      throw new Error(`Invalid uuid ${uuid}`);
-    }
-    const parent = this.nodes[node.nodeData.parentUuid];
-    if (!parent || !parent.isFolder()) {
-      throw new Error("Unexpected error");
-    }
-    return parent.nodeData.childrenUuids;
   }
   /**
    * nodeData must include uuid, otherwise, include only properties that should be updated
@@ -910,7 +867,7 @@ ${contextString}
       prevName: node.nodeData.name,
       name,
     });
-    this._uncollapseAncestors(node.nodeData.uuid);
+    this.uncollapseAncestors(node.nodeData.uuid);
   }
   apiMoveNodes(ids: number[], parentId: number, folders?: string[]): string {
     const finalParentUuid = this._getAndCreateFolders(parentId, folders);
@@ -921,7 +878,7 @@ ${contextString}
         prevParentUuid: node.nodeData.parentUuid,
         parentUuid: finalParentUuid,
       });
-      this._uncollapseAncestors(node.nodeData.uuid);
+      this.uncollapseAncestors(node.nodeData.uuid);
     }
     return finalParentUuid;
   }
@@ -934,7 +891,7 @@ ${contextString}
           uuid: descendant.nodeData.uuid,
           state: "deleted",
         });
-        this._uncollapseAncestors(descendant.nodeData.uuid);
+        this.uncollapseAncestors(descendant.nodeData.uuid);
       }
     }
   }
@@ -1010,7 +967,7 @@ ${note.nodeData.content}
     }
     return node;
   }
-  _uncollapseAncestors(uuid: string) {
+  uncollapseAncestors(uuid: string) {
     //this can be called when a node is added and ancestorUuids is not yet populated, so can only use parentUuid
     while (uuid !== "0") {
       const node = this.nodes[uuid];

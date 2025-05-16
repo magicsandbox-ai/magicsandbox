@@ -18,12 +18,14 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  KeyboardCode,
+  type DragStartEvent,
   type DragMoveEvent,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -56,6 +58,7 @@ function SideBar({
   const [dragParentUuid, setDragParentUuid] = useState<string | undefined>(
     undefined,
   );
+  const [dragUuid, setDragUuid] = useState<string | undefined>(undefined);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -65,7 +68,7 @@ function SideBar({
       },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: keyboardCoordinateGetter,
       keyboardCodes: {
         start: ["Space"],
         cancel: ["Escape"],
@@ -86,36 +89,48 @@ function SideBar({
     notesState.addNode({ parentUuid, type });
   }
 
+  function handleDragStart({ active, activatorEvent }: DragStartEvent) {
+    if (activatorEvent instanceof KeyboardEvent) {
+      setDragUuid(active.id as string); //only set for keyboard (pretty obvious with pointer)
+    }
+  }
+
   function getDragParentUuid({
     over,
+    active,
     delta,
   }: DragMoveEvent | DragEndEvent): string | undefined {
     if (!over) return;
-    const index = over.data.current!.sortable.index;
-    const overNode = tree[index];
+    const overIndex = over.data.current!.sortable.index;
+    const activeIndex = active.data.current!.sortable.index;
+    const overNode = tree[overIndex];
     if (!overNode) return;
     let newParentUuid = overNode.nodeData.parentUuid;
     let targetParentDepth = Math.max(
       0,
       overNode.treeData.depth + Math.round(delta.x / DEPTH_INDENT) - 1,
     );
-    let i = index - 1;
-    const nextSibling = notesState.getNextSibling(overNode.nodeData.uuid);
+    //loop through the tree and find the next node that is not a descendant of overNode
+    //if we go below this depth, we'll break the tree structure
+    //if moving up in the tree, active appears before over, so start at overIndex, otherwise overIndex + 1
     let minTargetDepth: number | undefined;
-    //look at the next sibling - we can't go below this depth without breaking the tree
-    if (nextSibling) {
-      minTargetDepth = nextSibling.treeData.depth;
-    } else {
-      //if no next sibling, look at the next node in the tree
-      const nextNode = tree[index + 1];
-      if (nextNode) {
-        minTargetDepth = nextNode.treeData.depth;
-      } else {
-        minTargetDepth = 0;
+    for (
+      let i = activeIndex > overIndex ? overIndex : overIndex + 1;
+      i < tree.length;
+      i++
+    ) {
+      const node = tree[i];
+      if (node && node.treeData.depth <= overNode.treeData.depth) {
+        minTargetDepth = Math.max(0, node.treeData.depth - 1);
+        break;
       }
     }
-    minTargetDepth = Math.max(0, minTargetDepth - 1);
+    if (minTargetDepth === undefined) {
+      minTargetDepth = 0;
+    }
     targetParentDepth = Math.max(targetParentDepth, minTargetDepth);
+    //if moving down in the tree, active can become a child of over, so we start looking at overIndex, otherwise overIndex - 1
+    let i = activeIndex < overIndex ? overIndex : overIndex - 1;
     while (targetParentDepth >= minTargetDepth && i >= 0) {
       const node = tree[i];
       if (!node) break;
@@ -141,7 +156,7 @@ function SideBar({
   }
 
   async function handleDragEnd(event: DragEndEvent) {
-    setDragParentUuid(undefined);
+    resetDrag();
     const newDragParentUuid = getDragParentUuid(event);
     if (!newDragParentUuid) return;
     const { over, active } = event;
@@ -193,6 +208,7 @@ function SideBar({
       parentUuid: newDragParentUuid,
       order: newOrder,
     });
+    notesState.uncollapseAncestors(activeNode.nodeData.uuid);
     if (
       prevSibling &&
       nextSibling &&
@@ -215,15 +231,22 @@ function SideBar({
     }
   }
 
-  function handleDragCancel() {
+  function resetDrag() {
     setDragParentUuid(undefined);
+    setDragUuid(undefined);
+  }
+
+  function describeNode(uuid: string) {
+    const node = notesState.nodes[uuid];
+    if (!node) return;
+    return `${node.nodeData.type} ${node.nodeData.name}`;
   }
 
   if (showSideBar) {
     const anyChanges = tree.some((node) => node.changeData.change);
     return (
-      <nav className="absolute flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
-        <div className="mx-3 flex justify-between">
+      <nav className="absolute z-10 flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
+        <div className="mx-3 mb-3 flex justify-between">
           <button onClick={() => setShowSideBar(false)}>
             <Menu />
             <span className="sr-only">Close menu</span>
@@ -250,16 +273,40 @@ function SideBar({
           </button>
         </div>
         <DndContext
+          accessibility={{
+            announcements: {
+              onDragStart({ active }) {
+                return `Picked up ${describeNode(active.id as string)}.`;
+              },
+              onDragOver({ active, over }) {
+                if (over) {
+                  return `${describeNode(active.id as string)} was moved over ${describeNode(over.id as string)}.`;
+                }
+                return `${describeNode(active.id as string)} is no longer over a droppable area.`;
+              },
+              onDragEnd({ active, over }) {
+                if (over) {
+                  return `${describeNode(active.id as string)} was dropped over ${describeNode(over.id as string)}.`;
+                }
+                return `${describeNode(active.id as string)} was dropped.`;
+              },
+              onDragCancel({ active }) {
+                return `Dragging was cancelled. ${describeNode(active.id as string)} was dropped.`;
+              },
+            },
+          }}
           sensors={sensors}
+          onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
+          onDragCancel={resetDrag}
         >
           <SortableContext
             items={tree.map((node) => node.nodeData.uuid)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="grow space-y-0.5 overflow-y-auto px-3 pt-3">
+            {/* relative is needed to prevent sr-only from causing weird scrollbars */}
+            <div className="relative grow space-y-0.5 overflow-y-auto px-3">
               {tree
                 .filter((node) => node.treeData.display)
                 .map((node, index) => (
@@ -271,7 +318,9 @@ function SideBar({
                       handleAdd,
                       handleDelete,
                       index,
-                      dragParent: dragParentUuid === node.nodeData.uuid,
+                      isDragParent: dragParentUuid === node.nodeData.uuid,
+                      isDragging: dragUuid === node.nodeData.uuid,
+                      setShowSideBar,
                     }}
                   />
                 ))}
@@ -307,14 +356,18 @@ function Node({
   handleAdd,
   handleDelete,
   index,
-  dragParent,
+  isDragParent,
+  isDragging,
+  setShowSideBar,
 }: {
   notesState: NotesState;
   node: TreeNode;
   handleAdd: (parentUuid: string, type: "folder" | "note") => void;
   handleDelete: (uuid: string) => void;
   index: number;
-  dragParent: boolean;
+  isDragParent: boolean;
+  isDragging: boolean;
+  setShowSideBar: (showSideBar: boolean) => void;
 }) {
   const [renameValue, setRenameValue] = useState<string | undefined>(undefined);
   const { attributes, listeners, setNodeRef, transform, transition } =
@@ -350,7 +403,7 @@ function Node({
         ? "outline outline-1 outline-stone-500 "
         : ""
     }`;
-  if (dragParent) {
+  if (isDragParent || isDragging) {
     nodeClassName += "bg-blue-200";
   } else if (notesState.currentNodeUuid === node.nodeData.uuid) {
     nodeClassName += "bg-stone-200";
@@ -428,6 +481,7 @@ function Node({
           node,
           setRenameValue,
           changesComponent,
+          setShowSideBar,
         }}
       />
     );
@@ -458,6 +512,7 @@ function Node({
     }
   }
 
+  //kind of a hack - this needs to be added to onKeyDownCapture to avoid interfering with KeyboardSensor, which uses onKeyDown
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Delete") {
       handleDelete(node.nodeData.uuid);
@@ -473,7 +528,7 @@ function Node({
       className={nodeClassName}
       title={`${node.nodeData.name}${node.changeData.changeDetails ? ` (${node.changeData.changeDetails})` : ""}`}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDown}
     >
       {component}
     </div>
@@ -523,7 +578,9 @@ function Folder({
       </button>
       <button
         className={nameClassName}
-        onClick={() => notesState.setCurrentNodeUuid(node.nodeData.uuid)}
+        onClick={() => {
+          notesState.setCurrentNodeUuid(node.nodeData.uuid);
+        }}
         onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >
         {changesComponent}
@@ -556,6 +613,7 @@ function Note({
   node,
   setRenameValue,
   changesComponent,
+  setShowSideBar,
 }: {
   notesState: NotesState;
   nameClassName: string;
@@ -564,6 +622,7 @@ function Note({
   node: TreeNote;
   setRenameValue: (value: string) => void;
   changesComponent: React.ReactNode;
+  setShowSideBar: (showSideBar: boolean) => void;
 }) {
   function handleCheck() {
     notesState.updateNode({
@@ -599,7 +658,12 @@ function Note({
       </button>
       <button
         className={`${nameClassName} ${node.treeData.inContext ? "font-bold" : ""}`}
-        onClick={() => notesState.setCurrentNodeUuid(node.nodeData.uuid)}
+        onClick={() => {
+          notesState.setCurrentNodeUuid(node.nodeData.uuid);
+          if (window.innerWidth < 768) {
+            setShowSideBar(false);
+          }
+        }}
         onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >
         {changesComponent}
@@ -627,3 +691,35 @@ function Note({
 }
 
 export default SideBar;
+
+//todo this is buggy when scrolling. and also the new parent detection is not always right?
+const keyboardCoordinateGetter: KeyboardCoordinateGetter = (
+  event,
+  { currentCoordinates },
+) => {
+  const VERTICAL_MOVE = 26; //todo how to keep this in sync with the size of the nodes
+  switch (event.code) {
+    case KeyboardCode.Right:
+      return {
+        ...currentCoordinates,
+        x: currentCoordinates.x + DEPTH_INDENT,
+      };
+    case KeyboardCode.Left:
+      return {
+        ...currentCoordinates,
+        x: currentCoordinates.x - DEPTH_INDENT,
+      };
+    case KeyboardCode.Down:
+      return {
+        ...currentCoordinates,
+        y: currentCoordinates.y + VERTICAL_MOVE,
+      };
+    case KeyboardCode.Up:
+      return {
+        ...currentCoordinates,
+        y: currentCoordinates.y - VERTICAL_MOVE,
+      };
+  }
+
+  return undefined;
+};

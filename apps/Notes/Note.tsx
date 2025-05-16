@@ -261,9 +261,9 @@ function Note({
     }
   }
   return (
-    <main className="flex grow flex-col p-3">
+    <main className="flex min-w-0 grow flex-col p-3">
       <div
-        className={`mb-2 flex cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
+        className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
         <NoteTitle
           key={currentNode.nodeData.uuid}
@@ -271,7 +271,7 @@ function Note({
           notesState={notesState}
         />
         {currentNode.changeData.changeDetails && (
-          <span className="italic leading-none text-stone-500">
+          <span className="text-right text-xs italic leading-none text-stone-500 md:text-base">
             ({currentNode.changeData.changeDetails})
           </span>
         )}
@@ -379,21 +379,27 @@ function NoteTitle({
     }
     inputRef.current?.blur();
   }
-
-  const baseClassName = "text-2xl font-bold";
+  const folders = currentNode.treeData.path.slice(
+    0,
+    -1 * currentNode.nodeData.name.length,
+  );
+  const baseClassName = "md:text-2xl font-bold ";
 
   return (
-    <div className="flex">
-      <h1 className={baseClassName} onClick={() => inputRef.current?.focus()}>
-        {currentNode.treeData.path.slice(
-          0,
-          -1 * currentNode.nodeData.name.length,
-        )}
-      </h1>
-      <form onSubmit={handleRename}>
+    <div className="flex min-w-0 grow">
+      {folders && (
+        <h1
+          className={baseClassName + "truncate"}
+          title={folders}
+          onClick={() => inputRef.current?.focus()}
+        >
+          {folders}
+        </h1>
+      )}
+      <form className="w-32 shrink-0 grow" onSubmit={handleRename}>
         <input
           ref={inputRef}
-          className={baseClassName}
+          className={baseClassName + "w-full"}
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={handleRename}

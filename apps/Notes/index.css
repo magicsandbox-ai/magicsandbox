@@ -11,7 +11,7 @@ body {
 }
 
 .ProseMirror {
-  @apply grow overflow-y-auto whitespace-pre-wrap focus:outline-none;
+  @apply grow overflow-y-auto whitespace-pre-wrap pt-2 focus:outline-none;
 
   h1,
   h2,
@@ -43,7 +43,7 @@ body {
     @apply inline;
   }
   pre {
-    @apply relative rounded-md bg-stone-50 p-2 text-sm;
+    @apply relative overflow-x-auto rounded-md bg-stone-50 p-2 text-sm;
   }
   pre:hover::after {
     @apply pointer-events-none absolute bottom-1 right-2 text-xs italic text-stone-400;
