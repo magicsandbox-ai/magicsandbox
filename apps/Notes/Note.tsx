@@ -9,7 +9,6 @@ import {
   DecorationSet,
   Decoration,
   type DecorationAttrs,
-  type EditorView,
 } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
 import { Slice, Fragment, Node } from "prosemirror-model";
@@ -25,6 +24,7 @@ import { diffArrays } from "diff";
 import Approve from "./Approve.tsx";
 import type NotesState from "./NotesState.ts";
 import type { ClonedNode } from "./NotesState.ts";
+import { Menu, createSelectPlugin } from "./NoteMenu.tsx";
 
 /*
 menu? need prosemirror-view/style/prosemirror.css? just need container relative?
@@ -61,7 +61,6 @@ function Note({
     undefined,
   );
   const [diff, setDiff] = useState<Diff | undefined>(undefined);
-  const [showMenu, setShowMenu] = useState<number | undefined>(undefined);
 
   const currentNodeRef = useRef<ClonedNode | undefined>(undefined);
   const editorStateRef = useRef<Record<string, EditorState>>({});
@@ -215,7 +214,7 @@ function Note({
             }),
             historyPlugin,
             diffPlugin,
-            createMenuPlugin(setShowMenu),
+            createSelectPlugin(),
           ],
         }),
       );
@@ -264,7 +263,7 @@ function Note({
     }
   }
   return (
-    <main className="relative flex min-w-0 grow flex-col p-3">
+    <main className="flex min-w-0 grow flex-col p-3">
       <div
         className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
@@ -284,75 +283,70 @@ function Note({
         )}
       </div>
       {editorState ? (
-        <ProseMirror
-          state={editorState}
-          dispatchTransaction={(tr) => {
-            //sometimes when typing at the bottom of the note, the view doesn't scroll to the next line
-            //but is there a case where we don't want it to scroll?
-            tr.scrollIntoView();
-            const newState = editorState.apply(tr);
-            setEditorState(newState);
-            //avoid serializing the potentially large doc too frequently
-            clearTimeout(transactionTimeoutIdRef.current);
-            transactionTimeoutIdRef.current = setTimeout(() => {
-              handleTransaction(newState, currentNode.nodeData.uuid);
-            }, 100);
-          }}
-          decorations={() => diff?.decorationSet}
-          editable={() => !diff}
-          clipboardTextSerializer={(slice) => {
-            //prosemirror inserts two newlines by default, we want just one
-            //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L37
-            return slice.content.textBetween(0, slice.content.size, "\n");
-          }}
-          transformPastedText={(text) => {
-            //prosemirror collapses consecutive newlines, use a zero width space to preserve them
-            //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L58
-            return text.replace(/\r\n/g, "\n").replace(/\n(?=\n)/g, "\n\u200b");
-          }}
-          transformPasted={(slice) => {
-            //https://discuss.prosemirror.net/t/an-extra-br-is-added-in-certain-pasted-content/4730
-            //function recurse<T extends Fragment | Node>(item: T): T {
-            function recurse(item: Fragment | Node): Fragment | Node {
-              if (item instanceof Fragment) {
-                const nodes = item.content.map(recurse) as Node[];
-                return Fragment.from(nodes);
-              } else {
-                const fragment = recurse(item.content) as Fragment;
-                let node;
-
-                if (
-                  item.type.isBlock &&
-                  item.content.size === 1 &&
-                  item.content.content[0]?.type === schema.nodes.hard_break
-                ) {
-                  node = item.copy();
+        <div className="relative overflow-y-auto">
+          <ProseMirror
+            state={editorState}
+            dispatchTransaction={(tr) => {
+              //sometimes when typing at the bottom of the note, the view doesn't scroll to the next line
+              //but is there a case where we don't want it to scroll?
+              tr.scrollIntoView();
+              const newState = editorState.apply(tr);
+              setEditorState(newState);
+              //avoid serializing the potentially large doc too frequently
+              clearTimeout(transactionTimeoutIdRef.current);
+              transactionTimeoutIdRef.current = setTimeout(() => {
+                handleTransaction(newState, currentNode.nodeData.uuid);
+              }, 100);
+            }}
+            decorations={() => diff?.decorationSet}
+            editable={() => !diff}
+            clipboardTextSerializer={(slice) => {
+              //prosemirror inserts two newlines by default, we want just one
+              //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L37
+              return slice.content.textBetween(0, slice.content.size, "\n");
+            }}
+            transformPastedText={(text) => {
+              //prosemirror collapses consecutive newlines, use a zero width space to preserve them
+              //https://github.com/ProseMirror/prosemirror-view/blob/27f1c05d91dfd97ebb72ae879d0fe85df0742db6/src/clipboard.ts#L58
+              return text
+                .replace(/\r\n/g, "\n")
+                .replace(/\n(?=\n)/g, "\n\u200b");
+            }}
+            transformPasted={(slice) => {
+              //https://discuss.prosemirror.net/t/an-extra-br-is-added-in-certain-pasted-content/4730
+              //function recurse<T extends Fragment | Node>(item: T): T {
+              function recurse(item: Fragment | Node): Fragment | Node {
+                if (item instanceof Fragment) {
+                  const nodes = item.content.map(recurse) as Node[];
+                  return Fragment.from(nodes);
                 } else {
-                  node = item.copy(fragment);
-                }
+                  const fragment = recurse(item.content) as Fragment;
+                  let node;
 
-                return node;
+                  if (
+                    item.type.isBlock &&
+                    item.content.size === 1 &&
+                    item.content.content[0]?.type === schema.nodes.hard_break
+                  ) {
+                    node = item.copy();
+                  } else {
+                    node = item.copy(fragment);
+                  }
+
+                  return node;
+                }
               }
-            }
-            return new Slice(
-              recurse(slice.content) as Fragment,
-              slice.openStart,
-              slice.openEnd,
-            );
-          }}
-        >
-          <ProseMirrorDoc />
-          {showMenu !== undefined && (
-            <div className="absolute left-0 top-0 z-10">
-              <div
-                className="absolute left-3 bg-stone-200"
-                style={{ top: showMenu }}
-              >
-                Menu
-              </div>
-            </div>
-          )}
-        </ProseMirror>
+              return new Slice(
+                recurse(slice.content) as Fragment,
+                slice.openStart,
+                slice.openEnd,
+              );
+            }}
+          >
+            <ProseMirrorDoc />
+            <Menu />
+          </ProseMirror>
+        </div>
       ) : (
         <div className="grow"></div>
       )}
@@ -490,39 +484,3 @@ class DiffStep extends Step {
 }
 
 Step.jsonID("diff", DiffStep);
-
-function createMenuPlugin(setShowMenu: (showMenu: number | undefined) => void) {
-  return new Plugin({
-    view() {
-      return {
-        update(view: EditorView, prevState: EditorState) {
-          const { state } = view;
-          if (state.selection.eq(prevState.selection)) return;
-          if (state.selection.empty) {
-            setShowMenu(undefined);
-          } else {
-            const domAtSelection = view.domAtPos(state.selection.from);
-            const el = getElement(domAtSelection.node);
-            const container = document.getElementsByClassName("ProseMirror")[0];
-            if (!el || !container) return;
-            setShowMenu(
-              container.scrollTop +
-                el.getBoundingClientRect().top -
-                container.getBoundingClientRect().top,
-            );
-          }
-        },
-      };
-    },
-  });
-}
-
-function getElement(node: InstanceType<typeof window.Node>) {
-  if (node instanceof HTMLElement) {
-    return node;
-  } else if (node.parentNode) {
-    return getElement(node.parentNode);
-  } else {
-    return null;
-  }
-}
