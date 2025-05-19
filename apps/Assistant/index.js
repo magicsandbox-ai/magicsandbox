@@ -103,7 +103,7 @@ function App({
   });
   const [conversationSummaries, setConversationSummaries] = useState(
     Object.entries(initConversations)
-      .sort(([, a], [, b]) => b.lastUpdated - a.lastUpdated)
+      .sort(([, a], [, b]) => (b.lastUpdated || 0) - (a.lastUpdated || 0))
       .map(([conversationId, conversation]) => ({
         conversationId,
         summary: conversation.summary,
@@ -144,7 +144,9 @@ function App({
     window.innerWidth > 768,
   );
   const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
-    initConversation.conversationId === "0" && !navigator.webdriver,
+    initConversation.conversationId === "0" &&
+      urlParams._app &&
+      !navigator.webdriver,
   );
 
   const firstRenderRef = useRef(true);

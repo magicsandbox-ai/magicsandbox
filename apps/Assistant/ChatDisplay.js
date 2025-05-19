@@ -21,7 +21,7 @@ function ChatDisplay({
   );
 
   if (!ref.current) {
-    if (lastUserMessageIndex === -1 && messages[0].welcome) {
+    if (lastUserMessageIndex === -1 && messages[0]?.welcome) {
       //special case for welcome message - we should open it at the top
       scrollToBottomRef.current = false;
     } else {
@@ -261,7 +261,7 @@ function createRehypeCode(loading) {
                   children: [
                     {
                       type: "text",
-                      value: loading ? "Executing Script" : "Executed Script",
+                      value: loading ? "Working on it" : "Script complete",
                     },
                   ],
                 },

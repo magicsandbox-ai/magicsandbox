@@ -11,7 +11,7 @@ body {
 }
 
 .ProseMirror {
-  @apply grow overflow-y-auto whitespace-pre-wrap pt-2 focus:outline-none;
+  @apply relative grow overflow-y-auto whitespace-pre-wrap pt-2 focus:outline-none;
 
   h1,
   h2,

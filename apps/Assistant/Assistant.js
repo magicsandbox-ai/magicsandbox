@@ -570,8 +570,9 @@ class Assistant {
         (app) => app.favorited,
       );
       if (
-        favoritedApps.length === 1 &&
-        favoritedApps[0].app === "magicsandbox.Notes"
+        favoritedApps.length === 0 ||
+        (favoritedApps.length === 1 &&
+          favoritedApps[0].app === "magicsandbox.Notes")
       ) {
         systemPrompt += newUserInstructions;
       }

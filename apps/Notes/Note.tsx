@@ -9,6 +9,7 @@ import {
   DecorationSet,
   Decoration,
   type DecorationAttrs,
+  type EditorView,
 } from "prosemirror-view";
 import { Transform, Step, StepResult } from "prosemirror-transform";
 import { Slice, Fragment, Node } from "prosemirror-model";
@@ -60,6 +61,7 @@ function Note({
     undefined,
   );
   const [diff, setDiff] = useState<Diff | undefined>(undefined);
+  const [showMenu, setShowMenu] = useState<number | undefined>(undefined);
 
   const currentNodeRef = useRef<ClonedNode | undefined>(undefined);
   const editorStateRef = useRef<Record<string, EditorState>>({});
@@ -213,6 +215,7 @@ function Note({
             }),
             historyPlugin,
             diffPlugin,
+            createMenuPlugin(setShowMenu),
           ],
         }),
       );
@@ -261,7 +264,7 @@ function Note({
     }
   }
   return (
-    <main className="flex min-w-0 grow flex-col p-3">
+    <main className="relative flex min-w-0 grow flex-col p-3">
       <div
         className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
       >
@@ -271,7 +274,11 @@ function Note({
           notesState={notesState}
         />
         {currentNode.changeData.changeDetails && (
-          <span className="text-right text-xs italic leading-none text-stone-500 md:text-base">
+          //since we can wrap two lines of text, use shrink-[2] to shrink the span more
+          <span
+            className="line-clamp-2 shrink-[2] text-xs italic leading-none text-stone-500 md:text-base"
+            title={currentNode.changeData.changeDetails}
+          >
             ({currentNode.changeData.changeDetails})
           </span>
         )}
@@ -280,6 +287,9 @@ function Note({
         <ProseMirror
           state={editorState}
           dispatchTransaction={(tr) => {
+            //sometimes when typing at the bottom of the note, the view doesn't scroll to the next line
+            //but is there a case where we don't want it to scroll?
+            tr.scrollIntoView();
             const newState = editorState.apply(tr);
             setEditorState(newState);
             //avoid serializing the potentially large doc too frequently
@@ -332,6 +342,16 @@ function Note({
           }}
         >
           <ProseMirrorDoc />
+          {showMenu !== undefined && (
+            <div className="absolute left-0 top-0 z-10">
+              <div
+                className="absolute left-3 bg-stone-200"
+                style={{ top: showMenu }}
+              >
+                Menu
+              </div>
+            </div>
+          )}
         </ProseMirror>
       ) : (
         <div className="grow"></div>
@@ -361,6 +381,10 @@ function NoteTitle({
   notesState: NotesState;
 }) {
   const [renameValue, setRenameValue] = useState(currentNode.nodeData.name);
+
+  useEffect(() => {
+    setRenameValue(currentNode.nodeData.name);
+  }, [currentNode.nodeData.name]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -466,3 +490,39 @@ class DiffStep extends Step {
 }
 
 Step.jsonID("diff", DiffStep);
+
+function createMenuPlugin(setShowMenu: (showMenu: number | undefined) => void) {
+  return new Plugin({
+    view() {
+      return {
+        update(view: EditorView, prevState: EditorState) {
+          const { state } = view;
+          if (state.selection.eq(prevState.selection)) return;
+          if (state.selection.empty) {
+            setShowMenu(undefined);
+          } else {
+            const domAtSelection = view.domAtPos(state.selection.from);
+            const el = getElement(domAtSelection.node);
+            const container = document.getElementsByClassName("ProseMirror")[0];
+            if (!el || !container) return;
+            setShowMenu(
+              container.scrollTop +
+                el.getBoundingClientRect().top -
+                container.getBoundingClientRect().top,
+            );
+          }
+        },
+      };
+    },
+  });
+}
+
+function getElement(node: InstanceType<typeof window.Node>) {
+  if (node instanceof HTMLElement) {
+    return node;
+  } else if (node.parentNode) {
+    return getElement(node.parentNode);
+  } else {
+    return null;
+  }
+}

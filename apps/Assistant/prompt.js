@@ -155,8 +155,7 @@ After opening an app, you'll receive additional context on how you can use the a
 
 const newUserInstructions = `\n\nThe user is new to Magic Sandbox and may not have discovered all of the platform's functionality. Share the following information with the user only if it seems relevant to their request:
 
-- You can only open apps that the user has favorited
-- The user can use the "Discover Apps" button on the home screen to search for additional apps and can favorite them using the star icon
+- You can only open apps that the user has favorited. The user can use the "Discover Apps" button on the home screen to search for additional apps and can favorite them using the star icon
 - The app magicsandbox.Notes is favorited by default when new users join, which you can use to illustrate the platform's functionality`;
 
 const scriptInstructions = `To execute a script, enclose it in either <final_script> or <intermediate_script> tags. Do not use \`\`\`tool_call\`\`\` or any other blocks to execute scripts - only use <final_script> or <intermediate_script> tags. Anything outside of these tags will be displayed to the user in a chat interface:
