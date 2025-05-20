@@ -245,7 +245,7 @@ function SideBar({
   if (showSideBar) {
     const anyChanges = tree.some((node) => node.changeData.change);
     return (
-      <nav className="absolute z-10 flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
+      <nav className="absolute z-20 flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 mb-3 flex justify-between">
           <button onClick={() => setShowSideBar(false)}>
             <Menu />

@@ -19,6 +19,7 @@ import {
   ProseMirror,
   ProseMirrorDoc,
   reactKeys,
+  useEditorEventListener,
 } from "@handlewithcare/react-prosemirror";
 import { diffArrays } from "diff";
 import Approve from "./Approve.tsx";
@@ -263,9 +264,9 @@ function Note({
     }
   }
   return (
-    <main className="flex min-w-0 grow flex-col p-3">
+    <main className="flex min-w-0 grow flex-col">
       <div
-        className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 ${showSideBar ? "" : "pl-8"}`}
+        className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 pr-3 pt-3 md:pt-2 ${showSideBar ? "pl-3" : "pl-11"}`}
       >
         <NoteTitle
           key={currentNode.nodeData.uuid}
@@ -283,7 +284,7 @@ function Note({
         )}
       </div>
       {editorState ? (
-        <div className="relative overflow-y-auto">
+        <div className="relative z-10 h-full min-h-0 grow overflow-y-auto px-3">
           <ProseMirror
             state={editorState}
             dispatchTransaction={(tr) => {
@@ -344,7 +345,8 @@ function Note({
             }}
           >
             <ProseMirrorDoc />
-            <Menu />
+            <Menu editorState={editorState} />
+            <LinkListener />
           </ProseMirror>
         </div>
       ) : (
@@ -428,6 +430,30 @@ function NoteTitle({
       </form>
     </div>
   );
+}
+
+function LinkListener() {
+  useEditorEventListener("click", (_view, event) => {
+    if (
+      event.target instanceof HTMLAnchorElement &&
+      event.target.href &&
+      (event.ctrlKey || event.metaKey)
+    ) {
+      handleOpenUrl(event.target);
+    }
+  });
+  useEditorEventListener("dblclick", (_view, event) => {
+    if (event.target instanceof HTMLAnchorElement && event.target.href) {
+      handleOpenUrl(event.target);
+    }
+  });
+  function handleOpenUrl(target: HTMLAnchorElement) {
+    const href = target.getAttribute("href");
+    if (href) {
+      requestOpenUrl(href.startsWith("http") ? href : `https://${href}`);
+    }
+  }
+  return null;
 }
 
 export default Note;
