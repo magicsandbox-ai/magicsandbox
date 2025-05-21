@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { ErrorBoundary } from "react-error-boundary";
 import { Toasts, type ToastsRef } from "@components/Toasts.tsx";
 import SideBar from "./SideBar.tsx";
 import Info from "./Info.tsx";
@@ -14,7 +15,17 @@ async function init() {
   const allData = await requestGetAllData();
   const { currentNodeUuid, ...nodes } = allData;
   notesState = new NotesState(nodes, currentNodeUuid);
-  createRoot(document.getElementById("root")!).render(<App />);
+  createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary
+      fallback={
+        <div className="flex h-screen items-center justify-center font-bold">
+          😬 Unexpected error occurred. Sorry! Please try again.
+        </div>
+      }
+    >
+      <App />
+    </ErrorBoundary>,
+  );
   return notesState.context(true);
 }
 
