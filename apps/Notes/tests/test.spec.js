@@ -3,7 +3,10 @@ import { test, expect } from "@magicsandbox.ai/test";
 /*
 npm run test notes
 
-todo test input rules
+todos:
+- test input rules
+- test editing menu (bold/italic/etc.)
+- drag and drop
 */
 
 test("Notes", async ({ app }) => {

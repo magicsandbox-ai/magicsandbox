@@ -4,7 +4,7 @@ import {
   defaultMarkdownSerializer,
 } from "prosemirror-markdown";
 import { Transform } from "prosemirror-transform";
-import type { Node } from "prosemirror-model";
+import { type Node } from "prosemirror-model";
 
 /**
  * Parse a markdown string into a Prosemirror document
@@ -23,13 +23,64 @@ function parse(content: string) {
       finalContent += content.slice(prevIndex);
       break;
     } else {
-      finalContent +=
-        content.slice(prevIndex, index) +
-        (content[index + 1] === "\n" ? "\n\n\u200B" : "\n\n");
+      let separator: string;
+      let prevIndexIncrement: number;
+      if (content[index + 1] === ">") {
+        //blockquote case
+        if (
+          content[index + 2] === "\n" ||
+          content.slice(index + 2, index + 4) === " \n"
+        ) {
+          //consecutive newlines, use a zero width space to preserve empty paragraph
+          //both >\n and > \n are treated as empty newlines
+          separator = "\n>\n>\u200B";
+        } else {
+          //single newline, but we need two newlines in markdown to separate paragraphs
+          separator = "\n>\n>";
+        }
+        prevIndexIncrement = 2; //handled "\n>"
+      } else {
+        if (content[index + 1] === "\n") {
+          //consecutive newlines, use a zero width space to preserve empty paragraph
+          separator = "\n\n\u200B";
+        } else {
+          //single newline, but we need two newlines in markdown to separate paragraphs
+          separator = "\n\n";
+        }
+        prevIndexIncrement = 1; //handled "\n"
+      }
+      finalContent += content.slice(prevIndex, index) + separator;
+      prevIndex = index + prevIndexIncrement;
     }
-    prevIndex = index + 1;
   }
-  return defaultMarkdownParser.parse(finalContent);
+  const doc = defaultMarkdownParser.parse(finalContent);
+  //newlines in paragraphs were already fine, so undo the change we just made
+  const codeBlocks: { from: number; to: number; text: string }[] = [];
+  doc.descendants((node, pos) => {
+    if (node.isTextblock) {
+      if (node.type.name === "code_block") {
+        codeBlocks.push({
+          from: pos + 1, //the start of the code block counts as one token
+          to: pos + node.nodeSize,
+          text: node.textContent,
+        });
+      }
+      return false; //don't iterate over children
+    }
+  });
+  const transform = new Transform(doc);
+  for (const codeBlock of codeBlocks) {
+    transform.replaceWith(
+      codeBlock.from,
+      codeBlock.to,
+      schema.text(
+        codeBlock.text
+          .slice(1, codeBlock.text.length - 1) //remove extra newline at the start and end of the code block
+          .replace(/\n\n\u200B?/g, "\n"),
+      ),
+    );
+  }
+  return transform.doc;
 }
 
 /**
@@ -53,8 +104,8 @@ function serialize(doc: Node) {
   }
   const serialized = defaultMarkdownSerializer.serialize(transform.doc);
   return serialized
-    .replace(/\u200B\n\n/g, "\n") // Replace zero width space followed by two newlines with single newline
-    .replace(/\u200B/g, ""); // Remove all other zero width spaces
+    .replace(/\u200B\n>?\n/g, "\n") // Replace zero width space followed by two newlines with single newline. the ">?" handles blockquotes
+    .replace(/\u200B/g, ""); // Remove all other zero width spaces (handle final paragraph - other edge cases?)
 }
 
 export { parse, serialize, schema };

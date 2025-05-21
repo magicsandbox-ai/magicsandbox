@@ -675,7 +675,7 @@ class NotesState extends SyncExternalStore<{
     const currentContext = this._context(init);
     const logNotesInstruction = init
       ? "Because the app has just opened, there are no notes in context. First, run a script that uses `app.api.logNotes` to log notes that are relevant to the user's request. Then, use the notes you logged as context to solve the user's request."
-      : "Use `app.api.logNotes` sparingly and try to solve the user's request given the context provided. Only use `app.api.logNotes` if it's clear that the user expects you to reference a note that's not currently in context.";
+      : "Use `app.api.logNotes` sparingly and try to solve the user's request given the context provided. Only use `app.api.logNotes` if it's clear that the user expects you to reference a note that's not currently in context. If you've had to log notes multiple times, explain to the user how they can manage which notes appear in context.";
     return `# magicsandbox.Notes
 
 magicsandbox.Notes lets users take notes in a hierarchical folder structure.
@@ -763,6 +763,23 @@ Delete existing notes or folders. Note that when a folder is deleted, all of its
 
 Logs the content of existing notes so that you can reference them in your next message.
 
+### app.api.getAllNodes(): Node[]
+
+Returns an array all the user's notes and folders. The node's ID is its index in the array. Use this sparingly. However, it can enable more complex workflows, like if the user asks "download all my notes that contain the word 'foo'":
+
+~~~typescript
+interface Node {
+  name: string;
+  content?: string; //populated for notes
+}
+const nodes = app.api.getAllNodes();
+for (const node of nodes) {
+  if (node.content?.includes("foo")) {
+    requestDownload(\`\${node.name}.md\`, node.content);
+  }
+}
+~~~
+
 ## Instructions
 
 - If the user is simply asking a question about their notes, just answer it.
@@ -770,6 +787,7 @@ Logs the content of existing notes so that you can reference them in your next m
 - If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
 - The user can see the name of the note at the top of the page, so don't create a redundant heading with the note's name. For example, if adding a note named "My Note", don't begin the note with "# My Note...".
 - Avoid making changes to many notes or renaming/moving/deleting nodes unless the user specifically asks (e.g. "reorganize all my notes").
+- If creating a note with quotes in it, be sure to escape them properly. Double check that you've escaped quotes properly if you see an error in the logs.
 - ${logNotesInstruction}
 `;
   }
@@ -905,6 +923,13 @@ ${contextString}
 ${note.nodeData.content}
 </(${note.treeData.id}) ${note.nodeData.name}>`);
     });
+  }
+  apiGetAllNodes() {
+    return this.tree.map((node) => ({
+      name: node.nodeData.name,
+      //@ts-ignore
+      content: node.nodeData?.content,
+    }));
   }
   _getAndCreateFolders(parentId: string | number, folders?: string[]): string {
     let parent;

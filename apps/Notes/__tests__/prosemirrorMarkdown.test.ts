@@ -27,4 +27,18 @@ describe("prosemirrorMarkdown", () => {
       }
     }
   });
+
+  test("code block", () => {
+    const content = "```\nfoo\nbar\n\nbaz\n```";
+    const doc = parse(content);
+    const serialized = serialize(doc);
+    expect(serialized).toBe(content);
+  });
+
+  test("blockquote", () => {
+    const content = "> foo\n> bar\n> \n> baz\n> \n> \n> qux";
+    const doc = parse(content);
+    const serialized = serialize(doc);
+    expect(serialized).toBe(content);
+  });
 });

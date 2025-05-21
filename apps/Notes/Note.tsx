@@ -350,7 +350,7 @@ function Note({
       )}
       {currentNode.changeData.change && (
         <Approve
-          containerClassName="flex-col gap-1.5 md:flex-row md:gap-6"
+          containerClassName="flex-col gap-1.5 md:flex-row md:gap-6 pb-3"
           approveText={`Approve changes to this ${currentNode.nodeData.type}`}
           approveOnClick={() =>
             notesState.approveChange(currentNode.nodeData.uuid)

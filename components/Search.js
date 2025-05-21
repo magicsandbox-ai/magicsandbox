@@ -188,14 +188,12 @@ function DisplayMatch({ displayMatch }) {
   return (
     <div>
       {displayMatch.map((item, index) => (
-        <React.Fragment key={index}>
-          {index > 0 ? " " : ""}
-          <span
-            className={`text-sm text-stone-600 ${item.isMatch ? "font-bold" : ""}`}
-          >
-            {item.text}
-          </span>
-        </React.Fragment>
+        <span
+          key={index}
+          className={`text-sm text-stone-600 ${item.isMatch ? "font-bold" : ""}`}
+        >
+          {item.text}
+        </span>
       ))}
     </div>
   );

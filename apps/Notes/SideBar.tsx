@@ -245,7 +245,7 @@ function SideBar({
   if (showSideBar) {
     const anyChanges = tree.some((node) => node.changeData.change);
     return (
-      <nav className="absolute z-20 flex h-full w-64 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static">
+      <nav className="absolute z-20 flex h-full w-72 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static md:w-64">
         <div className="mx-3 mb-3 flex justify-between">
           <button onClick={() => setShowSideBar(false)}>
             <Menu />
@@ -393,12 +393,12 @@ function Node({
     setRenameValue(undefined);
   }
 
-  const baseClassName = "rounded-lg px-2 py-0.5 text-sm ";
+  const baseClassName = "rounded-lg px-2 md:text-sm ";
   const renameClassName =
-    baseClassName + "grow border border-stone-500 bg-white";
+    baseClassName + "grow border border-stone-500 bg-white py-0.5";
   let nodeClassName =
     baseClassName +
-    `group flex items-center gap-2 hover:bg-stone-300 ${
+    `group flex items-center gap-2 hover:bg-stone-300 touch-none ${
       notesState.currentNodeUuid === node.nodeData.uuid
         ? "outline outline-1 outline-stone-500 "
         : ""
@@ -408,8 +408,8 @@ function Node({
   } else if (notesState.currentNodeUuid === node.nodeData.uuid) {
     nodeClassName += "bg-stone-200";
   }
-  let nameClassName = "grow truncate text-left";
-  const iconClassName = "w-4 h-4";
+  let nameClassName = "grow truncate text-left py-0.5";
+  const iconClassName = "size-6 md:size-5";
   const hoverButtonClassName =
     "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
 
@@ -523,7 +523,11 @@ function Node({
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
+      tabIndex={attributes.tabIndex}
+      {...Object.fromEntries(
+        //not sure this should have role button...plus it breaks playwright tests
+        Object.entries(attributes).filter(([key]) => key !== "role"),
+      )}
       {...listeners}
       className={nodeClassName}
       title={`${node.nodeData.name}${node.changeData.changeDetails ? ` (${node.changeData.changeDetails})` : ""}`}

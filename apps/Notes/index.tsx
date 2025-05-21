@@ -126,6 +126,7 @@ const api = {
     notesState!.apiDeleteNodes(...args),
   logNotes: (...args: Parameters<NotesState["apiLogNotes"]>) =>
     notesState!.apiLogNotes(...args),
+  getAllNodes: () => notesState!.apiGetAllNodes(),
 };
 
 export { init, context, api };

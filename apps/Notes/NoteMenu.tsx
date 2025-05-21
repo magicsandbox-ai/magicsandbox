@@ -107,8 +107,23 @@ const setHeading2Type = setBlockType(schema.nodes.heading, { level: 2 });
 const setHeading3Type = setBlockType(schema.nodes.heading, { level: 3 });
 const wrapInBulletList = wrapInList(schema.nodes.bullet_list);
 const wrapInOrderedList = wrapInList(schema.nodes.ordered_list);
-const setCodeBlockType = setBlockType(schema.nodes.code_block);
 const wrapInBlockquote = wrapIn(schema.nodes.blockquote);
+
+function setCodeBlockType(
+  state: EditorState,
+  dispatch: (tr: Transaction) => void,
+) {
+  const tr = state.tr;
+  tr.replaceSelectionWith(
+    schema.nodes.code_block.create(
+      null,
+      schema.text(
+        state.doc.textBetween(state.selection.from, state.selection.to, "\n"),
+      ),
+    ),
+  );
+  dispatch(tr);
+}
 
 function addLinkMark(
   state: EditorState,
@@ -300,7 +315,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       if (markup.type === "code_block") {
         clearBlocks(view.state, dispatch);
       } else {
-        setCodeBlockType(view.state, dispatch, view);
+        setCodeBlockType(view.state, dispatch);
       }
     } else if (buttonAttr === "blockquote") {
       if (markup.type === "blockquote") {
