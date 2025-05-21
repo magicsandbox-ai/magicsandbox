@@ -33,25 +33,28 @@ function parse(content: string) {
 }
 
 /**
- * Serialize a Prosemirror document to a markdown string
+ * Serialize a Prosemirror document to a markdown string.
+ * For better compatibility with other tools, we want (1) to use single newlines for paragraph breaks, and (2) to preserve multiple empty lines.
  *
  * Changes the default behavior of the markdown serializer:
  * - before serializing, insert a zero width space into empty paragraphs to preserve multiple empty lines
  * - after serializing, replace two newline paragraph breaks with a single newline and remove the zero width spaces
  */
 function serialize(doc: Node) {
-  const emptyParagraphs: number[] = [];
+  const paragraphs: number[] = [];
   doc.descendants((node, pos) => {
-    if (node.type.name === "paragraph" && node.textContent === "") {
-      emptyParagraphs.push(pos);
+    if (node.type.name === "paragraph") {
+      paragraphs.push(pos + node.nodeSize - 1);
     }
   });
   const transform = new Transform(doc);
-  for (const pos of emptyParagraphs) {
+  for (const pos of paragraphs) {
     transform.insert(transform.mapping.map(pos), schema.text("\u200B"));
   }
   const serialized = defaultMarkdownSerializer.serialize(transform.doc);
-  return serialized.replace(/\n\n\u200B?/g, "\n");
+  return serialized
+    .replace(/\u200B\n\n/g, "\n") // Replace zero width space followed by two newlines with single newline
+    .replace(/\u200B/g, ""); // Remove all other zero width spaces
 }
 
 export { parse, serialize, schema };

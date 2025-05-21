@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
-import { wrapInList } from "prosemirror-schema-list";
+import { wrapInList, liftListItem } from "prosemirror-schema-list";
 import { Plugin, type EditorState, type Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import {
@@ -124,6 +124,8 @@ function addLinkMark(
   dispatch(tr);
 }
 
+const liftListItemCommand = liftListItem(schema.nodes.list_item);
+
 function clearBlocks(state: EditorState, dispatch: (tr: Transaction) => void) {
   const tr = state.tr;
   state.doc.nodesBetween(
@@ -138,7 +140,8 @@ function clearBlocks(state: EditorState, dispatch: (tr: Transaction) => void) {
         node.type.name === "bullet_list" ||
         node.type.name === "ordered_list"
       ) {
-        //todo
+        //todo this doesn't actually remove nested lists which could be annoying, but I can't figure it out
+        liftListItemCommand(state, dispatch);
       } else if (node.isBlock) {
         //blockquote
         tr.replaceWith(pos, pos + node.nodeSize, node.content);

@@ -28,9 +28,7 @@ import type { ClonedNode } from "./NotesState.ts";
 import { Menu, createSelectPlugin } from "./NoteMenu.tsx";
 
 /*
-menu? need prosemirror-view/style/prosemirror.css? just need container relative?
 display keyboard shortcuts somewhere
-allow creating links
 plugin to display ctrl+enter to exit code block when selection is in code block (maybe even then only on enter), instead of on hover
 escaping/deleting blocks in general can be kind of annoying
 pasting images?
@@ -323,7 +321,6 @@ function Note({
                 } else {
                   const fragment = recurse(item.content) as Fragment;
                   let node;
-
                   if (
                     item.type.isBlock &&
                     item.content.size === 1 &&
@@ -333,7 +330,6 @@ function Note({
                   } else {
                     node = item.copy(fragment);
                   }
-
                   return node;
                 }
               }

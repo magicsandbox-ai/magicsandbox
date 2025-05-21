@@ -15,10 +15,16 @@ const testCases = [
 describe("prosemirrorMarkdown", () => {
   test("works", () => {
     for (const content of testCases) {
-      const doc = parse(content);
-      expect(doc.content.content.length).toBe(content.split("\n").length);
-      const serialized = serialize(doc);
-      expect(serialized).toBe(content);
+      try {
+        const doc = parse(content);
+        expect(doc.content.content.length).toBe(content.split("\n").length);
+        const serialized = serialize(doc);
+        expect(serialized).toBe(content);
+      } catch (error) {
+        throw new Error(
+          `Test failed for case: ${JSON.stringify(content)}\n${(error as Error).message}`,
+        );
+      }
     }
   });
 });
