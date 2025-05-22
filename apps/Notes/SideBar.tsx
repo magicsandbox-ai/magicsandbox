@@ -15,7 +15,8 @@ import {
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   KeyboardCode,
@@ -33,6 +34,8 @@ import { CSS } from "@dnd-kit/utilities";
 import Approve from "./Approve.tsx";
 import type NotesState from "./NotesState.ts";
 import type { TreeNode, TreeFolder, TreeNote } from "./NotesState.ts";
+
+declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
 
 const DEPTH_INDENT = 16;
 
@@ -61,10 +64,16 @@ function SideBar({
   const [dragUuid, setDragUuid] = useState<string | undefined>(undefined);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         delay: 100,
-        tolerance: 5,
+        tolerance: 32,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: dragUuid ? 100 : 1000 * 60 * 60, //use extreme delay to disable touch sensor
+        tolerance: 32,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -245,8 +254,8 @@ function SideBar({
   if (showSideBar) {
     const anyChanges = tree.some((node) => node.changeData.change);
     return (
-      <nav className="absolute z-20 flex h-full w-72 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 md:static md:w-64">
-        <div className="mx-3 mb-3 flex justify-between">
+      <nav className="absolute z-20 flex h-full w-72 flex-none flex-col border-r border-stone-500 bg-stone-100 pt-3 lg:static lg:w-64">
+        <div className="mx-3 flex justify-between">
           <button onClick={() => setShowSideBar(false)}>
             <Menu />
             <span className="sr-only">Close menu</span>
@@ -306,7 +315,7 @@ function SideBar({
             strategy={verticalListSortingStrategy}
           >
             {/* relative is needed to prevent sr-only from causing weird scrollbars */}
-            <div className="relative grow space-y-0.5 overflow-y-auto px-3">
+            <div className="relative grow space-y-0.5 overflow-y-auto p-3">
               {tree
                 .filter((node) => node.treeData.display)
                 .map((node, index) => (
@@ -321,6 +330,8 @@ function SideBar({
                       isDragParent: dragParentUuid === node.nodeData.uuid,
                       isDragging: dragUuid === node.nodeData.uuid,
                       setShowSideBar,
+                      dragUuid,
+                      setDragUuid,
                     }}
                   />
                 ))}
@@ -359,6 +370,8 @@ function Node({
   isDragParent,
   isDragging,
   setShowSideBar,
+  dragUuid,
+  setDragUuid,
 }: {
   notesState: NotesState;
   node: TreeNode;
@@ -368,8 +381,11 @@ function Node({
   isDragParent: boolean;
   isDragging: boolean;
   setShowSideBar: (showSideBar: boolean) => void;
+  dragUuid: string | undefined;
+  setDragUuid: (dragUuid: string | undefined) => void;
 }) {
   const [renameValue, setRenameValue] = useState<string | undefined>(undefined);
+
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: node.nodeData.uuid, data: { index: index } });
 
@@ -393,25 +409,25 @@ function Node({
     setRenameValue(undefined);
   }
 
-  const baseClassName = "rounded-lg px-2 md:text-sm ";
+  const baseClassName = "rounded-lg px-2 lg:text-sm ";
   const renameClassName =
     baseClassName + "grow border border-stone-500 bg-white py-0.5";
   let nodeClassName =
     baseClassName +
-    `group flex items-center gap-2 hover:bg-stone-300 touch-none ${
+    `group flex items-center gap-2 hover:bg-stone-300 ${
       notesState.currentNodeUuid === node.nodeData.uuid
         ? "outline outline-1 outline-stone-500 "
         : ""
     }`;
   if (isDragParent || isDragging) {
-    nodeClassName += "bg-blue-200";
+    nodeClassName += "bg-blue-200 hover:bg-blue-200 touch-none";
   } else if (notesState.currentNodeUuid === node.nodeData.uuid) {
     nodeClassName += "bg-stone-200";
   }
-  let nameClassName = "grow truncate text-left py-0.5";
-  const iconClassName = "size-6 md:size-5";
+  let nameClassName = "grow truncate text-left py-1 lg:py-0.5";
+  const iconClassName = "size-6 lg:size-5";
   const hoverButtonClassName =
-    "md:opacity-0 md:focus:opacity-100 md:group-hover:opacity-100"; //buttons need to appear on mobile
+    "lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100"; //buttons need to appear on mobile
 
   if (renameValue !== undefined) {
     return (
@@ -430,6 +446,61 @@ function Node({
       </form>
     );
   }
+  function handleClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.ctrlKey || event.metaKey) {
+      const descendants = notesState.getDescendants(node.nodeData.uuid);
+      let newChecked = false; //if all notes are checked, we'll uncheck
+      for (const node of descendants) {
+        if (node.isNote() && !node.nodeData.checked) {
+          newChecked = true; //but if a single note is unchecked, we'll check
+        }
+      }
+      for (const node of descendants) {
+        if (node.isNote() && node.nodeData.checked !== newChecked) {
+          notesState.updateNode({
+            uuid: node.nodeData.uuid,
+            checked: newChecked,
+          });
+        } else if (node.isFolder() && node.nodeData.collapsed) {
+          notesState.updateNode({
+            uuid: node.nodeData.uuid,
+            collapsed: false,
+          });
+        }
+      }
+    }
+  }
+
+  //kind of a hack - this needs to be added to onKeyDownCapture to avoid interfering with KeyboardSensor, which uses onKeyDown
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Delete") {
+      handleDelete(node.nodeData.uuid);
+    }
+  }
+
+  //same thing - use onTouchStartCapture to avoid interfering with TouchSensor
+  function handleTouchStart() {
+    if (dragUuid && dragUuid !== node.nodeData.uuid) {
+      setDragUuid(undefined); //possibly scrolling or selecting a different node - end the drag
+    }
+    let timeout: number | undefined;
+    timeout = setTimeout(() => {
+      //long press - start drag
+      setDragUuid(node.nodeData.uuid);
+      timeout = undefined;
+    }, 500);
+    const handleTouchEnd = () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      } else {
+        //this was a long press - the note click handler may try to close the sidebar - undo it on long press
+        setShowSideBar(true);
+      }
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+    document.addEventListener("touchend", handleTouchEnd);
+  }
+
   let changesComponent;
   const changesClassName = `font-bold font-mono `;
   if (node.changeData.change === "new") {
@@ -487,38 +558,6 @@ function Node({
     );
   }
 
-  function handleClick(event: React.MouseEvent<HTMLDivElement>) {
-    if (event.ctrlKey || event.metaKey) {
-      const descendants = notesState.getDescendants(node.nodeData.uuid);
-      let newChecked = false; //if all notes are checked, we'll uncheck
-      for (const node of descendants) {
-        if (node.isNote() && !node.nodeData.checked) {
-          newChecked = true; //but if a single note is unchecked, we'll check
-        }
-      }
-      for (const node of descendants) {
-        if (node.isNote() && node.nodeData.checked !== newChecked) {
-          notesState.updateNode({
-            uuid: node.nodeData.uuid,
-            checked: newChecked,
-          });
-        } else if (node.isFolder() && node.nodeData.collapsed) {
-          notesState.updateNode({
-            uuid: node.nodeData.uuid,
-            collapsed: false,
-          });
-        }
-      }
-    }
-  }
-
-  //kind of a hack - this needs to be added to onKeyDownCapture to avoid interfering with KeyboardSensor, which uses onKeyDown
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Delete") {
-      handleDelete(node.nodeData.uuid);
-    }
-  }
-
   return (
     <div
       ref={setNodeRef}
@@ -533,6 +572,7 @@ function Node({
       title={`${node.nodeData.name}${node.changeData.changeDetails ? ` (${node.changeData.changeDetails})` : ""}`}
       onClick={handleClick}
       onKeyDownCapture={handleKeyDown}
+      onTouchStartCapture={handleTouchStart}
     >
       {component}
     </div>
@@ -583,7 +623,16 @@ function Folder({
       <button
         className={nameClassName}
         onClick={() => {
+          const collapsed = node.nodeData.collapsed;
           notesState.setCurrentNodeUuid(node.nodeData.uuid);
+          //if collapsed, setting current uncollapses
+          //if not collapsed, collapse it
+          if (!collapsed) {
+            notesState.updateNode({
+              uuid: node.nodeData.uuid,
+              collapsed: true,
+            });
+          }
         }}
         onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >
@@ -664,7 +713,7 @@ function Note({
         className={`${nameClassName} ${node.treeData.inContext ? "font-bold" : ""}`}
         onClick={() => {
           notesState.setCurrentNodeUuid(node.nodeData.uuid);
-          if (window.innerWidth < 768) {
+          if (window.innerWidth < 1024) {
             setShowSideBar(false);
           }
         }}

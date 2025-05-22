@@ -264,7 +264,7 @@ function Note({
   return (
     <main className="flex min-w-0 grow flex-col">
       <div
-        className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 pr-3 pt-3 md:pt-2 ${showSideBar ? "pl-3" : "pl-11"}`}
+        className={`flex max-w-full cursor-default items-end justify-between border-b border-stone-300 pb-1 pr-3 pt-3 lg:pt-2 ${showSideBar ? "pl-11 lg:pl-3" : "pl-11"}`}
       >
         <NoteTitle
           key={currentNode.nodeData.uuid}
@@ -274,7 +274,7 @@ function Note({
         {currentNode.changeData.changeDetails && (
           //since we can wrap two lines of text, use shrink-[2] to shrink the span more
           <span
-            className="line-clamp-2 shrink-[2] text-xs italic leading-none text-stone-500 md:text-base"
+            className="line-clamp-2 shrink-[2] text-xs italic leading-none text-stone-500 lg:text-base"
             title={currentNode.changeData.changeDetails}
           >
             ({currentNode.changeData.changeDetails})
@@ -399,7 +399,7 @@ function NoteTitle({
     0,
     -1 * currentNode.nodeData.name.length,
   );
-  const baseClassName = "md:text-2xl font-bold ";
+  const baseClassName = "lg:text-2xl font-bold ";
 
   return (
     <div className="flex min-w-0 grow">

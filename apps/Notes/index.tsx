@@ -30,7 +30,7 @@ async function init() {
 }
 
 function App() {
-  const [showSideBar, setShowSideBar] = useState(window.innerWidth >= 768);
+  const [showSideBar, setShowSideBar] = useState(window.innerWidth >= 1024);
   const [showInfo, setShowInfo] = useState(false);
   const [deleteUuid, setDeleteUuid] = useState<string | undefined>(undefined);
   const [showSearch, setShowSearch] = useState(false);
@@ -74,10 +74,10 @@ function App() {
       className="flex h-screen w-screen"
       onClick={(e) => {
         if (
-          window.innerWidth < 768 &&
+          window.innerWidth < 1024 &&
           showSideBar &&
           e.target instanceof Element &&
-          !e.target.closest("nav")
+          e.target.closest("main")
         ) {
           setShowSideBar(false);
         }

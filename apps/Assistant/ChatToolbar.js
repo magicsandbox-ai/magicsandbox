@@ -28,7 +28,8 @@ export default function ChatToolbar({
           <span className="sr-only">New chat</span>
         </button>
         <button
-          className="hidden md:block"
+          //we guarantee the app has at least 1024px, and we need at least 336px for the docked chat to look reasonable
+          className="hidden min-[1360px]:block"
           onClick={() => {
             setDocked(!docked);
           }}

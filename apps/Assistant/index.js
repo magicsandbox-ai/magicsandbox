@@ -449,7 +449,7 @@ function App({
                 />
               )}
               <ChatDisplay
-                outerClassName="py-6 flex grow flex-col items-center"
+                outerClassName="py-6 flex w-[336px] grow flex-col items-center"
                 innerClassName="w-full max-w-screen-lg"
                 messages={messages}
                 assistantRef={assistantRef}
@@ -460,7 +460,7 @@ function App({
           )}
           <Sandbox
             ref={sandboxRef}
-            className={`w-full ${app !== null ? "flex-1" : "hidden"}`}
+            className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
           />
         </div>
         {(messages.length > 0 || app !== null) && (
