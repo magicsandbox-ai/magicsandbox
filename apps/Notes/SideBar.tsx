@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore, useState } from "react";
+import React, { useSyncExternalStore, useState, useEffect } from "react";
 import {
   Menu,
   Info,
@@ -62,6 +62,13 @@ function SideBar({
     undefined,
   );
   const [dragUuid, setDragUuid] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const el = document.getElementById(notesState.currentNodeUuid);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [notesState.currentNodeUuid]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -329,7 +336,6 @@ function SideBar({
                       index,
                       isDragParent: dragParentUuid === node.nodeData.uuid,
                       isDragging: dragUuid === node.nodeData.uuid,
-                      setShowSideBar,
                       dragUuid,
                       setDragUuid,
                     }}
@@ -369,7 +375,6 @@ function Node({
   index,
   isDragParent,
   isDragging,
-  setShowSideBar,
   dragUuid,
   setDragUuid,
 }: {
@@ -380,7 +385,6 @@ function Node({
   index: number;
   isDragParent: boolean;
   isDragging: boolean;
-  setShowSideBar: (showSideBar: boolean) => void;
   dragUuid: string | undefined;
   setDragUuid: (dragUuid: string | undefined) => void;
 }) {
@@ -492,9 +496,6 @@ function Node({
     const handleTouchEnd = () => {
       if (timeout) {
         clearTimeout(timeout);
-      } else {
-        //this was a long press - the note click handler may try to close the sidebar - undo it on long press
-        setShowSideBar(true);
       }
       document.removeEventListener("touchend", handleTouchEnd);
     };
@@ -552,7 +553,6 @@ function Node({
           node,
           setRenameValue,
           changesComponent,
-          setShowSideBar,
         }}
       />
     );
@@ -560,6 +560,7 @@ function Node({
 
   return (
     <div
+      id={node.nodeData.uuid}
       ref={setNodeRef}
       style={style}
       tabIndex={attributes.tabIndex}
@@ -666,7 +667,6 @@ function Note({
   node,
   setRenameValue,
   changesComponent,
-  setShowSideBar,
 }: {
   notesState: NotesState;
   nameClassName: string;
@@ -675,7 +675,6 @@ function Note({
   node: TreeNote;
   setRenameValue: (value: string) => void;
   changesComponent: React.ReactNode;
-  setShowSideBar: (showSideBar: boolean) => void;
 }) {
   function handleCheck() {
     notesState.updateNode({
@@ -713,9 +712,11 @@ function Note({
         className={`${nameClassName} ${node.treeData.inContext ? "font-bold" : ""}`}
         onClick={() => {
           notesState.setCurrentNodeUuid(node.nodeData.uuid);
-          if (window.innerWidth < 1024) {
-            setShowSideBar(false);
-          }
+          //this would be convenient, but it breaks the long press for drag and drop
+          //and I can't seem to figure out the race condition between click and touch events
+          // if (window.innerWidth < 1024) {
+          //   setShowSideBar(false);
+          // }
         }}
         onDoubleClick={() => setRenameValue(node.nodeData.name)}
       >

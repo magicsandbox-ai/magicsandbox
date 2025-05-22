@@ -122,6 +122,15 @@ function setCodeBlockType(
       ),
     ),
   );
+  // creating the code block does not preserve the selection, which is annoying
+  // but this doesn't work for some reason
+  // tr.setSelection(
+  //   TextSelection.create(
+  //     tr.doc,
+  //     tr.mapping.map(state.selection.anchor),
+  //     tr.mapping.map(state.selection.head),
+  //   ),
+  // );
   dispatch(tr);
 }
 
@@ -192,7 +201,8 @@ function clearNodeMark(
 
 function Menu({ editorState }: { editorState: EditorState }) {
   const [menuPos, setMenuPos] = useState<
-    { top: number; left: number; urlTop: number | undefined } | undefined
+    | { top: number; above: boolean; left: number; urlTop: number | undefined }
+    | undefined
   >(undefined);
   const [linkHref, setLinkHref] = useState<string | undefined>(undefined);
 
@@ -206,42 +216,48 @@ function Menu({ editorState }: { editorState: EditorState }) {
       setLinkHref(undefined);
     } else {
       const markup = getSelectionMarkup(view.state);
+      if (
+        !(
+          menuPos === undefined ||
+          (menuPos.urlTop !== undefined) !== (markup.linkHref !== undefined)
+        )
+      ) {
+        //we can keep going if:
+        // - menuPos is undefined, we'll update the whole thing
+        // - the url has changed, we'll update only urlTop
+        return;
+      }
       const containerRect = view.dom.getBoundingClientRect();
       const selectionRect = view.coordsAtPos(view.state.selection.anchor);
-      let newTop =
-        selectionRect.top -
-        containerRect.top -
-        (selectionRect.bottom - selectionRect.top) -
-        8;
+      //if menuPos is defined, we won't update top or left. this is to prevent it moving when clicking h1 for example
+      let top = menuPos?.top || selectionRect.top - containerRect.top - 40;
+      let above = menuPos?.above ?? top >= 0;
+      if (!above) {
+        top = selectionRect.bottom - containerRect.top + 8;
+      }
+      const left =
+        menuPos?.left ||
+        Math.min(
+          Math.max(selectionRect.left - containerRect.left - 16, 12),
+          containerRect.width - 312,
+        );
       let urlTop: number | undefined;
       if (markup.linkHref !== undefined) {
-        urlTop = (selectionRect.bottom - selectionRect.top) * 2 + 12;
         if (linkHref === undefined) {
           setLinkHref(markup.linkHref);
         }
-      }
-      if (newTop < 0) {
-        newTop = selectionRect.bottom - containerRect.top + 8;
-        if (markup.linkHref !== undefined) {
-          urlTop = 32;
+        if (above) {
+          urlTop = selectionRect.bottom - selectionRect.top + 48;
+        } else {
+          urlTop = 40;
         }
       }
-      const newPos = {
-        top: newTop,
-        left: Math.min(
-          Math.max(selectionRect.left - containerRect.left - 16, 12),
-          containerRect.width - 232,
-        ),
+      setMenuPos({
+        top,
+        above,
+        left,
         urlTop,
-      };
-      if (
-        !menuPos ||
-        Math.abs(menuPos.top - newPos.top) > 1 ||
-        Math.abs(menuPos.left - newPos.left) > 1 ||
-        Math.abs((menuPos.urlTop || 0) - (newPos.urlTop || 0)) > 1
-      ) {
-        setMenuPos(newPos);
-      }
+      });
     }
   });
 
@@ -342,8 +358,9 @@ function Menu({ editorState }: { editorState: EditorState }) {
 
   const markup = getSelectionMarkup(editorState);
 
-  const iconClassName = "size-4";
-  const activeClassName = " bg-stone-200";
+  const iconClassName =
+    "note-menu-icon lg:hover:outline lg:hover:outline-2 lg:hover:outline-stone-700";
+  const activeClassName = iconClassName + " bg-stone-200";
 
   return (
     <div
@@ -359,23 +376,21 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Bold" data-menu="strong">
         <Bold
           className={
-            iconClassName + (markup.marks.has("strong") ? activeClassName : "")
+            markup.marks.has("strong") ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Bold</span>
       </button>
       <button title="Italic" data-menu="em">
         <Italic
-          className={
-            iconClassName + (markup.marks.has("em") ? activeClassName : "")
-          }
+          className={markup.marks.has("em") ? activeClassName : iconClassName}
         />
         <span className="sr-only">Italic</span>
       </button>
       <button title="Heading 1" data-menu="heading1">
         <Heading1
           className={
-            iconClassName + (markup.type === "heading1" ? activeClassName : "")
+            markup.type === "heading1" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Heading 1</span>
@@ -383,7 +398,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Heading 2" data-menu="heading2">
         <Heading2
           className={
-            iconClassName + (markup.type === "heading2" ? activeClassName : "")
+            markup.type === "heading2" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Heading 2</span>
@@ -391,7 +406,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Heading 3" data-menu="heading3">
         <Heading3
           className={
-            iconClassName + (markup.type === "heading3" ? activeClassName : "")
+            markup.type === "heading3" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Heading 3</span>
@@ -399,8 +414,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Link" data-menu="link">
         <Link
           className={
-            iconClassName +
-            (markup.linkHref !== undefined ? activeClassName : "")
+            markup.linkHref !== undefined ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Link</span>
@@ -422,8 +436,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Bullet List" data-menu="bullet_list">
         <List
           className={
-            iconClassName +
-            (markup.type === "bullet_list" ? activeClassName : "")
+            markup.type === "bullet_list" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Bullet List</span>
@@ -431,8 +444,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Ordered List" data-menu="ordered_list">
         <ListOrdered
           className={
-            iconClassName +
-            (markup.type === "ordered_list" ? activeClassName : "")
+            markup.type === "ordered_list" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Ordered List</span>
@@ -440,8 +452,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Code Block" data-menu="code_block">
         <Code
           className={
-            iconClassName +
-            (markup.type === "code_block" ? activeClassName : "")
+            markup.type === "code_block" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Code Block</span>
@@ -449,8 +460,7 @@ function Menu({ editorState }: { editorState: EditorState }) {
       <button title="Blockquote" data-menu="blockquote">
         <MessageSquareQuote
           className={
-            iconClassName +
-            (markup.type === "blockquote" ? activeClassName : "")
+            markup.type === "blockquote" ? activeClassName : iconClassName
           }
         />
         <span className="sr-only">Blockquote</span>
