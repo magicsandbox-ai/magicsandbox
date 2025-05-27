@@ -86,7 +86,12 @@ function Note({
     }
     let newDoc, newDiff;
     if (prevContent === undefined || content === prevContent) {
-      newDoc = parse(content);
+      try {
+        newDoc = parse(content);
+      } catch (error) {
+        console.error(error);
+        newDoc = parse("");
+      }
     } else {
       const diff = diffArrays(prevContent.split("\n"), content.split("\n"), {
         oneChangePerToken: true,
@@ -102,7 +107,12 @@ function Note({
           }
         })
         .join("\n");
-      newDoc = parse(diffedContent);
+      try {
+        newDoc = parse(diffedContent);
+      } catch (error) {
+        console.error(error);
+        newDoc = parse("");
+      }
       let prevNode: "added" | "removed" | undefined;
       const decorations: {
         from: number;

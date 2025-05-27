@@ -386,18 +386,7 @@ function App({
   }
 
   return (
-    <main
-      className="flex h-screen"
-      onClick={(e) => {
-        if (
-          window.innerWidth <= 768 &&
-          showChatHistory &&
-          !e.target.closest("nav")
-        ) {
-          setShowChatHistory(false);
-        }
-      }}
-    >
+    <div className="flex h-screen">
       {app === null && (
         <ChatHistory
           {...{
@@ -413,7 +402,14 @@ function App({
           }}
         />
       )}
-      <div className="flex min-w-0 grow flex-col">
+      <div
+        className="flex min-w-0 grow flex-col"
+        onClick={() => {
+          if (window.innerWidth <= 768 && showChatHistory) {
+            setShowChatHistory(false);
+          }
+        }}
+      >
         {messages.length === 0 && app === null && (
           <Home
             {...{
@@ -430,7 +426,7 @@ function App({
           {((messages.length > 0 && app === null) ||
             (docked && !collapsed)) && (
             <div
-              className={`flex min-w-0 flex-1 flex-col ${
+              className={`flex w-[336px] min-w-0 grow flex-col ${
                 app !== null ? "border-r border-stone-500" : ""
               }`}
             >
@@ -449,7 +445,7 @@ function App({
                 />
               )}
               <ChatDisplay
-                outerClassName="py-6 flex w-[336px] grow flex-col items-center"
+                outerClassName="py-6 flex grow flex-col items-center"
                 innerClassName="w-full max-w-screen-lg"
                 messages={messages}
                 assistantRef={assistantRef}
@@ -485,10 +481,10 @@ function App({
             }}
           />
         )}
-        {modalComponent}
-        <Toasts className="top-2" ref={toastsRef} />
       </div>
-    </main>
+      {modalComponent}
+      <Toasts className="top-2" ref={toastsRef} />
+    </div>
   );
 }
 
