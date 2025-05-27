@@ -4,7 +4,7 @@ import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
 import JSON5 from "json5";
 
-function createApp(appState, name, description, createString) {
+async function createApp(appState, name, description, createString) {
   const version = "0.1.0";
   const existingNames = new Set(appState.apps.map((app) => app.split("@")[0]));
   if (existingNames.has(name)) {
@@ -16,10 +16,11 @@ function createApp(appState, name, description, createString) {
   const app = `${name}@${version}`;
   const files = {
     "magic.json": `{
-      name: "${name}",
-      version: "${version}",
-      description: "${description}"
-    }`,
+  name: "${name}",
+  version: "${version}",
+  description: "${description}",
+  private: true,
+}`,
   };
   let invalidCreateString = false;
   for (const { tag, content } of tagParser(createString)) {
@@ -42,10 +43,10 @@ function createApp(appState, name, description, createString) {
   appState.setSelectedFilename("magic.json");
   appState.handlePutData(app, files);
   appState.handlePutData("selectedApp", app);
-  appState.build(JSON5.parse(files["magic.json"]));
+  await appState.build(JSON5.parse(files["magic.json"]));
 }
 
-function updateFiles(appState, updateString) {
+async function updateFiles(appState, updateString) {
   const newFiles = { ...appState.files };
   let invalidUpdateString = false;
   const updatedFiles = new Set();
@@ -126,6 +127,8 @@ function updateFiles(appState, updateString) {
     ),
     ...appState.merges,
   });
+  appState.handlePutData(appState.selectedApp, newFiles);
+  await appState.build(JSON5.parse(newFiles["magic.json"]));
 }
 
 function additionalContext(appState, { files, code }) {

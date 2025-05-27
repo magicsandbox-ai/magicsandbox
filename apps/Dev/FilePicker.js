@@ -40,6 +40,7 @@ export default function FilePicker({
             ))}
           </select>
           <button
+            className="relative"
             onClick={() => {
               setConfirmDeleteApp(selectedApp);
             }}
@@ -73,7 +74,7 @@ export default function FilePicker({
             aria-label="New file"
             enterKeyHint="done"
           />
-          <button type="submit">
+          <button type="submit" className="relative">
             <Plus size={16} />
             <span className="sr-only">Add File</span>
           </button>

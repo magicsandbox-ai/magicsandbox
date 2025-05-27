@@ -3,6 +3,7 @@ const exampleAppFiles = {
   name: 'Example',
   version: '0.1.0',
   description: '',
+  private: true,
   dependencies: {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

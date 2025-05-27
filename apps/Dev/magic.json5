@@ -22,11 +22,11 @@
     content: ["apps/Dev/**/*.js", "components/**/*.js"],
   },
   dependencies: {
-    "@magicsandbox.ai/dev": "^0.1.0",
-    "@magicsandbox.ai/docs": "^0.1.0",
-    "@magicsandbox.ai/react-sandbox": "^0.1.0",
-    "@magicsandbox.ai/streaming": "^0.1.0",
-    "@magicsandbox.ai/tailwind-browser": "^0.1.0",
+    "@magicsandbox.ai/dev": "file:../../packages/js/dev",
+    "@magicsandbox.ai/docs": "file:../../packages/js/docs",
+    "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
+    "@magicsandbox.ai/streaming": "file:../../packages/js/streaming",
+    "@magicsandbox.ai/tailwind-browser": "file:../../packages/js/tailwind-browser",
     "@uiw/react-codemirror": "^4.22.2",
     "@codemirror/lang-javascript": "^6.1.2",
     assert: "^2.1.0", //for eslint
@@ -48,5 +48,6 @@
     semver: "^7.6.3",
     util: "^0.12.5", //for eslint
     "@codemirror/merge": "^6.8.0",
+    "react-error-boundary": "^6.0.0",
   },
 }

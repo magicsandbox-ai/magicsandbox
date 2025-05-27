@@ -31,15 +31,15 @@ import {
 } from "./api.js";
 import Help from "./Help.js";
 import { Toasts } from "@components/Toasts.js";
+import { ErrorBoundary } from "react-error-boundary";
 
 async function initEsbuild() {
-  const esbuildWasmResponse = await requestFetch(
+  const response = await requestFetch(
     "https://esm.sh/esbuild-wasm@0.23.1/esbuild.wasm",
     { responseType: "bytes" },
   );
-  return await WebAssembly.compile(esbuildWasmResponse.body).then((module) => {
-    esbuild.initialize({ wasmModule: module });
-  });
+  const module = await WebAssembly.compile(response.body);
+  await esbuild.initialize({ wasmModule: module });
 }
 
 const esbuildPromise = initEsbuild();
@@ -480,6 +480,7 @@ function App() {
 
   appState.apps = apps;
   appState.setApps = setApps;
+  appState.selectedApp = selectedApp;
   appState.setSelectedApp = setSelectedApp;
   appState.files = files;
   appState.setFiles = setFiles;
@@ -514,7 +515,7 @@ function App() {
   };
 
   const buttonStyle =
-    "px-2 py-1 text-xs md:text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
+    "px-1.5 md:px-2 py-1 text-xs md:text-sm font-medium transition-colors duration-150 border-b border-transparent hover:border-stone-500 hover:bg-stone-100";
   const approveButtonStyle =
     "rounded-lg border border-stone-500 py-1 text-sm w-28 font-medium";
 
@@ -592,7 +593,7 @@ function App() {
       >
         <Panel
           ref={codePanelRef}
-          className="flex flex-col"
+          className="relative flex flex-col"
           defaultSize={view === "code" ? 100 : 50}
         >
           <FilePicker
@@ -620,7 +621,7 @@ function App() {
             setMerge={setMerge}
           />
           {Object.keys(merges).length > 0 && (
-            <div className="absolute bottom-4 left-0 right-0 flex flex-wrap justify-center gap-2 self-center">
+            <div className="absolute bottom-4 left-2 right-2 flex flex-wrap justify-center gap-2">
               <button
                 className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
                 onClick={() => {
@@ -685,8 +686,19 @@ function App() {
 
 const appState = {};
 
-function init() {
-  createRoot(document.getElementById("root")).render(<App />);
+async function init() {
+  createRoot(document.getElementById("root")).render(
+    <ErrorBoundary
+      fallback={
+        <div className="flex h-screen items-center justify-center font-bold">
+          😬 Unexpected error occurred. Sorry! Please try again.
+        </div>
+      }
+    >
+      <App />
+    </ErrorBoundary>,
+  );
+  await esbuildPromise;
   return prompt();
 }
 
@@ -695,11 +707,11 @@ function context() {
 }
 
 const api = {
-  createApp: (name, description, createString) => {
-    _createApp(appState, name, description, createString);
+  async createApp(name, description, createString) {
+    await _createApp(appState, name, description, createString);
   },
-  updateFiles: (updateString) => {
-    _updateFiles(appState, updateString);
+  async updateFiles(updateString) {
+    await _updateFiles(appState, updateString);
   },
   additionalContext: ({ files, code }) => {
     _additionalContext(appState, { files, code });
