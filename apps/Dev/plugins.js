@@ -180,7 +180,7 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
         }
       });
 
-      build.onLoad({ filter: /.*/, namespace: "MagicApp" }, (args) => {
+      build.onLoad({ filter: /.*/, namespace: "MagicApp" }, async (args) => {
         let loader;
         if (args.path.endsWith(".tsx")) {
           loader = "tsx";
@@ -189,8 +189,18 @@ function createBundleDepsPlugin(filesRef, appObjRef, esbuild, bundledDepsRef) {
         } else {
           loader = "jsx";
         }
+        let contents;
+        if (loader === "tsx" || loader === "ts") {
+          //the espree parser in transformImports doesn't support ts, so use esbuild to strip types
+          const result = await esbuild.transform(filesRef.current[args.path], {
+            loader,
+          });
+          contents = result.code;
+        } else {
+          contents = filesRef.current[args.path];
+        }
         return {
-          contents: transformImports(filesRef.current[args.path], pkgImports), //pkgImports updated as side effect
+          contents: transformImports(contents, pkgImports), //pkgImports updated as side effect
           loader,
         };
       });

@@ -35,7 +35,7 @@ def validate_response(response, model=None, test=True):
     assert isinstance(response_body['result']['usage']['completion_tokens'], int)
     assert isinstance(response_body['__command']['finalCost'], float)
 
-async def test_helper(model, test):
+async def helper(model, test):
     body = LlmBody(
         id='magicsandbox.llm@0.1.0',
         options={
@@ -55,9 +55,9 @@ async def test_helper(model, test):
 
 @pytest.mark.asyncio
 async def test_args():
-    await test_helper('gpt-4o-mini-2024-07-18', test=True)
+    await helper('gpt-4o-mini-2024-07-18', test=True)
 
-async def test_stream_helper(model, test):
+async def stream_helper(model, test):
     body = LlmBody(
         id='magicsandbox.llm@0.1.0',
         options={
@@ -100,7 +100,7 @@ async def test_stream_helper(model, test):
 
 @pytest.mark.asyncio
 async def test_stream():
-    await test_stream_helper('gpt-4o-mini-2024-07-18', test=True)
+    await stream_helper('gpt-4o-mini-2024-07-18', test=True)
 
 @pytest.mark.asyncio
 async def test_multiple():
@@ -207,7 +207,7 @@ async def test_trim_messages_for_cost():
 async def test_all_models():
     for model in supported_models.keys():
         try:
-            await test_helper(model, test=False)
+            await helper(model, test=False)
         except Exception as e:
             raise Exception(f"Error testing model '{model}': {str(e)}") from e
 
@@ -215,7 +215,7 @@ async def test_all_models():
 async def test_all_models_stream():
     for model in supported_models.keys():
         try:
-            await test_stream_helper(model, test=False)
+            await stream_helper(model, test=False)
         except Exception as e:
             raise Exception(f"Error testing model '{model}': {str(e)}") from e
 

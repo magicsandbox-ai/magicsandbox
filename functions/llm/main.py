@@ -3,14 +3,15 @@ import json
 from math import floor
 from pydantic import BaseModel, field_validator
 from fastapi import HTTPException
-from litellm import acompletion
-from .tokenizer import Tokenizer, TiktokenTokenizer, VertexTokenizer, DefaultTokenizer
 from fastapi.responses import StreamingResponse, JSONResponse
 from magicsandbox_streaming import length_prefix_transform #type: ignore
 import logging
 import asyncio
 from aiostream.stream import merge
 from typing import Literal
+from .tokenizer import Tokenizer
+from .models import supported_models, default_models
+from .retry import acompletion_retry_stream, acompletion_retry
 
 logger = logging.getLogger("magicsandbox.llm")
 
@@ -49,106 +50,6 @@ class LlmBody(Body):
         if isinstance(v, list) and len(v) > 10:
             raise ValueError('cannot generate more than 10 responses at once')
         return v
-
-gpt_4o_tokenizer = TiktokenTokenizer('gpt-4o')
-gemini_tokenizer = VertexTokenizer('gemini-1.5-flash-002') # google has not yet updated model to tokenizer map for gemini 2.0
-default_tokenizer = DefaultTokenizer()
-
-# keep these in sync with Assistant/ModelPicker.js (and the README) - need a better way to do this
-supported_models = {
-    'claude-3-7-sonnet-20250219': {
-        'max_input_tokens': 200000,
-        'max_output_tokens': 8192,
-        'input_cost_per_token': 3 / 1000000,
-        'output_cost_per_token': 15 / 1000000,
-        'tokenizer': default_tokenizer,
-        'max_vision_tokens': 1600,
-    },
-    'gemini-2.5-pro-preview-03-25': {
-        'api_name': 'gemini/gemini-2.5-pro-preview-03-25',
-        'max_input_tokens': 200000, #1048576, #limit to 200k for now until figure out how to handle cost that depends on number of input tokens
-        'max_output_tokens': 65536,
-        'input_cost_per_token': 1.25 / 1000000,
-        'output_cost_per_token': 10 / 1000000,
-        'tokenizer': gemini_tokenizer,
-        'max_vision_tokens': 0,
-        'multimodal_disabled': True,
-    },
-    'gpt-4.1-2025-04-14': {
-        'max_input_tokens': 1047576,
-        'max_output_tokens': 32768,
-        'input_cost_per_token': 2 / 1000000,
-        'output_cost_per_token': 8 / 1000000,
-        'tokenizer': gpt_4o_tokenizer,
-        'max_vision_tokens': 1445,
-    },
-    'gemini-2.5-flash-preview-04-17': {
-        'api_name': 'gemini/gemini-2.5-flash-preview-04-17',
-        'max_input_tokens': 1048576,
-        'max_output_tokens': 65536,
-        'input_cost_per_token': 0.15 / 1000000,
-        'output_cost_per_token': 0.6 / 1000000,
-        'tokenizer': gemini_tokenizer,
-        'max_vision_tokens': 0,
-        'multimodal_disabled': True,
-        'reasoning_disabled': True, #since output_cost is different for reasoning tokens - need to handle before can enable
-    },
-    'gpt-4.1-mini-2025-04-14': {
-        'max_input_tokens': 1047576,
-        'max_output_tokens': 32768,
-        'input_cost_per_token': 0.4 / 1000000,
-        'output_cost_per_token': 1.6 / 1000000,
-        'tokenizer': gpt_4o_tokenizer,
-        'max_vision_tokens': 2489,
-    },
-    'gemini-2.0-flash-001': {
-        'api_name': 'gemini/gemini-2.0-flash-001',
-        'max_input_tokens': 1048576,
-        'max_output_tokens': 8192,
-        'input_cost_per_token': 0.1 / 1000000,
-        'output_cost_per_token': 0.4 / 1000000,
-        'tokenizer': gemini_tokenizer,
-        'max_vision_tokens': 0,
-        'multimodal_disabled': True, # can't compute cost for audio/video so need to disable it
-    },
-    'gemini-2.0-flash-lite-001': {
-        'api_name': 'gemini/gemini-2.0-flash-lite-001',
-        'max_input_tokens': 1048576,
-        'max_output_tokens': 8192,
-        'input_cost_per_token': 0.075 / 1000000,
-        'output_cost_per_token': 0.3 / 1000000,
-        'tokenizer': gemini_tokenizer,
-        'max_vision_tokens': 0,
-        'multimodal_disabled': True,
-    },
-    'gpt-4o-2024-08-06': {
-        'max_input_tokens': 128000,
-        'max_output_tokens': 16384,
-        'input_cost_per_token': 2.5 / 1000000,
-        'output_cost_per_token': 10 / 1000000,
-        'tokenizer': gpt_4o_tokenizer,
-        'max_vision_tokens': 1445,
-    },
-    'gpt-4o-mini-2024-07-18': {
-        'max_input_tokens': 128000,
-        'max_output_tokens': 16384,
-        'input_cost_per_token': 0.15 / 1000000,
-        'output_cost_per_token': 0.6 / 1000000,
-        'tokenizer': gpt_4o_tokenizer, # uses same tokenizer as gpt-4o
-        'max_vision_tokens': 48169,
-    },
-}
-
-# THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
-default_models = [
-    'claude-3-7-sonnet-20250219',
-    'gemini-2.5-pro-preview-03-25',
-    'gpt-4.1-2025-04-14',
-    'gemini-2.5-flash-preview-04-17',
-    'gpt-4.1-mini-2025-04-14',
-    'gemini-2.0-flash-001',
-    'gemini-2.0-flash-lite-001',
-]
 
 async def llm(body: LlmBody, test=False):
     if isinstance(body.args, str):
@@ -190,18 +91,20 @@ async def get_response(args: LlmArgs, stream: bool, maxCost: float, test=None):
     api_args.pop('maxCost', None) # remove custom args or litellm will throw an error
     api_args.update({
         'model': supported_models[model].get('api_name', model),
-        'timeout': 60,
+        'timeout': 180,
     })
+    if test is not None:
+        api_args.update({
+            'mock_response': f'This is mock content {test}',
+        })
     if stream:
         api_args.update({
             'stream': True,
             'stream_options': {'include_usage': True},
         })
-    if test is not None:
-        api_args.update({
-            'mock_response': f'This is mock content {test}',
-        })
-    response = await acompletion(**api_args)
+        response = acompletion_retry_stream(api_args)
+    else:
+        response = await acompletion_retry(api_args)
     return {'response': response, 'expected_cost': expected_cost, 'model': model}
 
 def process_messages(model, args):
