@@ -2,8 +2,12 @@ import React, { forwardRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
-import { unifiedMergeView, getChunks } from "@codemirror/merge";
-import { StateField } from "@codemirror/state";
+import {
+  unifiedMergeView,
+  getChunks,
+  originalDocChangeEffect,
+} from "@codemirror/merge";
+import { StateField, Annotation, EditorState } from "@codemirror/state";
 import eslinter from "./eslinter.js";
 import Hover from "./Hover.js";
 
@@ -119,6 +123,16 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
       },
     });
     extensions.push(unifiedMergeView({ original: merge }), mergeListener);
+    EditorState.transactionExtender.of((tr) => {
+      if (!tr.annotation(apiAnnotationType)) {
+        return {
+          effects: originalDocChangeEffect(
+            tr.startState,
+            tr.changes.map(changeDesc),
+          ),
+        };
+      }
+    });
   }
 
   return (

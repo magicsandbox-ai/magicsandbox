@@ -227,6 +227,8 @@ function App() {
         ([filename]) =>
           (filename.endsWith(".js") ||
             filename.endsWith(".jsx") ||
+            filename.endsWith(".ts") ||
+            filename.endsWith(".tsx") ||
             filename.endsWith(".html")) &&
           !excludeContent.has(filename),
       )
@@ -492,6 +494,7 @@ function App() {
   appState.previewRef = previewRef;
   appState.handlePutData = handlePutData;
   appState.toastsRef = toastsRef;
+  appState.filesRef = filesRef;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -622,16 +625,16 @@ function App() {
           />
           {Object.keys(merges).length > 0 && (
             <div className="absolute bottom-4 left-2 right-2 flex flex-wrap justify-center gap-2">
-              <button
-                className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
-                onClick={() => {
-                  setMerges({});
-                }}
-              >
-                Accept All Files
-              </button>
-              {merge && (
-                <>
+              <div className="flex gap-2">
+                <button
+                  className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
+                  onClick={() => {
+                    setMerges({});
+                  }}
+                >
+                  Accept All Files
+                </button>
+                {merge && (
                   <button
                     className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
                     onClick={() => {
@@ -640,6 +643,10 @@ function App() {
                   >
                     Accept File
                   </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {merge && (
                   <button
                     className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
                     onClick={() => {
@@ -652,20 +659,20 @@ function App() {
                   >
                     Reject File
                   </button>
-                </>
-              )}
-              <button
-                className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
-                onClick={() => {
-                  setMerges({});
-                  setFiles((files) => ({
-                    ...files,
-                    ...merges,
-                  }));
-                }}
-              >
-                Reject All Files
-              </button>
+                )}
+                <button
+                  className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
+                  onClick={() => {
+                    setMerges({});
+                    setFiles((files) => ({
+                      ...files,
+                      ...merges,
+                    }));
+                  }}
+                >
+                  Reject All Files
+                </button>
+              </div>
             </div>
           )}
         </Panel>

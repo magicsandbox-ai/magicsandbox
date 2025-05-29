@@ -43,6 +43,7 @@ async function createApp(appState, name, description, createString) {
   appState.setSelectedFilename("magic.json");
   appState.handlePutData(app, files);
   appState.handlePutData("selectedApp", app);
+  appState.filesRef.current = files; //this is a hack - build depends on filesRef, but it won't be updated until useEffect runs, so update it now
   await appState.build(JSON5.parse(files["magic.json"]));
 }
 
@@ -128,6 +129,7 @@ async function updateFiles(appState, updateString) {
     ...appState.merges,
   });
   appState.handlePutData(appState.selectedApp, newFiles);
+  appState.filesRef.current = newFiles; //this is a hack - build depends on filesRef, but it won't be updated until useEffect runs, so update it now
   await appState.build(JSON5.parse(newFiles["magic.json"]));
 }
 
