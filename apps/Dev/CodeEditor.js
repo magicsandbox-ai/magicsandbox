@@ -1,15 +1,10 @@
-import React, { forwardRef, useState } from "react";
+import React, { forwardRef, useState, useMemo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
-import {
-  unifiedMergeView,
-  getChunks,
-  originalDocChangeEffect,
-} from "@codemirror/merge";
-import { StateField, Annotation, EditorState } from "@codemirror/state";
 import eslinter from "./eslinter.js";
 import Hover from "./Hover.js";
+import { diffExtension } from "./diffExtension.js";
 
 const CodeEditor = forwardRef(function CodeEditor(props, ref) {
   const [hover, setHover] = useState({});
@@ -98,42 +93,19 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
     return str.slice(beg, end);
   }
 
-  const extensions = [javascript({ jsx: true })];
-
-  if (selectedFilename.endsWith("js")) {
-    extensions.push(...[lintGutter(), eslinter()]);
-  }
-
-  if (merge) {
-    const mergeListener = StateField.define({
-      create() {
-        return;
-      },
-      update(_, tr) {
-        const currentState = ref.current.view.state;
-        const nextState = tr.state;
-        if (
-          //merge is set before the transaction that creates the first chunks, so make sure currentState has chunks before we clear it
-          getChunks(currentState)?.chunks?.length > 0 &&
-          //now if there are no chunks in the next state, we can clear the merge
-          getChunks(nextState)?.chunks?.length === 0
-        ) {
-          setMerge(null);
-        }
-      },
-    });
-    extensions.push(unifiedMergeView({ original: merge }), mergeListener);
-    EditorState.transactionExtender.of((tr) => {
-      if (!tr.annotation(apiAnnotationType)) {
-        return {
-          effects: originalDocChangeEffect(
-            tr.startState,
-            tr.changes.map(changeDesc),
-          ),
-        };
-      }
-    });
-  }
+  const extensions = useMemo(() => {
+    const extensions = [javascript({ jsx: true }), diffExtension()];
+    const fileExt = selectedFilename.split(".").pop();
+    if (
+      fileExt === "js" ||
+      fileExt === "jsx" ||
+      fileExt === "ts" ||
+      fileExt === "tsx"
+    ) {
+      extensions.push(...[lintGutter(), eslinter()]);
+    }
+    return extensions;
+  }, [selectedFilename]);
 
   return (
     <>
