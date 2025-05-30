@@ -2,14 +2,15 @@ import { describe, expect, test } from "@jest/globals";
 import {
   createLengthPrefixTransform,
   createLengthPrefixParser,
-} from "../index.js";
-import { createStream } from "./testUtils.js";
+} from "../src/index.ts";
+import { createStream } from "./testUtils.ts";
 
 /*
-npm run jest -- packages/js/streaming
+cd packages/js/streaming
+npm run test
 */
 
-function encode(chunk) {
+function encode(chunk: any) {
   if (typeof chunk === "string") {
     return new TextEncoder().encode(chunk);
   } else {
@@ -17,7 +18,13 @@ function encode(chunk) {
   }
 }
 
-async function collectLengthPrefixStream(stream) {
+async function collectLengthPrefixStream(
+  stream: AsyncIterable<{
+    state: string;
+    readRemaining: number;
+    chunk: Uint8Array;
+  }>,
+) {
   const decoder = new TextDecoder();
   let stringBuffer = "";
   let finalObjectBuffer = "";

@@ -17,14 +17,24 @@ import { concatUint8Array } from "./utils.js";
  * - When the final object is fully read: state is 'finalObject', readRemaining is 0
  */
 
+// Add these interfaces at the top of the file
+interface LengthPrefixState {
+  __state: "length" | "object" | "finalObject";
+  __readRemaining: number;
+  __buffer: Uint8Array;
+}
+
 function createLengthPrefixParser() {
-  return new TransformStream({
-    start() {
+  return new TransformStream<
+    Uint8Array,
+    { state: string; readRemaining: number; chunk: Uint8Array }
+  >({
+    start(this: LengthPrefixState) {
       this.__state = "length";
       this.__readRemaining = 4;
       this.__buffer = new Uint8Array(0);
     },
-    transform(chunk, controller) {
+    transform(this: LengthPrefixState, chunk, controller) {
       try {
         let offset = 0;
         while (offset < chunk.length) {
@@ -75,10 +85,14 @@ function createLengthPrefixParser() {
           }
         }
       } catch (error) {
-        controller.error(error.message);
+        if (error instanceof Error) {
+          controller.error(error.message);
+        } else {
+          controller.error("Unknown error");
+        }
       }
     },
-    flush(controller) {
+    flush(this: LengthPrefixState, controller) {
       try {
         if (
           !(
@@ -98,13 +112,17 @@ function createLengthPrefixParser() {
           });
         }
       } catch (error) {
-        controller.error(error.message);
+        if (error instanceof Error) {
+          controller.error(error.message);
+        } else {
+          controller.error("Unknown error");
+        }
       }
     },
   });
 }
 
-function readUInt32BE(arr) {
+function readUInt32BE(arr: Uint8Array) {
   return new DataView(arr.buffer).getUint32(0, false);
 }
 

@@ -364,29 +364,29 @@ ${body.join("\n")}
   }
 }
 
-function context(appState, { files = [], code = [] } = {}) {
+function context(devState, { files = [], code = [] } = {}) {
   let selectedFiles, selectedCode;
   if (files.length > 0 || code.length > 0) {
     selectedFiles = files;
     selectedCode = code;
   } else {
-    selectedFiles = [appState.selectedFilename];
+    selectedFiles = [devState.selectedFilename];
     if (
       !(
-        appState.selectedFilename.endsWith(".js") ||
-        appState.selectedFilename.endsWith(".jsx")
+        devState.selectedFilename.endsWith(".js") ||
+        devState.selectedFilename.endsWith(".jsx")
       )
     ) {
       //if we don't select at least one JS file, we won't get any JS context, so add scriptFile
-      selectedFiles.push(appState.scriptFile);
+      selectedFiles.push(devState.scriptFile);
     }
     selectedCode = [window.getSelection().toString()];
   }
   return new Context(
-    appState.files,
+    devState.files,
     selectedFiles,
     selectedCode,
-    appState.toastsRef,
+    devState.toastsRef,
   ).get();
 }
 

@@ -10,3 +10,4 @@ apps/About/dist/*
 **/test-results/
 **/.devlocal.json
 packages/python/**/dist/*
+packages/js/streaming/dist/*

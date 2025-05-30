@@ -1,8 +1,10 @@
 import { concatUint8Array } from "./utils.js";
 
-function createLengthPrefixTransform({ finalObject } = {}) {
-  let prevChunk = null;
-  return new TransformStream({
+function createLengthPrefixTransform({
+  finalObject,
+}: { finalObject?: boolean } = {}) {
+  let prevChunk: Uint8Array | null = null;
+  return new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       try {
         if (prevChunk !== null) {
@@ -12,7 +14,11 @@ function createLengthPrefixTransform({ finalObject } = {}) {
         }
         prevChunk = chunk;
       } catch (error) {
-        controller.error(error.message);
+        if (error instanceof Error) {
+          controller.error(error.message);
+        } else {
+          controller.error("Unknown error");
+        }
       }
     },
     flush(controller) {
@@ -28,13 +34,17 @@ function createLengthPrefixTransform({ finalObject } = {}) {
           controller.enqueue(concatUint8Array(length, prevChunk));
         }
       } catch (error) {
-        controller.error(error.message);
+        if (error instanceof Error) {
+          controller.error(error.message);
+        } else {
+          controller.error("Unknown error");
+        }
       }
     },
   });
 }
 
-function lengthPrefix(chunk) {
+function lengthPrefix(chunk: Uint8Array) {
   const arr = new Uint8Array(4);
   const view = new DataView(arr.buffer);
   view.setUint32(0, chunk.length, false);

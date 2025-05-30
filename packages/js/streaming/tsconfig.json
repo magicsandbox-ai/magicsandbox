@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "allowImportingTsExtensions": false,
+    "allowArbitraryExtensions": false
+  },
+  "include": ["src/**/*"]
+}

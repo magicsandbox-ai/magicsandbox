@@ -48,10 +48,12 @@
       ]
     },
     "moduleNameMapper": {
-      "^@components/(.*)$": "<rootDir>/components/$1"
+      "^@components/(.*)$": "<rootDir>/components/$1",
+      "^@utils/(.*)$": "<rootDir>/utils/$1"
     },
     "testPathIgnorePatterns": [
-      "testUtils.js"
+      "testUtils.js",
+      "testUtils.ts"
     ]
   }
 }

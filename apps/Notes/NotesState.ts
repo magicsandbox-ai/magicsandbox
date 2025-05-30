@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import SyncExternalStore from "./SyncExternalStore.ts";
+import SyncExternalStore from "@utils/SyncExternalStore.ts";
 import type { ToastsRef } from "@components/Toasts.tsx";
 
 /*

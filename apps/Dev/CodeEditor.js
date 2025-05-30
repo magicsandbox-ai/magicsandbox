@@ -1,27 +1,77 @@
-import React, { forwardRef, useState, useMemo } from "react";
+import React, {
+  forwardRef,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
 import eslinter from "./eslinter.js";
 import Hover from "./Hover.js";
-import { diffExtension } from "./diffExtension.js";
+import { diffExtension } from "./diffExtension.ts";
 
 const CodeEditor = forwardRef(function CodeEditor(props, ref) {
-  const [hover, setHover] = useState({});
-
-  const hoverRef = React.useRef(null);
-
   const {
     initialState,
     handleCreateEditor,
     value,
-    onChange,
     selectedFilename,
     cssClassMap,
     className,
-    merge,
-    setMerge,
+    setFiles,
+    changeSet,
+    setChangeSet,
   } = props;
+
+  const [hover, setHover] = useState({});
+
+  const hoverRef = useRef(null);
+  const changeSetStateFieldRef = useRef(undefined);
+
+  //onChange, onUpdate, and extensions should be stable to avoid creating unnecessary transactions
+  const onChange = useCallback(
+    (value) => {
+      setFiles((files) => ({ ...files, [selectedFilename]: value }));
+    },
+    [setFiles, selectedFilename],
+  );
+
+  const onUpdate = useCallback(
+    (viewUpdate) => {
+      if (
+        changeSetStateFieldRef.current &&
+        viewUpdate.state.field(changeSetStateFieldRef.current, false) ===
+          undefined
+      ) {
+        setChangeSet(undefined);
+      }
+    },
+    [setChangeSet],
+  );
+
+  const extensions = useMemo(() => {
+    const extensions = [javascript({ jsx: true })];
+    const fileExt = selectedFilename.split(".").pop();
+    if (
+      fileExt === "js" ||
+      fileExt === "jsx"
+      //eslint doesn't work with ts/tsx
+      // fileExt === "ts" ||
+      // fileExt === "tsx"
+    ) {
+      extensions.push(...[lintGutter(), eslinter()]);
+    }
+    if (changeSet) {
+      const diffExtensions = diffExtension(changeSet, value);
+      extensions.push(diffExtensions);
+      changeSetStateFieldRef.current = diffExtensions[0];
+    } else {
+      changeSetStateFieldRef.current = undefined;
+    }
+    return extensions;
+  }, [selectedFilename, changeSet]);
 
   function handleMouseMove(event) {
     clearTimeout(hoverRef.current);
@@ -93,20 +143,6 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
     return str.slice(beg, end);
   }
 
-  const extensions = useMemo(() => {
-    const extensions = [javascript({ jsx: true }), diffExtension()];
-    const fileExt = selectedFilename.split(".").pop();
-    if (
-      fileExt === "js" ||
-      fileExt === "jsx" ||
-      fileExt === "ts" ||
-      fileExt === "tsx"
-    ) {
-      extensions.push(...[lintGutter(), eslinter()]);
-    }
-    return extensions;
-  }, [selectedFilename]);
-
   return (
     <>
       <CodeMirror
@@ -115,6 +151,7 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
         onCreateEditor={handleCreateEditor}
         value={value}
         onChange={onChange}
+        onUpdate={onUpdate}
         extensions={extensions}
         height="100%"
         className={className}

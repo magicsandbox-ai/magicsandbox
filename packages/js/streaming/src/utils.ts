@@ -1,4 +1,4 @@
-function concatUint8Array(arr1, arr2) {
+function concatUint8Array(arr1: Uint8Array, arr2: Uint8Array | undefined) {
   if (arr2 === undefined) {
     return arr1;
   }

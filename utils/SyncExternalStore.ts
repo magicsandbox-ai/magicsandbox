@@ -1,6 +1,10 @@
 class SyncExternalStore<T extends { [key: string]: unknown }> {
-  _subscribers: { [K in keyof T]?: (() => void)[] } = {};
-  _props: Partial<T> = {};
+  private _subscribers: { [K in keyof T]?: (() => void)[] } = {};
+  private _props: T;
+
+  constructor(defaultProps: T) {
+    this._props = defaultProps;
+  }
 
   subscribe<K extends keyof T>(prop: K) {
     return (callback: () => void) => {
@@ -15,11 +19,17 @@ class SyncExternalStore<T extends { [key: string]: unknown }> {
       };
     };
   }
+
   getSnapshot<K extends keyof T>(prop: K) {
     return () => {
-      return this._props[prop] as T[K];
+      return this._props[prop];
     };
   }
+
+  get<K extends keyof T>(prop: K) {
+    return this._props[prop];
+  }
+
   set<K extends keyof T>(prop: K, value: T[K]) {
     this._props[prop] = value;
     this._subscribers[prop]?.forEach((subscriber) => subscriber());

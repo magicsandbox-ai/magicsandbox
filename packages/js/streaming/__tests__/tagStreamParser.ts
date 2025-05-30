@@ -1,9 +1,10 @@
 import { describe, expect, test } from "@jest/globals";
-import { tagStreamParser, tagParser } from "../index.js";
-import { createStream, collectStream } from "./testUtils.js";
+import { tagStreamParser, tagParser } from "../src/index.ts";
+import { createStream, collectStream } from "./testUtils.ts";
 
 /*
-npm run jest -- packages/js/streaming
+cd packages/js/streaming
+npm run test
 */
 
 describe("tagStreamParser", () => {

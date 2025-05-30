@@ -1,8 +1,7 @@
 import {
   StateField,
-  Annotation,
   EditorState,
-  Compartment,
+  Text,
   type ChangeSet,
   type Extension,
 } from "@codemirror/state";
@@ -12,71 +11,55 @@ import {
   getChunks,
 } from "@codemirror/merge";
 
-const diffAnnotationType = Annotation.define<boolean>();
-
-function diffExtension(changeSet: ChangeSet | undefined): Extension {
-  const compartment = new Compartment();
+function diffExtension(changeSet: ChangeSet, doc: string): Extension {
   //stores the changeSet which represents the changes needed to transform the current document to the original document
   const changeSetStateField = StateField.define<ChangeSet | undefined>({
-    create(editorState) {
-      if (changeSet) {
-        //activate the other extensions if initialized with a changeSet
-        editorState.update({
-          effects: compartment.reconfigure([
-            originalDocUpdater,
-            unifiedMergeView({ original: changeSet.apply(editorState.doc) }),
-          ]),
-        });
-      }
+    create() {
       return changeSet;
     },
+    //the changeSet has to be managed externally, as the API can update files that are not in the editor currently
+    //so whenever the changeSet is updated, we reconfigure the extensions, so we don't need to worry about updating it here
+    //however, we do want to check if there are no chunks, which means the user has accepted/rejected all diffs
+    //that indicates to the external changeSet manager that the diff is no longer needed
     update(currentChangeSet, tr) {
-      if (tr.annotation(diffAnnotationType)) {
-        //since we store the changes needed to go from current to original, we need to invert them
-        const newChangeSet = tr.changes.invert(tr.startState.doc);
-        if (currentChangeSet) {
-          //if there's a current changeSet, we compose the changes
-          return newChangeSet.compose(currentChangeSet);
-        } else {
-          //we didn't have a diff before, but now we do, so we need to activate the other extensions
-          tr.state.update({
-            effects: compartment.reconfigure([
-              originalDocUpdater,
-              unifiedMergeView({ original: tr.startState.doc }),
-            ]),
-          });
-          return newChangeSet;
-        }
+      //there's some kind of race condition where the chunks are not updated immmediately
+      //so we check if the start state has chunks and the current state does not
+      if (
+        //@ts-ignore
+        getChunks(tr.startState)?.chunks.length > 0 &&
+        getChunks(tr.state)?.chunks.length === 0
+      ) {
+        return undefined;
       } else {
-        //check if we need to deactivate the other extensions - if there are no chunks, we can
-        const chunks = getChunks(tr.state);
-        if (chunks?.chunks.length === 0) {
-          tr.state.update({
-            effects: compartment.reconfigure([]),
-          });
-          return undefined;
-        } else {
-          return currentChangeSet;
-        }
+        return currentChangeSet;
       }
     },
   });
   //updates the original document for transactions that don't have a diff annotation
-  const originalDocUpdater = EditorState.transactionExtender.of((tr) => {
-    if (!tr.annotation(diffAnnotationType)) {
-      const changeSet = tr.state.field(changeSetStateField);
-      if (!changeSet) return null; //this should never happen as this extension is only active if there's a changeSet
-      return {
+  const originalDocUpdater = EditorState.transactionFilter.of((tr) => {
+    if (!tr.docChanged) return tr;
+    const changeSet = tr.state.field(changeSetStateField, false);
+    if (!changeSet) return tr;
+    return [
+      tr,
+      {
         effects: originalDocChangeEffect(
           tr.startState,
           //we need to map the changes (which were made to the current document) so that they can be applied to the original document
           tr.changes.map(changeSet),
         ),
-      };
-    }
-    return null;
+      },
+    ];
   });
-  return [changeSetStateField, compartment.of([])];
+  return [
+    changeSetStateField,
+    originalDocUpdater,
+    unifiedMergeView({ original: changeSet.apply(Text.of(doc.split("\n"))) }),
+  ];
 }
 
-export { diffAnnotationType, diffExtension };
+function applyChangeSet(changeSet: ChangeSet, file: string) {
+  return changeSet.apply(Text.of(file.split("\n"))).toString();
+}
+
+export { diffExtension, applyChangeSet };

@@ -7,6 +7,8 @@ todos:
 - additionalContext
 - advancedDocs
 - approve/reject changes
+- creating new file
+- multiple find/replace
 */
 
 //init waits for the wasm to initialize, so we'll disable autoInit and wait for init before testing

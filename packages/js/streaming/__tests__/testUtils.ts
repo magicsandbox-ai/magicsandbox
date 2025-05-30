@@ -4,7 +4,7 @@
 //   }
 // }
 
-function createStream(chunks) {
+function createStream(chunks: any[]) {
   return new ReadableStream({
     start(controller) {
       for (const chunk of chunks) {
@@ -15,7 +15,7 @@ function createStream(chunks) {
   });
 }
 
-async function collectStream(stream) {
+async function collectStream(stream: AsyncIterable<any>) {
   const results = [];
 
   for await (const chunk of stream) {

@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 import { createRoot } from "react-dom/client";
 import CodeEditor from "./CodeEditor.js";
 import { Preview } from "@magicsandbox.ai/react-sandbox";
@@ -32,6 +38,13 @@ import {
 import Help from "./Help.js";
 import { Toasts } from "@components/Toasts.js";
 import { ErrorBoundary } from "react-error-boundary";
+import { applyChangeSet } from "./diffExtension.ts";
+import { DevState } from "./DevState.ts";
+
+const devState = new DevState({
+  selectedFilename: "magic.json",
+  changeSets: {},
+});
 
 async function initEsbuild() {
   const response = await requestFetch(
@@ -72,8 +85,20 @@ function App() {
   const [apps, setApps] = useState([]);
   const [selectedApp, setSelectedApp] = useState("");
   const [files, setFiles] = useState({});
-  const [merges, setMerges] = useState({});
-  const [selectedFilename, setSelectedFilename] = useState("magic.json");
+  const merges = useSyncExternalStore(
+    devState.subscribe("changeSets"),
+    devState.getSnapshot("changeSets"),
+  );
+  const setMerges = useCallback((nextMerges) => {
+    devState.set("changeSets", nextMerges);
+  }, []);
+  const selectedFilename = useSyncExternalStore(
+    devState.subscribe("selectedFilename"),
+    devState.getSnapshot("selectedFilename"),
+  );
+  const setSelectedFilename = useCallback((nextSelectedFilename) => {
+    devState.set("selectedFilename", nextSelectedFilename);
+  }, []);
   const [tailwindState, setTailwindState] = useState({
     processedCss: "",
     classMap: {},
@@ -176,7 +201,7 @@ function App() {
       return; //user may be editing magic.json and it could be in an invalid state, just skip
     }
     appObj = await getDefaults({ appObj, fileExists });
-    appState.scriptFile = appObj.scriptFile;
+    devState.scriptFile = appObj.scriptFile;
     //this is only used for tailwind tooltips, so skip building tailwind.config.js
     //not worth the slow build that potentially makes network requests
     setTailwindState(
@@ -285,11 +310,6 @@ function App() {
       editorStateRef.current[selectedApp + selectedFilename]?.scroll,
     );
     view.focus();
-  }
-
-  function onChange(value) {
-    const newFiles = { ...files, [selectedFilename]: value };
-    setFiles(newFiles);
   }
 
   async function handleKeyDown(event) {
@@ -480,21 +500,22 @@ function App() {
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
 
-  appState.apps = apps;
-  appState.setApps = setApps;
-  appState.selectedApp = selectedApp;
-  appState.setSelectedApp = setSelectedApp;
-  appState.files = files;
-  appState.setFiles = setFiles;
-  appState.setMerges = setMerges;
-  appState.selectedFilename = selectedFilename;
-  appState.setSelectedFilename = setSelectedFilename;
-  appState.build = build;
-  appState.testApi = testApi;
-  appState.previewRef = previewRef;
-  appState.handlePutData = handlePutData;
-  appState.toastsRef = toastsRef;
-  appState.filesRef = filesRef;
+  devState.apps = apps;
+  devState.setApps = setApps;
+  devState.selectedApp = selectedApp;
+  devState.setSelectedApp = setSelectedApp;
+  devState.files = files;
+  devState.setFiles = setFiles;
+  devState.merges = merges;
+  devState.setMerges = setMerges;
+  devState.selectedFilename = selectedFilename;
+  devState.setSelectedFilename = setSelectedFilename;
+  devState.build = build;
+  devState.testApi = testApi;
+  devState.previewRef = previewRef;
+  devState.handlePutData = handlePutData;
+  devState.toastsRef = toastsRef;
+  devState.filesRef = filesRef;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -617,11 +638,11 @@ function App() {
             initialState={initialState.json ? initialState : undefined}
             handleCreateEditor={handleCreateEditor}
             value={value}
-            onChange={onChange}
             selectedFilename={selectedFilename}
             cssClassMap={tailwindState.classMap || {}}
-            merge={merge}
-            setMerge={setMerge}
+            setFiles={setFiles}
+            changeSet={merge}
+            setChangeSet={setMerge}
           />
           {Object.keys(merges).length > 0 && (
             <div className="absolute bottom-4 left-2 right-2 flex flex-wrap justify-center gap-2">
@@ -653,7 +674,10 @@ function App() {
                       setMerge(null);
                       setFiles((files) => ({
                         ...files,
-                        [selectedFilename]: merges[selectedFilename],
+                        [selectedFilename]: applyChangeSet(
+                          merges[selectedFilename],
+                          files[selectedFilename],
+                        ),
                       }));
                     }}
                   >
@@ -666,7 +690,12 @@ function App() {
                     setMerges({});
                     setFiles((files) => ({
                       ...files,
-                      ...merges,
+                      ...Object.fromEntries(
+                        Object.entries(merges).map(([filename, changeSet]) => [
+                          filename,
+                          applyChangeSet(changeSet, files[filename]),
+                        ]),
+                      ),
                     }));
                   }}
                 >
@@ -691,8 +720,6 @@ function App() {
   );
 }
 
-const appState = {};
-
 async function init() {
   createRoot(document.getElementById("root")).render(
     <ErrorBoundary
@@ -710,18 +737,18 @@ async function init() {
 }
 
 function context() {
-  return _context(appState);
+  return _context(devState);
 }
 
 const api = {
   async createApp(name, description, createString) {
-    await _createApp(appState, name, description, createString);
+    await _createApp(devState, name, description, createString);
   },
   async updateFiles(updateString) {
-    await _updateFiles(appState, updateString);
+    await _updateFiles(devState, updateString);
   },
   additionalContext: ({ files, code }) => {
-    _additionalContext(appState, { files, code });
+    _additionalContext(devState, { files, code });
   },
   advancedDocs: () => {
     _advancedDocs();
@@ -734,7 +761,7 @@ async function messageHandler(event) {
   //which is not ideal, but not sure how to improve it
   //todo a lot of this is duplicated in DevLocal
   if (
-    appState.testApi &&
+    devState.testApi &&
     event.data.id &&
     event.data.msg?.request === "script" &&
     event.data.msg.data?.script
@@ -744,7 +771,7 @@ async function messageHandler(event) {
     //this must be synchronous before any awaits in this function
     const id = event.data.id;
     delete event.data.id;
-    const sandbox = appState.previewRef.current.sandboxRef.current;
+    const sandbox = devState.previewRef.current.sandboxRef.current;
     const sandboxId = sandbox.getSandboxId();
     const response = await sandbox.executeScriptAndWaitForResponse({
       sandboxId,
@@ -753,7 +780,7 @@ async function messageHandler(event) {
       timeout: 30000,
     });
     event.source.postMessage({ id, response }, "*");
-  } else if (!appState.testApi && event.data.msg?.data?.script) {
+  } else if (!devState.testApi && event.data.msg?.data?.script) {
     event.data.msg.data.script = event.data.msg.data.script.replace(
       /```([\s\S]*?)```/g,
       (_, p1) => {

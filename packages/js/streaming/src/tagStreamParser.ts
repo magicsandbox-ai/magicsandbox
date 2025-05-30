@@ -23,15 +23,21 @@
  *
  * Usage: for await (const {content, tag} of tagStreamParser({stream: ...})) {
  */
-async function* tagStreamParser({
+async function* tagStreamParser<T>({
   stream,
-  chunkProcessor = (chunk) => chunk,
+  chunkProcessor = (chunk) => String(chunk),
   validTags,
   maxTagLength = 100,
+}: {
+  stream: AsyncIterable<T>;
+  chunkProcessor?: (chunk: T) => string | undefined;
+  validTags?: string[];
+  maxTagLength?: number;
 }) {
+  let validTagSet: Set<string> | undefined;
   if (validTags) {
     maxTagLength = Math.max(...validTags.map((tag) => tag.length));
-    validTags = new Set(validTags);
+    validTagSet = new Set(validTags);
   }
   let buffer = "";
   let tag;
@@ -42,7 +48,7 @@ async function* tagStreamParser({
       ({ buffer, tag, results } = processBuffer({
         buffer: buffer + str,
         tag,
-        validTags,
+        validTagSet,
         bufferLength: maxTagLength + 3,
       }));
       if (results) {
@@ -55,7 +61,7 @@ async function* tagStreamParser({
   const { results } = processBuffer({
     buffer,
     tag,
-    validTags,
+    validTagSet,
     bufferLength: 0,
   });
   if (results) {
@@ -65,7 +71,17 @@ async function* tagStreamParser({
   }
 }
 
-function processBuffer({ buffer, tag, validTags, bufferLength }) {
+function processBuffer({
+  buffer,
+  tag,
+  validTagSet,
+  bufferLength,
+}: {
+  buffer: string;
+  tag: string | undefined;
+  validTagSet: Set<string> | undefined;
+  bufferLength: number;
+}) {
   const results = [];
   while (buffer.length > bufferLength) {
     let match;
@@ -73,11 +89,11 @@ function processBuffer({ buffer, tag, validTags, bufferLength }) {
       match = buffer.match(new RegExp(`<\\/${tag}>`));
     } else {
       match = buffer.match(/<[a-zA-Z_][\w.-]*>/);
-      if (validTags && match && !validTags.has(match[0].slice(1, -1))) {
+      if (validTagSet && match && !validTagSet.has(match[0].slice(1, -1))) {
         match = null;
       }
     }
-    if (match) {
+    if (match && match.index !== undefined) {
       if (match.index > 0) {
         results.push({
           content: buffer.slice(0, match.index),
@@ -116,12 +132,12 @@ function processBuffer({ buffer, tag, validTags, bufferLength }) {
  *
  * Returns: [{content: "hello world"}, {content: "test", tag: "example"}, {content: "goodbye"}]
  */
-function tagParser(string, validTags) {
-  validTags = validTags ? new Set(validTags) : undefined;
+function tagParser(string: string, validTags?: string[]) {
+  const validTagSet = validTags ? new Set(validTags) : undefined;
   const { results } = processBuffer({
     buffer: string,
     tag: undefined,
-    validTags,
+    validTagSet,
     bufferLength: 0,
   });
   return results;
