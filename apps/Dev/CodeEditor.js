@@ -22,33 +22,18 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
     className,
     setFiles,
     changeSet,
-    setChangeSet,
   } = props;
 
   const [hover, setHover] = useState({});
 
   const hoverRef = useRef(null);
-  const changeSetStateFieldRef = useRef(undefined);
 
-  //onChange, onUpdate, and extensions should be stable to avoid creating unnecessary transactions
+  //onChange and extensions should be stable to avoid creating unnecessary transactions
   const onChange = useCallback(
     (value) => {
       setFiles((files) => ({ ...files, [selectedFilename]: value }));
     },
     [setFiles, selectedFilename],
-  );
-
-  const onUpdate = useCallback(
-    (viewUpdate) => {
-      if (
-        changeSetStateFieldRef.current &&
-        viewUpdate.state.field(changeSetStateFieldRef.current, false) ===
-          undefined
-      ) {
-        setChangeSet(undefined);
-      }
-    },
-    [setChangeSet],
   );
 
   const extensions = useMemo(() => {
@@ -64,11 +49,7 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
       extensions.push(...[lintGutter(), eslinter()]);
     }
     if (changeSet) {
-      const diffExtensions = diffExtension(changeSet, value);
-      extensions.push(diffExtensions);
-      changeSetStateFieldRef.current = diffExtensions[0];
-    } else {
-      changeSetStateFieldRef.current = undefined;
+      extensions.push(diffExtension(changeSet, value));
     }
     return extensions;
   }, [selectedFilename, changeSet]);
@@ -151,7 +132,6 @@ const CodeEditor = forwardRef(function CodeEditor(props, ref) {
         onCreateEditor={handleCreateEditor}
         value={value}
         onChange={onChange}
-        onUpdate={onUpdate}
         extensions={extensions}
         height="100%"
         className={className}

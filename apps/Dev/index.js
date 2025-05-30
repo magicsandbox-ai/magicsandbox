@@ -507,7 +507,6 @@ function App() {
   devState.files = files;
   devState.setFiles = setFiles;
   devState.merges = merges;
-  devState.setMerges = setMerges;
   devState.selectedFilename = selectedFilename;
   devState.setSelectedFilename = setSelectedFilename;
   devState.build = build;
@@ -523,16 +522,6 @@ function App() {
   }));
   const value = files[selectedFilename];
   const merge = merges[selectedFilename];
-  const setMerge = (nextMerge) => {
-    let nextMerges;
-    if (nextMerge) {
-      nextMerges = { ...merges, [selectedFilename]: nextMerge };
-    } else {
-      nextMerges = { ...merges };
-      delete nextMerges[selectedFilename];
-    }
-    setMerges(nextMerges);
-  };
   const initialState = {
     json: editorStateRef.current[selectedApp + selectedFilename]?.state,
     fields: { history: historyField },
@@ -642,7 +631,6 @@ function App() {
             cssClassMap={tailwindState.classMap || {}}
             setFiles={setFiles}
             changeSet={merge}
-            setChangeSet={setMerge}
           />
           {Object.keys(merges).length > 0 && (
             <div className="absolute bottom-4 left-2 right-2 flex flex-wrap justify-center gap-2">
@@ -650,7 +638,7 @@ function App() {
                 <button
                   className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
                   onClick={() => {
-                    setMerges({});
+                    devState.updateChangeSets(undefined);
                   }}
                 >
                   Accept All Files
@@ -659,7 +647,7 @@ function App() {
                   <button
                     className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
                     onClick={() => {
-                      setMerge(null);
+                      devState.updateChangeSet(undefined);
                     }}
                   >
                     Accept File
@@ -671,7 +659,7 @@ function App() {
                   <button
                     className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
                     onClick={() => {
-                      setMerge(null);
+                      devState.updateChangeSet(undefined);
                       setFiles((files) => ({
                         ...files,
                         [selectedFilename]: applyChangeSet(
@@ -687,7 +675,7 @@ function App() {
                 <button
                   className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
                   onClick={() => {
-                    setMerges({});
+                    devState.updateChangeSets(undefined);
                     setFiles((files) => ({
                       ...files,
                       ...Object.fromEntries(
