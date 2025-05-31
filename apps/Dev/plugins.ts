@@ -439,7 +439,7 @@ class BuildMetadata {
     this.importQueue.push(imp);
     if (this.importQueue.length === 1) {
       imp.markChildrenReady();
-    } else if (this.importQueue[this.importQueue.length - 2].done) {
+    } else if (this.importQueue[this.importQueue.length - 2]!.done) {
       imp.markChildrenReady();
     }
   }
@@ -497,7 +497,9 @@ class PackageMetadata {
           const version = pluginData?.pjson?.version;
           if (version) {
             imp.version = version;
-            this.versionPaths[version] = pathWithoutFile;
+            if (pathWithoutFile) {
+              this.versionPaths[version] = pathWithoutFile;
+            }
           }
         })
         .catch((e) => {
@@ -515,9 +517,6 @@ class PackageMetadata {
       this.processNext();
     }
   }
-  /**
-   * Returns string in format [@scope/]package[@version]
-   */
   resolvePathWithoutFile(imp: Import) {
     const pjson = imp.args.pluginData?.pjson || {};
     const importer = pjson ? `${pjson.name}@${pjson.version}` : undefined; //todo better logging
@@ -542,7 +541,7 @@ class PackageMetadata {
           };
         } else if (this.peer) {
           //no version satisfies range, but it's a peer, so use max and warn
-          const maxVersion = semver.rsort(versions)[0];
+          const maxVersion = semver.rsort(versions)[0]!;
           console.warn(
             `Ignoring ${importer} range ${range} when importing peer dependency ${this.packageId}, using ${maxVersion} instead`,
           );
@@ -560,21 +559,26 @@ class PackageMetadata {
       }
     } else if (versions.length > 0) {
       //no range - use max existing version to deduplicate
-      const version = semver.rsort(versions)[0];
+      const version = semver.rsort(versions)[0]!;
       return { version, pathWithoutFile: this.versionPaths[version] };
     } else {
       //no range, no existing versions
       return { pathWithoutFile: this.packageId };
     }
   }
-  getRange(parsedPath, pjson, importer) {
-    const { overrides, dependencies } = this.buildMetadata.appObjRef.current;
-    let range;
+  getRange(parsedPath: ParsedPath, pjson: any, importer: string | undefined) {
+    const overrides = this.buildMetadata.overrides;
+    const dependencies = this.buildMetadata.dependencies;
+    let range: string | undefined;
     let peer = false;
-    if (overrides?.[importer]?.[this.packageId]) {
+    if (
+      importer !== undefined &&
+      typeof overrides[importer] !== "string" &&
+      overrides[importer]?.[this.packageId]
+    ) {
       range = overrides[importer][this.packageId];
-    } else if (overrides?.[this.packageId]) {
-      range = overrides[this.packageId];
+    } else if (typeof overrides[this.packageId] === "string") {
+      range = overrides[this.packageId] as string;
     } else if (pjson?.peerDependencies?.[this.packageId]) {
       range = pjson.peerDependencies[this.packageId];
       peer = true;
@@ -593,7 +597,9 @@ class PackageMetadata {
     but if only a tag is present, it will error, in which case we can just use the tag
     */
     try {
-      range = new semver.Range(range, { loose: true });
+      if (range) {
+        range = new semver.Range(range, { loose: true }).range;
+      }
     } catch {
       //only a tag is present, ignore
     }
@@ -614,7 +620,7 @@ class Import {
   version: string | undefined;
   url: string | undefined;
   imports: Record<string, Set<string>> | undefined;
-  children: Import[] | undefined;
+  children: Import[];
   ready: boolean;
   done: boolean;
   queueIndex: number;
@@ -649,7 +655,7 @@ class Import {
     this.version = undefined;
     this.url = undefined;
     this.imports = undefined; //{path: Set of imported names}
-    this.children = undefined;
+    this.children = [];
     this.ready = false;
     this.done = false;
     this.queueIndex = 0;
@@ -705,16 +711,21 @@ class Import {
       if (!loaded) {
         if (!this.packageId) {
           //local file
-          const contents =
-            this.buildMetadata.filesRef.current[this.resolvedPath.slice(1)]; //format is /file.js
+          const contents = this.buildMetadata.readFile(
+            this.resolvedPath.slice(1), //format is /file.js
+          );
+          if (contents === undefined) {
+            throw new Error(
+              `Unexpected error reading file ${this.resolvedPath}`,
+            );
+          }
           this.handleContents(contents);
           this.onResolvePromise.resolve({
             path: this.resolvedPath,
             namespace: "import",
             pluginData: { contents, import: this },
           });
-          //we could return a promise here, but we don't use PackageMetadata for local files
-          //so if we used PackageMetadata but are in this code path, there's a bug, and it's better to error
+          return Promise.resolve();
         } else {
           //fetch files
           const pluginDataPromise = handleFetch(
@@ -725,6 +736,7 @@ class Import {
             .then(([contentsResponse, pjsonResponse]) => {
               if (
                 contentsResponse.status >= 400 ||
+                //@ts-ignore
                 pjsonResponse?.status >= 400
               ) {
                 throw new Error(
@@ -755,12 +767,12 @@ class Import {
           path: this.resolvedPath,
           namespace: "import",
         });
-        //return a promise because PackageMetadata.processNext is expecting one
         return Promise.resolve();
       }
     } catch (error) {
       console.error(error);
       this.onResolvePromise.reject(error);
+      return Promise.reject(error);
     }
   }
   handleContents(contents: string) {
@@ -811,7 +823,7 @@ class Import {
     if (this.importQueueIndex < this.buildMetadata.importQueue.length - 1) {
       this.buildMetadata.importQueue[
         this.importQueueIndex + 1
-      ].markChildrenReady();
+      ]?.markChildrenReady();
     }
   }
 }
@@ -829,7 +841,8 @@ function createImportPlugin(
         intervalId: number;
 
       build.onStart(() => {
-        if (appObjRef.current.debug) {
+        const appObj = getAppObj(readFile);
+        if (appObj.debug) {
           log = console.log;
           intervalId = setInterval(() => {
             console.log(buildMetadata);
@@ -837,7 +850,14 @@ function createImportPlugin(
         } else {
           log = () => {};
         }
-        buildMetadata = new BuildMetadata(filesRef, appObjRef, imports, log);
+        buildMetadata = new BuildMetadata({
+          readFile,
+          log,
+          imports,
+          cdn: appObj.cdn,
+          dependencies: appObj.dependencies,
+          overrides: appObj.overrides,
+        });
         start = Date.now();
         log("onStart");
       });
@@ -875,7 +895,8 @@ function createImportPlugin(
       build.onEnd((result) => {
         if (buildMetadata.importQueue[0]?.args?.path === "bundleDepsCode.js") {
           //this is kind of a hack, but we only want to update the dependencies when bundling bundleDepsCode.js in buildDeps
-          appObjRef.current.dependencies = Object.fromEntries(
+          //@ts-ignore
+          result.dependencies = Object.fromEntries(
             buildMetadata.importQueue[0].children.map((child) => [
               child.packageId,
               `^${child.version}`,
@@ -883,6 +904,7 @@ function createImportPlugin(
           );
         }
         if (buildMetadata.cdn === "esm.sh") {
+          //@ts-ignore
           result.resolvedPaths = buildMetadata.resolvedPaths;
         }
         log(`Build took ${Date.now() - start}ms`);
