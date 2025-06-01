@@ -1,15 +1,31 @@
 import SyncExternalStore from "@utils/SyncExternalStore.ts";
-import { ChangeSet, Text, type ChangeSpec } from "@codemirror/state";
+import {
+  ChangeSet,
+  Text,
+  type ChangeSpec,
+  type EditorState,
+} from "@codemirror/state";
+import { historyField } from "@codemirror/commands";
 import { tagParser } from "@magicsandbox.ai/streaming";
 //@ts-ignore
 import { buildApp, exampleAppFiles } from "@magicsandbox.ai/dev";
+import processTailwindBrowser, {
+  type TailwindConfig,
+} from "@magicsandbox.ai/tailwind-browser";
 import JSON5 from "json5";
+import type * as Esbuild from "esbuild";
+import { createBundleDepsPlugin, createImportPlugin } from "./plugins.ts";
+
+type EsbuildApi = Esbuild.PluginBuild["esbuild"]; //not sure why this is on PluginBuild but it works
+
+type ReadFile = (path: string) => string | undefined;
 
 interface File {
   name: string;
   content: string;
   changeSet?: ChangeSet | undefined;
-  editorState?: any;
+  editorState?: EditorState;
+  editorStateJson?: any;
   scroll?: {
     top: number;
     left: number;
@@ -49,12 +65,31 @@ const exampleApp = {
 class DevState extends SyncExternalStore<Props> {
   apps: { [appId: string]: App };
   selectedApp: App;
-  constructor() {
+  esbuildPromise: Promise<EsbuildApi>;
+  bundleDepsPlugin: Esbuild.Plugin;
+  importPlugin: Esbuild.Plugin;
+  esbuildContext?: Esbuild.BuildContext;
+  tailwindConfigContent?: string;
+  constructor({ esbuildPromise }: { esbuildPromise: Promise<EsbuildApi> }) {
     super({ appIds: [exampleApp.id], selectedApp: exampleApp });
     this.apps = {
       [exampleApp.id]: exampleApp,
     };
     this.selectedApp = exampleApp;
+    this.esbuildPromise = esbuildPromise;
+    this.bundleDepsPlugin = createBundleDepsPlugin(
+      this.readFile,
+      this.esbuildPromise,
+    );
+    this.importPlugin = createImportPlugin(this.readFile);
+  }
+  readFile: ReadFile = (path) => {
+    if (this.selectedApp.files[path]) {
+      return this.selectedApp.files[path].content;
+    }
+  };
+  errorHandler(error: any) {
+    console.error(error);
   }
   setSelectedApp(appId?: string) {
     if (appId) {
@@ -114,6 +149,10 @@ class DevState extends SyncExternalStore<Props> {
   }
   selectFile(fileName: string) {
     if (this.selectedApp.files[fileName]) {
+      if (this.selectedApp.selectedFile.editorState) {
+        this.selectedApp.selectedFile.editorStateJson =
+          this.selectedApp.selectedFile.editorState.toJSON(editorStateFields);
+      }
       this.selectedApp.selectedFile = this.selectedApp.files[fileName];
       this.setSelectedApp();
     } else {
@@ -164,6 +203,91 @@ class DevState extends SyncExternalStore<Props> {
       };
     }
     this.setSelectedApp();
+  }
+  async buildApp(publish = false) {
+    const magicContent = this.selectedApp.files["magic.json"]?.content;
+    if (!magicContent) {
+      throw new Error("Unexpected build error - magic.json is missing");
+    }
+    const magicObj = JSON5.parse(magicContent);
+    const esbuild = await this.esbuildPromise;
+    const { appObj, context } = await buildApp({
+      appObj: magicObj,
+      esbuild,
+      esbuildOptions: {
+        plugins: [this.bundleDepsPlugin, this.importPlugin],
+        minify: false,
+        sourcemap: true,
+        ...(publish ? { minify: true, sourcemap: false } : {}),
+      },
+      context: this.esbuildContext,
+      fileExists: (path: string) => this.readFile(path) !== undefined,
+      readFile: this.readFile,
+      processTailwind: this.processTailwind,
+    });
+    this.esbuildContext = context;
+    return appObj;
+  }
+  async processTailwind(
+    config: TailwindConfig,
+    css: string,
+    _skipBuild = false,
+  ) {
+    //config is magic.json tailwindConfig, but if tailwind.config.js exists, use that instead
+    let tailwindConfigFile: File | undefined;
+    if (this.selectedApp.files["tailwind.config.js"]) {
+      tailwindConfigFile = this.selectedApp.files["tailwind.config.js"];
+    } else if (this.selectedApp.files["tailwind.config.mjs"]) {
+      tailwindConfigFile = this.selectedApp.files["tailwind.config.mjs"];
+    }
+    if (tailwindConfigFile) {
+      try {
+        //if skipBuild is true, skip the build, or if file hasn't changed, skip the build
+        const skipBuild =
+          _skipBuild ||
+          tailwindConfigFile.content === this.tailwindConfigContent;
+        if (!skipBuild) {
+          const esbuild = await this.esbuildPromise;
+          const configResult = await esbuild.build({
+            entryPoints: [tailwindConfigFile.name],
+            write: false,
+            plugins: [this.importPlugin],
+            bundle: true,
+            globalName: "__tailwindConfig",
+          });
+          eval?.(configResult.outputFiles[0]!.text); //indirect eval
+          this.tailwindConfigContent = tailwindConfigFile.content;
+        }
+        //@ts-ignore
+        config = globalThis.__tailwindConfig?.default || {};
+      } catch (error) {
+        this.errorHandler(error);
+      }
+    }
+    const excludeContent = new Set(config.excludeContent || []);
+    config.content = Object.entries(this.selectedApp.files)
+      .filter(
+        ([filename]) =>
+          (filename.endsWith(".js") ||
+            filename.endsWith(".jsx") ||
+            filename.endsWith(".ts") ||
+            filename.endsWith(".tsx") ||
+            filename.endsWith(".html")) &&
+          !excludeContent.has(filename),
+      )
+      .map(([filename, file]) => {
+        return {
+          raw: file.content,
+          extension: filename.split(".").pop(),
+        };
+      });
+    //tailwind caches and skips if content hasn't changed, but it's not picking up changes in index.css (probably due to fs not working in browser)
+    //so this is a hack to change content every time to force rerun and always pick up changes in index.css
+    if (config.content.length > 0) {
+      //@ts-ignore
+      config.content[0].raw += Date.now();
+    }
+    return await processTailwindBrowser(config, css);
   }
   apiUpdateFiles(updateString: string) {
     let invalidUpdateString = false;
@@ -280,31 +404,27 @@ class DevState extends SyncExternalStore<Props> {
     }
     this.updateFiles(fileUpdates);
   }
-  buildApp(esbuild: any, publish = false) {
-    const magicContent = this.selectedApp.files["magic.json"]?.content;
-    if (!magicContent) {
-      throw new Error("Unexpected build error - magic.json is missing");
-    }
-    const magicObj = JSON5.parse(magicContent);
-    const { appObj, context } = buildApp({
-      appObj: magicObj,
-      esbuild,
-      esbuildOptions: {
-        plugins: [bundleDepsPluginRef.current, importPluginRef.current],
-        minify: false,
-        sourcemap: true,
-        ...(publish ? { minify: true, sourcemap: false } : {}),
-      },
-      context: esbuildContextRef.current,
-      fileExists,
-      readFile,
-      processTailwind,
-    });
-  }
 }
 
-export { DevState };
+const editorStateFields = { history: historyField };
+
+export { DevState, editorStateFields, type EsbuildApi, type ReadFile };
 
 function docFromString(content: string) {
   return Text.of(content.split("\n"));
+}
+
+function getUniqueName(name: string, existingNames: Set<string>) {
+  const match = name.match(/\d+$/);
+  let newName;
+  if (match) {
+    const number = parseInt(match[0]);
+    newName = `${name.slice(0, match.index)}${number + 1}`;
+  } else {
+    newName = `${name}1`;
+  }
+  if (existingNames.has(newName)) {
+    return getUniqueName(newName, existingNames);
+  }
+  return newName;
 }

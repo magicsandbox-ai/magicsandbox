@@ -50,3 +50,5 @@ await esbuild.build({
   minify: true,
   format: "esm",
 });
+
+fs.copyFileSync("index.d.ts", "dist/index.d.ts");

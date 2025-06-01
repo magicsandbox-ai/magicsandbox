@@ -3,14 +3,11 @@ import { isEqual } from "es-toolkit";
 import semver from "semver";
 import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox";
 import type * as Esbuild from "esbuild";
-
-type EsbuildApi = Esbuild.PluginBuild["esbuild"]; //not sure why this is on PluginBuild but it works
+import type { EsbuildApi, ReadFile } from "./DevState.js";
 
 declare let setInterval: WindowOrWorkerGlobalScope["setInterval"];
 
 type PkgImports = Record<string, Set<string>>;
-
-type ReadFile = (path: string) => string | undefined;
 
 type ParsedPath = {
   scope: string | undefined;
@@ -182,7 +179,10 @@ function transformToBundleDeps(pkgImports: PkgImports) {
   return `${outputImports.join("\n")}\nwindow.__deps = {};\n${outputAssignments.join("\n")}`;
 }
 
-function createBundleDepsPlugin(readFile: ReadFile, esbuild: EsbuildApi) {
+function createBundleDepsPlugin(
+  readFile: ReadFile,
+  esbuildPromise: Promise<EsbuildApi>,
+) {
   const plugin = {
     name: "bundleDeps",
     setup(build: Esbuild.PluginBuild) {
@@ -222,6 +222,7 @@ function createBundleDepsPlugin(readFile: ReadFile, esbuild: EsbuildApi) {
         }
         if (loader === "tsx" || loader === "ts") {
           //the espree parser in transformImports doesn't support ts, so use esbuild to strip types
+          const esbuild = await esbuildPromise;
           const result = await esbuild.transform(file, {
             loader,
           });
@@ -243,7 +244,7 @@ function createBundleDepsPlugin(readFile: ReadFile, esbuild: EsbuildApi) {
             const bundleDepsCode = transformToBundleDeps(pkgImports);
             bundledDeps = await bundleDeps(
               bundleDepsCode,
-              esbuild,
+              esbuildPromise,
               build.initialOptions,
               appObj,
             );
@@ -303,17 +304,17 @@ function createBundleDepsPlugin(readFile: ReadFile, esbuild: EsbuildApi) {
 
 async function bundleDeps(
   bundleDepsCode: string,
-  esbuild: EsbuildApi,
+  esbuildPromise: Promise<EsbuildApi>,
   options: Esbuild.BuildOptions,
   appObj: any,
 ) {
-  let result = await buildDeps(bundleDepsCode, esbuild, options, appObj);
+  let result = await buildDeps(bundleDepsCode, esbuildPromise, options, appObj);
   if (appObj.optimizedTreeShaking !== false) {
     //@ts-ignore
     if (result.resolvedPaths) {
       result = await buildDeps(
         bundleDepsCode,
-        esbuild,
+        esbuildPromise,
         options,
         appObj,
         //@ts-ignore
@@ -330,11 +331,12 @@ async function bundleDeps(
 
 async function buildDeps(
   bundleDepsCode: string,
-  esbuild: EsbuildApi,
+  esbuildPromise: Promise<EsbuildApi>,
   options: Esbuild.BuildOptions,
   appObj: any,
   imports?: Record<string, Set<string>>,
 ) {
+  const esbuild = await esbuildPromise;
   const result = await esbuild.build({
     ...options,
     entryPoints: ["bundleDepsCode.js"],

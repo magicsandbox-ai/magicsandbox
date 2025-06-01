@@ -11,16 +11,7 @@ import { historyField } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import * as esbuild from "esbuild-wasm";
-import {
-  buildApp,
-  getDefaults,
-  runProcessTailwind,
-  updateMagicJson,
-  exampleAppFiles as _exampleAppFiles,
-} from "@magicsandbox.ai/dev";
-import { createBundleDepsPlugin, createImportPlugin } from "./plugins.js";
 import JSON5 from "json5";
-import processTailwindBrowser from "@magicsandbox.ai/tailwind-browser";
 import prettier from "prettier/standalone";
 import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
@@ -41,11 +32,6 @@ import CodeEditor from "./CodeEditor.tsx";
 import FilePicker from "./FilePicker.tsx";
 import Help from "./Help.tsx";
 
-const devState = new DevState({
-  selectedFilename: "magic.json",
-  changeSets: {},
-});
-
 async function initEsbuild() {
   const response = await requestFetch(
     "https://esm.sh/esbuild-wasm@0.23.1/esbuild.wasm",
@@ -53,75 +39,28 @@ async function initEsbuild() {
   );
   const module = await WebAssembly.compile(response.body);
   await esbuild.initialize({ wasmModule: module });
+  return esbuild;
 }
 
 const esbuildPromise = initEsbuild();
 
-const exampleAppFiles = {
-  "magic.json": _exampleAppFiles["magic.json5"], //rename
-  ...Object.fromEntries(
-    Object.entries(_exampleAppFiles).filter(([key]) => key !== "magic.json5"),
-  ),
-};
+const devState = new DevState({
+  esbuildPromise,
+});
 
 function App() {
   const [view, setView] = useState(window.innerWidth > 768 ? null : "code"); //"code" | "preview", only relevant for mobile
-  const [apps, setApps] = useState([]);
-  const [selectedApp, setSelectedApp] = useState("");
-  const [files, setFiles] = useState({});
-  const merges = useSyncExternalStore(
-    devState.subscribe("changeSets"),
-    devState.getSnapshot("changeSets"),
-  );
-  const setMerges = useCallback((nextMerges) => {
-    devState.set("changeSets", nextMerges);
-  }, []);
-  const selectedFilename = useSyncExternalStore(
-    devState.subscribe("selectedFilename"),
-    devState.getSnapshot("selectedFilename"),
-  );
-  const setSelectedFilename = useCallback((nextSelectedFilename) => {
-    devState.set("selectedFilename", nextSelectedFilename);
-  }, []);
   const [showHelp, setShowHelp] = useState(false);
   const [testApi, setTestApi] = useState(false);
 
   const previewRef = useRef(null);
   const codePanelRef = useRef(null);
   const previewPanelRef = useRef(null);
-  const deletedFilesRef = useRef({});
-  const appObjRef = useRef(null);
-  const esbuildContextRef = useRef(null);
-  const filesRef = useRef(files);
-  const editorRef = useRef(null);
-  const editorStateRef = useRef({});
-  const bundleDepsPluginRef = useRef(null);
-  const bundledDepsRef = useRef(null);
-  const importPluginRef = useRef(null);
-  const tailwindConfigRef = useRef(null);
   const toastsRef = useRef(null);
   // const previewLogsRef = useRef(null);
 
   useEffect(() => {
     initData();
-  }, []);
-
-  useEffect(() => {
-    if (Object.keys(files).length > 0) {
-      //don't bother on initial render
-      filesRef.current = files;
-      debouncedCallProcessTailwind();
-    }
-  }, [files]);
-
-  useEffect(() => {
-    bundleDepsPluginRef.current = createBundleDepsPlugin(
-      filesRef,
-      appObjRef,
-      esbuild,
-      bundledDepsRef,
-    );
-    importPluginRef.current = createImportPlugin(filesRef, appObjRef);
   }, []);
 
   async function initData(handleDelete) {
@@ -158,75 +97,6 @@ function App() {
     setFiles(initFiles);
     setMerges({});
     setSelectedFilename("magic.json");
-  }
-
-  function fileExists(filename) {
-    return filename in filesRef.current;
-  }
-
-  function readFile(filename) {
-    return filesRef.current[filename];
-  }
-
-  async function processTailwind(config, css, _skipBuild = false) {
-    //config is magic.json tailwindConfig, but if tailwind.config.js exists, use that instead
-    let tailwindConfigFilename, tailwindConfigFile;
-    if (filesRef.current["tailwind.config.js"]) {
-      tailwindConfigFilename = "tailwind.config.js";
-      tailwindConfigFile = filesRef.current["tailwind.config.js"];
-    } else if (filesRef.current["tailwind.config.mjs"]) {
-      tailwindConfigFilename = "tailwind.config.mjs";
-      tailwindConfigFile = filesRef.current["tailwind.config.mjs"];
-    }
-    if (tailwindConfigFile) {
-      try {
-        //if skipBuild is true, skip the build, or if file hasn't changed, skip the build
-        const skipBuild =
-          _skipBuild || tailwindConfigFile === tailwindConfigRef.current;
-        if (!skipBuild) {
-          const configResult = await esbuild.build({
-            entryPoints: [tailwindConfigFilename],
-            write: false,
-            plugins: [importPluginRef.current],
-            bundle: true,
-            globalName: "__tailwindConfig",
-          });
-          eval?.(configResult.outputFiles[0].text); //indirect eval
-          tailwindConfigRef.current = tailwindConfigFile;
-        }
-        config = window.__tailwindConfig?.default || {};
-      } catch (error) {
-        console.error(error);
-        toastsRef.current.addToast(
-          `Error building ${tailwindConfigFilename}`,
-          "error",
-        );
-      }
-    }
-    const excludeContent = new Set(config.excludeContent || []);
-    config.content = Object.entries(filesRef.current)
-      .filter(
-        ([filename]) =>
-          (filename.endsWith(".js") ||
-            filename.endsWith(".jsx") ||
-            filename.endsWith(".ts") ||
-            filename.endsWith(".tsx") ||
-            filename.endsWith(".html")) &&
-          !excludeContent.has(filename),
-      )
-      .map(([filename, value]) => {
-        const filenameSplit = filename.split(".");
-        return {
-          raw: value,
-          extension: filenameSplit[filenameSplit.length - 1],
-        };
-      });
-    //tailwind caches and skips if content hasn't changed, but it's not picking up changes in index.css (probably due to fs not working in browser)
-    //so this is a hack to change content every time to force rerun and always pick up changes in index.css
-    if (config.content.length > 0) {
-      config.content[0].raw += Date.now();
-    }
-    return await processTailwindBrowser(config, css);
   }
 
   async function handleKeyDown(event) {
@@ -304,31 +174,6 @@ function App() {
       handlePutData("selectedApp", app);
     }
     await build(appObj);
-  }
-
-  async function handleSelectApp(app) {
-    try {
-      const newFiles = await requestGetData(app);
-      setFiles(newFiles);
-      setSelectedApp(app);
-      setMerges({});
-      handlePutData("selectedApp", app);
-      handleSelectFilename("magic.json", app);
-      deletedFilesRef.current = {};
-    } catch (error) {
-      console.error(`handleSelectApp ${app} error`, error);
-    }
-  }
-
-  async function deleteApp(app) {
-    const newApps = apps.filter((a) => a !== app);
-    if (newApps.length === 0) {
-      await initData(true); //get example app
-    } else {
-      setApps(newApps);
-      handleSelectApp(newApps[0]);
-    }
-    await requestDeleteData(app);
   }
 
   async function handlePublish() {
@@ -416,22 +261,6 @@ function App() {
     }
     previewPanelRef.current.resize((targetWidth / window.innerWidth) * 100);
   }
-
-  devState.apps = apps;
-  devState.setApps = setApps;
-  devState.selectedApp = selectedApp;
-  devState.setSelectedApp = setSelectedApp;
-  devState.files = files;
-  devState.setFiles = setFiles;
-  devState.merges = merges;
-  devState.selectedFilename = selectedFilename;
-  devState.setSelectedFilename = setSelectedFilename;
-  devState.build = build;
-  devState.testApi = testApi;
-  devState.previewRef = previewRef;
-  devState.handlePutData = handlePutData;
-  devState.toastsRef = toastsRef;
-  devState.filesRef = filesRef;
 
   const filenames = Object.keys(files).map((filename) => ({
     filename,
@@ -528,7 +357,6 @@ function App() {
           <FilePicker devState={devState} />
           <CodeEditor
             key={selectedApp + selectedFilename}
-            ref={editorRef}
             devState={devState}
           />
           {Object.keys(merges).length > 0 && (
