@@ -51,5 +51,6 @@
     "react-error-boundary": "^6.0.0",
     "@types/espree": "^10.1.0",
     "@types/semver": "^7.7.0",
+    "@types/eslint-scope": "^8.3.0",
   },
 }

@@ -4,8 +4,7 @@ import React, {
   useImperativeHandle,
   useRef,
 } from "react";
-
-type ToastType = "success" | "info" | "infoDark" | "warning" | "error";
+import { ToastError, type ToastType } from "@utils/Toast.ts";
 
 interface ToastsRef {
   addToast: (message: string, type: ToastType) => void;
@@ -96,15 +95,4 @@ const Toasts = forwardRef<ToastsRef, { className: string }>(function Toasts(
   );
 });
 
-class ToastError extends Error {
-  type: ToastType;
-
-  constructor(message: string, type: ToastType) {
-    super(message);
-    this.name = "ToastError";
-    this.type = type;
-  }
-}
-
-export { Toasts, ToastError };
-export type { ToastsRef };
+export { Toasts, ToastError, type ToastType, type ToastsRef };

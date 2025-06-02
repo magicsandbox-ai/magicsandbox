@@ -1,13 +1,21 @@
-import { parse } from "./parser.js";
+import { parse, type Node as AstNode } from "./parser.ts";
 import * as eslintScope from "eslint-scope";
-import { prompt } from "./prompt.js";
+import { prompt } from "./prompt.ts";
+import { ToastError } from "@utils/Toast.ts";
+import type * as eslint from "eslint";
+import type { DevState } from "./DevState.ts";
 
-function analyze(content) {
+type NodeWithDepth = Node & { depth: number };
+
+function analyze(content: string) {
   /*
   much of this is copied from eslint-scope/lib/index.js so we can override Referencer
+  todo update to 8.3 which adds JSX support
+  also - the types are only available for version 8, so causes some difficulties
   */
-  const options = {
+  const options: eslintScope.AnalyzeOptions = {
     optimistic: false,
+    //@ts-ignore: removed in v8
     directive: false,
     nodejsScope: false,
     impliedStrict: false,
@@ -17,15 +25,20 @@ function analyze(content) {
     fallback: "iteration",
     ignoreEval: true, //required to resolve references in a file with eval
   };
+  //@ts-ignore
   class JSXReferencer extends eslintScope.Referencer {
-    constructor(options, scopeManager) {
+    constructor(
+      options: eslintScope.AnalyzeOptions,
+      scopeManager: InstanceType<typeof eslintScope.ScopeManager>,
+    ) {
       super(options, scopeManager);
     }
-    JSXIdentifier(node) {
+    JSXIdentifier(node: any) {
       //ignore tags like "div"
       if (node.name[0] === node.name[0].toUpperCase()) {
         //hack to change type to Identifier, otherwise eslint-scope will ignore it
         node.type = "Identifier";
+        //@ts-ignore
         this.currentScope().__referencing(node);
       }
     }
@@ -34,7 +47,9 @@ function analyze(content) {
   //https://eslint.org/docs/latest/extend/scope-manager-interface#scopemanager-interface
   const scopeManager = new eslintScope.ScopeManager(options);
   const referencer = new JSXReferencer(options, scopeManager);
+  //@ts-ignore
   referencer.visit(ast);
+  //@ts-ignore
   if (scopeManager.__currentScope !== null) {
     throw new Error("currentScope should be null.");
   }
@@ -50,8 +65,27 @@ todos:
 */
 
 class Context {
-  constructor(rawFiles = {}, selectedFiles = [], selectedCode = [], toastsRef) {
-    this.rawFiles = rawFiles;
+  devState: DevState;
+  rawFiles: { [filename: string]: string };
+  selectedFiles: Set<string>;
+  selectedCode: string[];
+  maxLength: number;
+  length: number;
+  files: { [filename: string]: File };
+  nodes: NodeWithDepth[];
+  processedNodes: NodeWithDepth[];
+  constructor(
+    devState: DevState,
+    selectedFiles: string[],
+    selectedCode: string[],
+  ) {
+    this.devState = devState;
+    this.rawFiles = Object.fromEntries(
+      Object.entries(devState.selectedApp.files).map(([filename, file]) => [
+        filename,
+        file.content,
+      ]),
+    );
     this.selectedFiles = new Set(selectedFiles);
     this.selectedCode = selectedCode;
     this.maxLength = 25000; //todo make configurable
@@ -59,15 +93,14 @@ class Context {
     this.files = {};
     this.nodes = [];
     this.processedNodes = [];
-    this.toastsRef = toastsRef;
   }
 
-  get() {
+  async get() {
     this.init();
     if (this.length <= this.maxLength) {
       return this.format(false);
     }
-    this.process();
+    await this.process();
     this.summarize();
     return this.format(true);
   }
@@ -79,15 +112,15 @@ class Context {
     });
   }
 
-  process() {
-    Object.values(this.files).forEach((file) => file.parse());
+  async process() {
+    await Promise.all(Object.values(this.files).map((file) => file.parse()));
     Object.values(this.files).forEach((file) => {
       file.resolveReferences();
     });
     //selected nodes add themselves to this.nodes during file.parse()
     while (this.nodes.length > 0) {
-      const node = this.nodes.shift();
-      if (node.file.depth === null) {
+      const node = this.nodes.shift()!;
+      if (node.file.depth === undefined) {
         node.file.depth = node.depth;
       } else {
         node.file.depth = Math.min(node.file.depth, node.depth);
@@ -95,9 +128,9 @@ class Context {
       if (node.depth <= 1) {
         const nodesToAdd = node.edges;
         nodesToAdd.forEach((nodeToAdd) => {
-          if (nodeToAdd.depth === null) {
+          if (nodeToAdd.depth === undefined) {
             nodeToAdd.depth = node.depth + 1;
-            this.nodes.push(nodeToAdd);
+            this.nodes.push(nodeToAdd as NodeWithDepth);
           }
         });
       }
@@ -108,9 +141,9 @@ class Context {
   summarize() {
     const items = [
       this.files["magic.json"],
-      ...this.files.filter((file) => !file.js && file.selected),
+      ...Object.values(this.files).filter((file) => !file.js && file.selected),
       ...this.processedNodes.filter((node) => node.depth === 0),
-      ...this.files.filter((file) => !file.js && !file.selected),
+      ...Object.values(this.files).filter((file) => !file.js && !file.selected),
       ...this.processedNodes.filter((node) => node.depth === 1),
       ...this.processedNodes.filter((node) => node.depth === 2),
     ];
@@ -118,17 +151,19 @@ class Context {
     let i = 0;
     while (i < items.length && this.length <= this.maxLength) {
       const item = items[i];
-      this.length += item.add();
+      if (item) {
+        this.length += item.add();
+      }
       i++;
     }
   }
 
-  format(summarizedContext) {
-    let method = (file) => file.content;
+  format(summarizedContext: boolean) {
+    let method = (file: File) => file.content;
     if (summarizedContext) {
-      method = (file) => file.get();
+      method = (file: File) => file.get();
     }
-    const fileStrings = [];
+    const fileStrings: string[] = [];
     Object.values(this.files).forEach((file) => {
       fileStrings.push(`<${file.filename}>
 ${method(file)}
@@ -142,16 +177,28 @@ ${fileStrings.join("\n")}
 }
 
 class File {
-  constructor(context, filename, content) {
+  context: Context;
+  filename: string;
+  js: boolean;
+  content: string;
+  selected: boolean;
+  selectionRanges: number[][];
+  nodes: Node[];
+  definitions: Record<string, Node>;
+  exports: Record<string, string>;
+  summary: string[];
+  depth?: number;
+  ast?: AstNode[];
+  scopeManager?: InstanceType<typeof eslintScope.ScopeManager>;
+  constructor(context: Context, filename: string, content: string) {
     this.context = context;
     this.filename = filename;
-    this.js = this.filename.endsWith(".js") || this.filename.endsWith(".jsx");
+    this.js = isJs(filename);
     this.content = content;
     this.selected = this.context.selectedFiles.has(filename);
     this.selectionRanges = [];
     this.nodes = [];
     this.definitions = {};
-    this.depth = null;
     this.exports = {}; //map of exported name to local name
     this.summary = [];
   }
@@ -167,22 +214,28 @@ class File {
     return ranges;
   }
 
-  parse() {
+  async parse() {
     if (!this.js) {
       this.context.length += this.content.length;
       return;
     }
     this.selectionRanges = this.findSelectionRanges();
     try {
-      const { ast, scopeManager } = analyze(this.content);
-      this.ast = ast;
+      let content = this.content;
+      //can't parse TS, so first need to strip the types
+      if (isTs(this.filename)) {
+        content = await this.context.devState.getJs(this.filename);
+      }
+      const { ast, scopeManager } = analyze(content);
+      this.ast = ast.body;
       this.scopeManager = scopeManager;
-      this.ast.body.forEach((astNode, index) => {
+      this.ast.forEach((astNode, index) => {
         const node = new Node(this.context, this, astNode, index);
         this.nodes.push(node);
         if (astNode.type === "ExportNamedDeclaration") {
           astNode.specifiers.forEach((specifier) => {
             if (specifier.type === "ExportSpecifier") {
+              //@ts-ignore: todo handle literals
               this.exports[specifier.exported.name] = specifier.local.name;
             }
             // } else if (specifier.type === "ExportNamespaceSpecifier") {
@@ -191,7 +244,9 @@ class File {
           });
         } else if (astNode.type === "ExportDefaultDeclaration") {
           this.exports["default"] =
+            //@ts-ignore
             astNode.declaration.id?.name ||
+            //@ts-ignore
             astNode.declaration.name ||
             "default";
         }
@@ -201,9 +256,8 @@ class File {
       });
     } catch (e) {
       console.error(e);
-      this.context.toastsRef.current.addToast(
-        `Unexpected error gathering context`,
-        "error",
+      this.context.devState.errorHandler(
+        new ToastError("Unexpected error gathering context", "error"),
       );
     }
   }
@@ -212,19 +266,22 @@ class File {
     this.nodes.forEach((node) => {
       node.references.forEach((reference) => {
         if (reference.type === "ImportBinding") {
-          const referenceFilename = reference.parent.source.value.slice(2); //remove ./
-          const referenceFile = this.context.files[referenceFilename];
+          const referenceFilename = reference.parent.source.value;
+          if (typeof referenceFilename !== "string") return;
+          const referenceFile = this.context.files[referenceFilename.slice(2)]; //remove ./
           if (referenceFile) {
             let name;
             if (reference.node.type === "ImportDefaultSpecifier") {
               name = "default";
             } else if (reference.node.type === "ImportSpecifier") {
+              //@ts-ignore: todo handle literals
               name = reference.node.imported.name;
             } else if (reference.node.type === "ImportNamespaceSpecifier") {
               name = "*";
             } else {
+              const _exhaustiveCheck: never = reference.node;
               throw new Error(
-                `Unexpected import syntax, specifier: ${reference.node.type}`,
+                `Unexpected import syntax, specifier: ${_exhaustiveCheck}`,
               );
             }
             referenceFile.resolveReference(node, name, true);
@@ -236,11 +293,13 @@ class File {
     });
   }
 
-  resolveReference(node, name, isImport) {
+  resolveReference(node: Node, name: string, isImport: boolean) {
+    let lookupName: string | undefined = name;
     if (isImport) {
-      name = this.exports[name];
+      lookupName = this.exports[name];
     }
-    const referencedNode = this.definitions[name];
+    if (lookupName === undefined) return;
+    const referencedNode = this.definitions[lookupName];
     if (referencedNode) {
       node.edges.push(referencedNode);
       referencedNode.edges.push(node);
@@ -262,14 +321,14 @@ class File {
     }
   }
 
-  addNode(node) {
+  addNode(node: Node): number {
     if (this.summary.length > 0) {
-      const oldLength = this.summary[node.index].length;
+      const oldLength = this.summary[node.index]!.length;
       this.summary[node.index] = this.content.slice(
         node.astNode.start,
         node.astNode.end,
       );
-      return this.summary[node.index].length - oldLength;
+      return this.summary[node.index]!.length - oldLength;
     } else {
       const summaryLength = this.add();
       const additionalNodeLength = this.addNode(node);
@@ -286,20 +345,32 @@ class File {
 }
 
 class Node {
-  constructor(context, file, astNode, index) {
+  context: Context;
+  file: File;
+  astNode: AstNode;
+  index: number;
+  depth?: number;
+  selected: boolean;
+  scope: eslint.Scope.Scope;
+  references: eslint.Scope.Definition[];
+  edges: Node[];
+  constructor(context: Context, file: File, astNode: AstNode, index: number) {
     this.context = context;
     this.file = file;
     this.astNode = astNode;
     this.index = index;
-    this.depth = null;
     this.selected = this.file.selectionRanges.some(
-      ([start, end]) => this.astNode.start < end && this.astNode.end > start,
+      ([start, end]) => this.astNode.start < end! && this.astNode.end > start!,
     );
     if (this.selected) {
       this.depth = 0;
-      this.context.nodes.push(this);
+      this.context.nodes.push(this as NodeWithDepth);
+    }
+    if (this.file.scopeManager === undefined) {
+      throw new Error("scopeManager is undefined");
     }
     let variables = this.file.scopeManager
+      //@ts-ignore: todo - I think maybe a version issue?
       .getDeclaredVariables(this.astNode)
       .map((variable) => variable.name);
     if (
@@ -312,7 +383,12 @@ class Node {
       this.file.definitions[variable] = this;
     });
     this.references = [];
-    this.scope = this.file.scopeManager.acquire(this.astNode);
+    //@ts-ignore: todo
+    const scope = this.file.scopeManager.acquire(this.astNode);
+    if (scope === null) {
+      throw new Error("scope is null");
+    }
+    this.scope = scope;
     //this.scope.through is a list of references outside the scope (which is what we want)
     //confusingly, this.scope.references is a list of references inside the scope - ignore this
     this.scope.through.forEach((reference) => {
@@ -333,19 +409,24 @@ class Node {
     const type = astNode.type;
     let start = astNode.start;
     let end = astNode.end;
-    const slice = (start, end) => this.file.content.slice(start, end);
+    const slice = (start: number, end: number) =>
+      this.file.content.slice(start, end);
     if (
       type === "ImportDeclaration" ||
       type === "ExportNamedDeclaration" ||
       type === "ExportAllDeclaration" ||
       //if we're default exporting something we already defined, include it, otherwise no
-      (type === "ExportDefaultDeclaration" && astNode.declaration.name)
+      (type === "ExportDefaultDeclaration" && "name" in astNode.declaration)
     ) {
       //pass, use start to end
-    } else if (astNode.params) {
+    } else if ("params" in astNode) {
       //FunctionDeclaration, FunctionExpression, ArrowFunctionExpression
       end = astNode.body.start - 1;
-    } else if (astNode.body?.type === "ClassBody") {
+    } else if (
+      "body" in astNode &&
+      "type" in astNode.body &&
+      astNode.body.type === "ClassBody"
+    ) {
       //ClassDeclaration, ClassExpression
       const body = astNode.body.body
         .filter((node) => node.type === "MethodDefinition")
@@ -364,35 +445,40 @@ ${body.join("\n")}
   }
 }
 
-function context(devState, { files = [], code = [] } = {}) {
-  let selectedFiles, selectedCode;
+async function context(
+  devState: DevState,
+  { files = [], code = [] }: { files?: string[]; code?: string[] } = {},
+) {
+  let selectedFiles: string[], selectedCode: string[];
   if (files.length > 0 || code.length > 0) {
     selectedFiles = files;
     selectedCode = code;
   } else {
-    selectedFiles = [devState.selectedFilename];
-    if (
-      !(
-        devState.selectedFilename.endsWith(".js") ||
-        devState.selectedFilename.endsWith(".jsx")
-      )
-    ) {
+    const selectedFilename = devState.selectedApp.selectedFile.name;
+    selectedFiles = [selectedFilename];
+    if (!isJs(selectedFilename)) {
       //if we don't select at least one JS file, we won't get any JS context, so add scriptFile
-      selectedFiles.push(devState.scriptFile);
+      const magicObj = devState.getMagicObj();
+      if (magicObj.scriptFile) {
+        selectedFiles.push(magicObj.scriptFile);
+      } else {
+        //use default scriptFiles
+        selectedFiles.push("index.js", "index.jsx", "index.ts", "index.tsx");
+      }
     }
-    selectedCode = [window.getSelection().toString()];
+    const selection = window.getSelection();
+    if (selection) {
+      selectedCode = [selection.toString()];
+    } else {
+      selectedCode = [];
+    }
   }
-  return new Context(
-    devState.files,
-    selectedFiles,
-    selectedCode,
-    devState.toastsRef,
-  ).get();
+  return await new Context(devState, selectedFiles, selectedCode).get();
 }
 
 export { context };
 
-function indexOfAll(str, search) {
+function indexOfAll(str: string, search: string) {
   if (!str) return []; //empty string matches every index
   const indices = [];
   let index = str.indexOf(search);
@@ -401,4 +487,17 @@ function indexOfAll(str, search) {
     index = str.indexOf(search, index + 1);
   }
   return indices;
+}
+
+function isJs(filename: string) {
+  return (
+    filename.endsWith(".js") ||
+    filename.endsWith(".jsx") ||
+    filename.endsWith(".ts") ||
+    filename.endsWith(".tsx")
+  );
+}
+
+function isTs(filename: string) {
+  return filename.endsWith(".ts") || filename.endsWith(".tsx");
 }

@@ -58,8 +58,4 @@ function diffExtension(changeSet: ChangeSet, doc: string): Extension {
   ];
 }
 
-function applyChangeSet(changeSet: ChangeSet, file: string) {
-  return changeSet.apply(Text.of(file.split("\n"))).toString();
-}
-
-export { diffExtension, applyChangeSet };
+export { diffExtension };

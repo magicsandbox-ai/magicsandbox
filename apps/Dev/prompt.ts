@@ -1,3 +1,4 @@
+//@ts-ignore
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
 
@@ -8,7 +9,12 @@ todos:
 - instructions on calling findFunction
 */
 
-function prompt({ context, summarizedContext } = {}) {
+type PromptArgs = {
+  context?: string;
+  summarizedContext?: boolean;
+};
+
+function prompt({ context, summarizedContext }: PromptArgs = {}) {
   const sections = [];
   sections.push(`# magicsandbox.Dev
 
@@ -39,14 +45,14 @@ Defaults to \`<div id="root"></div>\` if not provided.
 
 Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.`);
 
-  sections.push(getHeadings(docs, [heading]));
+  sections.push(getHeadings(docs, [heading]) as string); //todo
   sections.push(contextPrompt({ context, summarizedContext }));
   sections.push(apiPrompt({ context, summarizedContext }));
   sections.push(instructionsPrompt({ context, summarizedContext }));
   return sections.map((section) => section.trim()).join("\n\n");
 }
 
-function contextPrompt({ context, summarizedContext }) {
+function contextPrompt({ context, summarizedContext }: PromptArgs) {
   if (context) {
     return `## Context
 
@@ -63,7 +69,7 @@ ${context}
   }
 }
 
-function apiPrompt({ context, summarizedContext }) {
+function apiPrompt({ context, summarizedContext }: PromptArgs) {
   const api = [];
 
   api.push(`### app.api.createApp(name: string, description: string, createString: string)
@@ -132,7 +138,7 @@ app.api.updateFiles(\`\`\`<index.js>
   }
 
   if (summarizedContext) {
-    api.push(`### app.api.additionalContext({ files: string[], code: string[] })
+    api.push(`### app.api.additionalContext({ files?: string[], code?: string[] })
 
 Logs additional context that you can reference in your next message.
 
@@ -155,7 +161,7 @@ Logs advanced documentation that you can reference in your next message. The adv
 ${api.join("\n\n")}`;
 }
 
-function instructionsPrompt({ context, summarizedContext }) {
+function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
   let instructions;
   const createAppInstructions = [
     "  - Set relevant values for `name` and `description` based on the user's request.",

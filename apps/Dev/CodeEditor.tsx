@@ -2,19 +2,21 @@ import React, {
   useSyncExternalStore,
   useState,
   useRef,
+  useEffect,
   useCallback,
   useMemo,
 } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import type { Extension } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
+import { historyField } from "@codemirror/commands";
 import eslinter from "./eslinter.ts";
 import { Hover, type HoverProps } from "./Hover.tsx";
 import { diffExtension } from "./diffExtension.ts";
-import { editorStateFields, type DevState } from "./DevState.ts";
+import { type DevState } from "./DevState.ts";
 
 declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
 
@@ -26,13 +28,15 @@ const debounce = (callback: (...args: any[]) => void, wait: number) => {
       isFirstCall = false;
       callback.apply(null, args); //run immediately on init
     } else {
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
         callback.apply(null, args);
       }, wait);
     }
   };
 };
+
+const editorStateFields = { history: historyField };
 
 function CodeEditor({ devState }: { devState: DevState }) {
   const selectedApp = useSyncExternalStore(
@@ -50,16 +54,73 @@ function CodeEditor({ devState }: { devState: DevState }) {
 
   //debounced functions need to be stable for closure to work
   const debouncedCallProcessTailwind = useCallback(
-    debounce(callProcessTailwind, 500),
+    debounce(async () => {
+      const magicObj = devState.getMagicObj();
+      let style: string =
+        magicObj.style ||
+        devState.readFile(magicObj.styleFile || "index.css") ||
+        "@tailwind base; @tailwind components; @tailwind utilities;";
+      if (style.includes("@tailwind")) {
+        const { classMap } = await devState.processTailwind(
+          magicObj.tailwindConfig || {},
+          style,
+          true,
+        );
+        setTailwindClassMap(classMap);
+      }
+    }, 500),
     [],
   );
+
+  useEffect(() => {
+    return () => {
+      const view = editorRef.current?.view;
+      if (!view) return;
+      devState.updateFile({
+        editorState: view.state.toJSON(editorStateFields),
+        scroll: {
+          top: view.scrollDOM.scrollTop,
+          left: view.scrollDOM.scrollLeft,
+        },
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBuild = async () => {
+      const view = editorRef.current?.view;
+      if (!view) return;
+      const { formatted, newCursorOffset } = await devState.runPrettier({
+        cursorOffset: view.state.selection.main.head,
+      });
+      if (!formatted) return;
+      const yMargin = view.coordsAtPos(newCursorOffset)?.top || 5;
+      //need to update the content and the scroll in one transaction to prevent flicker
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: selectedApp.selectedFile.content.length,
+          insert: formatted,
+        },
+        selection: { anchor: newCursorOffset, head: newCursorOffset },
+        effects: [
+          EditorView.scrollIntoView(newCursorOffset, {
+            y: "start",
+            yMargin,
+          }),
+        ],
+      });
+    };
+    window.addEventListener("buildApp", handleBuild);
+    return () => window.removeEventListener("buildApp", handleBuild);
+  }, []);
 
   //onChange and extensions should be stable to avoid creating unnecessary transactions
   const onChange = useCallback((value: string) => {
     devState.updateFile({
       content: value,
-      editorState: editorRef.current?.view?.state,
     });
+    debouncedCallProcessTailwind();
   }, []);
 
   const extensions = useMemo(() => {
@@ -84,24 +145,6 @@ function CodeEditor({ devState }: { devState: DevState }) {
     }
     return extensions;
   }, [selectedApp.selectedFile.changeSet !== undefined]);
-
-  async function callProcessTailwind() {
-    let appObj;
-    try {
-      appObj = JSON5.parse(filesRef.current["magic.json"]);
-    } catch {
-      return; //user may be editing magic.json and it could be in an invalid state, just skip
-    }
-    appObj = await getDefaults({ appObj, fileExists });
-    devState.scriptFile = appObj.scriptFile;
-    //this is only used for tailwind tooltips, so skip building tailwind.config.js
-    //not worth the slow build that potentially makes network requests
-    setTailwindState(
-      await runProcessTailwind(appObj, fileExists, readFile, (config, css) =>
-        processTailwind(config, css, true),
-      ),
-    );
-  }
 
   function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
     clearTimeout(hoverTimeoutRef.current);
@@ -177,8 +220,17 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }
 
   function handleCreateEditor(view: EditorView) {
-    view.scrollDOM.scrollTo(selectedApp.selectedFile.scroll);
+    if (selectedApp.selectedFile.scroll) {
+      view.scrollDOM.scrollTo(selectedApp.selectedFile.scroll);
+    }
     view.focus();
+  }
+
+  async function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      devState.buildApp();
+    }
   }
 
   return (
@@ -186,7 +238,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
       <CodeMirror
         ref={editorRef}
         initialState={{
-          json: selectedApp.selectedFile.editorStateJson,
+          json: selectedApp.selectedFile.editorState,
           fields: editorStateFields,
         }}
         onCreateEditor={handleCreateEditor}
@@ -197,6 +249,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
         className="grow overflow-auto"
         onMouseMove={handleMouseMove}
         onMouseOut={handleMouseOut}
+        onKeyDown={handleKeyDown}
       />
       {hover && <Hover {...hover} />}
     </>

@@ -41,8 +41,8 @@ async function buildApp({
 }) {
   now = now || new Date();
   appObj = await getDefaults({ appObj, esbuildOptions, fileExists });
+  let result;
   if (!appObj.script && (await fileExists(appObj.scriptFile))) {
-    let result;
     const options = {
       ...appObj.esbuildOptions,
       entryPoints: [appObj.scriptFile],
@@ -63,7 +63,7 @@ async function buildApp({
   log(new Date() - now, "processTailwind");
   appObj.style = processedCss;
   appObj = postBuildSchema.parse(appObj);
-  return { appObj, context };
+  return { appObj, context, result };
 }
 
 async function getDefaults({ appObj, esbuildOptions, fileExists }) {

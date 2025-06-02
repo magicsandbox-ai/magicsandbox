@@ -3,7 +3,7 @@ import { isEqual } from "es-toolkit";
 import semver from "semver";
 import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox";
 import type * as Esbuild from "esbuild";
-import type { EsbuildApi, ReadFile } from "./DevState.js";
+import type { EsbuildApi, ReadFile } from "./DevState.ts";
 
 declare let setInterval: WindowOrWorkerGlobalScope["setInterval"];
 
