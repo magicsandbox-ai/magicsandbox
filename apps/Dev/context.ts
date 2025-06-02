@@ -454,7 +454,7 @@ async function context(
     selectedFiles = files;
     selectedCode = code;
   } else {
-    const selectedFilename = devState.selectedApp.selectedFile.name;
+    const selectedFilename = devState.selectedApp.selectedFileName;
     selectedFiles = [selectedFilename];
     if (!isJs(selectedFilename)) {
       //if we don't select at least one JS file, we won't get any JS context, so add scriptFile

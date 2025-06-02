@@ -5,10 +5,10 @@ import {
   getImports,
   normalizePath,
   parseNormalizedPath,
-} from "../plugins.js";
+} from "../plugins.ts";
 
 /*
-npm run jest -- apps/Dev
+npm run jest -- apps/Dev/__tests__/plugins.test.ts
 
 notes:
 - note that transformImports updates pkgImports as a side effect, so the order of the tests is important
@@ -121,20 +121,16 @@ describe("getImports", () => {
   });
 });
 
-function normalizeAndParsePath(path) {
+function normalizeAndParsePath(path: string) {
   const normalizedPath = normalizePath(
     path,
+    //@ts-ignore
     {
       //buildMetadata
-      filesRef: {
-        current: {},
-      },
+      readFile: () => undefined,
       cdn: "esm.sh",
     },
-    {
-      //parent
-      url: null,
-    },
+    undefined,
   );
   return parseNormalizedPath(normalizedPath);
 }

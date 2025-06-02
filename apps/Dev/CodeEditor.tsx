@@ -3,6 +3,7 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
 } from "react";
@@ -43,6 +44,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
     devState.subscribe("selectedApp"),
     devState.getSnapshot("selectedApp"),
   );
+  const selectedFile = selectedApp.files[selectedApp.selectedFileName]!;
 
   const [tailwindClassMap, setTailwindClassMap] = useState<{
     [className: string]: string;
@@ -73,16 +75,29 @@ function CodeEditor({ devState }: { devState: DevState }) {
   );
 
   useEffect(() => {
+    debouncedCallProcessTailwind(); //call once on mount, then called on changes
+  }, []);
+
+  useLayoutEffect(() => {
+    //save the editor state on unmount (when the app or file is changed)
+    //this needs to be useLayoutEffect so it runs before editorRef is removed from the DOM (as it is with useEffect)
     return () => {
       const view = editorRef.current?.view;
       if (!view) return;
-      devState.updateFile({
-        editorState: view.state.toJSON(editorStateFields),
-        scroll: {
-          top: view.scrollDOM.scrollTop,
-          left: view.scrollDOM.scrollLeft,
+      //need to use updateFiles as the selectedFileName may have changed (selectedApp is a stale closure)
+      //and also specify the appId in case the selectedApp has changed
+      devState.updateFiles(
+        {
+          [selectedApp.selectedFileName]: {
+            editorState: view.state.toJSON(editorStateFields),
+            scroll: {
+              top: view.scrollDOM.scrollTop,
+              left: view.scrollDOM.scrollLeft,
+            },
+          },
         },
-      });
+        selectedApp.id,
+      );
     };
   }, []);
 
@@ -99,7 +114,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
       view.dispatch({
         changes: {
           from: 0,
-          to: selectedApp.selectedFile.content.length,
+          to: view.state.doc.length,
           insert: formatted,
         },
         selection: { anchor: newCursorOffset, head: newCursorOffset },
@@ -125,7 +140,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
 
   const extensions = useMemo(() => {
     const extensions: Extension[] = [javascript({ jsx: true })];
-    const fileExt = selectedApp.selectedFile.name.split(".").pop();
+    const fileExt = selectedApp.selectedFileName.split(".").pop();
     if (
       fileExt === "js" ||
       fileExt === "jsx"
@@ -135,16 +150,13 @@ function CodeEditor({ devState }: { devState: DevState }) {
     ) {
       extensions.push(...[lintGutter(), eslinter()]);
     }
-    if (selectedApp.selectedFile.changeSet) {
+    if (selectedFile.changeSet) {
       extensions.push(
-        diffExtension(
-          selectedApp.selectedFile.changeSet,
-          selectedApp.selectedFile.content,
-        ),
+        diffExtension(selectedFile.changeSet, selectedFile.content),
       );
     }
     return extensions;
-  }, [selectedApp.selectedFile.changeSet !== undefined]);
+  }, [selectedFile.changeSet !== undefined]);
 
   function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
     clearTimeout(hoverTimeoutRef.current);
@@ -220,8 +232,11 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }
 
   function handleCreateEditor(view: EditorView) {
-    if (selectedApp.selectedFile.scroll) {
-      view.scrollDOM.scrollTo(selectedApp.selectedFile.scroll);
+    if (selectedFile.scroll) {
+      //this doesn't work perfectly, I think, because CodeMirror doesn't render the whole document, so the scroll is approximate
+      //todo maybe rather than unmounting completely on file change, we keep the views in memory and switch between them somehow?
+      //this would make switching between files snappier
+      view.scrollDOM.scrollTo(selectedFile.scroll);
     }
     view.focus();
   }
@@ -237,12 +252,16 @@ function CodeEditor({ devState }: { devState: DevState }) {
     <>
       <CodeMirror
         ref={editorRef}
-        initialState={{
-          json: selectedApp.selectedFile.editorState,
-          fields: editorStateFields,
-        }}
+        initialState={
+          selectedFile.editorState
+            ? {
+                json: selectedFile.editorState,
+                fields: editorStateFields,
+              }
+            : undefined
+        }
         onCreateEditor={handleCreateEditor}
-        value={selectedApp.selectedFile.content}
+        value={selectedFile.content}
         onChange={onChange}
         extensions={extensions}
         height="100%"

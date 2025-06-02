@@ -1,9 +1,10 @@
 import { parse, type Node } from "./parser.ts";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
-import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox";
+import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox/utils";
 import type * as Esbuild from "esbuild";
 import type { EsbuildApi, ReadFile } from "./DevState.ts";
+import JSON5 from "json5";
 
 declare let setInterval: WindowOrWorkerGlobalScope["setInterval"];
 
@@ -367,7 +368,7 @@ function getAppObj(readFile: ReadFile) {
   if (appString === undefined) {
     throw new Error("magic.json not found");
   }
-  return JSON.parse(appString);
+  return JSON5.parse(appString);
 }
 
 /*

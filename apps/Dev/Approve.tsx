@@ -18,6 +18,8 @@ function Approve({ devState }: { devState: DevState }) {
   const approveButtonStyle =
     "rounded-lg border border-stone-500 py-1 text-sm w-28 font-medium";
 
+  const selectedFile = selectedApp.files[selectedApp.selectedFileName]!;
+
   return (
     <div className="absolute bottom-4 left-2 right-2 flex flex-wrap justify-center gap-2">
       <div className="flex gap-2">
@@ -36,7 +38,7 @@ function Approve({ devState }: { devState: DevState }) {
         >
           Accept All Files
         </button>
-        {selectedApp.selectedFile.changeSet && (
+        {selectedFile.changeSet && (
           <button
             className={`${approveButtonStyle} bg-green-200 hover:bg-green-300`}
             onClick={() => {
@@ -48,15 +50,15 @@ function Approve({ devState }: { devState: DevState }) {
         )}
       </div>
       <div className="flex gap-2">
-        {selectedApp.selectedFile.changeSet && (
+        {selectedFile.changeSet && (
           <button
             className={`${approveButtonStyle} bg-red-200 hover:bg-red-300`}
             onClick={() => {
               devState.updateFile({
                 changeSet: undefined,
                 content: applyChangeSet(
-                  selectedApp.selectedFile.changeSet!,
-                  selectedApp.selectedFile.content,
+                  selectedFile.changeSet!,
+                  selectedFile.content,
                 ),
               });
             }}

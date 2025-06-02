@@ -250,7 +250,7 @@ function App() {
         >
           <FilePicker devState={devState} />
           <CodeEditor
-            key={selectedApp.id + selectedApp.selectedFile.name}
+            key={selectedApp.id + selectedApp.selectedFileName}
             devState={devState}
           />
           <Approve devState={devState} />

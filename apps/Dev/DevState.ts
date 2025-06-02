@@ -66,7 +66,7 @@ function deserializeFile(serializedFile: SerializedFile): File {
 interface App {
   id: string;
   files: { [fileName: string]: File };
-  selectedFile: File;
+  selectedFileName: string;
   deletedFiles: { [fileName: string]: File };
 }
 
@@ -115,7 +115,7 @@ function deserializeApp(
   return {
     id: appId,
     files,
-    selectedFile: files["magic.json"]!,
+    selectedFileName: "magic.json",
     deletedFiles: {},
   };
 }
@@ -139,7 +139,7 @@ const exampleFiles = {
 const exampleApp = {
   id: "Example@0.1.0",
   files: exampleFiles,
-  selectedFile: exampleFiles["magic.json"],
+  selectedFileName: "magic.json",
   deletedFiles: {},
 };
 
@@ -193,6 +193,7 @@ class DevState extends SyncExternalStore<Props> {
     }
     this.errorHandler(new ToastError(message, "error"));
   }
+  //this should be an arrow function so this refers to the DevState instance even when used in a callback
   readFile: ReadFile = (path) => {
     if (this.selectedApp.files[path]) {
       return this.selectedApp.files[path].content;
@@ -229,7 +230,11 @@ class DevState extends SyncExternalStore<Props> {
       console.error(`Error deleting appId ${appId}`, error);
     });
   }
-  addApp(appId: string, files?: Record<string, File>, selectedFile?: File) {
+  addApp(
+    appId: string,
+    files?: Record<string, File>,
+    selectedFileName?: string,
+  ) {
     if (files && !files["magic.json"]) {
       throw new Error("magic.json is required");
     }
@@ -246,11 +251,11 @@ class DevState extends SyncExternalStore<Props> {
 }`,
       },
     };
-    selectedFile = selectedFile || files["magic.json"]!;
+    selectedFileName = selectedFileName || "magic.json";
     this.apps[appId] = {
       id: appId,
       files,
-      selectedFile,
+      selectedFileName,
       deletedFiles: {},
     };
     this.set("appIds", Object.keys(this.apps));
@@ -258,7 +263,7 @@ class DevState extends SyncExternalStore<Props> {
   }
   selectFile(fileName: string) {
     if (this.selectedApp.files[fileName]) {
-      this.selectedApp.selectedFile = this.selectedApp.files[fileName];
+      this.selectedApp.selectedFileName = fileName;
       this.setSelectedApp();
     } else {
       throw new Error(`File ${fileName} not found`);
@@ -279,6 +284,9 @@ class DevState extends SyncExternalStore<Props> {
   }
   deleteFile(fileName: string) {
     if (this.selectedApp.files[fileName]) {
+      if (this.selectedApp.selectedFileName === fileName) {
+        this.selectedApp.selectedFileName = "magic.json";
+      }
       this.selectedApp.deletedFiles[fileName] =
         this.selectedApp.files[fileName];
       delete this.selectedApp.files[fileName];
@@ -291,23 +299,34 @@ class DevState extends SyncExternalStore<Props> {
     }
   }
   updateFile(update: Partial<File>) {
-    this.selectedApp.selectedFile = {
-      ...this.selectedApp.selectedFile,
+    const selectedFile =
+      this.selectedApp.files[this.selectedApp.selectedFileName];
+    if (!selectedFile) {
+      throw new Error(`File ${this.selectedApp.selectedFileName} not found`);
+    }
+    this.selectedApp.files[this.selectedApp.selectedFileName] = {
+      ...selectedFile,
       ...update,
     };
     this.setSelectedApp();
   }
-  updateFiles(update: { [fileName: string]: Partial<File> }) {
+  updateFiles(update: { [fileName: string]: Partial<File> }, appId?: string) {
+    const app = appId ? this.apps[appId] : this.selectedApp;
+    if (!app) {
+      throw new Error(`App ${appId} not found`);
+    }
     for (const fileName in update) {
-      this.selectedApp.files[fileName] = {
+      app.files[fileName] = {
         //add name and content for type safety - if it's a new file, then update[fileName] can't be Partial<File> but must be File
         name: fileName,
         content: "",
-        ...this.selectedApp.files[fileName],
+        ...app.files[fileName],
         ...update[fileName],
       };
     }
-    this.setSelectedApp();
+    if (app.id === this.selectedApp.id) {
+      this.setSelectedApp();
+    }
   }
   getMagicObj() {
     const magicContent = this.selectedApp.files["magic.json"]?.content;
@@ -342,7 +361,11 @@ class DevState extends SyncExternalStore<Props> {
       this.putDataErrorHandler(error);
     });
     if (!(appId in this.apps)) {
-      this.addApp(appId, this.selectedApp.files, this.selectedApp.selectedFile);
+      this.addApp(
+        appId,
+        this.selectedApp.files,
+        this.selectedApp.selectedFileName,
+      );
     }
     try {
       delete magicObj?.esbuildOptions?.plugins; //not supported
@@ -362,17 +385,20 @@ class DevState extends SyncExternalStore<Props> {
         processTailwind: this.processTailwind,
       });
       if (result.dependencies) {
-        this.updateFiles({
-          "magic.json": {
-            //@ts-ignore: todo need to fix browser types for dev
-            content: updateMagicJson(
-              this.selectedApp.files["magic.json"]!.content,
-              (obj: any) => {
-                obj.dependencies = result.dependencies;
-              },
-            ),
+        this.updateFiles(
+          {
+            "magic.json": {
+              //@ts-ignore: todo need to fix browser types for dev
+              content: updateMagicJson(
+                this.selectedApp.files["magic.json"]!.content,
+                (obj: any) => {
+                  obj.dependencies = result.dependencies;
+                },
+              ),
+            },
           },
-        });
+          appId, //need to specify as the selected app may have changed during the build
+        );
       }
       this.esbuildContext = context;
       return { appObj };
@@ -387,16 +413,18 @@ class DevState extends SyncExternalStore<Props> {
     }
   }
   async runPrettier({ cursorOffset }: { cursorOffset: number }) {
-    const selectedFileName = this.selectedApp.selectedFile.name;
+    const selectedFileName = this.selectedApp.selectedFileName;
+    const content = this.selectedApp.files[selectedFileName]?.content;
     if (
-      selectedFileName.endsWith(".js") ||
-      selectedFileName.endsWith(".jsx") ||
-      selectedFileName.endsWith(".ts") ||
-      selectedFileName.endsWith(".tsx") ||
-      selectedFileName.endsWith(".json")
+      (selectedFileName.endsWith(".js") ||
+        selectedFileName.endsWith(".jsx") ||
+        selectedFileName.endsWith(".ts") ||
+        selectedFileName.endsWith(".tsx") ||
+        selectedFileName.endsWith(".json")) &&
+      content
     ) {
       const { formatted, cursorOffset: newCursorOffset } =
-        await prettier.formatWithCursor(this.selectedApp.selectedFile.content, {
+        await prettier.formatWithCursor(content, {
           filepath:
             selectedFileName === "magic.json"
               ? "magic.json5"
@@ -408,11 +436,12 @@ class DevState extends SyncExternalStore<Props> {
     }
     return {};
   }
-  async processTailwind(
+  //this should be an arrow function so this refers to the DevState instance even when used in a callback
+  processTailwind = async (
     config: TailwindConfig,
     css: string,
     _skipBuild = false,
-  ) {
+  ) => {
     //config is magic.json tailwindConfig, but if tailwind.config.js exists, use that instead
     let tailwindConfigFile: File | undefined;
     if (this.selectedApp.files["tailwind.config.js"]) {
@@ -441,7 +470,9 @@ class DevState extends SyncExternalStore<Props> {
         //@ts-ignore
         config = globalThis.__tailwindConfig?.default || {};
       } catch (error) {
-        this.errorHandler(error);
+        this.errorHandler(
+          new ToastError(`Error building ${tailwindConfigFile.name}`, "error"),
+        );
       }
     }
     const excludeContent = new Set(config.excludeContent || []);
@@ -468,7 +499,7 @@ class DevState extends SyncExternalStore<Props> {
       config.content[0].raw += Date.now();
     }
     return await processTailwindBrowser(config, css);
-  }
+  };
   async getJs(tsFileName: string) {
     let loader: "tsx" | "ts";
     if (tsFileName.endsWith(".tsx")) {

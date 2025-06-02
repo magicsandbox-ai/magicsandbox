@@ -19,7 +19,7 @@
     nodePaths: ["./node_modules"],
   },
   tailwindConfig: {
-    content: ["apps/Dev/**/*.js", "components/**/*.js"],
+    content: ["apps/Dev/**/*.tsx", "components/**/*.js", "components/**/*.tsx"],
   },
   dependencies: {
     "@magicsandbox.ai/dev": "file:../../packages/js/dev",

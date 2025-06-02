@@ -51,7 +51,7 @@ export default function FilePicker({ devState }: { devState: DevState }) {
         </div>
         {Object.entries(selectedApp.files).map(([filename, file]) => (
           <div
-            className={`flex rounded-md ${selectedApp.selectedFile.name === filename ? "border-2 border-black" : "border"} gap-px px-1 py-px`}
+            className={`flex rounded-md ${selectedApp.selectedFileName === filename ? "border-2 border-black" : "border"} gap-px px-1 py-px`}
             key={filename}
           >
             <button onClick={() => devState.selectFile(filename)}>
