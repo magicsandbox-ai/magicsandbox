@@ -1,61 +1,66 @@
 import {
-  StateField,
   EditorState,
   Text,
+  Annotation,
   type ChangeSet,
   type Extension,
 } from "@codemirror/state";
 import {
   unifiedMergeView,
-  originalDocChangeEffect,
   getChunks,
+  updateOriginalDoc,
+  getOriginalDoc,
 } from "@codemirror/merge";
+import type { DevState } from "./DevState.ts";
 
-function diffExtension(changeSet: ChangeSet, doc: string): Extension {
-  //stores the changeSet which represents the changes needed to transform the current document to the original document
-  const changeSetStateField = StateField.define<ChangeSet | undefined>({
-    create() {
-      return changeSet;
-    },
-    //the changeSet has to be managed externally, as the API can update files that are not in the editor currently
-    //so whenever the changeSet is updated, we reconfigure the extensions, so we don't need to worry about updating it here
-    //however, we do want to check if there are no chunks, which means the user has accepted/rejected all diffs
-    //that indicates to the external changeSet manager that the diff is no longer needed
-    update(currentChangeSet, tr) {
-      //there's some kind of race condition where the chunks are not updated immmediately
-      //so we check if the start state has chunks and the current state does not
-      if (
-        //@ts-ignore
-        getChunks(tr.startState)?.chunks.length > 0 &&
-        getChunks(tr.state)?.chunks.length === 0
-      ) {
-        return undefined;
-      } else {
-        return currentChangeSet;
-      }
-    },
-  });
-  //updates the original document for transactions that don't have a diff annotation
-  const originalDocUpdater = EditorState.transactionFilter.of((tr) => {
-    if (!tr.docChanged) return tr;
-    const changeSet = tr.state.field(changeSetStateField, false);
+const externalAnnotationType = Annotation.define<boolean>();
+
+function diffExtension(
+  devState: DevState,
+  changeSet: ChangeSet,
+  doc: string,
+): Extension {
+  //manages the changeSet, which is the set of changes needed to transform the current document to the original document
+  //and updates the original document for non-external transactions (i.e. the user typing in the editor)
+  const diffHandler = EditorState.transactionFilter.of((tr) => {
+    //changing the selection triggers a transaction - ignore these
+    //unless the transaction is updating the original document without changing the document (when the user accepts a diff)
+    if (!tr.docChanged && !tr.effects.some((e) => e.is(updateOriginalDoc))) {
+      return tr;
+    }
+    //ignore an external change (i.e. the app's api) - the external change is responsible for updating the changeSet
+    if (tr.annotation(externalAnnotationType)) return tr;
+    const changeSet =
+      devState.selectedApp.files[devState.selectedApp.selectedFileName]
+        ?.changeSet;
     if (!changeSet) return tr;
+    //check if we should deactivate the changeSet - if there are no chunks in the new state, then the user has accepted/rejected all diffs
+    if (
+      getChunks(tr.startState)?.chunks.length === 1 &&
+      (tr.isUserEvent("accept") || tr.isUserEvent("revert"))
+    ) {
+      devState.updateFile({ changeSet: undefined });
+      return tr;
+    }
+    //update the changeSet based on the current transaction
+    devState.updateFile({
+      changeSet: changeSet.map(tr.changes),
+    });
+    const originalDocChanges = tr.changes.map(changeSet);
     return [
       tr,
       {
-        effects: originalDocChangeEffect(
-          tr.startState,
-          //we need to map the changes (which were made to the current document) so that they can be applied to the original document
-          tr.changes.map(changeSet),
-        ),
+        effects: updateOriginalDoc.of({
+          doc: originalDocChanges.apply(getOriginalDoc(tr.startState)),
+          changes: originalDocChanges,
+        }),
       },
     ];
   });
   return [
-    changeSetStateField,
-    originalDocUpdater,
+    diffHandler,
     unifiedMergeView({ original: changeSet.apply(Text.of(doc.split("\n"))) }),
   ];
 }
 
-export { diffExtension };
+export { diffExtension, externalAnnotationType };

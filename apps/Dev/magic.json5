@@ -52,5 +52,6 @@
     "@types/espree": "^10.1.0",
     "@types/semver": "^7.7.0",
     "@types/eslint-scope": "^8.3.0",
+    diff: "^8.0.2",
   },
 }

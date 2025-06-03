@@ -12,7 +12,8 @@
     ".": {
       "browser": "./src/browser.js",
       "default": "./src/index.js"
-    }
+    },
+    "./browser": "./src/browser.js"
   },
   "bin": {
     "magicsandbox": "./bin/magicsandbox.js"

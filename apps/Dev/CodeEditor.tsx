@@ -7,8 +7,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import CodeMirror from "@uiw/react-codemirror";
-import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useCodeMirror } from "@uiw/react-codemirror";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
@@ -16,7 +15,7 @@ import { lintGutter } from "@codemirror/lint";
 import { historyField } from "@codemirror/commands";
 import eslinter from "./eslinter.ts";
 import { Hover, type HoverProps } from "./Hover.tsx";
-import { diffExtension } from "./diffExtension.ts";
+import { diffExtension, externalAnnotationType } from "./diffExtension.ts";
 import { type DevState } from "./DevState.ts";
 
 declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
@@ -51,7 +50,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }>({});
   const [hover, setHover] = useState<HoverProps | undefined>(undefined);
 
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const viewRef = useRef<EditorView | undefined>(undefined);
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
 
   //debounced functions need to be stable for closure to work
@@ -82,17 +81,20 @@ function CodeEditor({ devState }: { devState: DevState }) {
     //save the editor state on unmount (when the app or file is changed)
     //this needs to be useLayoutEffect so it runs before editorRef is removed from the DOM (as it is with useEffect)
     return () => {
-      const view = editorRef.current?.view;
-      if (!view) return;
-      //need to use updateFiles as the selectedFileName may have changed (selectedApp is a stale closure)
-      //and also specify the appId in case the selectedApp has changed
+      if (!viewRef.current) return;
+      //need to make sure the app and/or file has not been deleted
+      const app = devState.apps[selectedApp.id];
+      if (!app) return;
+      const file = app.files[selectedApp.selectedFileName];
+      if (!file) return;
+      //need to use updateFiles rather than updateFile as the app and/or file may have changed (selectedApp is a stale closure)
       devState.updateFiles(
         {
           [selectedApp.selectedFileName]: {
-            editorState: view.state.toJSON(editorStateFields),
+            editorState: viewRef.current.state.toJSON(editorStateFields),
             scroll: {
-              top: view.scrollDOM.scrollTop,
-              left: view.scrollDOM.scrollLeft,
+              top: viewRef.current.scrollDOM.scrollTop,
+              left: viewRef.current.scrollDOM.scrollLeft,
             },
           },
         },
@@ -101,34 +103,33 @@ function CodeEditor({ devState }: { devState: DevState }) {
     };
   }, []);
 
-  useEffect(() => {
-    const handleBuild = async () => {
-      const view = editorRef.current?.view;
-      if (!view) return;
-      const { formatted, newCursorOffset } = await devState.runPrettier({
-        cursorOffset: view.state.selection.main.head,
-      });
-      if (!formatted) return;
-      const yMargin = view.coordsAtPos(newCursorOffset)?.top || 5;
-      //need to update the content and the scroll in one transaction to prevent flicker
-      view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: formatted,
-        },
-        selection: { anchor: newCursorOffset, head: newCursorOffset },
-        effects: [
-          EditorView.scrollIntoView(newCursorOffset, {
-            y: "start",
-            yMargin,
-          }),
-        ],
-      });
-    };
-    window.addEventListener("buildApp", handleBuild);
-    return () => window.removeEventListener("buildApp", handleBuild);
-  }, []);
+  // useEffect(() => {
+  //   const handleBuild = async () => {
+  //     if (!viewRef.current) return;
+  //     const { formatted, newCursorOffset } = await devState.runPrettier({
+  //       cursorOffset: viewRef.current.state.selection.main.head,
+  //     });
+  //     if (!formatted) return;
+  //     const yMargin = viewRef.current.coordsAtPos(newCursorOffset)?.top || 5;
+  //     //need to update the content and the scroll in one transaction to prevent flicker
+  //     viewRef.current.dispatch({
+  //       changes: {
+  //         from: 0,
+  //         to: viewRef.current.state.doc.length,
+  //         insert: formatted,
+  //       },
+  //       selection: { anchor: newCursorOffset, head: newCursorOffset },
+  //       effects: [
+  //         EditorView.scrollIntoView(newCursorOffset, {
+  //           y: "start",
+  //           yMargin,
+  //         }),
+  //       ],
+  //     });
+  //   };
+  //   window.addEventListener("buildApp", handleBuild);
+  //   return () => window.removeEventListener("buildApp", handleBuild);
+  // }, []);
 
   //onChange and extensions should be stable to avoid creating unnecessary transactions
   const onChange = useCallback((value: string) => {
@@ -152,11 +153,56 @@ function CodeEditor({ devState }: { devState: DevState }) {
     }
     if (selectedFile.changeSet) {
       extensions.push(
-        diffExtension(selectedFile.changeSet, selectedFile.content),
+        diffExtension(devState, selectedFile.changeSet, selectedFile.content),
       );
     }
     return extensions;
   }, [selectedFile.changeSet !== undefined]);
+
+  function handleCreateEditor(view: EditorView) {
+    if (selectedFile.scroll) {
+      //this doesn't work perfectly, I think, because CodeMirror doesn't render the whole document, so the scroll is approximate
+      //todo maybe rather than unmounting completely on file change, we keep the views in memory and switch between them somehow?
+      //this would make switching between files snappier
+      view.scrollDOM.scrollTo(selectedFile.scroll);
+    }
+    view.focus();
+  }
+
+  const { view, setContainer } = useCodeMirror({
+    initialState: selectedFile.editorState
+      ? {
+          json: selectedFile.editorState,
+          fields: editorStateFields,
+        }
+      : undefined,
+    onCreateEditor: handleCreateEditor,
+    onChange,
+    extensions,
+    height: "100%",
+    className: "grow overflow-auto",
+  });
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
+    //typically you would pass selectedFile.content as value to ReactCodeMirror
+    //however we need to identify "external" changes in diffExtension
+    //so this essentially copies what ReactCodeMirror does internally, adding our external annotation
+    if (!view) return;
+    if (selectedFile.content !== view.state.doc.toString()) {
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: selectedFile.content,
+        },
+        annotations: [externalAnnotationType.of(true)],
+      });
+    }
+  }, [view, selectedFile.content]);
 
   function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
     clearTimeout(hoverTimeoutRef.current);
@@ -231,16 +277,6 @@ function CodeEditor({ devState }: { devState: DevState }) {
     return str.slice(beg, end);
   }
 
-  function handleCreateEditor(view: EditorView) {
-    if (selectedFile.scroll) {
-      //this doesn't work perfectly, I think, because CodeMirror doesn't render the whole document, so the scroll is approximate
-      //todo maybe rather than unmounting completely on file change, we keep the views in memory and switch between them somehow?
-      //this would make switching between files snappier
-      view.scrollDOM.scrollTo(selectedFile.scroll);
-    }
-    view.focus();
-  }
-
   async function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
@@ -250,21 +286,8 @@ function CodeEditor({ devState }: { devState: DevState }) {
 
   return (
     <>
-      <CodeMirror
-        ref={editorRef}
-        initialState={
-          selectedFile.editorState
-            ? {
-                json: selectedFile.editorState,
-                fields: editorStateFields,
-              }
-            : undefined
-        }
-        onCreateEditor={handleCreateEditor}
-        value={selectedFile.content}
-        onChange={onChange}
-        extensions={extensions}
-        height="100%"
+      <div
+        ref={(el) => setContainer(el)}
         className="grow overflow-auto"
         onMouseMove={handleMouseMove}
         onMouseOut={handleMouseOut}

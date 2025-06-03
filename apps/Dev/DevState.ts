@@ -1,5 +1,5 @@
 import SyncExternalStore from "@utils/SyncExternalStore.ts";
-import { ChangeSet, Text, type ChangeSpec } from "@codemirror/state";
+import { ChangeSet } from "@codemirror/state";
 import prettier from "prettier/standalone";
 import babelParser from "prettier/plugins/babel";
 import estreeParser from "prettier/plugins/estree";
@@ -7,12 +7,10 @@ import JSON5 from "json5";
 import type * as Esbuild from "esbuild";
 import { tagParser } from "@magicsandbox.ai/streaming";
 import {
-  //@ts-ignore
   buildApp,
-  //@ts-ignore
   exampleAppFiles,
   updateMagicJson,
-} from "@magicsandbox.ai/dev";
+} from "@magicsandbox.ai/dev/browser";
 import processTailwindBrowser, {
   type TailwindConfig,
 } from "@magicsandbox.ai/tailwind-browser";
@@ -22,6 +20,7 @@ import { context } from "./context.ts";
 //@ts-ignore
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
+import { diffChars } from "diff";
 
 type EsbuildApi = Esbuild.PluginBuild["esbuild"]; //not sure why this is on PluginBuild but it works
 
@@ -55,10 +54,14 @@ function serializeFile(file: File): SerializedFile {
 }
 
 function deserializeFile(serializedFile: SerializedFile): File {
+  let changeSet;
+  if (serializedFile.changeSet) {
+    changeSet = ChangeSet.fromJSON(serializedFile.changeSet);
+  }
   return {
     name: serializedFile.name,
     content: serializedFile.content,
-    changeSet: serializedFile.changeSet?.fromJSON(),
+    changeSet,
     editorState: serializedFile.editorState,
   };
 }
@@ -370,6 +373,7 @@ class DevState extends SyncExternalStore<Props> {
     try {
       delete magicObj?.esbuildOptions?.plugins; //not supported
       const esbuild = await this.esbuildPromise;
+      //@ts-ignore
       const { appObj, context, result } = await buildApp({
         appObj: magicObj,
         esbuild,
@@ -566,7 +570,6 @@ class DevState extends SyncExternalStore<Props> {
   async apiUpdateFiles(updateString: string) {
     let invalidUpdateString = false;
     const fileUpdates: { [fileName: string]: Partial<File> } = {};
-    const changeSpecs: Record<string, ChangeSpec> = {};
     for (const { tag: fileName, content: fileUpdateString } of tagParser(
       updateString,
     )) {
@@ -579,22 +582,6 @@ class DevState extends SyncExternalStore<Props> {
       if (!fileUpdateString.trim().startsWith("<find>")) {
         //update the whole file
         //we need to look specifically for <find> rather than use tagParser because the file might be HTML or JSX and the tags are false positives
-        if (this.selectedApp.files[fileName]) {
-          changeSpecs[fileName] = [
-            {
-              from: 0,
-              to: this.selectedApp.files[fileName].content.length,
-              insert: fileUpdateString,
-            },
-          ];
-        } else {
-          changeSpecs[fileName] = [
-            {
-              from: 0,
-              insert: fileUpdateString,
-            },
-          ];
-        }
         fileUpdates[fileName] = {
           content: fileUpdateString,
         };
@@ -655,26 +642,14 @@ class DevState extends SyncExternalStore<Props> {
         "Anything in the updateString outside of a tag is ignored",
       );
     }
-    for (const [fileName, changeSpec] of Object.entries(changeSpecs)) {
-      const originalDoc = docFromString(
-        this.selectedApp.files[fileName]?.content || "",
-      );
-      const newChangeSet = ChangeSet.of(changeSpec, originalDoc.length);
-      //we store the changeSet to get from the current document to the original document, so we need to invert it
-      const invertedChangeSet = newChangeSet.invert(originalDoc);
-      const existingChangeSet = this.selectedApp.files[fileName]?.changeSet;
-      let updateChangeSet: ChangeSet;
-      if (existingChangeSet) {
-        //then if there is already an existing changeSet, we compose them
-        updateChangeSet = invertedChangeSet.compose(existingChangeSet);
-      } else {
-        updateChangeSet = invertedChangeSet;
+    for (const [fileName, { content }] of Object.entries(fileUpdates)) {
+      if (content === undefined) continue;
+      const file = this.selectedApp.files[fileName];
+      let changeSet = createChangeSet(file?.content || "", content);
+      if (file?.changeSet) {
+        changeSet = changeSet.compose(file.changeSet);
       }
-      if (!fileUpdates[fileName]) {
-        //we shouldn't have a changeSet if we're not also updating the content
-        throw new Error(`Unexpected error updating ${fileName}`);
-      }
-      fileUpdates[fileName].changeSet = updateChangeSet;
+      fileUpdates[fileName]!.changeSet = changeSet;
     }
     this.updateFiles(fileUpdates);
     await this.buildApp();
@@ -715,11 +690,7 @@ class DevState extends SyncExternalStore<Props> {
   }
 }
 
-export { DevState, type EsbuildApi, type ReadFile };
-
-function docFromString(content: string) {
-  return Text.of(content.split("\n"));
-}
+export { DevState, type EsbuildApi, type ReadFile, createChangeSet };
 
 function getUniqueName(name: string, existingNames: Set<string>) {
   const match = name.match(/\d+$/);
@@ -734,4 +705,39 @@ function getUniqueName(name: string, existingNames: Set<string>) {
     return getUniqueName(newName, existingNames);
   }
   return newName;
+}
+
+/**
+ * Creates a ChangeSet with the changes needed to transform the newContent into the prevContent
+ */
+function createChangeSet(prevContent: string, newContent: string) {
+  let changeSpec = [];
+  if (prevContent === "") {
+    changeSpec.push({
+      from: 0,
+      to: newContent.length,
+    });
+  } else {
+    //since we want the changes to go from new to prev, we treat new as the old array
+    //saves us from inverting the changeSet
+    const diff = diffChars(newContent, prevContent);
+    let ix = 0;
+    for (const change of diff) {
+      if (change.added) {
+        changeSpec.push({
+          from: ix,
+          insert: change.value,
+        });
+      } else if (change.removed) {
+        changeSpec.push({
+          from: ix,
+          to: ix + change.value.length,
+        });
+        ix += change.value.length;
+      } else {
+        ix += change.value.length;
+      }
+    }
+  }
+  return ChangeSet.of(changeSpec, newContent.length);
 }
