@@ -154,12 +154,18 @@ class DevState extends SyncExternalStore<Props> {
   importPlugin: Esbuild.Plugin;
   esbuildContext?: Esbuild.BuildContext;
   tailwindConfigContent?: string;
-  constructor({ esbuildPromise }: { esbuildPromise: Promise<EsbuildApi> }) {
-    super({ appIds: [exampleApp.id], selectedApp: exampleApp });
+  constructor({
+    esbuildPromise,
+    initialApp = exampleApp,
+  }: {
+    esbuildPromise: Promise<EsbuildApi>;
+    initialApp?: App;
+  }) {
+    super({ appIds: [initialApp.id], selectedApp: initialApp });
     this.apps = {
-      [exampleApp.id]: exampleApp,
+      [initialApp.id]: initialApp,
     };
-    this.selectedApp = exampleApp;
+    this.selectedApp = initialApp;
     this.esbuildPromise = esbuildPromise;
     this.bundleDepsPlugin = createBundleDepsPlugin(
       this.readFile,
@@ -418,17 +424,18 @@ class DevState extends SyncExternalStore<Props> {
   }
   async runPrettier({ cursorOffset }: { cursorOffset: number }) {
     const selectedFileName = this.selectedApp.selectedFileName;
-    const content = this.selectedApp.files[selectedFileName]?.content;
+    const selectedFile = this.selectedApp.files[selectedFileName];
+    //don't run prettier if there's a changeSet - makes the diffs hard to manage. todo could come back to this
+    if (!selectedFile || selectedFile.changeSet) return {};
     if (
-      (selectedFileName.endsWith(".js") ||
-        selectedFileName.endsWith(".jsx") ||
-        selectedFileName.endsWith(".ts") ||
-        selectedFileName.endsWith(".tsx") ||
-        selectedFileName.endsWith(".json")) &&
-      content
+      selectedFileName.endsWith(".js") ||
+      selectedFileName.endsWith(".jsx") ||
+      selectedFileName.endsWith(".ts") ||
+      selectedFileName.endsWith(".tsx") ||
+      selectedFileName.endsWith(".json")
     ) {
       const { formatted, cursorOffset: newCursorOffset } =
-        await prettier.formatWithCursor(content, {
+        await prettier.formatWithCursor(selectedFile.content, {
           filepath:
             selectedFileName === "magic.json"
               ? "magic.json5"
@@ -520,6 +527,10 @@ class DevState extends SyncExternalStore<Props> {
     const esbuild = await this.esbuildPromise;
     const result = await esbuild.transform(content, {
       loader,
+      jsx: "preserve",
+      sourcemap: "inline",
+      sourcesContent: false,
+      tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } },
     });
     return result.code;
   }
@@ -556,7 +567,7 @@ class DevState extends SyncExternalStore<Props> {
       }
       files[tag] = {
         name: tag,
-        content,
+        content: content.trim(),
       };
     }
     if (invalidCreateString) {
@@ -583,7 +594,7 @@ class DevState extends SyncExternalStore<Props> {
         //update the whole file
         //we need to look specifically for <find> rather than use tagParser because the file might be HTML or JSX and the tags are false positives
         fileUpdates[fileName] = {
-          content: fileUpdateString,
+          content: fileUpdateString.trim(),
         };
       } else {
         if (!this.selectedApp.files[fileName]) {
@@ -593,6 +604,7 @@ class DevState extends SyncExternalStore<Props> {
           );
           continue;
         }
+        let prevContent = this.selectedApp.files[fileName].content;
         let find: string | undefined;
         let invalidFileUpdateString = false;
         for (const { tag, content } of tagParser(fileUpdateString)) {
@@ -609,7 +621,6 @@ class DevState extends SyncExternalStore<Props> {
             find = content;
           } else if (tag === "replace") {
             if (find) {
-              const prevContent = this.selectedApp.files[fileName].content;
               const newContent = prevContent.replace(
                 find.trim(),
                 content.trim(),
@@ -617,9 +628,7 @@ class DevState extends SyncExternalStore<Props> {
               if (newContent === prevContent) {
                 assistant.error("Could not find text to replace:", find);
               } else {
-                fileUpdates[fileName] = {
-                  content: newContent,
-                };
+                prevContent = newContent;
               }
               find = undefined;
             } else {
@@ -635,6 +644,9 @@ class DevState extends SyncExternalStore<Props> {
             "When using <find> and <replace> tags, anything outside of a tag is ignored",
           );
         }
+        fileUpdates[fileName] = {
+          content: prevContent, //kind of confusing, but prevContent is set to newContent after the replace
+        };
       }
     }
     if (invalidUpdateString) {
@@ -661,7 +673,9 @@ class DevState extends SyncExternalStore<Props> {
     files?: string[];
     code?: string[];
   }) {
-    assistant.full(await context(this, { files, code }));
+    const additionalContext = await context(this, { files, code });
+    assistant.full(additionalContext);
+    return additionalContext;
   }
   apiAdvancedDocs() {
     const processedDocs = getHeadings(docs, [
@@ -671,22 +685,24 @@ class DevState extends SyncExternalStore<Props> {
       "Advanced Topics",
     ]);
     const faqs = `# magicsandbox.Dev FAQs
-  
-  ## Why are my builds sometimes slow?
-  
-  magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.
-  
-  ## How do I debug my code?
-  
-  When using magicsandbox.Dev, your code runs in an iframe that's nested several layers deep. Because of this, it can be difficult to find your code in the Sources tab in Chrome's devtools.
-  
-  The easiest way to debug your code in Chrome is to add a \`debugger\` statement and run your code with devtools open, which will open your file in the Sources tab. Your files will all be prefixed with 'MagicApp', like 'MagicApp:index.js'.
-  
-  ## What is the \`magic.json\` syntax? It's not valid JSON.
-  
-  The \`magic.json\` file can be written in JSON5.
+
+## Why are my builds sometimes slow?
+
+magicsandbox.Dev parses your import statements and bundles external dependencies like React separately. When you rebuild your App, if the external dependencies haven't changed, magicsandbox.Dev will skip bundling external dependencies, making the rebuild extremely fast. If your external dependencies have changed, magicsandbox.Dev will fetch and bundle them again, making the build slower.
+
+## How do I debug my code?
+
+When using magicsandbox.Dev, your code runs in an iframe that's nested several layers deep. Because of this, it can be difficult to find your code in the Sources tab in Chrome's devtools.
+
+The easiest way to debug your code in Chrome is to add a \`debugger\` statement and run your code with devtools open, which will open your file in the Sources tab. Your files will all be prefixed with 'MagicApp', like 'MagicApp:index.js'.
+
+## What is the \`magic.json\` syntax? It's not valid JSON.
+
+The \`magic.json\` file can be written in JSON5.
   `;
-    assistant.full(processedDocs + "\n\n" + faqs);
+    const advancedDocs = processedDocs + "\n\n" + faqs;
+    assistant.full(advancedDocs);
+    return advancedDocs;
   }
 }
 

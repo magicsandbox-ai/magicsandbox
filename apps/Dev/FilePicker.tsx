@@ -34,6 +34,7 @@ export default function FilePicker({ devState }: { devState: DevState }) {
             style={{ fieldSizing: "content" }}
             value={selectedApp.id}
             onChange={(e) => devState.setSelectedApp(e.target.value)}
+            aria-label="Select App"
           >
             {appIds.map((appId) => (
               <option key={appId}>{appId}</option>
@@ -58,8 +59,12 @@ export default function FilePicker({ devState }: { devState: DevState }) {
               {`${filename}${file.changeSet ? "*" : ""}`}
             </button>
             {filename !== "magic.json" && (
-              <button onClick={() => devState.deleteFile(filename)}>
+              <button
+                className="relative"
+                onClick={() => devState.deleteFile(filename)}
+              >
                 <X size={16} />
+                <span className="sr-only">{`Delete ${filename}`}</span>
               </button>
             )}
           </div>

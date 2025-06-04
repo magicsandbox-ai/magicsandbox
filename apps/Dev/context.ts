@@ -78,6 +78,7 @@ class Context {
     devState: DevState,
     selectedFiles: string[],
     selectedCode: string[],
+    maxLength?: number,
   ) {
     this.devState = devState;
     this.rawFiles = Object.fromEntries(
@@ -88,7 +89,7 @@ class Context {
     );
     this.selectedFiles = new Set(selectedFiles);
     this.selectedCode = selectedCode;
-    this.maxLength = 25000; //todo make configurable
+    this.maxLength = maxLength || 25000; //todo allow user to configure?
     this.length = 0;
     this.files = {};
     this.nodes = [];
@@ -141,9 +142,13 @@ class Context {
   summarize() {
     const items = [
       this.files["magic.json"],
-      ...Object.values(this.files).filter((file) => !file.js && file.selected),
+      ...Object.values(this.files).filter(
+        (file) => file.filename !== "magic.json" && file.js && file.selected,
+      ),
       ...this.processedNodes.filter((node) => node.depth === 0),
-      ...Object.values(this.files).filter((file) => !file.js && !file.selected),
+      ...Object.values(this.files).filter(
+        (file) => file.filename !== "magic.json" && !file.js && !file.selected,
+      ),
       ...this.processedNodes.filter((node) => node.depth === 1),
       ...this.processedNodes.filter((node) => node.depth === 2),
     ];
@@ -306,6 +311,10 @@ class File {
     }
   }
 
+  slice(start: number, end: number) {
+    return this.content.slice(start, end);
+  }
+
   add() {
     if (!this.js) {
       this.summary.push(this.content);
@@ -324,7 +333,7 @@ class File {
   addNode(node: Node): number {
     if (this.summary.length > 0) {
       const oldLength = this.summary[node.index]!.length;
-      this.summary[node.index] = this.content.slice(
+      this.summary[node.index] = this.slice(
         node.astNode.start,
         node.astNode.end,
       );
@@ -351,7 +360,6 @@ class Node {
   index: number;
   depth?: number;
   selected: boolean;
-  scope: eslint.Scope.Scope;
   references: eslint.Scope.Definition[];
   edges: Node[];
   constructor(context: Context, file: File, astNode: AstNode, index: number) {
@@ -385,18 +393,17 @@ class Node {
     this.references = [];
     //@ts-ignore: todo
     const scope = this.file.scopeManager.acquire(this.astNode);
-    if (scope === null) {
-      throw new Error("scope is null");
+    //not all nodes have a scope, like `import React from "react"` - this does define a variable React though
+    if (scope !== null) {
+      //this.scope.through is a list of references outside the scope (which is what we want)
+      //confusingly, this.scope.references is a list of references inside the scope - ignore this
+      scope.through.forEach((reference) => {
+        const resolved = reference.resolved;
+        if (resolved) {
+          this.references.push(...resolved.defs);
+        }
+      });
     }
-    this.scope = scope;
-    //this.scope.through is a list of references outside the scope (which is what we want)
-    //confusingly, this.scope.references is a list of references inside the scope - ignore this
-    this.scope.through.forEach((reference) => {
-      const resolved = reference.resolved;
-      if (resolved) {
-        this.references.push(...resolved.defs);
-      }
-    });
     this.edges = [];
   }
 
@@ -409,8 +416,7 @@ class Node {
     const type = astNode.type;
     let start = astNode.start;
     let end = astNode.end;
-    const slice = (start: number, end: number) =>
-      this.file.content.slice(start, end);
+    const slice = (start: number, end: number) => this.file.slice(start, end);
     if (
       type === "ImportDeclaration" ||
       type === "ExportNamedDeclaration" ||
@@ -448,6 +454,7 @@ ${body.join("\n")}
 async function context(
   devState: DevState,
   { files = [], code = [] }: { files?: string[]; code?: string[] } = {},
+  maxLength?: number,
 ) {
   let selectedFiles: string[], selectedCode: string[];
   if (files.length > 0 || code.length > 0) {
@@ -466,14 +473,19 @@ async function context(
         selectedFiles.push("index.js", "index.jsx", "index.ts", "index.tsx");
       }
     }
-    const selection = window.getSelection();
+    const selection = getSelection();
     if (selection) {
       selectedCode = [selection.toString()];
     } else {
       selectedCode = [];
     }
   }
-  return await new Context(devState, selectedFiles, selectedCode).get();
+  return await new Context(
+    devState,
+    selectedFiles,
+    selectedCode,
+    maxLength,
+  ).get();
 }
 
 export { context };

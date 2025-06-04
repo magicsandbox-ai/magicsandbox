@@ -8,7 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { useCodeMirror } from "@uiw/react-codemirror";
-import type { Extension } from "@codemirror/state";
+import { type Extension, Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
@@ -16,7 +16,7 @@ import { historyField } from "@codemirror/commands";
 import eslinter from "./eslinter.ts";
 import { Hover, type HoverProps } from "./Hover.tsx";
 import { diffExtension, externalAnnotationType } from "./diffExtension.ts";
-import { type DevState } from "./DevState.ts";
+import type { DevState } from "./DevState.ts";
 
 declare let setTimeout: WindowOrWorkerGlobalScope["setTimeout"];
 
@@ -103,33 +103,33 @@ function CodeEditor({ devState }: { devState: DevState }) {
     };
   }, []);
 
-  // useEffect(() => {
-  //   const handleBuild = async () => {
-  //     if (!viewRef.current) return;
-  //     const { formatted, newCursorOffset } = await devState.runPrettier({
-  //       cursorOffset: viewRef.current.state.selection.main.head,
-  //     });
-  //     if (!formatted) return;
-  //     const yMargin = viewRef.current.coordsAtPos(newCursorOffset)?.top || 5;
-  //     //need to update the content and the scroll in one transaction to prevent flicker
-  //     viewRef.current.dispatch({
-  //       changes: {
-  //         from: 0,
-  //         to: viewRef.current.state.doc.length,
-  //         insert: formatted,
-  //       },
-  //       selection: { anchor: newCursorOffset, head: newCursorOffset },
-  //       effects: [
-  //         EditorView.scrollIntoView(newCursorOffset, {
-  //           y: "start",
-  //           yMargin,
-  //         }),
-  //       ],
-  //     });
-  //   };
-  //   window.addEventListener("buildApp", handleBuild);
-  //   return () => window.removeEventListener("buildApp", handleBuild);
-  // }, []);
+  useEffect(() => {
+    const handleBuild = async () => {
+      if (!viewRef.current) return;
+      const { formatted, newCursorOffset } = await devState.runPrettier({
+        cursorOffset: viewRef.current.state.selection.main.head,
+      });
+      if (!formatted) return;
+      const yMargin = viewRef.current.coordsAtPos(newCursorOffset)?.top || 5;
+      //need to update the content and the scroll in one transaction to prevent flicker
+      viewRef.current.dispatch({
+        changes: {
+          from: 0,
+          to: viewRef.current.state.doc.length,
+          insert: formatted,
+        },
+        selection: { anchor: newCursorOffset, head: newCursorOffset },
+        effects: [
+          EditorView.scrollIntoView(newCursorOffset, {
+            y: "start",
+            yMargin,
+          }),
+        ],
+      });
+    };
+    window.addEventListener("buildApp", handleBuild);
+    return () => window.removeEventListener("buildApp", handleBuild);
+  }, []);
 
   //onChange and extensions should be stable to avoid creating unnecessary transactions
   const onChange = useCallback((value: string) => {
@@ -137,6 +137,10 @@ function CodeEditor({ devState }: { devState: DevState }) {
       content: value,
     });
     debouncedCallProcessTailwind();
+  }, []);
+
+  const diffCompartment = useMemo(() => {
+    return new Compartment();
   }, []);
 
   const extensions = useMemo(() => {
@@ -153,11 +157,15 @@ function CodeEditor({ devState }: { devState: DevState }) {
     }
     if (selectedFile.changeSet) {
       extensions.push(
-        diffExtension(devState, selectedFile.changeSet, selectedFile.content),
+        diffCompartment.of(
+          diffExtension(devState, selectedFile.changeSet, selectedFile.content),
+        ),
       );
+    } else {
+      extensions.push(diffCompartment.of([]));
     }
     return extensions;
-  }, [selectedFile.changeSet !== undefined]);
+  }, []);
 
   function handleCreateEditor(view: EditorView) {
     if (selectedFile.scroll) {
@@ -188,21 +196,49 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }, [view]);
 
   useEffect(() => {
-    //typically you would pass selectedFile.content as value to ReactCodeMirror
-    //however we need to identify "external" changes in diffExtension
-    //so this essentially copies what ReactCodeMirror does internally, adding our external annotation
+    //typically you would pass selectedFile.content as value to ReactCodeMirror, which does something similar to this internally
+    //but we need more control over these external changes
     if (!view) return;
+    const changes = [];
+    const effects = [];
     if (selectedFile.content !== view.state.doc.toString()) {
+      //external content change - update the whole doc and reset the diff extension
+      changes.push({
+        from: 0,
+        to: view.state.doc.length,
+        insert: selectedFile.content,
+      });
+      if (selectedFile.changeSet) {
+        effects.push(
+          diffCompartment.reconfigure(
+            diffExtension(
+              devState,
+              selectedFile.changeSet,
+              selectedFile.content,
+            ),
+          ),
+        );
+      } else {
+        effects.push(diffCompartment.reconfigure([]));
+      }
+    } else if (selectedFile.changeSet === undefined) {
+      //content didn't change but the changeSet is undefined (this happens if the user accepts all diffs) - remove the diff extension
+      effects.push(diffCompartment.reconfigure([]));
+    }
+    if (effects.length > 0) {
+      //reconfigure extension first so that it can see the changes
       view.dispatch({
-        changes: {
-          from: 0,
-          to: view.state.doc.length,
-          insert: selectedFile.content,
-        },
+        effects,
+      });
+    }
+    if (changes.length > 0) {
+      view.dispatch({
+        changes,
+        //add an annotation for the diff extension to ignore this transaction
         annotations: [externalAnnotationType.of(true)],
       });
     }
-  }, [view, selectedFile.content]);
+  }, [view, selectedFile.content, selectedFile.changeSet !== undefined]);
 
   function handleMouseMove(event: React.MouseEvent<HTMLDivElement>) {
     clearTimeout(hoverTimeoutRef.current);
