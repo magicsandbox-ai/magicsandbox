@@ -7,12 +7,14 @@ todos:
 - test typing after diff - shouldn't create more diffs
 - approve/reject changes
 - tailwind.config.js build
+- magic.json dependencies
 - hover
 - undo history
 - help
 - download
 - publish
 - preview mobile/tablet/desktop
+- prettier
 */
 
 //init waits for the wasm to initialize, so we'll disable autoInit and wait for init before testing

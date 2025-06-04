@@ -4,8 +4,15 @@ import { prompt } from "./prompt.ts";
 import { ToastError } from "@utils/Toast.ts";
 import type * as eslint from "eslint";
 import type { DevState } from "./DevState.ts";
+import { SourceMapConsumer } from "source-map-js";
+import { getSourceMap } from "./plugins.ts";
 
 type NodeWithDepth = Node & { depth: number };
+
+type OriginalPositionResult = {
+  line: number | null;
+  column: number | null;
+};
 
 function analyze(content: string) {
   /*
@@ -195,6 +202,8 @@ class File {
   depth?: number;
   ast?: AstNode[];
   scopeManager?: InstanceType<typeof eslintScope.ScopeManager>;
+  transformedContent?: string;
+  sourceMapConsumer?: SourceMapConsumer;
   constructor(context: Context, filename: string, content: string) {
     this.context = context;
     this.filename = filename;
@@ -230,6 +239,11 @@ class File {
       //can't parse TS, so first need to strip the types
       if (isTs(this.filename)) {
         content = await this.context.devState.getJs(this.filename);
+        const { sourceMap } = getSourceMap(content);
+        if (sourceMap) {
+          this.transformedContent = content;
+          this.sourceMapConsumer = new SourceMapConsumer(sourceMap);
+        }
       }
       const { ast, scopeManager } = analyze(content);
       this.ast = ast.body;
@@ -247,6 +261,17 @@ class File {
             //   this.exports["*"] = specifier.local.name;
             // }
           });
+          if (astNode.declaration) {
+            if ("declarations" in astNode.declaration) {
+              //VariableDeclaration: export const a = 1;
+              //todo
+            } else {
+              //FunctionDeclaration: export function a() {}
+              //ClassDeclaration: export class A {}
+              this.exports[astNode.declaration.id.name] =
+                astNode.declaration.id.name;
+            }
+          }
         } else if (astNode.type === "ExportDefaultDeclaration") {
           this.exports["default"] =
             //@ts-ignore
@@ -312,6 +337,72 @@ class File {
   }
 
   slice(start: number, end: number) {
+    if (this.transformedContent && this.sourceMapConsumer) {
+      const { line: startLine, column: startColumn } = indexToLineColumn(
+        this.transformedContent,
+        start,
+      );
+      const startOriginalPosition = this.sourceMapConsumer.originalPositionFor({
+        line: startLine,
+        column: startColumn,
+      }) as OriginalPositionResult; //the type definition for originalPositionFor is wrong - it can return null
+      if (
+        startOriginalPosition.line === null ||
+        startOriginalPosition.column === null
+      ) {
+        throw new Error("Failed to get original position from source map");
+      }
+      const { line: endLine, column: endColumn } = indexToLineColumn(
+        this.transformedContent,
+        end,
+      );
+      let endOriginalPositionLine: number;
+      let endOriginalPositionColumn: number | null = null;
+      const endOriginalPosition = this.sourceMapConsumer.originalPositionFor({
+        line: endLine,
+        column: endColumn,
+        bias: SourceMapConsumer.LEAST_UPPER_BOUND,
+      }) as OriginalPositionResult;
+      if (
+        endOriginalPosition.line === null ||
+        endOriginalPosition.column === null
+      ) {
+        /*
+        this 27 character line:
+        import React from "react";
+        is represented in the source map as positions: line 1, column 0; line 1, column 7; line 1, column 18
+        any column > 18 using LEAST_UPPER_BOUND will return null (it'd be nice if it returned line 1, column 27, but it doesn't)
+        so if we get a null, let's try again without LEAST_UPPER_BOUND to get the line number
+        and we'll pass the column as null to lineColumnToIndex, which will return the index of the last character in the line
+        */
+        const endOriginalPosition = this.sourceMapConsumer.originalPositionFor({
+          line: endLine,
+          column: endColumn,
+        }) as OriginalPositionResult;
+        if (
+          endOriginalPosition.line === null ||
+          endOriginalPosition.column === null
+        ) {
+          throw new Error("Failed to get original position from source map");
+        }
+        endOriginalPositionLine = endOriginalPosition.line;
+      } else {
+        endOriginalPositionLine = endOriginalPosition.line;
+        endOriginalPositionColumn = endOriginalPosition.column;
+      }
+      return this.content.slice(
+        lineColumnToIndex(
+          this.content,
+          startOriginalPosition.line,
+          startOriginalPosition.column,
+        ),
+        lineColumnToIndex(
+          this.content,
+          endOriginalPositionLine,
+          endOriginalPositionColumn,
+        ),
+      );
+    }
     return this.content.slice(start, end);
   }
 
@@ -381,11 +472,13 @@ class Node {
       //@ts-ignore: todo - I think maybe a version issue?
       .getDeclaredVariables(this.astNode)
       .map((variable) => variable.name);
-    if (
-      variables.length === 0 &&
-      this.astNode.type === "ExportDefaultDeclaration"
-    ) {
-      variables.push("default");
+    if (variables.length === 0) {
+      if (this.astNode.type === "ExportDefaultDeclaration") {
+        variables.push("default");
+      } else if (this.astNode.type === "ExportNamedDeclaration") {
+        //@ts-ignore
+        variables.push(this.astNode.declaration?.id?.name);
+      }
     }
     variables.forEach((variable) => {
       this.file.definitions[variable] = this;
@@ -512,4 +605,61 @@ function isJs(filename: string) {
 
 function isTs(filename: string) {
   return filename.endsWith(".ts") || filename.endsWith(".tsx");
+}
+
+function indexToLineColumn(
+  content: string,
+  index: number,
+): { line: number; column: number } {
+  if (index < 0) {
+    throw new Error("Index cannot be negative");
+  }
+  if (index > content.length) {
+    throw new Error("Index exceeds content length");
+  }
+  let line = 1; // 1-based line number
+  let column = 0; // 0-based column number
+  let lastNewlineIndex = -1;
+  for (let i = 0; i < index; i++) {
+    if (content[i] === "\n") {
+      line++;
+      lastNewlineIndex = i;
+    }
+  }
+  column = index - (lastNewlineIndex + 1);
+
+  return { line, column };
+}
+
+function lineColumnToIndex(
+  content: string,
+  line: number,
+  column: number | null,
+): number {
+  if (line < 1) {
+    throw new Error("Line number must be positive");
+  }
+  if (column !== null && column < 0) {
+    throw new Error("Column number cannot be negative");
+  }
+  let currentLine = 1;
+  let currentIndex = 0;
+  while (currentLine < line && currentIndex < content.length) {
+    if (content[currentIndex] === "\n") {
+      currentLine++;
+    }
+    currentIndex++;
+  }
+  if (currentLine < line) {
+    throw new Error("Line number exceeds content length");
+  }
+  const nextNewlineIndex = content.indexOf("\n", currentIndex);
+  const lineLength =
+    nextNewlineIndex === -1
+      ? content.length - currentIndex
+      : nextNewlineIndex - currentIndex;
+  if (column !== null && column > lineLength) {
+    throw new Error("Column number exceeds line length");
+  }
+  return currentIndex + (column ?? lineLength);
 }

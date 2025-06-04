@@ -243,12 +243,18 @@ function createBundleDepsPlugin(
         ) {
           if (Object.keys(pkgImports).length > 0) {
             const bundleDepsCode = transformToBundleDeps(pkgImports);
-            bundledDeps = await bundleDeps(
+            const bundleDepsResult = await bundleDeps(
               bundleDepsCode,
               esbuildPromise,
               build.initialOptions,
               appObj,
             );
+            bundledDeps = bundleDepsResult.outputFiles![0]!.text;
+            //@ts-ignore: this is kind of a mess, but passing dependencies from importPlugin back to the final result
+            if (bundleDepsResult.dependencies) {
+              //@ts-ignore
+              result.dependencies = bundleDepsResult.dependencies;
+            }
           } else {
             bundledDeps = "";
           }
@@ -258,12 +264,8 @@ function createBundleDepsPlugin(
         if (bundledDeps) {
           try {
             let text = result.outputFiles![0]!.text;
-            let sourceMapStart = text.lastIndexOf("//# sourceMappingURL=");
-            if (sourceMapStart !== -1) {
-              sourceMapStart += 50; //50 chars removes //# sourceMappingURL=data...base64,
-              const decodedSourceMap = JSON.parse(
-                atob(text.slice(sourceMapStart)),
-              );
+            const { sourceMapStart, sourceMap } = getSourceMap(text);
+            if (sourceMap) {
               let bundledLineCount = countLines(bundledDeps) + 1; //add 1 because we add one extra line break when concatenating
               const newSourceMap = {
                 //https://tc39.es/source-map/#index-map
@@ -271,7 +273,7 @@ function createBundleDepsPlugin(
                 sections: [
                   {
                     offset: { line: bundledLineCount, column: 0 },
-                    map: { ...decodedSourceMap },
+                    map: { ...sourceMap },
                   },
                 ],
               };
@@ -327,7 +329,7 @@ async function bundleDeps(
       );
     }
   }
-  return result.outputFiles![0]!.text;
+  return result;
 }
 
 async function buildDeps(
@@ -361,6 +363,20 @@ async function buildDeps(
     sourcemap: false,
   });
   return result;
+}
+
+function getSourceMap(codeWithInlineSourceMap: string) {
+  let sourceMapStart = codeWithInlineSourceMap.lastIndexOf(
+    "//# sourceMappingURL=",
+  );
+  if (sourceMapStart === -1) {
+    return {};
+  }
+  sourceMapStart += 50; //50 chars removes //# sourceMappingURL=data...base64,
+  const sourceMap = JSON.parse(
+    atob(codeWithInlineSourceMap.slice(sourceMapStart)),
+  );
+  return { sourceMapStart, sourceMap };
 }
 
 function getAppObj(readFile: ReadFile) {
@@ -1131,4 +1147,5 @@ export {
   getImports,
   normalizePath,
   parseNormalizedPath,
+  getSourceMap,
 };

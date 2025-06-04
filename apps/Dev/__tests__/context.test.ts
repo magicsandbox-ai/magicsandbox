@@ -31,11 +31,12 @@ const initialApp = {
       name: "index.tsx",
       content: `import React from "react";
 import { createRoot } from "react-dom/client";
-import { reverse } from "./reverse.ts";
+import { reverse, logSecret } from "./reverse.ts";
 interface AppProps {
   message?: string;
 }
 function init(): void {
+  logSecret("secret");
   createRoot(document.getElementById("root")!).render(
     <App message="Hello, there!" />,
   );
@@ -52,7 +53,11 @@ export { init }`,
       name: "reverse.ts",
       content: `export function reverse(str: string): string {
   return str.split("").reverse().join("");
-}`,
+}
+function logSecret(secret: string) {
+  console.log(secret);
+}
+export { logSecret };`,
     },
   },
   selectedFileName: "magic.json",
@@ -63,6 +68,14 @@ const devState = new DevState({
   esbuildPromise: Promise.resolve(esbuild),
   initialApp,
 });
+
+function getLength(files: string[]) {
+  return files.reduce(
+    (acc, file) =>
+      acc + (devState.selectedApp.files[file]?.content?.length ?? 0),
+    0,
+  );
+}
 
 function isFileInContext(context: string, filename: string) {
   /*
@@ -77,71 +90,90 @@ function isFileInContext(context: string, filename: string) {
 }
 
 test("context", async () => {
-  //default - should be everything
   const context0 = await context(devState, {});
+  console.log("default - should be everything");
   console.log(context0);
   expect(isFileInContext(context0, "magic.json")).toBe(true);
   expect(isFileInContext(context0, "index.tsx")).toBe(true);
   expect(isFileInContext(context0, "reverse.ts")).toBe(true);
 
-  //maxLength = 1 - should only be magic.json in context
-  const context1 = await context(devState, {}, 1);
+  const context1 = await context(devState, {}, getLength(["magic.json"]) - 1);
+  console.log("maxLength = magic.json - 1 - should only be magic.json");
   console.log(context1);
   expect(isFileInContext(context1, "magic.json")).toBe(true);
   expect(isFileInContext(context1, "index.tsx")).toBe(false);
 
-  //maxLength = context1.length - should be enough for magic.json and index.tsx summary
-  const context2 = await context(devState, {}, context1.length);
+  const context2 = await context(devState, {}, getLength(["magic.json"]));
+  console.log(
+    "maxLength = magic.json - should be magic.json and index.tsx summary",
+  );
   console.log(context2);
   expect(isFileInContext(context2, "magic.json")).toBe(true);
   expect(isFileInContext(context2, "index.tsx")).toBe(true);
   expect(isFileInContext(context2, "reverse.ts")).toBe(false);
 
-  //maxLength = context1.length, reverse.ts selected - should be magic.json and reverse.ts
   const context3 = await context(
     devState,
     { files: ["reverse.ts"] },
-    context1.length,
+    getLength(["magic.json"]),
+  );
+  console.log(
+    "maxLength = magic.json, reverse.ts selected - should be magic.json and reverse.ts summary",
   );
   console.log(context3);
   expect(isFileInContext(context3, "magic.json")).toBe(true);
   expect(isFileInContext(context3, "index.tsx")).toBe(false);
   expect(isFileInContext(context3, "reverse.ts")).toBe(true);
 
-  //maxLength = context3.length + 100, reverse.ts selected
-  //should be magic.json, reverse.ts, and index.tsx summary
   const context4 = await context(
     devState,
     { files: ["reverse.ts"] },
-    context3.length + 100,
+    getLength(["magic.json", "reverse.ts"]),
+  );
+  console.log(
+    "maxLength = magic.json + reverse.ts, reverse.ts selected - should be magic.json, reverse.ts, and index.tsx summary",
   );
   console.log(context4);
   expect(isFileInContext(context4, "magic.json")).toBe(true);
   expect(isFileInContext(context4, "index.tsx")).toBe(true);
   expect(isFileInContext(context4, "reverse.ts")).toBe(true);
-  expect(context4).not.toContain("reverse(message)"); //function definitions not included in summary
+  //function definitions not included in summary
+  expect(context4).not.toContain('logSecret("secret")');
+  //expect(context4).not.toContain("reverse(message)");
+  //right now as implemented, when adding a summary, we always add at least one node - todo could clean this up
+  expect(context4).toContain("reverse(message)");
 
-  //no maxLength, reverse.ts selected
-  const context5 = await context(devState, { files: ["reverse.ts"] });
+  const context5 = await context(
+    devState,
+    { files: ["reverse.ts"] },
+    getLength(["magic.json", "reverse.ts", "index.tsx"]) - 1,
+  );
+  console.log(
+    "maxLength = magic.json + reverse.ts + index.tsx - 1, reverse.ts selected - should be everything but index.tsx pointless",
+  );
   console.log(context5);
   expect(isFileInContext(context5, "magic.json")).toBe(true);
   expect(isFileInContext(context5, "index.tsx")).toBe(true);
   expect(isFileInContext(context5, "reverse.ts")).toBe(true);
-  //App function definition is included because there's an edge between it and the selected file reverse.ts
+  //function definitions are included when there's an edge between it and the selected file reverse.ts
+  expect(context5).toContain('logSecret("secret")');
   expect(context5).toContain("reverse(message)");
   //pointless function definition is not included because there's no edge between it and reverse.ts
   expect(context5).not.toContain("Hello from pointless!");
 
-  //no maxLength, reverse.ts selected, selected code is "pointless"
   const context6 = await context(devState, {
     files: ["reverse.ts"],
     code: ["pointless"],
   });
+  console.log(
+    "maxLength = magic.json + reverse.ts + index.tsx - 1, reverse.ts selected, selected code is 'pointless' - pointless should be included",
+  );
   console.log(context6);
   expect(isFileInContext(context6, "magic.json")).toBe(true);
   expect(isFileInContext(context6, "index.tsx")).toBe(true);
   expect(isFileInContext(context6, "reverse.ts")).toBe(true);
-  expect(context6).toContain("reverse(message)");
   //pointless function definition is now included because we're selecting the code "pointless"
+  //this may be kind of confusing since we didn't change maxLength vs. the last test and the result exceeds maxLength because everything is included
+  //but when maxLength is less than the length of all the files, only nodes with edges are included
   expect(context6).toContain("Hello from pointless!");
 });

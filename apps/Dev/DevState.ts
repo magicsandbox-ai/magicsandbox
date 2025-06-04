@@ -154,6 +154,18 @@ class DevState extends SyncExternalStore<Props> {
   importPlugin: Esbuild.Plugin;
   esbuildContext?: Esbuild.BuildContext;
   tailwindConfigContent?: string;
+  private buildCallbacks: Array<{
+    pre?: () => Promise<any>;
+    post?: ({
+      preResult,
+      appObj,
+      errorMessage,
+    }: {
+      preResult: any;
+      appObj?: any;
+      errorMessage?: string;
+    }) => Promise<void>;
+  }> = [];
   constructor({
     esbuildPromise,
     initialApp = exampleApp,
@@ -344,23 +356,24 @@ class DevState extends SyncExternalStore<Props> {
     }
     return JSON5.parse(magicContent);
   }
-  async buildApp({ publish = false }: { publish?: boolean } = {}) {
-    const buildAppPromise = this.buildAppImpl({ publish });
-    globalThis.dispatchEvent(
-      new CustomEvent("buildApp", {
-        detail: buildAppPromise,
-      }),
-    );
-    const { appObj, errorMessage } = await buildAppPromise;
-    if (appObj && publish) {
-      delete appObj.esbuildOptions; //plugins can't be serialized and cause an error
-      requestPublish(appObj).catch((error) => {
-        this.errorHandler(error);
-      });
-    }
-    return { appObj, errorMessage };
+  registerBuildCallback<T>(callback: {
+    pre?: () => Promise<T>;
+    post?: ({
+      preResult,
+      appObj,
+      errorMessage,
+    }: {
+      preResult: T;
+      appObj?: any;
+      errorMessage?: string;
+    }) => Promise<void>;
+  }) {
+    this.buildCallbacks.push(callback);
+    return () => {
+      this.buildCallbacks = this.buildCallbacks.filter((cb) => cb !== callback);
+    };
   }
-  async buildAppImpl({ publish }: { publish: boolean }) {
+  async buildApp({ publish = false }: { publish?: boolean } = {}) {
     const magicObj = this.getMagicObj();
     if (!magicObj.name || !magicObj.version) {
       throw new Error("magic.json must have name and version");
@@ -376,7 +389,10 @@ class DevState extends SyncExternalStore<Props> {
         this.selectedApp.selectedFileName,
       );
     }
+    const callbacks = [...this.buildCallbacks]; //guard against callbacks changing during build
+    let preResults: any[];
     try {
+      preResults = await Promise.all(callbacks.map((cb) => cb.pre?.()));
       delete magicObj?.esbuildOptions?.plugins; //not supported
       const esbuild = await this.esbuildPromise;
       //@ts-ignore
@@ -411,15 +427,30 @@ class DevState extends SyncExternalStore<Props> {
         );
       }
       this.esbuildContext = context;
-      return { appObj };
+      await Promise.all(
+        callbacks.map((cb, i) =>
+          cb.post?.({ preResult: preResults[i], appObj }),
+        ),
+      );
+      if (publish) {
+        delete appObj.esbuildOptions; //plugins can't be serialized and cause an error
+        requestPublish(appObj).catch((error) => {
+          this.errorHandler(error);
+        });
+      }
     } catch (error) {
       console.error(error);
-      return {
-        errorMessage:
-          error instanceof Error
-            ? error.message
-            : "Unexpected error building app",
-      };
+      await Promise.all(
+        callbacks.map((cb, i) =>
+          cb.post?.({
+            preResult: preResults[i],
+            errorMessage:
+              error instanceof Error
+                ? error.message
+                : "Unexpected error building app",
+          }),
+        ),
+      );
     }
   }
   async runPrettier({ cursorOffset }: { cursorOffset: number }) {

@@ -104,31 +104,32 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }, []);
 
   useEffect(() => {
-    const handleBuild = async () => {
-      if (!viewRef.current) return;
-      const { formatted, newCursorOffset } = await devState.runPrettier({
-        cursorOffset: viewRef.current.state.selection.main.head,
-      });
-      if (!formatted) return;
-      const yMargin = viewRef.current.coordsAtPos(newCursorOffset)?.top || 5;
-      //need to update the content and the scroll in one transaction to prevent flicker
-      viewRef.current.dispatch({
-        changes: {
-          from: 0,
-          to: viewRef.current.state.doc.length,
-          insert: formatted,
-        },
-        selection: { anchor: newCursorOffset, head: newCursorOffset },
-        effects: [
-          EditorView.scrollIntoView(newCursorOffset, {
-            y: "start",
-            yMargin,
-          }),
-        ],
-      });
-    };
-    window.addEventListener("buildApp", handleBuild);
-    return () => window.removeEventListener("buildApp", handleBuild);
+    const unregister = devState.registerBuildCallback({
+      pre: async () => {
+        if (!viewRef.current) return;
+        const { formatted, newCursorOffset } = await devState.runPrettier({
+          cursorOffset: viewRef.current.state.selection.main.head,
+        });
+        if (!formatted) return;
+        const yMargin = viewRef.current.coordsAtPos(newCursorOffset)?.top || 5;
+        //need to update the content and the scroll in one transaction to prevent flicker
+        viewRef.current.dispatch({
+          changes: {
+            from: 0,
+            to: viewRef.current.state.doc.length,
+            insert: formatted,
+          },
+          selection: { anchor: newCursorOffset, head: newCursorOffset },
+          effects: [
+            EditorView.scrollIntoView(newCursorOffset, {
+              y: "start",
+              yMargin,
+            }),
+          ],
+        });
+      },
+    });
+    return unregister;
   }, []);
 
   //onChange and extensions should be stable to avoid creating unnecessary transactions

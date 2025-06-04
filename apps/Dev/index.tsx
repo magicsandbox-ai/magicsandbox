@@ -75,34 +75,34 @@ function App() {
   // const previewLogsRef = useRef(null);
 
   useEffect(() => {
-    const handleBuild = async (event: any) => {
-      previewRef.current.reload();
-      const sandboxId = previewRef.current.getSandboxId();
-      const { appObj, errorMessage } = await event.detail;
-      if (errorMessage) {
-        previewRef.current.error(errorMessage);
-        return;
-      }
-      if (appObj.update) {
-        toastsRef.current?.addToast(
-          "Build skipped when update is set to true",
-          "info",
+    const unregister = devState.registerBuildCallback({
+      pre: async () => {
+        previewRef.current.reload();
+        return previewRef.current.getSandboxId();
+      },
+      post: async ({ preResult: sandboxId, appObj, errorMessage }) => {
+        if (errorMessage) {
+          previewRef.current.error(errorMessage);
+          return;
+        }
+        if (appObj.update) {
+          toastsRef.current?.addToast(
+            "Build skipped when update is set to true",
+            "info",
+          );
+        }
+        if (appObj.script) {
+          appObj.script += "\nwindow.app = app;";
+        }
+        const { logs } = await previewRef.current.update(
+          sandboxId,
+          appObj,
+          10000,
         );
-      }
-      await previewRef.current.update(sandboxId, appObj);
-      /*
-      todo this doesn't work because the Async Function with use strict cannot create the global app variable
-      either fix it, or remove the extra logic from Preview.js
-      */
-      // const { logs } = await previewRef.current.update(
-      //   sandboxId,
-      //   appObj,
-      //   10000,
-      // );
-      // previewLogsRef.current = logs;
-    };
-    window.addEventListener("buildApp", handleBuild);
-    return () => window.removeEventListener("buildApp", handleBuild);
+        console.log(logs);
+      },
+    });
+    return unregister;
   }, []);
 
   useEffect(() => {
