@@ -73,8 +73,7 @@ function SideBar({
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        delay: 100,
-        tolerance: 32,
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {

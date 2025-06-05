@@ -86,15 +86,18 @@ const Preview = forwardRef(function Preview(
         script: appObj.script,
       });
     }
+    let initLogs = [];
     if (init) {
-      sandboxRef.current
-        .getInit({
+      try {
+        ({ logs: initLogs } = await sandboxRef.current.getInit({
           sandboxId,
           timeout: 1000,
-        })
-        .catch(() => {}); //ignore
+        }));
+      } catch {
+        //ignore
+      }
     }
-    return { logs };
+    return { logs: [...logs, ...initLogs] };
   }
 
   function error(err) {

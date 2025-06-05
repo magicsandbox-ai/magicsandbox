@@ -215,13 +215,12 @@ const Sandbox = forwardRef(function Sandbox(
 
   async function getInit({ sandboxId, timeout, args }) {
     const script = `return await window.app?.init?.(args);`;
-    const { result } = await executeScriptAndWaitForResponse({
+    return await executeScriptAndWaitForResponse({
       sandboxId,
       script,
       args,
       timeout,
     });
-    return result;
   }
 
   async function getContext(sandboxId, timeout) {

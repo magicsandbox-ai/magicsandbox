@@ -72,7 +72,7 @@ ${context}
 function apiPrompt({ context, summarizedContext }: PromptArgs) {
   const api = [];
 
-  api.push(`### app.api.createApp(name: string, description: string, createString: string)
+  api.push(`### app.api.createApp(name: string, description: string, createString: string): Promise<void>
 
 Create a new App.
 
@@ -92,7 +92,7 @@ Follow these instructions when generating the \`createString\`:
 Here's an example of creating an App with an \`index.js\` file. For brevity, the \`index.js\` file is truncated. When you create an App, include the entire file content:
 
 ~~~javascript
-app.api.createApp("HelloWorld", "A simple hello world app", \`\`\`<index.js>
+await app.api.createApp("HelloWorld", "A simple hello world app", \`\`\`<index.js>
 import React from "react";
 // rest of index.js file...
 </index.js>
@@ -100,7 +100,7 @@ import React from "react";
 ~~~`);
 
   if (context) {
-    api.push(`### app.api.updateFiles(updateString: string)
+    api.push(`### app.api.updateFiles(updateString: string): Promise<void>
 
 Update the App's files. Follow these instructions when generating the \`updateString\`:
 
@@ -117,7 +117,7 @@ Update the App's files. Follow these instructions when generating the \`updateSt
 Here's an example of updating \`index.js\` using \`<find>\` and \`<replace>\` tags:
 
 ~~~javascript
-app.api.updateFiles(\`\`\`<index.js>
+await app.api.updateFiles(\`\`\`<index.js>
 <find>
   return (
     <div className="flex h-screen items-center justify-center">
@@ -138,7 +138,7 @@ app.api.updateFiles(\`\`\`<index.js>
   }
 
   if (summarizedContext) {
-    api.push(`### app.api.additionalContext({ files?: string[], code?: string[] })
+    api.push(`### app.api.additionalContext({ files?: string[], code?: string[] }): Promise<void>
 
 Logs additional context that you can reference in your next message.
 
@@ -148,7 +148,7 @@ Arguments:
 - \`code\`: an array of code snippets to search for and include in the context. For example, to see everywhere a config object is referenced: \`["config"]\``);
   }
 
-  api.push(`### app.api.advancedDocs()
+  api.push(`### app.api.advancedDocs(): void
 
 Logs advanced documentation that you can reference in your next message. The advanced documentation includes additional information on:
 
@@ -192,6 +192,18 @@ function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
         "- Use `app.api.additionalContext` if the relevant file or snippet required to handle the user request is not included in the context.",
       );
     }
+    let asyncApi;
+    if (summarizedContext) {
+      asyncApi =
+        "`app.api.createApp`, `app.api.updateFiles`, and `app.api.additionalContext` are";
+    } else if (context) {
+      asyncApi = "`app.api.createApp` and `app.api.updateFiles` are";
+    } else {
+      asyncApi = "`app.api.createApp` is";
+    }
+    instructions.push(
+      `- ${asyncApi} async. Make sure you use \`await\` so that the relevant logs are captured and available to you in your next message.`,
+    );
     instructions.push(
       "- Use `app.api.advancedDocs` if the user request requires more information about Magic Sandbox, `magic.json`, or magicsandbox.Dev than you have available.",
     );

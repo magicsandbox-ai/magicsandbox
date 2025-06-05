@@ -11,7 +11,7 @@ function parse(
   handler?: (node: Node, index: number, nodes: Node[], file: string) => void,
 ) {
   const ast = espree.parse(file, {
-    ecmaVersion: 2022,
+    ecmaVersion: "latest",
     sourceType: "module",
     ecmaFeatures: { jsx: true },
     range: true, //required for eslint-scope

@@ -9,9 +9,8 @@ You can simply pass a string, which will be used as the user message.
 Or you can pass an object with the following keys. Refer to the [OpenAI docs](https://platform.openai.com/docs/api-reference/chat/create) for details. Note that not all OpenAI arguments are supported.
 
 - `messages` _(**required**)_
-- `model`: supported models are:
-
-  - `claude-3-7-sonnet-20250219`
+- `model`: supported models are listed below, with limitations noted. Note that PDF inputs are not supported for any model.
+  - `claude-4-sonnet-20250514`
     - Prompt caching is not supported
   - `gemini-2.5-pro-preview-03-25`
     - Limited to 200k input tokens
@@ -28,9 +27,10 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
   - `gemini-2.0-flash-lite-001`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
+  - `claude-3-7-sonnet-20250219`
+    - Prompt caching is not supported
   - `gpt-4o-2024-08-06`
   - `gpt-4o-mini-2024-07-18`
-
 - `max_completion_tokens` (note: defaults to 1000 if not provided)
 - `response_format`
 - `temperature`

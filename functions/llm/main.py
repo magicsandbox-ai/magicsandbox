@@ -334,6 +334,8 @@ async def handle_stream_result(result, index=None):
         'prompt_tokens': chunk.usage.prompt_tokens,
         'completion_tokens': chunk.usage.completion_tokens,
     }
+    if finish_reason != 'stop':
+        logger.info('finish_reason: %s', finish_reason)
     if first_chunk:
         yield data(model=model, content=buffer, finish_reason=finish_reason, usage=usage)
     else:

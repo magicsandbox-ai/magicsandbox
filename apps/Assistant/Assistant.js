@@ -785,7 +785,7 @@ class Assistant {
               newUserMessage.promptToContinue = "Allow Assistant to continue?";
               newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
             } else {
-              this.handleInput({
+              await this.handleInput({
                 messages: [...newMessages, llmMessage, newUserMessage],
                 continueSystemPrompt: nextContinueSystemPrompt,
               });
@@ -875,10 +875,10 @@ class Assistant {
       this.handleAppUsage(result.metadata.finalCost);
       let initContext;
       try {
-        initContext = await this.sandboxRef.current.getInit({
+        ({ result: initContext } = await this.sandboxRef.current.getInit({
           sandboxId,
           timeout: 10000,
-        });
+        }));
       } catch {
         //ignore
       }
@@ -1062,6 +1062,11 @@ class Assistant {
   handleFavorite(app) {
     const favorited = app.favorited ? null : Date.now();
     const appData = {
+      //if called from Discover, the app may not be in appDataRef, so add the values from the app object
+      id: app.id,
+      app: app.app,
+      description: app.description,
+      status: app.status,
       ...this.appDataRef.current[app.app],
       favorited,
       recent: Date.now(),

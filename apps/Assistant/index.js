@@ -445,6 +445,7 @@ function App({
                 />
               )}
               <ChatDisplay
+                key={currentConversation.conversationId}
                 outerClassName="py-6 flex grow flex-col items-center"
                 innerClassName="w-full max-w-screen-lg"
                 messages={messages}

@@ -7,8 +7,8 @@ const models = {
   auto: {
     name: "Model: Auto",
   },
-  "claude-3-7-sonnet-20250219": {
-    name: "Claude 3.7 Sonnet",
+  "claude-4-sonnet-20250514": {
+    name: "Claude 4 Sonnet",
     input_cost_per_token: 3 / 1000000,
     output_cost_per_token: 15 / 1000000,
     //knowledge_cutoff: "October 2024",

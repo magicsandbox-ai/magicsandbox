@@ -270,7 +270,12 @@ class NotesState extends SyncExternalStore<{
   _init?: boolean;
 
   constructor(nodesData?: Record<string, NodeData>, currentNodeUuid?: string) {
-    super();
+    //this is not type safe, but it works for now and prevents a big refactor
+    //currentNode and tree are properly set in _createTree
+    super({
+      currentNode: {} as ClonedNode,
+      tree: [],
+    });
     this.nodesData = nodesData;
     if (!nodesData || Object.keys(nodesData).length === 0) {
       const uuid = generateUuid();
@@ -785,6 +790,7 @@ for (const node of nodes) {
 - If the user is simply asking a question about their notes, just answer it.
 - If you're suggesting a change to a note, use the API. The user can view a diff of the changes and approve or reject them.
 - If you're appending to a note, use \`app.api.appendToNote\`. If the note is not too long and you're replacing most of its content, use \`app.api.replaceNote\`. Otherwise, use \`app.api.editNote\` for targeted edits.
+- CommonMark is supported, except for images. If the user asks you to add an image, apologize and explain that the app doesn't support images yet.
 - The user can see the name of the note at the top of the page, so don't create a redundant heading with the note's name. For example, if adding a note named "My Note", don't begin the note with "# My Note...".
 - Avoid making changes to many notes or renaming/moving/deleting nodes unless the user specifically asks (e.g. "reorganize all my notes").
 - If creating a note with quotes in it, be sure to escape them properly. Double check that you've escaped quotes properly if you see an error in the logs.

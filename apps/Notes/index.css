@@ -15,7 +15,7 @@ body {
 }
 
 .ProseMirror {
-  @apply grow whitespace-pre-wrap pb-3 pt-2 focus:outline-none;
+  @apply h-full whitespace-pre-wrap pb-3 pt-2 focus:outline-none;
 
   h1,
   h2,

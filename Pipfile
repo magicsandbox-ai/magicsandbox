@@ -8,7 +8,7 @@ numpy = "~=2.2"
 sentence-transformers = "~=3.4"
 fastapi = {version = "~=0.115.8", extras = ["standard"] }
 tiktoken = "~=0.9.0"
-litellm = "==1.67.1"  # Pinned due to Windows regression in 1.67.2
+litellm = "~=1.72"
 google-cloud-aiplatform = {version = "~=1.81", extras = ["tokenization"] }
 msgpack = "~=1.1"
 httpx = "~=0.28.1"

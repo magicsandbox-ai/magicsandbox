@@ -83,6 +83,7 @@ function App() {
       post: async ({ preResult: sandboxId, appObj, errorMessage }) => {
         if (errorMessage) {
           previewRef.current.error(errorMessage);
+          assistant.error(errorMessage);
           return;
         }
         if (appObj.update) {
@@ -92,6 +93,8 @@ function App() {
           );
         }
         if (appObj.script) {
+          //the script is executed in an AsyncFunction with "use strict", so it can't create the global app variable
+          //so we add a line to explicitly assign it to window
           appObj.script += "\nwindow.app = app;";
         }
         const { logs } = await previewRef.current.update(
@@ -99,7 +102,21 @@ function App() {
           appObj,
           10000,
         );
-        console.log(logs);
+        for (const log of logs) {
+          const method = log.startsWith("[full]")
+            ? "full"
+            : log.startsWith("[error]")
+              ? "error"
+              : log.startsWith("[warn]")
+                ? "warn"
+                : log.startsWith("[info]")
+                  ? "info"
+                  : log.startsWith("[debug]")
+                    ? "debug"
+                    : "log";
+          const message = log.slice(method.length + 3);
+          assistant[method](message);
+        }
       },
     });
     return unregister;
