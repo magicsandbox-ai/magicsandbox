@@ -98,19 +98,6 @@ function contextPrompt({ devState, context, summarizedContext }: PromptArgs) {
         "Note: The code has been modified since this build. The error may no longer be relevant.",
       );
     }
-  } else if (devState?.debugContext?.previewLogs) {
-    contextSections.push(
-      "The most recent build produced the following logs in the preview window:",
-    );
-    contextSections.push(devState.debugContext.previewLogs);
-    contextSections.push(
-      "Note: These logs only capture output from the initial script execution. Any logs from subsequent code execution (like event handlers) are not captured. If the user is asking for your help debugging something like an event handler, you may need to ask them to share the logs with you.",
-    );
-    if (devState.debugContext.codeChanged) {
-      contextSections.push(
-        "Note: The code has been modified since these logs were captured. They may no longer reflect the current behavior.",
-      );
-    }
   }
 
   return `## Context

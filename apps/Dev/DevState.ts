@@ -131,7 +131,6 @@ type Props = {
 interface DebugContext {
   buildId: number;
   buildError?: string;
-  previewLogs?: string;
   codeChanged?: boolean;
 }
 

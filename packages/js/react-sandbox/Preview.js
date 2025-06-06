@@ -69,7 +69,7 @@ const Preview = forwardRef(function Preview(
       html: appObj.html,
       style: appObj.style,
     });
-    let logs;
+    let logs = [];
     if (timeout) {
       try {
         ({ logs } = await sandboxRef.current.executeScriptAndWaitForResponse({

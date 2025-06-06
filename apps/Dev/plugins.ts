@@ -339,30 +339,45 @@ async function buildDeps(
   appObj: any,
   imports?: Record<string, Set<string>>,
 ) {
-  const esbuild = await esbuildPromise;
-  const result = await esbuild.build({
-    ...options,
-    entryPoints: ["bundleDepsCode.js"],
-    plugins: [
-      createImportPlugin(
-        //mock readFile
-        (path) => {
-          if (path === "bundleDepsCode.js") {
-            return bundleDepsCode;
-          } else if (path === "magic.json") {
-            return JSON.stringify(appObj);
-          }
-        },
-        imports,
-      ),
-    ],
-    globalName: undefined,
-    //since there are two separate builds and sourcemaps, devtools only shows the sourcemap for the user files
-    //which is better anyway, since the deps sourcemap is not useful because it's minified
-    //so turn it off as an optimization
-    sourcemap: false,
-  });
-  return result;
+  try {
+    const esbuild = await esbuildPromise;
+    const result = await esbuild.build({
+      ...options,
+      entryPoints: ["bundleDepsCode.js"],
+      plugins: [
+        createImportPlugin(
+          //mock readFile
+          (path) => {
+            if (path === "bundleDepsCode.js") {
+              return bundleDepsCode;
+            } else if (path === "magic.json") {
+              return JSON.stringify(appObj);
+            }
+          },
+          imports,
+        ),
+      ],
+      globalName: undefined,
+      //since there are two separate builds and sourcemaps, devtools only shows the sourcemap for the user files
+      //which is better anyway, since the deps sourcemap is not useful because it's minified
+      //so turn it off as an optimization
+      sourcemap: false,
+    });
+    return result;
+  } catch (e) {
+    if (e instanceof Error) {
+      //esbuild adds a bunch of stuff before the real error message
+      //and it gets worse since we call esbuild within esbuild, so remove the extra stuff
+      const errorMessageStartString = "[plugin: import] ";
+      const i = e.message.indexOf(errorMessageStartString);
+      if (i !== -1) {
+        e.message = e.message.slice(i + errorMessageStartString.length);
+      }
+      throw e;
+    } else {
+      throw new Error("Unexpected error");
+    }
+  }
 }
 
 function getSourceMap(codeWithInlineSourceMap: string) {
@@ -759,7 +774,10 @@ class Import {
                 pjsonResponse?.status >= 400
               ) {
                 throw new Error(
-                  `fetch error ${this.resolvedPath}: ${contentsResponse.status} ${pjsonResponse?.status}`,
+                  `fetch error ${this.resolvedPath}: ${Math.max(
+                    contentsResponse.status,
+                    pjsonResponse?.status || 0,
+                  )}`,
                 );
               }
               const contents = contentsResponse.body;
@@ -912,19 +930,27 @@ function createImportPlugin(
       });
 
       build.onEnd((result) => {
-        if (buildMetadata.importQueue[0]?.args?.path === "bundleDepsCode.js") {
-          //this is kind of a hack, but we only want to update the dependencies when bundling bundleDepsCode.js in buildDeps
-          //@ts-ignore
-          result.dependencies = Object.fromEntries(
-            buildMetadata.importQueue[0].children.map((child) => [
-              child.packageId,
-              `^${child.version}`,
-            ]),
-          );
-        }
-        if (buildMetadata.cdn === "esm.sh") {
-          //@ts-ignore
-          result.resolvedPaths = buildMetadata.resolvedPaths;
+        if (result.errors.length > 0) {
+          //the first error is usually the only relevant error - the rest are all just "Build canceled" that are triggered to prevent the build from hanging
+          //but may need to revisit this if it's covering up useful errors
+          result.errors = [result.errors[0]!];
+        } else {
+          if (
+            buildMetadata.importQueue[0]?.args?.path === "bundleDepsCode.js"
+          ) {
+            //this is kind of a hack, but we only want to update the dependencies when bundling bundleDepsCode.js in buildDeps
+            //@ts-ignore
+            result.dependencies = Object.fromEntries(
+              buildMetadata.importQueue[0].children.map((child) => [
+                child.packageId,
+                `^${child.version}`,
+              ]),
+            );
+          }
+          if (buildMetadata.cdn === "esm.sh") {
+            //@ts-ignore
+            result.resolvedPaths = buildMetadata.resolvedPaths;
+          }
         }
         log(`Build took ${Date.now() - start}ms`);
         clearInterval(intervalId);

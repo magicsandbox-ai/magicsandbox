@@ -76,17 +76,15 @@ function App() {
   useEffect(() => {
     const unregister = devState.registerBuildCallback<{
       sandboxId: number;
-      buildId: number | undefined;
     }>({
       pre: async () => {
         previewRef.current.reload();
         return {
           sandboxId: previewRef.current.getSandboxId(),
-          buildId: devState.debugContext?.buildId,
         };
       },
       post: async ({ preResult, appObj, errorMessage }) => {
-        const { sandboxId, buildId } = preResult;
+        const { sandboxId } = preResult;
         if (errorMessage) {
           previewRef.current.error(errorMessage);
           return;
@@ -98,22 +96,7 @@ function App() {
           );
           return;
         }
-        if (appObj.script) {
-          //the script is executed in an AsyncFunction with "use strict", so it can't create the global app variable
-          //so we add a line to explicitly assign it to window
-          appObj.script += "\nwindow.app = app;";
-        }
-        const { logs } = await previewRef.current.update(
-          sandboxId,
-          appObj,
-          10000,
-        );
-        if (
-          devState.debugContext &&
-          devState.debugContext.buildId === buildId
-        ) {
-          devState.debugContext.previewLogs = logs.join("\n");
-        }
+        previewRef.current.update(sandboxId, appObj);
       },
     });
     return unregister;
