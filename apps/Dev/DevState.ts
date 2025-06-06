@@ -128,6 +128,13 @@ type Props = {
   selectedApp: App;
 };
 
+interface DebugContext {
+  buildId: number;
+  buildError?: string;
+  previewLogs?: string;
+  codeChanged?: boolean;
+}
+
 const exampleFiles = {
   "magic.json": {
     name: "magic.json",
@@ -154,6 +161,7 @@ class DevState extends SyncExternalStore<Props> {
   importPlugin: Esbuild.Plugin;
   esbuildContext?: Esbuild.BuildContext;
   tailwindConfigContent?: string;
+  debugContext?: DebugContext;
   private buildCallbacks: Array<{
     pre?: () => Promise<any>;
     post?: ({
@@ -319,7 +327,7 @@ class DevState extends SyncExternalStore<Props> {
       throw new Error(`File ${fileName} not found`);
     }
   }
-  updateFile(update: Partial<File>) {
+  updateFile(update: Partial<File>, updateDebugContextCodeChanged = true) {
     const selectedFile =
       this.selectedApp.files[this.selectedApp.selectedFileName];
     if (!selectedFile) {
@@ -330,8 +338,19 @@ class DevState extends SyncExternalStore<Props> {
       ...update,
     };
     this.setSelectedApp();
+    if (
+      updateDebugContextCodeChanged &&
+      this.debugContext &&
+      update.content !== undefined
+    ) {
+      this.debugContext.codeChanged = true;
+    }
   }
-  updateFiles(update: { [fileName: string]: Partial<File> }, appId?: string) {
+  updateFiles(
+    update: { [fileName: string]: Partial<File> },
+    appId?: string,
+    updateDebugContextCodeChanged = true,
+  ) {
     const app = appId ? this.apps[appId] : this.selectedApp;
     if (!app) {
       throw new Error(`App ${appId} not found`);
@@ -347,6 +366,13 @@ class DevState extends SyncExternalStore<Props> {
     }
     if (app.id === this.selectedApp.id) {
       this.setSelectedApp();
+    }
+    if (
+      updateDebugContextCodeChanged &&
+      this.debugContext &&
+      Object.entries(update).some(([_, update]) => update.content !== undefined)
+    ) {
+      this.debugContext.codeChanged = true;
     }
   }
   getMagicObj() {
@@ -391,7 +417,11 @@ class DevState extends SyncExternalStore<Props> {
     }
     const callbacks = [...this.buildCallbacks]; //guard against callbacks changing during build
     let preResults: any[];
+    const buildId = Date.now(); //used to identify the build and make sure we don't add logs/errors to the wrong build if multiple are triggered
     try {
+      this.debugContext = {
+        buildId,
+      };
       preResults = await Promise.all(callbacks.map((cb) => cb.pre?.()));
       delete magicObj?.esbuildOptions?.plugins; //not supported
       const esbuild = await this.esbuildPromise;
@@ -424,6 +454,7 @@ class DevState extends SyncExternalStore<Props> {
             },
           },
           appId, //need to specify as the selected app may have changed during the build
+          false, //don't update debugContext.codeChanged - this shouldn't count as a code change
         );
       }
       this.esbuildContext = context;
@@ -440,43 +471,52 @@ class DevState extends SyncExternalStore<Props> {
       }
     } catch (error) {
       console.error(error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unexpected error building app";
+      if (this.debugContext && this.debugContext.buildId === buildId) {
+        this.debugContext.buildError = errorMessage;
+      }
       await Promise.all(
         callbacks.map((cb, i) =>
           cb.post?.({
             preResult: preResults[i],
-            errorMessage:
-              error instanceof Error
-                ? error.message
-                : "Unexpected error building app",
+            errorMessage,
           }),
         ),
       );
     }
   }
   async runPrettier({ cursorOffset }: { cursorOffset: number }) {
-    const selectedFileName = this.selectedApp.selectedFileName;
-    const selectedFile = this.selectedApp.files[selectedFileName];
-    //don't run prettier if there's a changeSet - makes the diffs hard to manage. todo could come back to this
-    if (!selectedFile || selectedFile.changeSet) return {};
-    if (
-      selectedFileName.endsWith(".js") ||
-      selectedFileName.endsWith(".jsx") ||
-      selectedFileName.endsWith(".ts") ||
-      selectedFileName.endsWith(".tsx") ||
-      selectedFileName.endsWith(".json")
-    ) {
-      const { formatted, cursorOffset: newCursorOffset } =
-        await prettier.formatWithCursor(selectedFile.content, {
-          filepath:
-            selectedFileName === "magic.json"
-              ? "magic.json5"
-              : selectedFileName,
-          plugins: [babelParser, estreeParser],
-          cursorOffset,
-        });
-      return { formatted, newCursorOffset };
+    try {
+      const selectedFileName = this.selectedApp.selectedFileName;
+      const selectedFile = this.selectedApp.files[selectedFileName];
+      //don't run prettier if there's a changeSet - makes the diffs hard to manage. todo could come back to this
+      if (!selectedFile || selectedFile.changeSet) return {};
+      if (
+        selectedFileName.endsWith(".js") ||
+        selectedFileName.endsWith(".jsx") ||
+        selectedFileName.endsWith(".ts") ||
+        selectedFileName.endsWith(".tsx") ||
+        selectedFileName.endsWith(".json")
+      ) {
+        const { formatted, cursorOffset: newCursorOffset } =
+          await prettier.formatWithCursor(selectedFile.content, {
+            filepath:
+              selectedFileName === "magic.json"
+                ? "magic.json5"
+                : selectedFileName,
+            plugins: [babelParser, estreeParser],
+            cursorOffset,
+          });
+        return { formatted, newCursorOffset };
+      }
+      return {};
+    } catch (e) {
+      console.error(e);
+      return {};
     }
-    return {};
   }
   //this should be an arrow function so this refers to the DevState instance even when used in a callback
   processTailwind = async (

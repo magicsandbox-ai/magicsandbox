@@ -8,8 +8,8 @@ import React, {
   useMemo,
 } from "react";
 import { useCodeMirror } from "@uiw/react-codemirror";
-import { type Extension, Compartment } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { type Extension, Compartment, Annotation } from "@codemirror/state";
+import { EditorView, type ViewUpdate } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { lintGutter } from "@codemirror/lint";
 import { historyField } from "@codemirror/commands";
@@ -37,6 +37,8 @@ const debounce = (callback: (...args: any[]) => void, wait: number) => {
 };
 
 const editorStateFields = { history: historyField };
+
+const prettierAnnotationType = Annotation.define<boolean>();
 
 function CodeEditor({ devState }: { devState: DevState }) {
   const selectedApp = useSyncExternalStore(
@@ -126,6 +128,7 @@ function CodeEditor({ devState }: { devState: DevState }) {
               yMargin,
             }),
           ],
+          annotations: [prettierAnnotationType.of(true)],
         });
       },
     });
@@ -133,10 +136,22 @@ function CodeEditor({ devState }: { devState: DevState }) {
   }, []);
 
   //onChange and extensions should be stable to avoid creating unnecessary transactions
-  const onChange = useCallback((value: string) => {
-    devState.updateFile({
-      content: value,
-    });
+  const onChange = useCallback((value: string, viewUpdate: ViewUpdate) => {
+    let updateDebugContextCodeChanged = true;
+    if (
+      viewUpdate.transactions.some((tr) =>
+        tr.annotation(prettierAnnotationType),
+      )
+    ) {
+      //don't update debugContext.codeChanged - prettier shouldn't count as a code change
+      updateDebugContextCodeChanged = false;
+    }
+    devState.updateFile(
+      {
+        content: value,
+      },
+      updateDebugContextCodeChanged,
+    );
     debouncedCallProcessTailwind();
   }, []);
 

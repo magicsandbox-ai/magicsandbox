@@ -72,18 +72,23 @@ function App() {
   const codePanelRef = useRef<ImperativePanelHandle>(null);
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const toastsRef = useRef<ToastsRef>(null);
-  // const previewLogsRef = useRef(null);
 
   useEffect(() => {
-    const unregister = devState.registerBuildCallback({
+    const unregister = devState.registerBuildCallback<{
+      sandboxId: number;
+      buildId: number | undefined;
+    }>({
       pre: async () => {
         previewRef.current.reload();
-        return previewRef.current.getSandboxId();
+        return {
+          sandboxId: previewRef.current.getSandboxId(),
+          buildId: devState.debugContext?.buildId,
+        };
       },
-      post: async ({ preResult: sandboxId, appObj, errorMessage }) => {
+      post: async ({ preResult, appObj, errorMessage }) => {
+        const { sandboxId, buildId } = preResult;
         if (errorMessage) {
           previewRef.current.error(errorMessage);
-          assistant.error(errorMessage);
           return;
         }
         if (appObj.update) {
@@ -91,6 +96,7 @@ function App() {
             "Build skipped when update is set to true",
             "info",
           );
+          return;
         }
         if (appObj.script) {
           //the script is executed in an AsyncFunction with "use strict", so it can't create the global app variable
@@ -102,20 +108,11 @@ function App() {
           appObj,
           10000,
         );
-        for (const log of logs) {
-          const method = log.startsWith("[full]")
-            ? "full"
-            : log.startsWith("[error]")
-              ? "error"
-              : log.startsWith("[warn]")
-                ? "warn"
-                : log.startsWith("[info]")
-                  ? "info"
-                  : log.startsWith("[debug]")
-                    ? "debug"
-                    : "log";
-          const message = log.slice(method.length + 3);
-          assistant[method](message);
+        if (
+          devState.debugContext &&
+          devState.debugContext.buildId === buildId
+        ) {
+          devState.debugContext.previewLogs = logs.join("\n");
         }
       },
     });

@@ -184,7 +184,7 @@ ${method(file)}
     const context = `<files>
 ${fileStrings.join("\n")}
 </files>`;
-    return prompt({ context, summarizedContext });
+    return prompt({ devState: this.devState, context, summarizedContext });
   }
 }
 

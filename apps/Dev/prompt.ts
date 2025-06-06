@@ -1,6 +1,7 @@
 //@ts-ignore
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
+import type { DevState } from "./DevState.ts";
 
 const heading = "Making your App Magic";
 
@@ -10,15 +11,33 @@ todos:
 */
 
 type PromptArgs = {
+  devState?: DevState;
   context?: string;
   summarizedContext?: boolean;
 };
 
-function prompt({ context, summarizedContext }: PromptArgs = {}) {
+let buttonsPrompt: string;
+if (window.innerWidth > 768) {
+  buttonsPrompt = `- "Update Preview": updates the preview window and saves the files. The user can also use Ctrl+S to trigger this.
+  - "Preview Mobile/Tablet/Desktop": resize the preview window to preview the App on different devices.
+  - "Download Files": downloads the App's files.
+  - "Publish App": publishes the App to the Magic Sandbox platform.
+  - "Test App API": toggles API test mode. By default, when the user chats with you, you receive context from magicsandbox.Dev and help the user develop their App. In API test mode, you receive context from the app being developed and help the user test the App's API.`;
+} else {
+  buttonsPrompt = `- "Show Preview/Show Code": toggle between the preview window and the code editor. Clicking "Show Preview" updates the preview window and saves the files.
+  - "Publish App": publishes the App to the Magic Sandbox platform.
+  - "Test App API": toggles API test mode. By default, when the user chats with you, you receive context from magicsandbox.Dev and help the user develop their App. In API test mode, you receive context from the app being developed and help the user test the App's API.`;
+}
+
+function prompt({ devState, context, summarizedContext }: PromptArgs = {}) {
   const sections = [];
   sections.push(`# magicsandbox.Dev
 
-magicsandbox.Dev enables developing, previewing, and publishing Magic Sandbox Apps in the browser. 
+magicsandbox.Dev enables developing, previewing, and publishing Magic Sandbox Apps in the browser.
+
+The main user interface includes a code editor and a preview window. The user has the following buttons available at the top of the page, from left to right:
+
+${buttonsPrompt}
 
 ## Files
 
@@ -46,27 +65,57 @@ Defaults to \`<div id="root"></div>\` if not provided.
 Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if not provided.`);
 
   sections.push(getHeadings(docs, [heading]) as string); //todo
-  sections.push(contextPrompt({ context, summarizedContext }));
+  sections.push(contextPrompt({ devState, context, summarizedContext }));
   sections.push(apiPrompt({ context, summarizedContext }));
   sections.push(instructionsPrompt({ context, summarizedContext }));
-  return sections.map((section) => section.trim()).join("\n\n");
+  return sections
+    .filter((section) => section.trim() !== "")
+    .map((section) => section.trim())
+    .join("\n\n");
 }
 
-function contextPrompt({ context, summarizedContext }: PromptArgs) {
-  if (context) {
-    return `## Context
+function contextPrompt({ devState, context, summarizedContext }: PromptArgs) {
+  if (!context) return "";
+  const contextSections = [];
 
-The user is editing the below files.${
-      summarizedContext
-        ? ` For brevity, files may be excluded (indicated by "...") or summarized. When summarized, individual blocks of code may be truncated (indicated by "...").`
-        : ""
-    }
-
-${context}
-`;
+  if (summarizedContext) {
+    contextSections.push(
+      `The user is editing the below files. For brevity, files may be excluded (indicated by "...") or summarized. When summarized, individual blocks of code may be truncated (indicated by "...").`,
+    );
   } else {
-    return "";
+    contextSections.push(`The user is editing the below files.`);
   }
+
+  contextSections.push(context);
+
+  if (devState?.debugContext?.buildError) {
+    contextSections.push(
+      "The most recent build failed with the following error:",
+    );
+    contextSections.push(devState.debugContext.buildError);
+    if (devState.debugContext.codeChanged) {
+      contextSections.push(
+        "Note: The code has been modified since this build. The error may no longer be relevant.",
+      );
+    }
+  } else if (devState?.debugContext?.previewLogs) {
+    contextSections.push(
+      "The most recent build produced the following logs in the preview window:",
+    );
+    contextSections.push(devState.debugContext.previewLogs);
+    contextSections.push(
+      "Note: These logs only capture output from the initial script execution. Any logs from subsequent code execution (like event handlers) are not captured. If the user is asking for your help debugging something like an event handler, you may need to ask them to share the logs with you.",
+    );
+    if (devState.debugContext.codeChanged) {
+      contextSections.push(
+        "Note: The code has been modified since these logs were captured. They may no longer reflect the current behavior.",
+      );
+    }
+  }
+
+  return `## Context
+
+${contextSections.join("\n\n")}`;
 }
 
 function apiPrompt({ context, summarizedContext }: PromptArgs) {
@@ -165,9 +214,10 @@ function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
   let instructions;
   const createAppInstructions = [
     "  - Set relevant values for `name` and `description` based on the user's request.",
-    "  - Use `createString` to create `index.js`, `index.html`, `index.css`, or additional files as needed. Make sure to use the triple backtick syntax and the top level file tags.",
+    "  - Use `createString` to create `index.js`, `index.html`, `index.css`, or additional files as needed. Make sure to use the triple backtick syntax and the top level file tags. Do not escape strings within the triple backticks - if you do, the backslashes will be interpreted as literal characters and likely break your code.",
     `  - Unless the user requested otherwise or you feel it's inappropriate for the user's request, use \`index.js\` to create a React app and use Tailwind for styling. Use the example from the ${heading} section as a template. If using React and Tailwind, you likely can use the default values and don't need to create \`index.html\` or \`index.css\`.`,
-    "  - Apply styling to make the app take up the full screen and look modern and clean.",
+    "  - Don't implement the app's context or API yet. The user may be experimenting, or just want a one off tool. Once the app is more mature, you can implement the context and API.",
+    "  - Apply styling to make the app responsive and take up the full screen. It should look modern and clean on all devices.",
     "  - Use the data sandbox functions `requestPutData`, `requestGetData`, etc. to persist user data when appropriate.",
     "  - If the user requests a complex app, implement enough basic functionality to make the app useful. Then, after running your script, suggest some additional features the user may want to add.",
   ];
@@ -182,7 +232,7 @@ function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
       "- If the user is asking a question about how the code works, just answer it.",
       "- If the user is asking you to make a change, use `app.api.updateFiles`. When using `app.api.updateFiles`:",
       "  - Respect the user's existing libraries and code conventions.",
-      "  - Make sure to use the triple backtick syntax and the top level file tags.",
+      "  - Make sure to use the triple backtick syntax and the top level file tags. Do not escape strings within the triple backticks - if you do, the backslashes will be interpreted as literal characters and likely break your code.",
       "  - Use <find> and <replace> tags to make small changes to large files. Otherwise, update the entire file. Ensure you're using the correct `updateString` syntax either way.",
       "- If the user is asking you to create a new App, use `app.api.createApp`. When using `app.api.createApp`:",
       ...createAppInstructions,
