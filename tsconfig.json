@@ -18,6 +18,7 @@
     "moduleResolution": "bundler",
     "target": "esnext",
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "types": ["@magicsandbox.ai/types"]
   }
 }

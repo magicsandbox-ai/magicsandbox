@@ -4,34 +4,47 @@ import React, {
   useRef,
   useEffect,
   useState,
+  type RefObject,
 } from "react";
-import { Sandbox } from "./Sandbox.js";
-import { requestHandler } from "./requestHandler.js";
+import { Sandbox, type SandboxRef } from "./Sandbox.js";
+import { requestHandler, type AppObj } from "./requestHandler.js";
 
-const Preview = forwardRef(function Preview(
+type PreviewState = "ready" | "loading" | string; //string is an error message
+
+interface PreviewRef {
+  getSandboxId: () => number;
+  reload: () => void;
+  update: (
+    sandboxId: number,
+    appObj: { html: string; style: string; script: string },
+  ) => Promise<{ logs: string[] }>;
+  error: (err: string) => void;
+  sandboxRef: RefObject<SandboxRef | null>;
+}
+interface PreviewProps {
+  className?: string;
+  loadingIndicator?: React.ReactNode;
+  initState?: PreviewState;
+}
+
+const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
   { className, loadingIndicator = <p>Loading...</p>, initState = "ready" },
   ref,
 ) {
-  const [state, setState] = useState(initState); // "ready", "loading", or an error message
+  const [state, setState] = useState<PreviewState>(initState);
 
-  const sandboxRef = useRef(null);
-  const appObjRef = useRef(null);
-  const requestAppRef = useRef({});
-  const requestFunctionRef = useRef({});
-  const requestDataRef = useRef({});
+  const sandboxRef = useRef<SandboxRef>(null);
+  const appObjRef = useRef<AppObj | undefined>(undefined);
 
   useEffect(() => {
-    function _requestHandler(event) {
+    function _requestHandler(event: MessageEvent) {
       requestHandler({
         event,
         sandboxRef,
         appObjRef,
-        requestAppRef,
-        requestFunctionRef,
-        requestDataRef,
       });
     }
-    sandboxRef.current.addListener(_requestHandler);
+    sandboxRef.current!.addListener(_requestHandler);
     return () => sandboxRef.current?.removeListener(_requestHandler);
   }, []);
 
@@ -46,15 +59,20 @@ const Preview = forwardRef(function Preview(
   }, []);
 
   function getSandboxId() {
-    return sandboxRef.current.getSandboxId();
+    return sandboxRef.current!.getSandboxId();
   }
 
   function reload() {
     setState("loading");
-    sandboxRef.current.reload();
+    sandboxRef.current!.reload();
   }
 
-  async function update(sandboxId, appObj, timeout, init = true) {
+  async function update(
+    sandboxId: number,
+    appObj: AppObj,
+    timeout?: number,
+    init = true,
+  ) {
     /*
     call setState("ready") to display the iframe
     we can't check whether the state is already "ready" because the caller may call reload() then update() synchronously
@@ -65,14 +83,14 @@ const Preview = forwardRef(function Preview(
     setState("ready");
     await new Promise((resolve) => requestAnimationFrame(resolve));
     appObjRef.current = appObj;
-    sandboxRef.current.postMessage(sandboxId, {
+    sandboxRef.current!.postMessage(sandboxId, {
       html: appObj.html,
       style: appObj.style,
     });
-    let logs = [];
+    let logs: string[] = [];
     if (timeout) {
       try {
-        ({ logs } = await sandboxRef.current.executeScriptAndWaitForResponse({
+        ({ logs } = await sandboxRef.current!.executeScriptAndWaitForResponse({
           sandboxId,
           script: appObj.script,
           timeout,
@@ -82,14 +100,14 @@ const Preview = forwardRef(function Preview(
         logs = ["[Uncaught Error] Error: script timed out"];
       }
     } else {
-      sandboxRef.current.postMessage(sandboxId, {
+      sandboxRef.current!.postMessage(sandboxId, {
         script: appObj.script,
       });
     }
-    let initLogs = [];
+    let initLogs: string[] = [];
     if (init) {
       try {
-        ({ logs: initLogs } = await sandboxRef.current.getInit({
+        ({ logs: initLogs } = await sandboxRef.current!.getInit({
           sandboxId,
           timeout: 1000,
         }));
@@ -100,7 +118,7 @@ const Preview = forwardRef(function Preview(
     return { logs: [...logs, ...initLogs] };
   }
 
-  function error(err) {
+  function error(err: string) {
     setState(err);
   }
 
@@ -139,4 +157,4 @@ const Preview = forwardRef(function Preview(
   );
 });
 
-export { Preview };
+export { Preview, type PreviewRef, type AppObj };
