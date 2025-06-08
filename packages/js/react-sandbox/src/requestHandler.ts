@@ -67,29 +67,28 @@ type UrlParamsData = {
   params: Parameters<typeof requestUrlParams>[0];
 };
 
-type SandboxRequest = {
-  app: AppData;
-  function: FunctionData;
-  metadata: MetadataData;
-  putData: PutDataData;
-  deleteData: DeleteDataData;
-  getData: GetDataData;
-  getAllData: GetAllDataData;
-  getAllKeysData: GetAllKeysDataData;
-  fetch: FetchData;
-  openUrl: OpenUrlData;
-  publish: PublishData;
-  download: DownloadData;
-  urlParams: UrlParamsData;
-};
-
-type SandboxRequestType = keyof SandboxRequest;
+type SandboxRequest =
+  | { request: "app"; data: AppData }
+  | { request: "function"; data: FunctionData }
+  | { request: "metadata"; data: MetadataData }
+  | { request: "putData"; data: PutDataData }
+  | { request: "deleteData"; data: DeleteDataData }
+  | { request: "getData"; data: GetDataData }
+  | { request: "getAllData"; data: GetAllDataData }
+  | { request: "getAllKeysData"; data: GetAllKeysDataData }
+  | { request: "fetch"; data: FetchData }
+  | { request: "openUrl"; data: OpenUrlData }
+  | { request: "publish"; data: PublishData }
+  | { request: "download"; data: DownloadData }
+  | { request: "urlParams"; data: UrlParamsData };
 
 interface AppObj {
   html: string;
   style: string;
   script: string;
   cacheRequests: boolean;
+  author: string;
+  name: string;
 }
 
 class ValidationError extends Error {
@@ -110,7 +109,7 @@ function validateAndDefaultRequest(
     app?: string;
     includeMetadata?: string[];
   } = {},
-): { request: SandboxRequestType; data: SandboxRequest[SandboxRequestType] } {
+): SandboxRequest {
   try {
     const { assistant, app, includeMetadata } = options;
     const requiredKeys = {
@@ -132,9 +131,9 @@ function validateAndDefaultRequest(
       throw new ValidationError("Invalid request");
     }
     data = data || {};
-    const missingKeys = requiredKeys[request].filter(
-      (key) => data[key] === undefined,
-    );
+    const missingKeys = requiredKeys[
+      request as SandboxRequest["request"]
+    ].filter((key) => data[key] === undefined);
     if (missingKeys.length > 0) {
       throw new ValidationError(
         `Missing required arguments: ${missingKeys.join(", ")}`,
@@ -210,12 +209,12 @@ function validateAndDefaultRequest(
   }
 }
 
-const requestAppCache: {
+let requestAppCache: {
   cacheKey?: string;
   response?: unknown;
   error?: unknown;
 } = {};
-const requestFunctionCache: {
+let requestFunctionCache: {
   cacheKey?: string;
   response?: unknown;
   error?: unknown;
@@ -236,9 +235,9 @@ async function requestHandler({
     if (!sandboxRef.current || !appObjRef.current) return; //should never happen
     const sandboxId = sandboxRef.current.getSandboxId();
     const { id, msg } = event.data;
-    const { request, data } = msg;
+    let sandboxRequest: SandboxRequest;
     try {
-      validateAndDefaultRequest(request, data);
+      sandboxRequest = validateAndDefaultRequest(msg.request, msg.data);
     } catch (error) {
       sandboxRef.current.postMessage(sandboxId, {
         id,
@@ -248,65 +247,63 @@ async function requestHandler({
       });
       return;
     }
+    const { request, data } = sandboxRequest;
     let response: unknown, cacheKey: string | undefined;
     if (appObjRef.current.cacheRequests && request === "app") {
       cacheKey = data.app;
-      if (cacheKey === requestAppRef.current.cacheKey) {
+      if (cacheKey === requestAppCache.cacheKey) {
         sandboxRef.current.postMessage(sandboxId, {
           id,
-          response: requestAppRef.current.response,
-          error: requestAppRef.current.error,
+          response: requestAppCache.response,
+          error: requestAppCache.error,
         });
         return;
       }
     } else if (appObjRef.current.cacheRequests && request === "function") {
       cacheKey = JSON.stringify({
-        function: data.function,
+        fn: data.fn,
         args: data.args,
         options: data.options,
       });
-      if (cacheKey === requestFunctionRef.current.cacheKey) {
-        response = requestFunctionRef.current.response;
-        if (response?.[Symbol.asyncIterator]) {
+      if (cacheKey === requestFunctionCache.cacheKey) {
+        response = requestFunctionCache.response;
+        if (isAsyncIterable(response)) {
           response = sandboxRef.current.streamData(response);
         }
         sandboxRef.current.postMessage(sandboxId, {
           id,
           response,
-          error: requestFunctionRef.current.error,
+          error: requestFunctionCache.error,
         });
         return;
       }
-    } else if (
-      [
-        "putData",
-        "deleteData",
-        "getData",
-        "getAllData",
-        "getAllKeysData",
-      ].includes(request)
-    ) {
+    } else if (isDataRequest(request, data)) {
       if (!data.options?.app && appObjRef.current.author) {
         data.options = {
           ...data.options,
           app: `${appObjRef.current.author}.${appObjRef.current.name}`,
         };
       }
-      const app = data.options?.app;
-      if (requestDataRef.current[app] === undefined) {
+      let app, getAllData;
+      if (data.options?.app) {
+        app = data.options.app;
+        getAllData = true;
+      } else {
+        app = appObjRef.current.name!;
+        getAllData = false;
+      }
+      if (requestDataCache[app] === undefined) {
         //initialize requestDataRef[app]
         try {
-          if (app) {
-            const allData = await requestSandbox("getAllData", {
-              options: { app },
-            });
-            requestDataRef.current[app] = allData || {};
+          if (getAllData) {
+            const allData = await requestGetAllData({ app });
+            requestDataCache[app] = allData;
           } else {
-            requestDataRef.current[app] = {};
+            requestDataCache[app] = {};
           }
         } catch (e) {
           console.warn(`Failed to initialize data for ${app}:`, e);
-          requestDataRef.current[app] = {};
+          requestDataCache[app] = {};
         }
       }
       if (request === "putData") {
@@ -318,24 +315,23 @@ async function requestHandler({
           return;
         }
         //todo enforce size limit? use msgpack? support evictionPolicy?
-        requestDataRef.current[app] = requestDataRef.current[app] || {};
-        requestDataRef.current[app][data.key] = structuredClone(data.val);
+        requestDataCache[app]![data.key] = structuredClone(data.val);
         sandboxRef.current.postMessage(sandboxId, { id, response: true });
         return;
       } else if (request === "deleteData") {
-        delete requestDataRef.current[app]?.[data.key];
+        delete requestDataCache[app]![data.key];
         sandboxRef.current.postMessage(sandboxId, { id, response: true });
         return;
       } else if (request === "getData") {
-        response = requestDataRef.current[app]?.[data.key];
+        response = requestDataCache[app]![data.key];
         sandboxRef.current.postMessage(sandboxId, { id, response });
         return;
       } else if (request === "getAllData") {
-        response = requestDataRef.current[app] || {};
+        response = requestDataCache[app] || {};
         sandboxRef.current.postMessage(sandboxId, { id, response });
         return;
       } else if (request === "getAllKeysData") {
-        response = Object.keys(requestDataRef.current[app] || {});
+        response = Object.keys(requestDataCache[app] || {});
         sandboxRef.current.postMessage(sandboxId, { id, response });
         return;
       }
@@ -344,14 +340,18 @@ async function requestHandler({
     try {
       response = await requestSandbox(request, data);
     } catch (e) {
-      error = { message: e.message, data: e.data };
+      if (e instanceof Error) {
+        error = { message: e.message, data: "data" in e ? e.data : undefined };
+      } else {
+        error = { message: "Unexpected error" };
+      }
     }
     if (request === "app") {
-      requestAppRef.current = { cacheKey, response, error };
+      requestAppCache = { cacheKey, response, error };
     } else if (request === "function") {
-      requestFunctionRef.current = { cacheKey, response, error };
+      requestFunctionCache = { cacheKey, response, error };
     }
-    if (response?.[Symbol.asyncIterator]) {
+    if (isAsyncIterable(response)) {
       response = sandboxRef.current.streamData(response);
     }
     sandboxRef.current.postMessage(sandboxId, { id, response, error });
@@ -361,3 +361,26 @@ async function requestHandler({
 }
 
 export { validateAndDefaultRequest, requestHandler, type AppObj };
+
+function isAsyncIterable<T>(value: any): value is AsyncIterable<T> {
+  return value != null && typeof value[Symbol.asyncIterator] === "function";
+}
+
+function isDataRequest(
+  request: string,
+  //@ts-ignore
+  data: unknown,
+): data is
+  | PutDataData
+  | DeleteDataData
+  | GetDataData
+  | GetAllDataData
+  | GetAllKeysDataData {
+  return [
+    "putData",
+    "deleteData",
+    "getData",
+    "getAllData",
+    "getAllKeysData",
+  ].includes(request);
+}

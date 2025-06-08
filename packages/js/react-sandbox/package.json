@@ -9,8 +9,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./index.js",
-    "./utils": "./utils.js"
+    ".": "./dist/index.js",
+    "./utils": "./dist/utils.js"
   },
   "types": "./dist/index.d.ts",
   "files": [

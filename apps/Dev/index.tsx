@@ -14,7 +14,7 @@ import {
 import * as esbuild from "esbuild-wasm";
 import { Loader } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
-import { Preview } from "@magicsandbox.ai/react-sandbox";
+import { Preview, type PreviewRef } from "@magicsandbox.ai/react-sandbox";
 import { prompt } from "./prompt.ts";
 import { context as _context } from "./context.ts";
 import { Toasts, ToastError, type ToastsRef } from "@components/Toasts.tsx";
@@ -68,7 +68,7 @@ function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [testApi, setTestApi] = useState(false);
 
-  const previewRef = useRef<any>(null);
+  const previewRef = useRef<PreviewRef>(null);
   const codePanelRef = useRef<ImperativePanelHandle>(null);
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const toastsRef = useRef<ToastsRef>(null);
@@ -78,15 +78,15 @@ function App() {
       sandboxId: number;
     }>({
       pre: async () => {
-        previewRef.current.reload();
+        previewRef.current!.reload();
         return {
-          sandboxId: previewRef.current.getSandboxId(),
+          sandboxId: previewRef.current!.getSandboxId(),
         };
       },
       post: async ({ preResult, appObj, errorMessage }) => {
         const { sandboxId } = preResult;
         if (errorMessage) {
-          previewRef.current.error(errorMessage);
+          previewRef.current!.error(errorMessage);
           return;
         }
         if (appObj.update) {
@@ -96,7 +96,7 @@ function App() {
           );
           return;
         }
-        previewRef.current.update(sandboxId, appObj);
+        previewRef.current!.update(sandboxId, appObj);
       },
     });
     return unregister;
@@ -120,9 +120,9 @@ function App() {
         //this must be synchronous before any awaits in this function
         const id = event.data.id;
         delete event.data.id;
-        const sandbox = previewRef.current.sandboxRef.current;
-        const sandboxId = sandbox.getSandboxId();
-        const response = await sandbox.executeScriptAndWaitForResponse({
+        const sandbox = previewRef.current!.sandboxRef.current;
+        const sandboxId = sandbox!.getSandboxId();
+        const response = await sandbox!.executeScriptAndWaitForResponse({
           sandboxId,
           script,
           args,
@@ -256,7 +256,6 @@ function App() {
         <Panel ref={previewPanelRef}>
           <Preview
             ref={previewRef}
-            //@ts-ignore
             className="h-full"
             loadingIndicator={<Loader className="h-10 w-10 animate-spin" />}
           />

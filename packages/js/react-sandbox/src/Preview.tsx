@@ -14,10 +14,7 @@ type PreviewState = "ready" | "loading" | string; //string is an error message
 interface PreviewRef {
   getSandboxId: () => number;
   reload: () => void;
-  update: (
-    sandboxId: number,
-    appObj: { html: string; style: string; script: string },
-  ) => Promise<{ logs: string[] }>;
+  update: (sandboxId: number, appObj: AppObj) => Promise<{ logs: string[] }>;
   error: (err: string) => void;
   sandboxRef: RefObject<SandboxRef | null>;
 }

@@ -1,7 +1,10 @@
 import { parse, type Node } from "./parser.ts";
 import { isEqual } from "es-toolkit";
 import semver from "semver";
-import { createDeferredPromise } from "@magicsandbox.ai/react-sandbox/utils";
+import {
+  createDeferredPromise,
+  type DeferredPromise,
+} from "@magicsandbox.ai/react-sandbox/utils";
 import type * as Esbuild from "esbuild";
 import type { EsbuildApi, ReadFile } from "./DevState.ts";
 import JSON5 from "json5";
@@ -644,7 +647,7 @@ class PackageMetadata {
 class Import {
   args: Esbuild.OnResolveArgs;
   buildMetadata: BuildMetadata;
-  onResolvePromise: any; //todo add type for createDeferredPromise
+  onResolvePromise: DeferredPromise<Esbuild.OnResolveResult>;
   parent: Import | undefined;
   log: (...args: any[]) => void;
   normalizedPath: string;
@@ -663,7 +666,7 @@ class Import {
   constructor(
     args: Esbuild.OnResolveArgs,
     buildMetadata: BuildMetadata,
-    onResolvePromise: Promise<any>,
+    onResolvePromise: DeferredPromise<Esbuild.OnResolveResult>,
     parent: Import | undefined,
   ) {
     this.args = args;
@@ -902,7 +905,8 @@ function createImportPlugin(
       build.onResolve({ filter: /.*/ }, (args) => {
         log(`onResolve ${args.path}`);
         const parent = args.pluginData?.import;
-        const onResolvePromise = createDeferredPromise();
+        const onResolvePromise =
+          createDeferredPromise<Esbuild.OnResolveResult>();
         const imp = new Import(args, buildMetadata, onResolvePromise, parent);
         if (!parent) {
           imp.resolve(); //this is the first onResolve, so run it now
