@@ -1,10 +1,17 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, type RefObject } from "react";
 import { createRoot } from "react-dom/client";
-import { Preview } from "@magicsandbox.ai/react-sandbox";
+import { Preview, type PreviewRef } from "@magicsandbox.ai/react-sandbox";
 import { Loader } from "lucide-react";
-import ExternalLink from "@components/ExternalLink.js";
+import ExternalLink from "@components/ExternalLink.tsx";
 
-function DocsLink({ children }) {
+interface UrlParams {
+  token?: string;
+  port?: string;
+  url?: string;
+  autoInit?: boolean;
+}
+
+function DocsLink({ children }: { children: React.ReactNode }) {
   return (
     <ExternalLink
       href="https://github.com/magicsandbox-ai/magicsandbox/blob/main/packages/js/dev/README.md"
@@ -15,12 +22,12 @@ function DocsLink({ children }) {
   );
 }
 
-function App({ urlParams }) {
+function App({ urlParams }: { urlParams: Record<string, string> }) {
   const [state, setState] = useState("");
   const [widthClass, setWidthClass] = useState("w-full");
 
-  const previewRef = useRef(null);
-  const urlParamsRef = useRef({});
+  const previewRef = useRef<PreviewRef | null>(null);
+  const urlParamsRef = useRef<UrlParams>({});
 
   useEffect(() => {
     async function init() {
@@ -44,19 +51,21 @@ function App({ urlParams }) {
         await previewApp();
       } catch (error) {
         console.error(error);
-        previewRef.current.error(error.message);
+        previewRef.current!.error(
+          error instanceof Error ? error.message : "Unexpected error",
+        );
       }
     }
     init();
   }, []);
 
   async function previewApp(update = true) {
-    const sandboxId = previewRef.current.getSandboxId();
+    const sandboxId = previewRef.current!.getSandboxId();
     let response;
     try {
       let url;
-      const headers = {
-        "x-token": urlParamsRef.current.token,
+      const headers: Record<string, string> = {
+        "x-token": urlParamsRef.current.token!,
         //todo targetAddressSpace?
       };
       if (urlParamsRef.current.url) {
@@ -77,41 +86,42 @@ function App({ urlParams }) {
     }
     const appObj = response.body;
     if (update) {
-      previewRef.current.update(
-        sandboxId,
-        appObj,
-        undefined,
-        urlParamsRef.current.autoInit,
-      );
+      previewRef.current!.update(sandboxId, appObj, {
+        init: urlParamsRef.current.autoInit,
+      });
     }
     return appObj;
   }
 
   async function handleUpdate() {
     try {
-      previewRef.current.reload();
+      previewRef.current!.reload();
       await previewApp();
     } catch (error) {
       console.error(error);
-      previewRef.current.error(error.message);
+      previewRef.current!.error(
+        error instanceof Error ? error.message : "Unexpected error",
+      );
     }
   }
 
   async function handlePublish() {
     try {
-      previewRef.current.reload();
-      const sandboxId = previewRef.current.getSandboxId();
+      previewRef.current!.reload();
+      const sandboxId = previewRef.current!.getSandboxId();
       const appObj = await previewApp(false);
       await requestPublish(appObj);
-      previewRef.current.update(sandboxId, appObj);
+      previewRef.current!.update(sandboxId, appObj);
     } catch (error) {
       console.error(error);
-      previewRef.current.error(error.message);
+      previewRef.current!.error(
+        error instanceof Error ? error.message : "Unexpected error",
+      );
     }
   }
 
   //todo a lot of this is duplicated in Dev
-  function handleResizePreview(platform) {
+  function handleResizePreview(platform: string) {
     if (platform === "desktop") {
       setWidthClass("w-full");
     } else if (platform === "mobile") {
@@ -189,23 +199,23 @@ function App({ urlParams }) {
 
 async function init() {
   const urlParams = await requestUrlParams();
-  createRoot(document.getElementById("root")).render(
+  createRoot(document.getElementById("root")!).render(
     <App urlParams={urlParams} />,
   );
 }
 
 const appState = {
-  previewRef: null,
+  previewRef: null as RefObject<PreviewRef | null> | null,
 };
 
 async function context() {
   //get context from Sandbox and return it
-  const sandbox = appState.previewRef.current.sandboxRef.current;
-  const sandboxId = sandbox.getSandboxId();
-  return await sandbox.getContext(sandboxId, 10000);
+  const sandbox = appState.previewRef!.current!.sandboxRef.current;
+  const sandboxId = sandbox!.getSandboxId();
+  return await sandbox!.getContext(sandboxId, 10000);
 }
 
-async function messageHandler(event) {
+async function messageHandler(event: MessageEvent) {
   if (appState.previewRef === null) return; //this is the app.init call which we don't want to intercept
   //this executes the script in the Sandbox such that the Assistant doesn't know DevLocal is in between them
   //but to do so, it relies on implementation details in sandbox.js
@@ -220,14 +230,15 @@ async function messageHandler(event) {
     //this must be synchronous before any awaits in this function
     const id = event.data.id;
     delete event.data.id;
-    const sandbox = appState.previewRef.current.sandboxRef.current;
-    const sandboxId = sandbox.getSandboxId();
-    const response = await sandbox.executeScriptAndWaitForResponse({
+    const sandbox = appState.previewRef!.current!.sandboxRef.current;
+    const sandboxId = sandbox!.getSandboxId();
+    const response = await sandbox!.executeScriptAndWaitForResponse({
       sandboxId,
       script,
       args,
       timeout: 30000,
     });
+    //@ts-ignore
     event.source.postMessage({ id, response }, "*");
   }
 }

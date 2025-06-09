@@ -1,6 +1,6 @@
 import React from "react";
 import ModalOverlay from "@components/ModalOverlay.js";
-import ExternalLink from "@components/ExternalLink.js";
+import ExternalLink from "@components/ExternalLink.tsx";
 
 function HelpInner() {
   return (

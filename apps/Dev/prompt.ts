@@ -76,7 +76,7 @@ Defaults to \`@tailwind base; @tailwind components; @tailwind utilities;\` if no
 
 function contextPrompt({ devState, context, summarizedContext }: PromptArgs) {
   if (!context) return "";
-  const contextSections = [];
+  const contextSections: string[] = [];
 
   if (summarizedContext) {
     contextSections.push(
@@ -96,6 +96,14 @@ function contextPrompt({ devState, context, summarizedContext }: PromptArgs) {
     if (devState.debugContext.codeChanged) {
       contextSections.push(
         "Note: The code has been modified since this build. The error may no longer be relevant.",
+      );
+    }
+  } else if (devState?.debugContext?.previewLogs.length) {
+    contextSections.push("The preview window produced the following logs:");
+    contextSections.push(formatLogs(devState.debugContext.previewLogs));
+    if (devState.debugContext.codeChanged) {
+      contextSections.push(
+        "Note: The code has been modified since these logs were captured. They may no longer reflect the current behavior.",
       );
     }
   }
@@ -250,6 +258,9 @@ function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
     instructions.push(
       "- The build process will resolve versions and update `dependencies` in `magic.json` for you. You don't need to set `dependencies` yourself unless you need a specific version.",
     );
+    instructions.push(
+      "- Any logs in the preview window will be captured and added to the context, so you can use `console.log` and other methods for debugging. Logs are reset on each build. Logs from something like a click handler may be hard to interpret, as you won't know how many times the user clicked the element. If needed, ask the user to perform the action exactly once.",
+    );
   }
   return `## Instructions
 
@@ -257,3 +268,22 @@ ${instructions.join("\n")}`;
 }
 
 export { prompt };
+
+function formatLogs(logs: string[]) {
+  const MAX_LOG_LENGTH = 1000;
+  const MAX_TOTAL_LENGTH = 10000;
+  let result = "";
+  for (const log of logs) {
+    const truncatedLog =
+      log.length > MAX_LOG_LENGTH
+        ? log.substring(0, MAX_LOG_LENGTH) + "..."
+        : log;
+    if (result.length + truncatedLog.length + 1 > MAX_TOTAL_LENGTH) {
+      result += "...";
+      break;
+    }
+    result += (result ? "\n" : "") + truncatedLog;
+  }
+
+  return result;
+}

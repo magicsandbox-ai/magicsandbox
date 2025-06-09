@@ -79,8 +79,33 @@ function App() {
     }>({
       pre: async () => {
         previewRef.current!.reload();
+        const sandboxId = previewRef.current!.getSandboxId();
+        previewRef.current!.sandboxRef.current!.postMessage(sandboxId, {
+          script: `console = new Proxy(console, {
+  get(target, prop) {
+    const originalMethod = target[prop];
+    if (typeof originalMethod === "function") {
+      return function (...args) {
+        if (["log", "error", "warn", "info", "debug"].includes(prop)) {
+          parent.postMessage(
+            { log: \`[\${prop}] \${args.map(String).join(" ")}\` },
+            "*",
+          );
+        } else {
+          parent.postMessage(
+            { log: \`[warn] console.\${prop} logs are not captured\` },
+            "*",
+          );
+        }
+        return originalMethod.apply(target, args);
+      };
+    }
+    return originalMethod;
+  },
+});`,
+        });
         return {
-          sandboxId: previewRef.current!.getSandboxId(),
+          sandboxId,
         };
       },
       post: async ({ preResult, appObj, errorMessage }) => {
@@ -100,6 +125,18 @@ function App() {
       },
     });
     return unregister;
+  }, []);
+
+  useEffect(() => {
+    function handleLog(event: MessageEvent) {
+      if (typeof event.data.log !== "string") return;
+      if (devState.debugContext) {
+        devState.debugContext.previewLogs.push(event.data.log);
+      }
+    }
+    previewRef.current?.sandboxRef.current?.addListener(handleLog);
+    return () =>
+      previewRef.current?.sandboxRef.current?.removeListener(handleLog);
   }, []);
 
   useEffect(() => {
@@ -273,18 +310,18 @@ async function context() {
 
 const api = {
   async createApp(...args: Parameters<DevState["apiCreateApp"]>) {
-    await devState.apiCreateApp(...args);
+    return await devState.apiCreateApp(...args);
   },
   async updateFiles(...args: Parameters<DevState["apiUpdateFiles"]>) {
-    await devState.apiUpdateFiles(...args);
+    return await devState.apiUpdateFiles(...args);
   },
   async additionalContext(
     ...args: Parameters<DevState["apiAdditionalContext"]>
   ) {
-    await devState.apiAdditionalContext(...args);
+    return await devState.apiAdditionalContext(...args);
   },
   advancedDocs: () => {
-    devState.apiAdvancedDocs();
+    return devState.apiAdvancedDocs();
   },
 };
 

@@ -87,13 +87,13 @@ test("Assistant", async ({ app }) => {
             "Let me open Notes\n\n<open_app>magicsandbox.Notes</open_app>",
           );
         } else if (
-          lastMessageContent.includes("app_context") &&
-          !lastMessageContent.includes("logs")
+          lastMessageContent.includes("<app_context>") &&
+          !lastMessageContent.includes("<logs>")
         ) {
           return createLlmResult(
             "Let me log your note.\n\n<intermediate_script>app.api.logNotes([1]);</intermediate_script>",
           );
-        } else if (lastMessageContent.includes("logs")) {
+        } else if (lastMessageContent.includes("<logs>")) {
           return createLlmResult(
             "I can see your note - let me add to it.\n\n<final_script>app.api.appendToNote(1, `hello world`);</final_script>\n\nI've added to your note.",
           );

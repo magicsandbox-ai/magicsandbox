@@ -591,7 +591,7 @@ class Assistant {
       const inputBytes = new TextEncoder().encode(
         JSON.stringify(llmMessages),
       ).length;
-      const maxCompletionTokens = 5000;
+      const maxCompletionTokens = 10000;
       let model, maxCost;
       let approved = true;
       let askedUser = false;
@@ -769,6 +769,7 @@ class Assistant {
             tags: [{ tag: "logs", content: formatLogs(logs) }],
           };
           if (error) {
+            console.error(error);
             newUserMessage.promptToContinue =
               "Error executing script. Try again?";
             newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;

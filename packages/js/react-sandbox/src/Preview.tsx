@@ -6,7 +6,7 @@ import React, {
   useState,
   type RefObject,
 } from "react";
-import { Sandbox, type SandboxRef } from "./Sandbox.js";
+import { Sandbox, type SandboxRef } from "./Sandbox.jsx";
 import { requestHandler, type AppObj } from "./requestHandler.js";
 
 type PreviewState = "ready" | "loading" | string; //string is an error message
@@ -14,7 +14,13 @@ type PreviewState = "ready" | "loading" | string; //string is an error message
 interface PreviewRef {
   getSandboxId: () => number;
   reload: () => void;
-  update: (sandboxId: number, appObj: AppObj) => Promise<{ logs: string[] }>;
+  update: (
+    sandboxId: number,
+    appObj: AppObj,
+    options?: {
+      init?: boolean;
+    },
+  ) => Promise<void>;
   error: (err: string) => void;
   sandboxRef: RefObject<SandboxRef | null>;
 }
@@ -67,9 +73,11 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
   async function update(
     sandboxId: number,
     appObj: AppObj,
-    timeout?: number,
-    init = true,
+    options?: {
+      init?: boolean;
+    },
   ) {
+    const { init = true } = options ?? {};
     /*
     call setState("ready") to display the iframe
     we can't check whether the state is already "ready" because the caller may call reload() then update() synchronously
@@ -83,36 +91,18 @@ const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
     sandboxRef.current!.postMessage(sandboxId, {
       html: appObj.html,
       style: appObj.style,
+      script: appObj.script,
     });
-    let logs: string[] = [];
-    if (timeout) {
-      try {
-        ({ logs } = await sandboxRef.current!.executeScriptAndWaitForResponse({
-          sandboxId,
-          script: appObj.script,
-          timeout,
-        }));
-      } catch (error) {
-        console.error(error);
-        logs = ["[Uncaught Error] Error: script timed out"];
-      }
-    } else {
-      sandboxRef.current!.postMessage(sandboxId, {
-        script: appObj.script,
-      });
-    }
-    let initLogs: string[] = [];
     if (init) {
       try {
-        ({ logs: initLogs } = await sandboxRef.current!.getInit({
+        await sandboxRef.current!.getInit({
           sandboxId,
           timeout: 1000,
-        }));
+        });
       } catch {
         //ignore
       }
     }
-    return { logs: [...logs, ...initLogs] };
   }
 
   function error(err: string) {

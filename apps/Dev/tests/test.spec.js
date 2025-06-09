@@ -158,7 +158,7 @@ export function reverseN(str: string, n: number): string {
 
   //api additionalContext
   const additionalContext = await app.evaluate(async () => {
-    await app.api.additionalContext({
+    return await app.api.additionalContext({
       files: ["index.tsx", "reverse.ts"],
       code: ["reverse", "reverseN"],
     });
@@ -167,7 +167,7 @@ export function reverseN(str: string, n: number): string {
 
   //api advancedDocs
   const advancedDocs = await app.evaluate(async () => {
-    await app.api.advancedDocs();
+    return await app.api.advancedDocs();
   });
   expect(advancedDocs).toEqual(expect.any(String));
 });

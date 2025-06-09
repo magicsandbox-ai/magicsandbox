@@ -1,0 +1,6 @@
+{
+  author: "magicsandbox",
+  name: "FlappySnake",
+  version: "0.1.0",
+  description: "Flappy Bird or Snake? Why not both? Control a snake inside a flying box for double the challenge!",
+}

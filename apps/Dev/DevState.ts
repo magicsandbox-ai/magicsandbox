@@ -131,6 +131,7 @@ type Props = {
 interface DebugContext {
   buildId: number;
   buildError?: string;
+  previewLogs: string[];
   codeChanged?: boolean;
 }
 
@@ -420,6 +421,7 @@ class DevState extends SyncExternalStore<Props> {
     try {
       this.debugContext = {
         buildId,
+        previewLogs: [],
       };
       preResults = await Promise.all(callbacks.map((cb) => cb.pre?.()));
       delete magicObj?.esbuildOptions?.plugins; //not supported

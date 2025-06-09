@@ -9,10 +9,10 @@
     nodePaths: ["./node_modules"],
   },
   tailwindConfig: {
-    content: ["apps/DevLocal/**/*.js", "components/**/*.js"],
+    content: ["apps/DevLocal/**/*.tsx", "components/**/*.tsx"],
   },
   dependencies: {
-    "@magicsandbox.ai/react-sandbox": "^0.1.0",
+    "@magicsandbox.ai/react-sandbox": "file:../../packages/js/react-sandbox",
     "lucide-react": "^0.408.0",
     react: "^19.0.0",
     "react-dom": "^19.0.0",

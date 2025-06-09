@@ -306,7 +306,7 @@ const Sandbox = forwardRef<SandboxRef, SandboxProps>(function Sandbox(
       if ("result" in response) {
         result = response.result;
       }
-      if ("error" in response) {
+      if ("error" in response && response.error !== undefined) {
         if (response.error instanceof Error) {
           error = response.error;
         } else {

@@ -5,7 +5,8 @@
     "outDir": "./dist",
     "declaration": true,
     "allowImportingTsExtensions": false,
-    "allowArbitraryExtensions": false
+    "allowArbitraryExtensions": false,
+    "jsx": "preserve"
   },
   "include": ["src/**/*"]
 }
