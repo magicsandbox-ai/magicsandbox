@@ -888,7 +888,7 @@ class Assistant {
       if (messages && initContext) {
         //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
         this.setCollapsed(false);
-        this.handleInput({
+        await this.handleInput({
           messages: newMessages,
           initContext,
         });
