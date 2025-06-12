@@ -27,7 +27,11 @@ interface LengthPrefixState {
 function createLengthPrefixParser() {
   return new TransformStream<
     Uint8Array,
-    { state: string; readRemaining: number; chunk: Uint8Array }
+    {
+      state: "length" | "object" | "finalObject";
+      readRemaining: number;
+      chunk: Uint8Array;
+    }
   >({
     start(this: LengthPrefixState) {
       this.__state = "length";

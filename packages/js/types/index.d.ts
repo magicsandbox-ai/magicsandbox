@@ -16,16 +16,27 @@ interface Metadata {
   usage: number; //number of times the App or Function has been used
 }
 
+interface MetadataWithFinalCost extends Metadata {
+  finalCost: number;
+}
+
 interface UserInfo {
   userId?: string;
 }
 
-interface DatabaseSchema {
-  [key: string]: any;
+interface RequestFunctionOptions<
+  TMetadataKeys extends
+    keyof MetadataWithFinalCost = keyof MetadataWithFinalCost,
+> {
+  stream?: boolean;
+  maxCost?: number;
+  includeMetadata?: TMetadataKeys[];
+  includeUserInfo?: Array<keyof UserInfo>;
+  app?: string; // Assistants only
 }
 
-interface MetadataWithFinalCost extends Metadata {
-  finalCost: number;
+interface DatabaseSchema {
+  [key: string]: any;
 }
 
 declare global {
@@ -52,12 +63,7 @@ declare global {
   >(
     fn: string,
     args: TArgs,
-    options: {
-      stream: true;
-      maxCost?: number;
-      includeMetadata?: TMetadataKeys[];
-      includeUserInfo?: Array<keyof UserInfo>;
-    },
+    options: RequestFunctionOptions<TMetadataKeys> & { stream: true },
   ): Promise<
     AsyncIterable<{
       result?: TResult;
@@ -74,13 +80,7 @@ declare global {
   >(
     fn: string,
     args: TArgs,
-    options?: {
-      stream?: false;
-      maxCost?: number;
-      includeMetadata?: TMetadataKeys[];
-      includeUserInfo?: Array<keyof UserInfo>;
-      app?: string; // Assistants only
-    },
+    options?: RequestFunctionOptions<TMetadataKeys> & { stream?: false },
   ): Promise<{
     result: TResult;
     metadata: Pick<MetadataWithFinalCost, TMetadataKeys>;
@@ -178,4 +178,4 @@ declare global {
   };
 }
 
-export {};
+export { Metadata, MetadataWithFinalCost, RequestFunctionOptions };

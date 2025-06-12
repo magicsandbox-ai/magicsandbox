@@ -2,17 +2,37 @@
 "lucide-react": "^0.408.0",
 */
 import React, { useState } from "react";
-import Table from "./Table.js";
+import Table from "./Table.tsx";
 
-function Setting({ setting, settings, setSettings }) {
-  let initData, onChange, allowAdd;
-  if (typeof setting.value === "string" || typeof setting.value === "number") {
+interface Setting {
+  name: string;
+  description: string;
+  customContent: React.ReactNode;
+  value: string | Set<string> | { [key: string]: string };
+  columns?: string[];
+}
+
+function Setting({
+  setting,
+  settings,
+  setSettings,
+}: {
+  setting: Setting;
+  settings: Setting[];
+  setSettings: (settings: Setting[]) => void;
+}) {
+  let initData: { [column: string]: string }[],
+    onChange: (data: { [column: string]: string }[]) => void,
+    allowAdd: boolean;
+  if (typeof setting.value === "string") {
     initData = [{ value: setting.value }];
     onChange = (data) => {
-      const value = data[0].value;
-      setSettings(
-        settings.map((s) => (s.name === setting.name ? { ...s, value } : s)),
-      );
+      const value = data[0]?.value;
+      if (value) {
+        setSettings(
+          settings.map((s) => (s.name === setting.name ? { ...s, value } : s)),
+        );
+      }
     };
     allowAdd = false;
   } else if (setting.value instanceof Set) {
@@ -21,7 +41,7 @@ function Setting({ setting, settings, setSettings }) {
       initData = Array.from(setting.value).map((v) => ({ value: v }));
     }
     onChange = (data) => {
-      const value = new Set(data.map((d) => d.value));
+      const value = new Set(data.map((d) => d.value || ""));
       setSettings(
         settings.map((s) => (s.name === setting.name ? { ...s, value } : s)),
       );
@@ -29,16 +49,18 @@ function Setting({ setting, settings, setSettings }) {
     allowAdd = true;
   } else {
     //object interpreted as Map
-    initData = [{ [setting.columns[0]]: "", [setting.columns[1]]: "" }];
+    const keyColumn = setting.columns?.[0] || "Key";
+    const valueColumn = setting.columns?.[1] || "Value";
+    initData = [{ [keyColumn]: "", [valueColumn]: "" }];
     if (Object.keys(setting.value).length > 0) {
       initData = Object.entries(setting.value).map(([k, v]) => ({
-        [setting.columns[0]]: k,
-        [setting.columns[1]]: v,
+        [keyColumn]: k,
+        [valueColumn]: v,
       }));
     }
     onChange = (data) => {
       const value = Object.fromEntries(
-        data.map((d) => [d[setting.columns[0]], d[setting.columns[1]]]),
+        data.map((d) => [d[keyColumn], d[valueColumn]]),
       );
       setSettings(
         settings.map((s) => (s.name === setting.name ? { ...s, value } : s)),
@@ -56,7 +78,15 @@ function Setting({ setting, settings, setSettings }) {
   );
 }
 
-function InnerSettings({ settings, setSettings, onSave }) {
+function InnerSettings({
+  settings,
+  setSettings,
+  onSave,
+}: {
+  settings: Setting[];
+  setSettings: (settings: Setting[]) => void;
+  onSave: (settings: Setting[]) => void;
+}) {
   const buttonStyle =
     "rounded-md border-2 border-stone-500 bg-stone-200 px-1 py-px font-medium hover:bg-stone-300 w-28";
   return (
@@ -80,7 +110,13 @@ function InnerSettings({ settings, setSettings, onSave }) {
   );
 }
 
-function Settings({ initSettings, onSave }) {
+function Settings({
+  initSettings,
+  onSave,
+}: {
+  initSettings: Setting[];
+  onSave: (settings: Setting[]) => void;
+}) {
   const [settings, setSettings] = useState(initSettings);
   return (
     <InnerSettings
@@ -91,4 +127,4 @@ function Settings({ initSettings, onSave }) {
   );
 }
 
-export default Settings;
+export { Settings, type Setting };

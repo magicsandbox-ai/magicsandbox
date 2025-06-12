@@ -1,5 +1,5 @@
 import React from "react";
-import ModalOverlay from "@components/ModalOverlay.js";
+import ModalOverlay from "@components/ModalOverlay.tsx";
 
 function InfoInner() {
   return (

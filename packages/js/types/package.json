@@ -11,5 +11,8 @@
   "files": [
     "index.d.ts"
   ],
-  "types": "index.d.ts"
+  "types": "index.d.ts",
+  "dependencies": {
+    "@magicsandbox.ai/types": "^0.1.0"
+  }
 }

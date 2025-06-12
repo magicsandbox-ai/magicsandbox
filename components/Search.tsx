@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ModalOverlay from "./ModalOverlay.js";
+import ModalOverlay from "./ModalOverlay.tsx";
 
 interface SearchNode {
   key: any;

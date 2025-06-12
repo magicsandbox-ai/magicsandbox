@@ -4,11 +4,19 @@
 todo careful with lucide styling
 */
 import React, { useState, useEffect } from "react";
+// @ts-ignore
 import { Trash2 } from "lucide-react";
+
+interface RowData {
+  data: { [column: string]: string };
+  id: number;
+}
+
+type TableData = RowData[];
 
 const tdStyle = "border border-stone-500 text-center";
 
-function HeaderRow({ columns }) {
+function HeaderRow({ columns }: { columns: string[] }) {
   return (
     <tr>
       {columns.map((column, i) => (
@@ -20,7 +28,19 @@ function HeaderRow({ columns }) {
   );
 }
 
-function Row({ columns, row, data, setData, allowAdd }) {
+function Row({
+  columns,
+  row,
+  data,
+  setData,
+  allowAdd,
+}: {
+  columns: string[];
+  row: RowData;
+  data: TableData;
+  setData: (data: TableData) => void;
+  allowAdd: boolean;
+}) {
   return (
     <tr>
       {columns.map((column, i) => (
@@ -28,7 +48,7 @@ function Row({ columns, row, data, setData, allowAdd }) {
           key={i}
           id={row.id}
           column={column}
-          value={row[column]}
+          value={row.data[column] || ""}
           data={data}
           setData={setData}
         />
@@ -52,11 +72,25 @@ function Row({ columns, row, data, setData, allowAdd }) {
   );
 }
 
-function Cell({ id, column, value, data, setData }) {
-  function handleChange(event) {
+function Cell({
+  id,
+  column,
+  value,
+  data,
+  setData,
+}: {
+  id: number;
+  column: string;
+  value: string;
+  data: TableData;
+  setData: (data: TableData) => void;
+}) {
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     setData(
       data.map((row) =>
-        row.id === id ? { ...row, [column]: event.target.value } : row,
+        row.id === id
+          ? { ...row, data: { ...row.data, [column]: event.target.value } }
+          : row,
       ),
     );
   }
@@ -77,24 +111,32 @@ function Cell({ id, column, value, data, setData }) {
 
 let nextId = 0;
 
-function Table({ initData, onChange, allowAdd }) {
-  const [data, setData] = useState(
-    initData.map((d) => ({ ...d, id: nextId++ })),
+function Table({
+  initData,
+  onChange,
+  allowAdd,
+}: {
+  initData: { [column: string]: string }[];
+  onChange: (data: { [column: string]: string }[]) => void;
+  allowAdd: boolean;
+}) {
+  const [data, setData] = useState<TableData>(
+    initData.map((d) => ({ data: d, id: nextId++ })),
   );
 
   useEffect(() => {
-    onChange(data);
+    onChange(data.map((d) => d.data));
   }, [data]);
 
   if (data.length === 0) {
     return <div>Error: Table is empty</div>;
   }
 
-  const columns = Object.keys(data[0]).filter((c) => c !== "id");
+  const columns = Object.keys(data[0]!.data);
 
   function addData() {
     const newData = Object.fromEntries(columns.map((c) => [c, ""]));
-    setData([...data, { ...newData, id: nextId++ }]);
+    setData([...data, { data: newData, id: nextId++ }]);
   }
 
   return (
