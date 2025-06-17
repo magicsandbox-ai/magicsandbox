@@ -4,10 +4,12 @@ function ModalOverlay({
   modal,
   onClose,
   fullScreen,
+  autoFocus = true,
 }: {
   modal: React.ReactNode;
   onClose: () => void;
   fullScreen?: boolean;
+  autoFocus?: boolean;
 }) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<Element | null>(null);
@@ -15,11 +17,13 @@ function ModalOverlay({
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement;
-    const firstFocusableElement = modalRef.current?.querySelector(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    if (firstFocusableElement instanceof HTMLElement) {
-      firstFocusableElement.focus();
+    if (autoFocus) {
+      const firstFocusableElement = modalRef.current?.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (firstFocusableElement instanceof HTMLElement) {
+        firstFocusableElement.focus();
+      }
     }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

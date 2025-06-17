@@ -707,10 +707,10 @@ When the Assistant's `init` function is called, it receives a single object as a
 
 ```typescript
 interface User {
-  name: string;
+  name: string | undefined;
   balance: number;
   balanceRemainingDays: number | undefined; //number of days until balance resets, undefined for unauthenticated users
-  lastPublished: number; //timestamp the user last published an App or Function
+  lastPublished: Date | undefined; //timestamp the user last published an App or Function
 }
 ```
 

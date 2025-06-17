@@ -44,7 +44,7 @@ function createLengthPrefixTransform({
   });
 }
 
-function lengthPrefix(chunk: Uint8Array) {
+function lengthPrefix(chunk: Uint8Array | string) {
   const arr = new Uint8Array(4);
   const view = new DataView(arr.buffer);
   view.setUint32(0, chunk.length, false);
