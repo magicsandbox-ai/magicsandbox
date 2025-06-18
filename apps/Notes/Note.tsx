@@ -218,7 +218,15 @@ function Note({
             ...exampleSetup({
               schema,
               menuBar: false,
-              mapKeys: { "Mod-[": "Shift-Tab", "Mod-]": "Tab" }, //indenting lists
+              mapKeys: {
+                //indenting lists
+                "Mod-[": "Shift-Tab",
+                "Mod-]": "Tab",
+                //disable hard breaks - might be cleaner to remove from the schema but this is easier
+                "Mod-Enter": false,
+                "Shift-Enter": false,
+                "Ctrl-Enter": false,
+              },
               history: false, //set up manually so we can reference it
             }),
             historyPlugin,

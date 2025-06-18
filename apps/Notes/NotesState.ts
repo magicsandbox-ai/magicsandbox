@@ -878,6 +878,14 @@ ${contextString}
   }
   apiEditNote(id: number, find: string, replace: string) {
     const note = this._getNote(id);
+    const prevContent = note.nodeData.content;
+    const newContent = prevContent.replaceAll(find, replace);
+    if (newContent === prevContent) {
+      assistant.error(
+        `Could not find text to replace in note with id ${id}: ${find}`,
+      );
+      return;
+    }
     this._handleEdit(
       note.nodeData.uuid,
       note.nodeData.content,

@@ -2,6 +2,7 @@ import {
   schema,
   defaultMarkdownParser,
   defaultMarkdownSerializer,
+  MarkdownSerializerState,
 } from "prosemirror-markdown";
 import { Transform } from "prosemirror-transform";
 import { type Node } from "prosemirror-model";
@@ -54,25 +55,35 @@ function parse(content: string) {
     }
   }
   const doc = defaultMarkdownParser.parse(finalContent);
-  //newlines in paragraphs were already fine, so undo the change we just made
+  /*
+  now let's clean up what we just did
+  - remove the zero width spaces in empty paragraphs, as they can cause issues when copy/pasting into other tools
+  - the newlines in code blocks didn't need to be doubled, so we'll undo that
+  */
+  const emptyParagraphs: number[] = [];
   const codeBlocks: { from: number; to: number; text: string }[] = [];
   doc.descendants((node, pos) => {
-    if (node.isTextblock) {
-      if (node.type.name === "code_block") {
-        codeBlocks.push({
-          from: pos + 1, //the start of the code block counts as one token
-          to: pos + node.nodeSize,
-          text: node.textContent,
-        });
-      }
-      return false; //don't iterate over children
+    if (node.type.name === "paragraph" && node.textContent === "\u200B") {
+      emptyParagraphs.push(pos);
+    } else if (node.type.name === "code_block") {
+      codeBlocks.push({
+        from: pos + 1, //the start of the code block counts as one token
+        to: pos + node.nodeSize,
+        text: node.textContent,
+      });
     }
   });
   const transform = new Transform(doc);
+  for (const pos of emptyParagraphs) {
+    transform.delete(
+      transform.mapping.map(pos + 1), //the start of the paragraph counts as one token
+      transform.mapping.map(pos + 2),
+    );
+  }
   for (const codeBlock of codeBlocks) {
     transform.replaceWith(
-      codeBlock.from,
-      codeBlock.to,
+      transform.mapping.map(codeBlock.from),
+      transform.mapping.map(codeBlock.to),
       schema.text(
         codeBlock.text
           .slice(1, codeBlock.text.length - 1) //remove extra newline at the start and end of the code block
@@ -83,29 +94,34 @@ function parse(content: string) {
   return transform.doc;
 }
 
+//@ts-ignore - this isn't ideal but alternative is forking the package
+const originalFlushClose = MarkdownSerializerState.prototype.flushClose;
+//@ts-ignore
+MarkdownSerializerState.prototype.flushClose = function (size = 1) {
+  return originalFlushClose.call(this, size);
+};
+
 /**
  * Serialize a Prosemirror document to a markdown string.
  * For better compatibility with other tools, we want (1) to use single newlines for paragraph breaks, and (2) to preserve multiple empty lines.
  *
  * Changes the default behavior of the markdown serializer:
- * - before serializing, insert a zero width space into empty paragraphs to preserve multiple empty lines
- * - after serializing, replace two newline paragraph breaks with a single newline and remove the zero width spaces
+ * - monkey patches the internal flushClose method to use a single newline between block elements by default
+ * - insert a zero width space into empty paragraphs to preserve multiple empty lines
  */
 function serialize(doc: Node) {
-  const paragraphs: number[] = [];
+  const emptyParagraphs: number[] = [];
   doc.descendants((node, pos) => {
-    if (node.type.name === "paragraph") {
-      paragraphs.push(pos + node.nodeSize - 1);
+    if (node.type.name === "paragraph" && node.textContent === "") {
+      emptyParagraphs.push(pos);
     }
   });
   const transform = new Transform(doc);
-  for (const pos of paragraphs) {
+  for (const pos of emptyParagraphs) {
     transform.insert(transform.mapping.map(pos), schema.text("\u200B"));
   }
   const serialized = defaultMarkdownSerializer.serialize(transform.doc);
-  return serialized
-    .replace(/\u200B\n>?\n/g, "\n") // Replace zero width space followed by two newlines with single newline. the ">?" handles blockquotes
-    .replace(/\u200B/g, ""); // Remove all other zero width spaces (handle final paragraph - other edge cases?)
+  return serialized.replace(/\u200B/g, "");
 }
 
 export { parse, serialize, schema };

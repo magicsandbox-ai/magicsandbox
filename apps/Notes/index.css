@@ -15,7 +15,7 @@ body {
 }
 
 .ProseMirror {
-  @apply h-full whitespace-pre-wrap pb-3 pt-2 focus:outline-none;
+  @apply min-h-full whitespace-pre-wrap pb-3 pt-2 focus:outline-none;
 
   h1,
   h2,
@@ -65,8 +65,14 @@ body {
   .added {
     @apply bg-green-100;
   }
+  pre.added {
+    @apply bg-green-200;
+  }
   .removed {
     @apply bg-red-100 line-through;
+  }
+  pre.removed {
+    @apply bg-red-200;
   }
   ::selection {
     @apply bg-blue-100;
