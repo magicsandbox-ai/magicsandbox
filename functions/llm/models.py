@@ -14,8 +14,8 @@ supported_models = {
         'max_vision_tokens': 1600,
         'supports_assistant_prefill': True,
     },
-    'gemini-2.5-pro-preview-03-25': {
-        'api_name': 'gemini/gemini-2.5-pro-preview-03-25',
+    'gemini-2.5-pro': {
+        'api_name': 'gemini/gemini-2.5-pro',
         'max_input_tokens': 200000, #1048576, #limit to 200k for now until figure out how to handle cost that depends on number of input tokens
         'input_cost_per_token': 1.25 / 1000000,
         'output_cost_per_token': 10 / 1000000,
@@ -30,15 +30,14 @@ supported_models = {
         'tokenizer': gpt_4o_tokenizer,
         'max_vision_tokens': 1445,
     },
-    'gemini-2.5-flash-preview-04-17': {
-        'api_name': 'gemini/gemini-2.5-flash-preview-04-17',
+    'gemini-2.5-flash': {
+        'api_name': 'gemini/gemini-2.5-flash',
         'max_input_tokens': 1048576,
-        'input_cost_per_token': 0.15 / 1000000,
-        'output_cost_per_token': 0.6 / 1000000,
+        'input_cost_per_token': 0.3 / 1000000,
+        'output_cost_per_token': 2.5 / 1000000,
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'multimodal_disabled': True,
-        'reasoning_disabled': True, #since output_cost is different for reasoning tokens - need to handle before can enable
     },
     'gpt-4.1-mini-2025-04-14': {
         'max_input_tokens': 1047576,
@@ -92,9 +91,9 @@ supported_models = {
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
 default_models = [
     'claude-4-sonnet-20250514',
-    'gemini-2.5-pro-preview-03-25',
+    'gemini-2.5-pro',
     'gpt-4.1-2025-04-14',
-    'gemini-2.5-flash-preview-04-17',
+    'gemini-2.5-flash',
     'gpt-4.1-mini-2025-04-14',
     'gemini-2.0-flash-001',
     'gemini-2.0-flash-lite-001',

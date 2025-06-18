@@ -13,7 +13,7 @@ const models = {
     output_cost_per_token: 15 / 1000000,
     //knowledge_cutoff: "October 2024",
   },
-  "gemini-2.5-pro-preview-03-25": {
+  "gemini-2.5-pro": {
     name: "Gemini 2.5 Pro",
     input_cost_per_token: 1.25 / 1000000,
     output_cost_per_token: 10 / 1000000,
@@ -23,10 +23,10 @@ const models = {
     input_cost_per_token: 2 / 1000000,
     output_cost_per_token: 8 / 1000000,
   },
-  "gemini-2.5-flash-preview-04-17": {
+  "gemini-2.5-flash": {
     name: "Gemini 2.5 Flash",
-    input_cost_per_token: 0.15 / 1000000,
-    output_cost_per_token: 0.6 / 1000000,
+    input_cost_per_token: 0.3 / 1000000,
+    output_cost_per_token: 2.5 / 1000000,
   },
   "gpt-4.1-mini-2025-04-14": {
     name: "GPT-4.1 Mini",

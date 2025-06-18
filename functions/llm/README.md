@@ -12,12 +12,12 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `model`: supported models are listed below, with limitations noted. Note that PDF inputs are not supported for any model.
   - `claude-4-sonnet-20250514`
     - Prompt caching is not supported
-  - `gemini-2.5-pro-preview-03-25`
+  - `gemini-2.5-pro`
     - Limited to 200k input tokens
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
   - `gpt-4.1-2025-04-14`
-  - `gemini-2.5-flash-preview-04-17`
+  - `gemini-2.5-flash`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
   - `gpt-4.1-mini-2025-04-14`
