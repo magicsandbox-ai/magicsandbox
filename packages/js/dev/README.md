@@ -35,7 +35,9 @@ Run `npx magicsandbox --help` to see more command line options.
 
 ## Publishing
 
-Run `npm run publish MyApp` to build and publish your App.
+Run `npm run publish MyApp` to build and publish your App or Function.
+
+**Reminder:** publishing the first version of a Function costs $1. See [Functions](https://magicsandbox.ai/?_app=magicsandbox.Docs#functions) for details. Publishing an App is free.
 
 Publishing requires an API key, which you can get [here](https://magicsandbox.ai/account/api-key).
 

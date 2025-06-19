@@ -182,6 +182,10 @@ Like Apps, Functions are also just JSON objects. See [shared keys](#app-and-func
 
 Magic Sandbox currently only supports Functions that you host on your own server. `name`, `version`, and `endpoint` are required keys for Functions.
 
+Currently, only Magic Sandbox Plus users can publish Functions, and it costs $1 to publish a Function. This charge helps to prevent abuse of the platform and to ensure quality of published Functions. The charge applies only to the first published version of a Function - later updates and versions are free.
+
+To prevent abuse, Functions are required to have a certain amount of use coming from Magic Sandbox Plus users. If this requirement isn't met, calls from free tier users will be blocked until the requirement is satisfied. To prevent gaming the system, we don't disclose the exact methodology used, but please feel free to reach out if you have any questions: help@magicsandbox.ai.
+
 ## Function keys
 
 ### endpoint
@@ -257,8 +261,8 @@ From your endpoint, you can call other Functions by making a POST request to `ht
 This section details how to publish Apps and Functions. You have a number of options to do so:
 
 - [magicsandbox.Dev](https://magicsandbox.ai?_app=magicsandbox.Dev) is an App that offers an easy way to create and publish Apps without installing anything on your computer. It provides a live preview so you can test your App as you develop and includes a button for easy publishing
-- [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) is a command-line tool for creating and publishing Apps locally. Refer to its docs for help getting started
-- Rather than using `magicsandbox.Dev`, you can create your own App to publish Apps and Functions using [requestPublish](#requestpublish)
+- [@magicsandbox.ai/dev](https://github.com/magicsandbox-ai/magicsandbox/tree/main/packages/js/dev) is a command-line tool for creating and publishing Apps and Functions locally. Refer to its docs for help getting started
+- Rather than using `magicsandbox.Dev`, you can create your own App to publish Apps using [requestPublish](#requestpublish)
 - You can publish Apps and Functions locally by making a POST request to `https://magicsandbox.ai/publish`. Your request should include the following:
   - URL parameters:
     - `kind`: "app" or "function"
@@ -269,6 +273,8 @@ This section details how to publish Apps and Functions. You have a number of opt
     - `Authorization: Bearer <apiKey>`, where `<apiKey>` is your API key, which you can generate [here](https://magicsandbox.ai/account/api-key)
   - Body:
     - the App or Function JSON object
+
+**Reminder:** publishing the first version of a Function costs $1. See [Functions](#functions) for details. Publishing an App is free.
 
 `magicsandbox.Dev` is the easiest way to get started, while `@magicsandbox.ai/dev` offers better integration with development tools like IDEs and version control. When using either tool, you'll edit a `magic.json` file:
 
@@ -632,11 +638,11 @@ Open a URL in a new tab. Traditional links can't be opened in the Sandbox, so us
 
 ### requestPublish
 
-Publish a Function or App.
+Publish an App. Does not support publishing Functions - see [Publishing](#publishing) for options to publish a Function.
 
 **Arguments:**
 
-- `magicJson` _(**required**, object)_: See [Apps](#apps) and [Functions](#functions) for details
+- `magicJson` _(**required**, object)_: See [Apps](#apps) for details
 
 **Returns:** a Promise that resolves to true
 
