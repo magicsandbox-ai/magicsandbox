@@ -115,6 +115,7 @@ function Note({
       }
       let prevNode: "added" | "removed" | undefined;
       const decorations: {
+        type: "node" | "inline";
         from: number;
         to: number;
         attrs: DecorationAttrs;
@@ -123,6 +124,7 @@ function Note({
       newDoc.content.forEach((node, pos) => {
         if (prevNode) {
           decorations.push({
+            type: "node",
             from: pos,
             to: pos + node.nodeSize,
             attrs: {
@@ -146,6 +148,33 @@ function Note({
         } else {
           prevNode = undefined;
         }
+        //%%added%% and %%removed%% are not treated as separate nodes inside a code block, so we have to fix it
+        if (node.type.name === "code_block") {
+          const matches = node.textContent.matchAll(
+            /(%%(?:added|removed)%%\n?)(.*)/dg,
+          );
+          for (const match of matches) {
+            //we add 1 to pos because the start of the code block counts as one token
+            //delete the first capturing group (%%added%% or %%removed%%)
+            deletes.push({
+              from: pos + 1 + match.indices![1]![0],
+              to: pos + 1 + match.indices![1]![1],
+            });
+            //add a decoration to the second capturing group (the text)
+            if (match[2]) {
+              decorations.push({
+                type: "inline",
+                from: pos + 1 + match.indices![2]![0],
+                to: pos + 1 + match.indices![2]![1],
+                attrs: {
+                  class: match[1]!.startsWith("%%added%%")
+                    ? "added"
+                    : "removed",
+                },
+              });
+            }
+          }
+        }
       });
       const transform = new Transform(newDoc);
       for (const d of deletes) {
@@ -158,11 +187,17 @@ function Note({
       const decorationSet = DecorationSet.create(
         newDoc,
         decorations.map((d) =>
-          Decoration.node(
-            transform.mapping.map(d.from),
-            transform.mapping.map(d.to),
-            d.attrs,
-          ),
+          d.type === "node"
+            ? Decoration.node(
+                transform.mapping.map(d.from),
+                transform.mapping.map(d.to),
+                d.attrs,
+              )
+            : Decoration.inline(
+                transform.mapping.map(d.from),
+                transform.mapping.map(d.to),
+                d.attrs,
+              ),
         ),
       );
       newDiff = {

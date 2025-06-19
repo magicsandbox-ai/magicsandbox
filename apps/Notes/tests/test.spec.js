@@ -52,7 +52,19 @@ test("Notes", async ({ app }) => {
 
   //api add
   await app.evaluate(() => {
-    app.api.addNote(0, "API Note", "API Content", ["API Folder"]);
+    app.api.addNote(
+      0,
+      "API Note",
+      `API Content
+\`\`\`
+1
+2
+3
+4
+\`\`\`
+`,
+      ["API Folder"],
+    );
   });
   await expect(app.getByRole("button", { name: "API Folder" })).toBeVisible();
   const folderId = 3; //todo avoid hardcoding this somehow
@@ -60,25 +72,51 @@ test("Notes", async ({ app }) => {
   await expect(apiNote).toBeVisible();
   const noteId = 4; //todo avoid hardcoding this somehow
   await expect(app.getByText("API Content")).toBeVisible(); //should be set to current after adding
+  async function checkDiff() {
+    //make sure %%added%% and %%removed%% markers are not visible
+    await expect(app.getByText("%%added%%")).not.toBeVisible();
+    await expect(app.getByText("%%removed%%")).not.toBeVisible();
+  }
+  await checkDiff();
 
   //api append
   await app.evaluate((noteId) => {
-    app.api.appendToNote(noteId, "API Append");
+    app.api.appendToNote(
+      noteId,
+      `API Append
+\`\`\`
+5
+6
+7
+8
+\`\`\``,
+    );
   }, noteId);
   await expect(app.getByText("API Content")).toBeVisible();
   await expect(app.getByText("API Append")).toBeVisible();
+  await checkDiff();
 
   //api replace
   await app.evaluate((noteId) => {
-    app.api.replaceNote(noteId, "API Replace");
+    app.api.replaceNote(
+      noteId,
+      `API Replace
+\`\`\`
+1
+20
+3
+\`\`\``,
+    );
   }, noteId);
   await expect(app.getByText("API Replace")).toBeVisible();
+  await checkDiff();
 
   //api edit
   await app.evaluate((noteId) => {
     app.api.editNote(noteId, "Replace", "Edit");
   }, noteId);
   await expect(app.getByText("API Edit")).toBeVisible();
+  await checkDiff();
 
   //api log
   const logPromise = app.page().waitForEvent("console");

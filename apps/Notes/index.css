@@ -65,13 +65,15 @@ body {
   .added {
     @apply bg-green-100;
   }
-  pre.added {
+  pre.added,
+  pre.added * {
     @apply bg-green-200;
   }
   .removed {
     @apply bg-red-100 line-through;
   }
-  pre.removed {
+  pre.removed,
+  pre.removed * {
     @apply bg-red-200;
   }
   ::selection {
