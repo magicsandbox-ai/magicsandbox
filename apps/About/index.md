@@ -66,3 +66,9 @@ When you chat with your assistant with an app open, the app can provide addition
 #### The amount I approved an app to spend is different than the amount I was charged?
 
 The amount you approve an app to spend is the maximum amount it can spend - it may end up spending less. So you may approve a request to spend $0.02, but only end up being charged $0.01.
+
+#### How do I earn a referral bonus?
+
+To be eligible for a referral bonus, you must be a Magic Sandbox Plus user. As a Plus user, you'll see a `refId` in any Magic Sandbox URL you have open, which we use to uniquely identify you to track referrals. Simply copy the URL, making sure to include the `refId`, and share it with your friends. When they sign up for Magic Sandbox Plus, you'll earn a $5 bonus!
+
+Please refer to the [Terms of Use](https://magicsandbox.ai/terms) for detailed information on the referral program and payment eligibility.
