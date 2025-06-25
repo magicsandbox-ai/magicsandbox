@@ -5,7 +5,7 @@ const dollarFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 3,
 });
 
-function formatAsDollars(amount) {
+function formatAsDollars(amount: number) {
   return dollarFormatter.format(amount);
 }
 

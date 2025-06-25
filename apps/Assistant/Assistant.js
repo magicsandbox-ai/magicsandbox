@@ -10,7 +10,7 @@ import {
   validateAndDefaultRequest,
   createDeferredPromise,
 } from "@magicsandbox.ai/react-sandbox";
-import { formatAsDollars } from "./utils.js";
+import { formatAsDollars } from "./utils.ts";
 import {
   formatMessage,
   formatFavoritedApps,
@@ -18,10 +18,10 @@ import {
   prompt,
   createSummaryArgs,
   newUserInstructions,
-} from "./prompt.js";
+} from "./prompt.ts";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.js";
-import { createWelcomeConversation } from "./welcomeMessage.js";
+import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { ToastError } from "@components/Toasts.js";
 
 const includeMetadata = ["id", "description", "status"];
@@ -642,9 +642,11 @@ class Assistant {
       const updateSummary =
         this.conversationsRef.current[conversationId].summary === null;
       if (updateSummary) {
-        const summaryArgs = createSummaryArgs(userMessage);
-        llmArgs.push(summaryArgs);
-        maxCost += summaryArgs.maxCost;
+        const summaryArgs = createSummaryArgs(newMessages);
+        if (summaryArgs) {
+          llmArgs.push(summaryArgs);
+          maxCost += summaryArgs.maxCost;
+        }
       }
       const stream = await requestFunction("magicsandbox.llm@0.1", llmArgs, {
         maxCost,

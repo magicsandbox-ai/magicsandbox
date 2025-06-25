@@ -1,4 +1,4 @@
-import { formatAsDollars } from "./utils.js";
+import { formatAsDollars } from "./utils.ts";
 
 const minimumMinCost = 0.001;
 

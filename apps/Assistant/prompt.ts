@@ -1,9 +1,11 @@
+//@ts-ignore
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
+import type { Message, App } from "./types.ts";
 
 const sandboxDocs = getHeadings(docs, ["Sandbox"]);
 
-function formatMessage(message, isFinalMessage) {
+function formatMessage(message: Message, isFinalMessage: boolean) {
   const result = message.tags
     .filter(
       ({ tag }) =>
@@ -27,7 +29,7 @@ function formatMessage(message, isFinalMessage) {
   }
 }
 
-function formatFavoritedApps(apps) {
+function formatFavoritedApps(apps: App[]) {
   const content = apps
     .filter((app) => app.favorited)
     .map((app) => `${app.app}: ${app.description}`)
@@ -35,7 +37,7 @@ function formatFavoritedApps(apps) {
   return `\n${content}\n`;
 }
 
-function formatLogs(logs) {
+function formatLogs(logs: string[]) {
   let formattedLogs = "";
   for (const log of logs) {
     if (log.startsWith("[full]")) {
@@ -53,7 +55,15 @@ function formatLogs(logs) {
   return `${formattedLogs}\n`;
 }
 
-function prompt({ app, initContext, continueSystemPrompt }) {
+function prompt({
+  app,
+  initContext,
+  continueSystemPrompt,
+}: {
+  app: App;
+  initContext: string;
+  continueSystemPrompt: "chat" | "init" | "context";
+}) {
   if (continueSystemPrompt === "chat") {
     return { systemPrompt: chatSystemPrompt, continueSystemPrompt: "chat" };
   } else if (continueSystemPrompt === "init") {
@@ -75,11 +85,23 @@ function prompt({ app, initContext, continueSystemPrompt }) {
   }
 }
 
-function createSummaryArgs(userMessage) {
-  const userRequest = userMessage.tags
-    .find(({ tag }) => tag === "user_request")
-    .content.trim()
-    .slice(0, 200);
+function createSummaryArgs(messages: Message[]) {
+  let userRequest: string | undefined;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]!;
+    if (message.role !== "user") continue;
+    const userRequestTag = message.tags.find(
+      ({ tag }) => tag === "user_request",
+    );
+    if (userRequestTag) {
+      userRequest = userRequestTag.content.trim().slice(0, 200);
+      break;
+    }
+  }
+  if (!userRequest) {
+    console.error("No user_request found in messages");
+    return;
+  }
   return {
     messages: [
       {

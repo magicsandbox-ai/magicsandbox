@@ -25,7 +25,7 @@ While anyone can create an app, Magic Sandbox only provides official support for
 
 # Payments
 
-When you join Magic Sandbox, you start with a small account balance. [Create a free account](https://magicsandbox.ai/account/upgrade) to unlock a higher account balance, or sign up for Magic Sandbox Plus for the best experience.
+When you join Magic Sandbox, you start with a small account balance. [Create a free account](https://magicsandbox.ai/account/upgrade) to unlock a higher account balance, or [sign up for Magic Sandbox Plus](https://magicsandbox.ai/account/upgrade) for the best experience.
 
 You account balance can be spent in the following ways:
 
@@ -51,10 +51,6 @@ Refer to the [Terms of Use](https://magicsandbox.ai/terms) and [Privacy Policy](
 
 # FAQs
 
-#### Why do I sometimes need to approve a chat's cost?
-
-When you chat with your assistant with an app open, the app can provide additional information to your assistant. This extra information can help your assistant be more helpful, but it also increases the cost of using the AI model - occasionally you'll be asked to approve that this higher cost is acceptable.
-
 #### What does the name `magicsandbox.Notes@1.0.0` mean?
 
 `magicsandbox.Notes@1.0.0` is an app with:
@@ -62,6 +58,19 @@ When you chat with your assistant with an app open, the app can provide addition
 - author: `magicsandbox`
 - name: `Notes`
 - version: `1.0.0`
+
+#### How is my data backed up and synced across devices?
+
+Your data (chat history, notes, etc.) is primarily saved using your browser's storage and periodically backed up on Magic Sandbox's servers. The sync behavior varies depending on your plan:
+
+- **Free Tier:** if your browser's storage is cleared (which some privacy-focused browsers do occasionally), your data is restored from the latest backup. Think of this as an emergency backup.
+- **Magic Sandbox Plus:** your data is continuously synced across all of your devices.
+
+We recommend not using incognito mode when using Magic Sandbox. When using incognito mode, your browser doesn't store any data, so any data saved after your latest backup will be lost.
+
+#### Why do I sometimes need to approve a chat's cost?
+
+When you chat with your assistant with an app open, the app can provide additional information to your assistant. This extra information can help your assistant be more helpful, but it also increases the cost of using the AI model - occasionally you'll be asked to approve that this higher cost is acceptable.
 
 #### The amount I approved an app to spend is different than the amount I was charged?
 
