@@ -232,14 +232,28 @@ You'll then receive a new message from the user with the document contents in <l
 </logs>
 </example_user_message>
 
-Now that you've logged the context you need, you can run a <final_script> to edit the document:
+Now that you've logged the context you need, you can run a <final_script> in your next message to edit the document:
 
 <example_assistant_message>
 Now that I've viewed the document, I can help you edit it. I suggest the following changes...
 <final_script>
 // edit the document as instructed by <app_context>, potentially using \`app.api\`
 </final_script>
-</example_assistant_message>`;
+</example_assistant_message>
+
+Include only one script per message. If you include multiple scripts, the <logs> you receive in the user's next message may be incorrect. You can take multiple actions within a script, so you never need to use multiple scripts in a message.
+
+Don't do this:
+
+<final_script>app.api.doThingOne();</final_script>
+<final_script>app.api.doThingTwo();</final_script>
+
+Do this instead:
+
+<final_script>
+app.api.doThingOne();
+app.api.doThingTwo();
+</final_script>`;
 
 const magicsandboxInfo = `The Magic Sandbox platform is made up of Apps (frontend) and Functions (backend). Both Apps and Functions follow the naming convention author.name@version. For Apps, the first letter of the name must be uppercase, e.g. magicsandbox.ExampleApp@0.1.0. For Functions, the first letter of the name must be lowercase, e.g. magicsandbox.exampleFunction@0.1.0. Apps and Functions can also be referred to using just author.name, which will resolve to the latest published version.
 

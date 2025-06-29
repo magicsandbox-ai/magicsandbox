@@ -676,27 +676,19 @@ class Assistant {
         }
       };
       let lastTag;
-      let sawTag = false;
-      let scriptPromise;
-      const handleScript = async (lastTag) => {
-        if (
-          lastTag.tag === "intermediate_script" ||
-          lastTag.tag === "final_script"
-        ) {
-          try {
-            return await this.sandboxRef.current.executeScriptAndWaitForResponse(
-              {
-                sandboxId,
-                script: lastTag.content,
-                timeout: 30000,
-              },
-            );
-          } catch (e) {
-            console.error(e);
-            const logs = ["[Uncaught Error] Error: script timed out"];
-            const error = new Error("Error: script timed out");
-            return { logs, error };
-          }
+      const scriptPromises = [];
+      const handleScript = async (script) => {
+        try {
+          return await this.sandboxRef.current.executeScriptAndWaitForResponse({
+            sandboxId,
+            script,
+            timeout: 30000,
+          });
+        } catch (e) {
+          console.error(e);
+          const logs = ["[Uncaught Error] Error: script timed out"];
+          const error = new Error("Error: script timed out");
+          return { logs, error };
         }
       };
       for await (const { tag, content } of tagStreamParser({
@@ -710,11 +702,13 @@ class Assistant {
           lastTag.content += content;
         } else {
           llmMessage.tags.push({ tag, content });
-          if (lastTag?.tag && !sawTag) {
+          if (
+            lastTag?.tag === "intermediate_script" ||
+            lastTag?.tag === "final_script"
+          ) {
             //if the script is finished, we want to start executing it now
-            //but we'll let the assistant continue to respond and await scriptPromise once the assistant is done
-            scriptPromise = handleScript(lastTag);
-            sawTag = true;
+            //but we'll let the assistant continue to respond and await the scriptPromises once the assistant is done
+            scriptPromises.push(handleScript(lastTag.content));
           }
         }
         this.handleUpdateConversation({
@@ -722,10 +716,11 @@ class Assistant {
         });
       }
       //if the script is the final tag, we didn't run it above, so we need to run it now
-      if (!sawTag) {
-        scriptPromise = handleScript(
-          llmMessage.tags[llmMessage.tags.length - 1],
-        );
+      if (
+        lastTag?.tag === "intermediate_script" ||
+        lastTag?.tag === "final_script"
+      ) {
+        scriptPromises.push(handleScript(lastTag.content));
       }
       this.handleLlmUsage({
         inputBytes,
@@ -736,70 +731,72 @@ class Assistant {
       if (updateSummary) {
         this.handleUpdateConversation({ summary });
       }
-      for (const tag of llmMessage.tags) {
-        if (!this.app && tag.tag === "open_app") {
-          const app = this.appDataRef.current[tag.content.trim()];
-          if (app?.favorited) {
-            await this.handleApp({
-              app: app.app,
-              messages: [...newMessages, llmMessage],
-            });
-          } else {
-            this.handleUpdateConversation({
-              message: {
-                role: "user",
-                tags: [
-                  {
-                    tag: "logs",
-                    content: "Error: Invalid app in <open_app> tags",
-                  },
-                ],
-                promptToContinue: "Error opening app. Try again?",
-                continueSystemPrompt: nextContinueSystemPrompt,
-              },
-            });
-          }
-          break;
-        } else if (
-          tag.tag === "intermediate_script" ||
-          tag.tag === "final_script"
-        ) {
-          const { logs, error } = await scriptPromise;
-          if (abortSignal.aborted) return;
-          const newUserMessage = {
-            role: "user",
-            tags: [{ tag: "logs", content: formatLogs(logs) }],
-          };
-          if (error) {
-            console.error(error);
-            newUserMessage.promptToContinue =
-              "Error executing script. Try again?";
-            newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
-          } else if (tag.tag === "intermediate_script") {
-            const prevAssistantMessage = messages.findLast(
-              (message) => message.role === "assistant",
-            );
-            if (
-              prevAssistantMessage?.tags.some(
-                ({ tag }) => tag === "intermediate_script",
-              )
-            ) {
-              //if two intermediate scripts in a row, prompt user to approve
-              newUserMessage.promptToContinue = "Allow Assistant to continue?";
-              newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
-            } else {
-              await this.handleInput({
-                messages: [...newMessages, llmMessage, newUserMessage],
-                continueSystemPrompt: nextContinueSystemPrompt,
-              });
-              break;
-            }
-          }
-          this.handleUpdateConversation({
-            message: newUserMessage,
+      //only use first open_app tag
+      const openAppTag = llmMessage.tags.find((tag) => tag.tag === "open_app");
+      if (openAppTag && !this.app) {
+        const app = this.appDataRef.current[openAppTag.content.trim()];
+        if (app?.favorited) {
+          await this.handleApp({
+            app: app.app,
+            messages: [...newMessages, llmMessage],
           });
-          break;
+        } else {
+          this.handleUpdateConversation({
+            message: {
+              role: "user",
+              tags: [
+                {
+                  tag: "logs",
+                  content: "Error: Invalid app in <open_app> tags",
+                },
+              ],
+              promptToContinue: "Error opening app. Try again?",
+              continueSystemPrompt: nextContinueSystemPrompt,
+            },
+          });
         }
+        return;
+      }
+      const scriptTags = llmMessage.tags.filter(
+        (tag) =>
+          tag.tag === "intermediate_script" || tag.tag === "final_script",
+      );
+      if (scriptTags.length > 0) {
+        const scriptResults = await Promise.all(scriptPromises);
+        //if (abortSignal.aborted) return; //at this point just finish
+        const logs = scriptResults.map((result) => result.logs).flat();
+        const newUserMessage = {
+          role: "user",
+          tags: [{ tag: "logs", content: formatLogs(logs) }],
+        };
+        if (scriptResults.some((result) => result.error)) {
+          newUserMessage.promptToContinue = "Something went wrong. Try again?";
+          newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
+        } else if (
+          scriptTags.some((tag) => tag.tag === "intermediate_script")
+        ) {
+          const prevAssistantMessage = messages.findLast(
+            (message) => message.role === "assistant",
+          );
+          if (
+            prevAssistantMessage?.tags.some(
+              ({ tag }) => tag === "intermediate_script",
+            )
+          ) {
+            //if two intermediate scripts in a row, prompt user to approve
+            newUserMessage.promptToContinue = "Allow Assistant to continue?";
+            newUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
+          } else {
+            await this.handleInput({
+              messages: [...newMessages, llmMessage, newUserMessage],
+              continueSystemPrompt: nextContinueSystemPrompt,
+            });
+            return;
+          }
+        }
+        this.handleUpdateConversation({
+          message: newUserMessage,
+        });
       }
     } catch (error) {
       console.error(error);
