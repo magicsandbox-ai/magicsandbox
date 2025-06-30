@@ -716,6 +716,7 @@ class Assistant {
         });
       }
       //if the script is the final tag, we didn't run it above, so we need to run it now
+      lastTag = llmMessage.tags[llmMessage.tags.length - 1];
       if (
         lastTag?.tag === "intermediate_script" ||
         lastTag?.tag === "final_script"

@@ -94,9 +94,21 @@ test("Assistant", async ({ app }) => {
             "Let me log your note.\n\n<intermediate_script>app.api.logNotes([1]);</intermediate_script>",
           );
         } else if (lastMessageContent.includes("<logs>")) {
-          return createLlmResult(
-            "I can see your note - let me add to it.\n\n<final_script>app.api.appendToNote(1, `hello world`);</final_script>\n\nI've added to your note.",
-          );
+          if (/<logs>\s*\S[\s\S]*<\/logs>/.test(lastMessageContent) === false) {
+            throw new Error("logs should not be empty");
+          }
+          return createLlmResult(`I can see your note - let me add to it.
+            
+<final_script>
+app.api.appendToNote(1, \`hello world\`);
+</final_script>
+
+<final_script>
+//test multiple scripts
+app.api.appendToNote(1, \`goodbye!\`);
+</final_script>
+
+I've added to your note.`);
         } else {
           throw new Error("Unexpected message");
         }
@@ -118,4 +130,5 @@ test("Assistant", async ({ app }) => {
   await expect(app.getByText("I've added to your note.")).not.toBeVisible();
   const notes = app.childFrames()[0];
   await expect(notes.getByText("hello world")).toBeVisible();
+  await expect(notes.getByText("goodbye!")).toBeVisible();
 });
