@@ -21,7 +21,7 @@ def test_handle_midstream():
     assert result['messages'][-1]['prefix'] == True # noqa: E712
 
     # Test with a model that doesn't support prefill
-    api_args['model'] = 'gemini-2.5-pro-preview-03-25'
+    api_args['model'] = 'gemini-2.5-pro'
     result = handle_midstream(api_args, chunks)
     assert len(result['messages']) == 3  # Original + assistant + system message
     assert result['messages'][-1]['role'] == 'user'

@@ -33,10 +33,10 @@ async def acompletion_retry(api_args, max_retries=1):
 async def handle_retry(e, max_retries):
     status_code = getattr(e, 'status_code', None)
     if max_retries > 0 and status_code is not None and (status_code >= 500 or status_code in [408, 409, 429]):
-        logger.warning(f'Retrying error {str(e)}')
+        logger.warning('Retrying error', exc_info=e)
         await asyncio.sleep(1)
     else:
-        logger.error(f'Throwing error {str(e)}')
+        logger.error('Throwing error', exc_info=e)
         raise e
 
 def handle_midstream(api_args, chunks):

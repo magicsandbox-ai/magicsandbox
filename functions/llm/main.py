@@ -335,7 +335,10 @@ async def handle_stream_result(result, index=None):
         'completion_tokens': chunk.usage.completion_tokens,
     }
     if finish_reason != 'stop':
-        logger.info('finish_reason: %s', finish_reason)
+        logger.info({
+            'message': 'finish_reason not equal to stop',
+            'finish_reason': finish_reason,
+        })
     if first_chunk:
         yield data(model=model, content=buffer, finish_reason=finish_reason, usage=usage)
     else:
@@ -358,9 +361,12 @@ async def handle_stream_final_cost(stream):
 def handle_final_cost(model, expected_cost, usage):
     final_cost = get_cost(model, usage.prompt_tokens, usage.completion_tokens)
     if final_cost > expected_cost:
-        logger.warning(
-            f'Final cost exceeds expected cost: final={final_cost:.6f} expected={expected_cost:.6f} model={model}'
-        )
+        logger.warning({
+            'message': 'Final cost exceeds expected cost',
+            'final_cost': final_cost,
+            'expected_cost': expected_cost,
+            'model': model,
+        })
     return final_cost
 
 def handle_response(results):
