@@ -14,7 +14,7 @@ function createWelcomeConversation() {
 - [**Discover apps**](?action=discover) you can use.
 - [**Learn the details**](https://magicsandbox.ai/?_app=magicsandbox.About) of how Magic Sandbox works.
 - [**Write code? Check out the docs**](https://magicsandbox.ai/?_app=magicsandbox.Docs) to learn how to create your own Magic Sandbox app (it's free, and you earn money when others use it!)
-- [**Create a free account**](https://magicsandbox.ai/account/upgrade) to unlock a higher account balance and more features.`;
+- [**Create a free account**](https://magicsandbox.ai/account/login) to unlock a higher account balance and more features.`;
   return {
     conversationId: "0",
     messages: [

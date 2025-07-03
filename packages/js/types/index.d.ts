@@ -7,12 +7,12 @@ interface Metadata {
   minor: number;
   patch: number;
   kind: "app" | "function";
-  description: string;
-  documentation: string;
-  type: string;
+  description: string | null;
+  documentation: string | null;
+  type: string | null;
   minCost: number;
   status: "active" | "deprecated" | "inactive";
-  decode: "json" | "msgpack" | "string" | "bytes";
+  decode: "json" | "msgpack" | "string" | "bytes" | null;
   usage: number; //number of times the App or Function has been used
 }
 

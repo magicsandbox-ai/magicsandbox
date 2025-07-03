@@ -13,9 +13,6 @@ type AppData = {
 type FunctionData = {
   fn: string;
   args: unknown;
-  //options: Parameters<typeof requestFunction>[2];
-  //this ^ doesn't work because requestFunction has overloads
-  //but don't want to duplicate the type definition...todo come back to this
   options: RequestFunctionOptions;
 };
 

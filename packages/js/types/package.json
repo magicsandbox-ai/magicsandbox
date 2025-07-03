@@ -1,6 +1,6 @@
 {
   "name": "@magicsandbox.ai/types",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "homepage": "https://github.com/magicsandbox-ai/magicsandbox",
   "repository": {
     "type": "git",
@@ -11,8 +11,5 @@
   "files": [
     "index.d.ts"
   ],
-  "types": "index.d.ts",
-  "dependencies": {
-    "@magicsandbox.ai/types": "^0.1.0"
-  }
+  "types": "index.d.ts"
 }
