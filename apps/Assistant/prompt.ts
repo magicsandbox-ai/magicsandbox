@@ -264,7 +264,9 @@ ${sandboxDocs}`;
 /**
  * prompt used when app.init returns context
  */
-const initSystemPrompt = `${identityPrompt} An app has just been opened and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
+const initSystemPrompt = `${identityPrompt} 
+
+An app has just been opened and has provided context in an <app_context> tag. Your task is to follow the instructions in <app_context> to generate a script to initialize the app appropriately based on the user's requests, which are enclosed in <user_request> tags.
 
 ${scriptInstructions}
 
@@ -273,7 +275,9 @@ ${magicsandboxInfo}`;
 /**
  * prompt used when the user chats with the Assistant when an app is open
  */
-const contextSystemPrompt = `${identityPrompt} The user is interacting with an app and is asking for your help. The user's requests are enclosed in <user_request> tags. The app has provided additional context that's included in an <app_context> tag. Additionally, if the user has highlighted text in the app, it will be included in a <user_highlighted_text> tag.
+const contextSystemPrompt = `${identityPrompt} 
+
+The user is interacting with an app and is asking for your help. The user's requests are enclosed in <user_request> tags. The app has provided additional context that's included in an <app_context> tag. Additionally, if the user has highlighted text in the app, it will be included in a <user_highlighted_text> tag.
 
 In your response, you can:
 

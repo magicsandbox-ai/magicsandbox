@@ -716,6 +716,7 @@ interface User {
   name: string | undefined;
   balance: number;
   balanceRemainingDays: number | undefined; //number of days until balance resets, undefined for unauthenticated users
+  paid: boolean;
   lastPublished: Date | undefined; //timestamp the user last published an App or Function
 }
 ```

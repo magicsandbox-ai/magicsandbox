@@ -69,10 +69,10 @@ class Assistant {
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
     this.appUsage = {
-      daysBetweenCalls: 0.1,
-      //assume 1/4 balance on apps, 10 times per day
+      daysBetweenCalls: 0.2,
+      //assume 1/5 balance on apps, 5 times per day
       usagePerCall: Math.max(
-        user?.balance / user?.balanceRemainingDays / 4 / 10 || 0.001,
+        user?.balance / user?.balanceRemainingDays / 5 / 5 || 0.001,
         0.001,
       ),
       pendingUsage: 0,
@@ -80,7 +80,7 @@ class Assistant {
       ...initData?.appUsage,
     };
     this.llmUsage = initData?.llmUsage || {
-      daysBetweenCalls: 0.1,
+      daysBetweenCalls: 0.2,
       inputBytesPerToken: {}, //keyed by author.name
       outputTokens: {}, //keyed by author.name
       costThreshold: {}, //keyed by author.name
@@ -428,7 +428,7 @@ class Assistant {
   }
   getLlmBudget(inputBytes, maxCompletionTokens) {
     const { balance, balanceRemainingDays } = this.user || {};
-    if (!balanceRemainingDays || balance < 0.05) {
+    if (!balanceRemainingDays || balance <= 0.05) {
       if (!balance && balance !== 0) {
         console.error("missing balance");
       }
@@ -456,7 +456,7 @@ class Assistant {
     if (!llmBudget && llmBudget !== 0) {
       console.error("missing llmBudget");
     }
-    return Math.min(Math.max(llmBudget || 0.005, 0.005), balance, 0.99);
+    return Math.min(Math.max(llmBudget || 0.005, 0.005), balance, 0.5);
   }
   handleError(error) {
     console.error(error);
@@ -591,7 +591,16 @@ class Assistant {
       const inputBytes = new TextEncoder().encode(
         JSON.stringify(llmMessages),
       ).length;
-      const maxCompletionTokens = 10000;
+      let maxCompletionTokens;
+      let showMaxLengthToast = true;
+      if (this.user?.balance > 0.5) {
+        maxCompletionTokens = 10000;
+        showMaxLengthToast = false;
+      } else if (this.user?.balance > 0.05) {
+        maxCompletionTokens = 5000;
+      } else {
+        maxCompletionTokens = 500;
+      }
       let model, maxCost;
       let approved = true;
       let askedUser = false;
@@ -659,7 +668,8 @@ class Assistant {
       let summary = "";
       let promptTokens, completionTokens;
       const chunkProcessor = (chunk) => {
-        const { model, content, usage, index } = chunk.result || {};
+        const { model, content, usage, finish_reason, index } =
+          chunk.result || {};
         if (index === 1) {
           summary += content;
         } else {
@@ -671,6 +681,20 @@ class Assistant {
               prompt_tokens: promptTokens,
               completion_tokens: completionTokens,
             } = usage);
+          }
+          if (showMaxLengthToast && finish_reason === "length") {
+            let cta;
+            if (!this.user?.name) {
+              cta = "Sign up for a free account";
+            } else if (!this.user?.paid) {
+              cta = "Upgrade to Magic Sandbox Plus";
+            } else {
+              cta = "Add balance to your account";
+            }
+            this.toastsRef.current.addToast({
+              message: `Assistant response reached max length. ${cta} to get longer responses.`,
+              type: "error",
+            });
           }
           return content;
         }
