@@ -4,7 +4,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { EditorState, Plugin } from "prosemirror-state";
+import { EditorState, Plugin, PluginKey } from "prosemirror-state";
 import {
   DecorationSet,
   Decoration,
@@ -41,8 +41,6 @@ interface Diff {
   content: string;
   decorationSet: DecorationSet;
 }
-
-let diffPlugin: Plugin<Diff | undefined> | undefined;
 
 function Note({
   notesState,
@@ -244,7 +242,7 @@ function Note({
       setEditorState(newEditorState.apply(transaction));
     } else {
       const historyPlugin = history();
-      diffPlugin = createDiffPlugin(newDiff, historyPlugin);
+      const diffPlugin = createDiffPlugin(newDiff, historyPlugin);
       setEditorState(
         EditorState.create({
           doc: newDoc,
@@ -276,7 +274,7 @@ function Note({
 
   function handleTransaction(newState: EditorState, uuid: string) {
     let content: string, prevContent: string | undefined;
-    const diffState = diffPlugin?.getState(newState);
+    const diffState = diffPluginKey.getState(newState);
     if (diffState) {
       setDiff(diffState);
       ({ content, prevContent } = diffState);
@@ -507,8 +505,11 @@ function LinkListener() {
 
 export default Note;
 
+const diffPluginKey = new PluginKey("diff");
+
 function createDiffPlugin(initState: Diff | undefined, historyPlugin: Plugin) {
   return new Plugin({
+    key: diffPluginKey,
     state: {
       init() {
         return initState;
