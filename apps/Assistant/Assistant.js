@@ -432,7 +432,7 @@ class Assistant {
       if (!balance && balance !== 0) {
         console.error("missing balance");
       }
-      return Math.min(Math.max(balance || 0.005, 0.001), 0.005);
+      return Math.min(Math.max(balance || 0.01, 0.001), 0.01);
     }
     /*
     solve for llmBudget in this equation, where llmFinalCostPct is the finalCost as a percentage of llmBudget
@@ -599,7 +599,7 @@ class Assistant {
       } else if (this.user?.balance > 0.05) {
         maxCompletionTokens = 5000;
       } else {
-        maxCompletionTokens = 500;
+        maxCompletionTokens = 1000;
       }
       let model, maxCost;
       let approved = true;
@@ -691,10 +691,10 @@ class Assistant {
             } else {
               cta = "Add balance to your account";
             }
-            this.toastsRef.current.addToast({
-              message: `Assistant response reached max length. ${cta} to get longer responses.`,
-              type: "error",
-            });
+            this.toastsRef.current.addToast(
+              `Assistant response reached max length. ${cta} to get longer responses.`,
+              "error",
+            );
           }
           return content;
         }

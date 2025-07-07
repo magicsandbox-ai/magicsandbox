@@ -15,6 +15,10 @@ from .retry import acompletion_retry_stream, acompletion_retry
 
 logger = logging.getLogger("magicsandbox.llm")
 
+class Thinking(BaseModel):
+    type: Literal["enabled"]
+    budget_tokens: int
+
 class LlmArgs(BaseModel):
     model: str | None = None
     messages: list[dict] | None = None
@@ -26,6 +30,7 @@ class LlmArgs(BaseModel):
     presence_penalty: float | None = None
     logit_bias: dict | None = None
     reasoning_effort: Literal["low", "medium", "high"] | None = None
+    thinking: Thinking | None = None
     ## these would require returning the whole object, not just the content
     ## careful with token_counter if enabling these. and trim_messages: https://github.com/BerriAI/litellm/issues/4931
     # 'logprobs',
@@ -86,6 +91,9 @@ async def get_response(args: LlmArgs, stream: bool, maxCost: float, test=None):
     model, expected_cost = find_model(args, maxCost) # note that this may modify args.messages and args.max_completion_tokens
     if supported_models[model].get('reasoning_disabled', False):
         args.reasoning_effort = None
+    default_thinking = supported_models[model].get('default_thinking', None)
+    if args.thinking is None and default_thinking is not None:
+        args.thinking = default_thinking
     args.messages = process_messages(model, args)
     api_args = args.model_dump(exclude_none=True)
     api_args.pop('maxCost', None) # remove custom args or litellm will throw an error

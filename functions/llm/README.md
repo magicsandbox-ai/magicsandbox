@@ -12,14 +12,17 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `model`: supported models are listed below, with limitations noted. Note that PDF inputs are not supported for any model.
   - `claude-4-sonnet-20250514`
     - Prompt caching is not supported
+    - Thinking is disabled by default. `thinking.budget_tokens` must be >= 1024 if set
   - `gemini-2.5-pro`
     - Limited to 200k input tokens
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
+    - `thinking.budget_tokens` defaults to 128. Thinking cannot be disabled. Set `thinking.budget_tokens` to -1 to turn on dynamic thinking, otherwise `thinking.budget_tokens` must be between 128 and 32768
   - `gpt-4.1-2025-04-14`
   - `gemini-2.5-flash`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
+    - Thinking is disabled by default. Set `thinking.budget_tokens` to -1 to turn on dynamic thinking, otherwise `thinking.budget_tokens` must be between 0 and 24576
   - `gpt-4.1-mini-2025-04-14`
   - `gemini-2.0-flash-001`
     - Prompt caching is not supported
@@ -31,7 +34,8 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
     - Prompt caching is not supported
   - `gpt-4o-2024-08-06`
   - `gpt-4o-mini-2024-07-18`
-- `max_completion_tokens` (note: defaults to 1000 if not provided)
+- `max_completion_tokens`
+  - Defaults to 1000 if not provided
 - `response_format`
 - `temperature`
 - `top_p`
@@ -39,6 +43,9 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `presence_penalty`
 - `logit_bias`
 - `reasoning_effort`
+- `thinking`
+  - Available for `claude-4-sonnet-20250514`, `gemini-2.5-pro`, `gemini-2.5-flash`
+  - See the [Anthropic docs](https://docs.anthropic.com/en/api/messages#body-thinking) for details
 
 Or, to generate multiple responses, you can pass an array of up to 10 objects with the above keys. In this case, you can also provide an additional `maxCost` key indicating how to split `maxCost` across the responses.
 

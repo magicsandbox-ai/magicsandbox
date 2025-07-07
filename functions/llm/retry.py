@@ -3,6 +3,9 @@ import asyncio
 import logging
 from .models import supported_models
 
+# import litellm
+# litellm._turn_on_debug()
+
 logger = logging.getLogger("magicsandbox.llm")
 
 # todo additional tokens in midstream handling could cause exceeding maxCost

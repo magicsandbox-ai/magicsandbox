@@ -234,6 +234,11 @@ class DataLossRisk extends Risk {
   handleBatch(batch) {
     try {
       this._handleBatch(batch);
+      if (this.pendingWrites.has("magicsandbox.assistant")) {
+        return {
+          error: "Cannot write to magicsandbox.Assistant",
+        };
+      }
       const app = this.assistant.app.app;
       const pendingWrites = Array.from(this.pendingWrites);
       const untrustedWrites = pendingWrites.filter(
@@ -263,7 +268,7 @@ class DataLossRisk extends Risk {
     }
   }
   handleRequest(_, data) {
-    this.pendingWrites.add(data.options.app.split("@")[0]);
+    this.pendingWrites.add(data.options.app.split("@")[0].toLowerCase());
   }
   async handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
     if (approved) {

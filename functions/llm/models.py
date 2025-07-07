@@ -22,6 +22,10 @@ supported_models = {
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'multimodal_disabled': True,
+        'default_thinking': {
+            'type': 'enabled',
+            'budget_tokens': 128,
+        },
     },
     'gpt-4.1-2025-04-14': {
         'max_input_tokens': 1047576,
@@ -38,6 +42,10 @@ supported_models = {
         'tokenizer': gemini_tokenizer,
         'max_vision_tokens': 0,
         'multimodal_disabled': True,
+        'default_thinking': {
+            'type': 'enabled',
+            'budget_tokens': 0,
+        },
     },
     'gpt-4.1-mini-2025-04-14': {
         'max_input_tokens': 1047576,

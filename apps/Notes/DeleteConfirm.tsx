@@ -1,5 +1,5 @@
 import React from "react";
-import Confirm from "@components/Confirm.js";
+import Confirm from "@components/Confirm.tsx";
 import NotesState from "./NotesState.ts";
 
 function DeleteConfirm({
@@ -42,8 +42,6 @@ function DeleteConfirm({
       onClose={() => setDeleteUuid(undefined)}
       header={header}
       buttons={buttons}
-      customContent={undefined}
-      message={undefined}
     />
   );
 }
