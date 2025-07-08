@@ -432,7 +432,7 @@ class Assistant {
       if (!balance && balance !== 0) {
         console.error("missing balance");
       }
-      return Math.min(Math.max(balance || 0.01, 0.001), 0.01);
+      return Math.min(Math.max(balance || 0.0075, 0.001), 0.0075);
     }
     /*
     solve for llmBudget in this equation, where llmFinalCostPct is the finalCost as a percentage of llmBudget
