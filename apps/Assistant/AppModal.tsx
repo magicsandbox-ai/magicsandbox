@@ -1,12 +1,18 @@
 import React from "react";
-import ModalOverlay from "@components/ModalOverlay.js";
-import AppList from "./AppList.js";
+import ModalOverlay from "@components/ModalOverlay.tsx";
+import AppList from "./AppList.tsx";
+import type { AppData, AssistantRefObject } from "./AssistantState.ts";
 
 export default function AppModal({
   setShowApps,
   appData,
   setAppData,
   assistantRef,
+}: {
+  setShowApps: (show: boolean) => void;
+  appData: AppData;
+  setAppData: (appData: AppData) => void;
+  assistantRef: AssistantRefObject;
 }) {
   return (
     <ModalOverlay

@@ -1,7 +1,14 @@
 import React from "react";
-import Confirm from "@components/Confirm.js";
+import ConfirmComponent from "@components/Confirm.tsx";
+import type { Confirm } from "./AssistantState.ts";
 
-function AssistantConfirm({ confirm, setConfirm }) {
+function AssistantConfirm({
+  confirm,
+  setConfirm,
+}: {
+  confirm: Confirm;
+  setConfirm: (confirm: Confirm | null) => void;
+}) {
   const { header, message, callback } = confirm;
   const buttons = [
     {
@@ -22,7 +29,7 @@ function AssistantConfirm({ confirm, setConfirm }) {
     },
   ];
   return (
-    <Confirm
+    <ConfirmComponent
       onClose={() => {
         callback(false);
         setConfirm(null);

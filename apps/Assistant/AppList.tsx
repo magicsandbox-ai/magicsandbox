@@ -6,6 +6,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -19,6 +20,9 @@ import {
 } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { Star, MoveVertical } from "lucide-react";
+import type { App, AssistantRefObject, AppData } from "./AssistantState.ts";
+
+type AppListState = "favorited" | "published" | "recent";
 
 function AppList({
   appData,
@@ -26,10 +30,16 @@ function AppList({
   assistantRef,
   modal = false,
   setShowApps = () => {},
+}: {
+  appData: AppData;
+  setAppData: (appData: AppData) => void;
+  assistantRef: AssistantRefObject;
+  modal?: boolean;
+  setShowApps?: (show: boolean) => void;
 }) {
-  const [state, setState] = useState("favorited");
+  const [state, setState] = useState<AppListState>("favorited");
 
-  const states = ["favorited", "published", "recent"];
+  const states: AppListState[] = ["favorited", "published", "recent"];
 
   let message;
   if (state === "favorited") {
@@ -41,10 +51,10 @@ function AppList({
   let sort;
   if (state === "recent") {
     //most recent first
-    sort = (a, b) => b[state] - a[state];
+    sort = (a: App, b: App) => b[state]! - a[state]!;
   } else {
     //most recent last
-    sort = (a, b) => a[state] - b[state];
+    sort = (a: App, b: App) => a[state]! - b[state]!;
   }
   displayApps.sort(sort);
 
@@ -108,7 +118,19 @@ function AppList({
   );
 }
 
-function SortableList({ appData, setAppData, state, displayApps, children }) {
+function SortableList({
+  appData,
+  setAppData,
+  state,
+  displayApps,
+  children,
+}: {
+  appData: AppData;
+  setAppData: (appData: AppData) => void;
+  state: AppListState;
+  displayApps: App[];
+  children: React.ReactNode;
+}) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -116,13 +138,16 @@ function SortableList({ appData, setAppData, state, displayApps, children }) {
     }),
   );
 
-  function handleDragEnd(event) {
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    if (!over) return;
     if (active.id !== over.id) {
       //note that the ids we get from dnd are app.app, not app.id, since that's what we pass in
-      const activeApp = appData[active.id]; //clone because we're mutating
+      const activeApp = appData[active.id];
       const overApp = appData[over.id];
+      if (!activeApp || !overApp) return;
       const overState = overApp[state];
+      if (!activeApp[state] || !overState) return;
       const newAppData = { ...appData };
       if (activeApp[state] > overState) {
         //add 1 to overApp and everything after it
@@ -162,11 +187,21 @@ function SortableList({ appData, setAppData, state, displayApps, children }) {
   );
 }
 
-function StaticList({ children }) {
+function StaticList({ children }: { children: React.ReactNode }) {
   return children;
 }
 
-function AppListButton({ active, onClick, children, modal }) {
+function AppListButton({
+  active,
+  onClick,
+  children,
+  modal,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  modal: boolean;
+}) {
   return (
     <button
       className={`rounded-md py-px hover:bg-stone-200 ${
@@ -188,6 +223,13 @@ function AppCard({
   assistantRef,
   modal,
   setShowApps,
+}: {
+  app: App;
+  sortable: boolean;
+  favoritable: boolean;
+  assistantRef: AssistantRefObject;
+  modal: boolean;
+  setShowApps: (show: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: app.app });
@@ -199,8 +241,12 @@ function AppCard({
       }
     : undefined;
 
-  const handleClick = (e) => {
-    if (e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (
+      e.target instanceof HTMLElement &&
+      e.target.tagName !== "BUTTON" &&
+      !e.target.closest("button")
+    ) {
       assistantRef.current.handleApp({ app: app.app });
       if (modal) {
         setShowApps(false);
@@ -238,6 +284,6 @@ function AppCard({
 
 export default AppList;
 
-function properCase(str) {
+function properCase(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }

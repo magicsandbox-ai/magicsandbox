@@ -15,10 +15,11 @@ import React, {
   useRef,
   useLayoutEffect,
 } from "react";
-import { unified } from "unified";
+import { unified, type Plugin } from "unified";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import rehypeSanitize from "rehype-sanitize";
+import type { Schema } from "hast-util-sanitize";
 import rehypeReact from "rehype-react";
 import * as prod from "react/jsx-runtime";
 
@@ -29,54 +30,52 @@ const Markdown = memo(function Markdown({
   remarkPlugins,
   rehypePlugins,
   rehypeSanitizeOptions,
-  onComplete,
   children,
+}: {
+  className?: string;
+  remarkPlugins?: Plugin[];
+  rehypePlugins?: Plugin[];
+  rehypeSanitizeOptions?: Schema;
+  children: string;
 }) {
-  const [Content, setContent] = useState(createElement(Fragment));
+  function process() {
+    try {
+      const processor = unified()
+        .use(remarkParse)
+        .use(remarkPlugins || [])
+        .use(remarkRehype)
+        .use(rehypePlugins || [])
+        .use(rehypeSanitize, rehypeSanitizeOptions)
+        .use(rehypeReact, {
+          Fragment: prod.Fragment,
+          jsx: prod.jsx,
+          jsxs: prod.jsxs,
+          components: {
+            pre: Pre,
+          },
+        });
+      const file = processor.processSync(children);
+      return file.result as React.JSX.Element;
+    } catch (error) {
+      console.error("Error processing markdown:", error);
+      return createElement(Fragment);
+    }
+  }
 
-  const initRef = useRef(false);
+  const [Content, setContent] = useState(process());
 
   useEffect(() => {
-    async function process() {
-      try {
-        const processor = unified()
-          .use(remarkParse)
-          .use(remarkPlugins || [])
-          .use(remarkRehype)
-          .use(rehypePlugins || [])
-          .use(rehypeSanitize, rehypeSanitizeOptions)
-          .use(rehypeReact, {
-            Fragment: prod.Fragment,
-            jsx: prod.jsx,
-            jsxs: prod.jsxs,
-            components: {
-              pre: Pre,
-            },
-          });
-        const file = await processor.process(children);
-        setContent(file.result);
-      } catch (error) {
-        console.error("Error processing markdown:", error);
-      }
-    }
-    process();
-  }, [remarkPlugins, rehypePlugins, children]);
-
-  useLayoutEffect(() => {
-    if (initRef.current && onComplete) {
-      onComplete();
-    }
-    initRef.current = true;
-  }, [Content]);
+    setContent(process());
+  }, [remarkPlugins, rehypePlugins, rehypeSanitizeOptions, children]);
 
   return <div className={className}>{Content}</div>;
 });
 
-function Pre({ children, ...props }) {
+function Pre({ children, ...props }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
   const [isSingleLine, setIsSingleLine] = useState(false);
 
-  const ref = useRef();
+  const ref = useRef<HTMLPreElement | null>(null);
 
   useLayoutEffect(() => {
     if (ref.current) {
@@ -85,7 +84,8 @@ function Pre({ children, ...props }) {
   }, [children]);
 
   const handleCopy = () => {
-    const code = ref.current.innerText.trim();
+    const code = ref.current?.innerText.trim();
+    if (!code) return;
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

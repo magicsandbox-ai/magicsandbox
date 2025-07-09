@@ -1,19 +1,25 @@
 import React, { useState } from "react";
-import ChatInput from "./ChatInput.js";
-import AppList from "./AppList.js";
+import ChatInput from "./ChatInput.tsx";
+import AppList from "./AppList.tsx";
 import { CircleArrowUp, Sparkles } from "lucide-react";
+import type { AssistantRefObject, AppData } from "./AssistantState.ts";
 
 function Home({
-  toastsRef,
   assistantRef,
   chatLoading,
   appData,
   setAppData,
   setShowDiscover,
+}: {
+  assistantRef: AssistantRefObject;
+  chatLoading: boolean;
+  appData: AppData;
+  setAppData: (appData: AppData) => void;
+  setShowDiscover: (show: boolean) => void;
 }) {
   const [input, setInput] = useState("");
 
-  async function handleInput(input) {
+  async function handleInput(input: string) {
     if (input === "" || assistantRef.current === null || chatLoading) return;
     try {
       setInput("");
@@ -23,7 +29,10 @@ function Home({
       });
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast("An unexpected error occurred", "error");
+      assistantRef.current.toastsRef.current.addToast(
+        "An unexpected error occurred",
+        "error",
+      );
     }
   }
 

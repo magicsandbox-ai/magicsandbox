@@ -1,7 +1,16 @@
 import React from "react";
-import Confirm from "@components/Confirm.js";
+import Confirm from "@components/Confirm.tsx";
+import type { AssistantRefObject, Conversation } from "./AssistantState.ts";
 
-function DeleteConfirm({ assistantRef, setShowDelete, currentConversation }) {
+function DeleteConfirm({
+  assistantRef,
+  setShowDelete,
+  currentConversation,
+}: {
+  assistantRef: AssistantRefObject;
+  setShowDelete: (show: boolean) => void;
+  currentConversation: Conversation;
+}) {
   let header;
   if (currentConversation.messages.length > 0) {
     header = `Delete chat?`;

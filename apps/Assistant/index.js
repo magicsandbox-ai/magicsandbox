@@ -1,22 +1,29 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
-import AssistantConfirm from "./AssistantConfirm.js";
-import AssistantSearch from "./AssistantSearch.js";
+import AssistantConfirm from "./AssistantConfirm.tsx";
+import AssistantSearch from "./AssistantSearch.tsx";
 import RiskConfirm from "./RiskConfirm.js";
-import DeleteConfirm from "./DeleteConfirm.js";
+import DeleteConfirm from "./DeleteConfirm.tsx";
 import { Toasts } from "@components/Toasts.js";
 import { includeMetadata, Assistant } from "./Assistant.js";
-import Home from "./Home.js";
-import BottomChat from "./BottomChat.js";
-import { ChatDisplay } from "./ChatDisplay.js";
+import Home from "./Home.tsx";
+import BottomChat from "./BottomChat.tsx";
+import { ChatDisplay } from "./ChatDisplay.tsx";
 import ChatHistory from "./ChatHistory.js";
-import { createWelcomeConversation } from "./welcomeMessage.js";
+import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { Discover, discoverMetadata } from "./Discover.js";
 import { ErrorBoundary } from "react-error-boundary";
-import AppModal from "./AppModal.js";
-import ChatToolbar from "./ChatToolbar.js";
-import { models } from "./ModelPicker.js";
+import AppModal from "./AppModal.tsx";
+import ChatToolbar from "./ChatToolbar.tsx";
+import { models } from "./ModelPicker.tsx";
+import { startDriver } from "./driver.js";
+import { AssistantState } from "./AssistantState.ts";
 
 async function init({ user } = {}) {
   const [urlParams, initData] = await Promise.all([
@@ -31,7 +38,8 @@ async function init({ user } = {}) {
     summary: null,
     lastUpdated: Date.now(),
   };
-  if (!("0" in initData)) {
+  //if (!("0" in initData)) {
+  if (true) {
     initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
@@ -44,6 +52,9 @@ async function init({ user } = {}) {
       Object.entries(initData).filter(([, v]) => v.conversationId),
     ),
   };
+  const assistantState = new AssistantState({
+    app: urlParams._app ? false : null,
+  });
   createRoot(document.getElementById("root")).render(
     <ErrorBoundary
       fallback={
@@ -58,6 +69,7 @@ async function init({ user } = {}) {
         initData={initData}
         initConversation={initConversation}
         initConversations={initConversations}
+        assistantState={assistantState}
       />
     </ErrorBoundary>,
   );
@@ -69,6 +81,7 @@ function App({
   initData,
   initConversation,
   initConversations,
+  assistantState,
 }) {
   const [confirm, setConfirm] = useState(null);
   const [risk, setRisk] = useState(null);
@@ -118,7 +131,10 @@ function App({
   //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
   //type App {id, app, description, status, favorited, recent, published}} //todo add versions somehow?
   //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
-  const [app, setApp] = useState(urlParams._app ? false : null);
+  const app = useSyncExternalStore(
+    assistantState.subscribe("app"),
+    assistantState.getSnapshot("app"),
+  );
   // {[app: string]: App}
   const [appData, setAppData] = useState(
     initData.appData || {
@@ -178,9 +194,9 @@ function App({
           setConversationSummaries,
           setChatLoading,
           setCollapsed,
-          setApp,
           setAppData,
           initData,
+          assistantState,
         });
         if (urlParams._app) {
           assistantRef.current.handleApp({ app: urlParams._app });
@@ -328,6 +344,17 @@ function App({
   }, []);
 
   useEffect(() => {
+    //todo handle if opening an app
+    if (
+      firstRenderRef.current &&
+      initConversation.conversationId === "0" &&
+      !navigator.webdriver
+    ) {
+      startDriver(assistantRef);
+    }
+  }, []);
+
+  useEffect(() => {
     firstRenderRef.current = false;
   }, []);
 
@@ -403,6 +430,7 @@ function App({
         />
       )}
       <div
+        id="main-container"
         className="flex min-w-0 grow flex-col"
         onClick={() => {
           if (window.innerWidth <= 768 && showChatHistory) {

@@ -1,9 +1,19 @@
-import React, { useRef, memo, useCallback, useState } from "react";
-import Markdown from "@components/Markdown.js";
+import React, {
+  useRef,
+  memo,
+  useCallback,
+  useState,
+  useLayoutEffect,
+} from "react";
+import Markdown from "./Markdown.tsx";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
+import type { Message, AssistantRefObject } from "./types";
+import type { Root as MdastRoot } from "mdast";
+import type { Root as HastRoot, Element as HastElement } from "hast";
+import type { Schema } from "hast-util-sanitize";
 
 function ChatDisplay({
   outerClassName = "",
@@ -12,8 +22,15 @@ function ChatDisplay({
   assistantRef,
   setShowDiscover,
   chatLoading,
+}: {
+  outerClassName?: string;
+  innerClassName?: string;
+  messages: Message[];
+  assistantRef: AssistantRefObject;
+  setShowDiscover: (show: boolean) => void;
+  chatLoading: boolean;
 }) {
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const scrollToBottomRef = useRef(false);
 
   const lastUserMessageIndex = messages.findLastIndex(
@@ -38,7 +55,7 @@ function ChatDisplay({
     scrollToBottomRef.current = false;
   }
 
-  const handleComplete = useCallback((lastUserMessage) => {
+  const handleScroll = useCallback((lastUserMessage?: boolean) => {
     if (ref.current && (scrollToBottomRef.current || lastUserMessage)) {
       ref.current.scrollTop = ref.current.scrollHeight;
     }
@@ -51,7 +68,7 @@ function ChatDisplay({
       assistantRef.current.handleInput({
         messages,
         continueSystemPrompt:
-          messages[messages.length - 1].continueSystemPrompt,
+          messages[messages.length - 1]!.continueSystemPrompt,
       });
     };
   }
@@ -63,7 +80,7 @@ function ChatDisplay({
           <Message
             key={i}
             message={message}
-            onComplete={handleComplete}
+            handleScroll={handleScroll}
             setShowDiscover={setShowDiscover}
             assistantRef={assistantRef}
             lastUserMessage={lastUserMessageIndex === i}
@@ -74,7 +91,7 @@ function ChatDisplay({
           <button
             ref={(el) => {
               if (el) {
-                handleComplete();
+                handleScroll();
               }
             }}
             className="self-center rounded-xl border-2 border-stone-500 bg-stone-100 px-4 py-1 font-bold hover:bg-stone-200"
@@ -90,7 +107,7 @@ function ChatDisplay({
 
 const messageStyle =
   "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 ";
-const assistantMessageStyle = messageStyle + "max-w-full";
+const assistantMessageStyle = messageStyle + "max-w-full assistant-message";
 const userMessageStyle =
   messageStyle +
   "self-end max-w-[80%] whitespace-pre-wrap bg-stone-100 border border-stone-500 rounded-lg px-2 py-1";
@@ -99,25 +116,38 @@ const assistantMessageContainerStyle = "group";
 
 const Message = memo(function Message({
   message,
-  onComplete,
+  handleScroll,
   setShowDiscover,
   assistantRef,
   lastUserMessage,
   loading = true,
+}: {
+  message: Message;
+  handleScroll: (lastUserMessage: boolean) => void;
+  setShowDiscover: (show: boolean) => void;
+  assistantRef: AssistantRefObject;
+  lastUserMessage: boolean;
+  loading?: boolean;
 }) {
+  useLayoutEffect(() => {
+    handleScroll(lastUserMessage);
+  }, [message, handleScroll, lastUserMessage]);
+
   const formattedMessage = formatMessage(message);
   if (!formattedMessage) return null;
 
-  const handleClick = (e) => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     try {
-      const link = e.target.closest("a");
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const link = target.closest("a");
       if (link?.href) {
         e.preventDefault();
         requestOpenUrl(link.href);
         return;
       }
       if (!message.welcome) return;
-      const button = e.target.closest("button");
+      const button = target.closest("button");
       const action = button?.dataset?.action;
       if (!action) return;
       if (action === "discover") {
@@ -136,15 +166,7 @@ const Message = memo(function Message({
 
   if (message.role === "user") {
     return (
-      <div
-        ref={(el) => {
-          if (el) {
-            onComplete(lastUserMessage);
-          }
-        }}
-        className={userMessageStyle}
-        onClick={handleClick}
-      >
+      <div className={userMessageStyle} onClick={handleClick}>
         {formattedMessage}
       </div>
     );
@@ -163,9 +185,6 @@ const Message = memo(function Message({
         rehypeSanitizeOptions={
           message.welcome ? welcomeRehypeSanitizeOptions : rehypeSanitizeOptions
         }
-        onComplete={() => {
-          onComplete(lastUserMessage);
-        }}
       >
         {formattedMessage}
       </Markdown>
@@ -179,8 +198,14 @@ const Message = memo(function Message({
   );
 });
 
-function FeedbackButtons({ assistantRef }) {
-  const [providedFeedback, setProvidedFeedback] = useState(undefined);
+function FeedbackButtons({
+  assistantRef,
+}: {
+  assistantRef: AssistantRefObject;
+}) {
+  const [providedFeedback, setProvidedFeedback] = useState<boolean | undefined>(
+    undefined,
+  );
 
   const feedbackButtonClassName = `relative ${
     providedFeedback !== undefined ? "cursor-default" : ""
@@ -223,21 +248,22 @@ function FeedbackButtons({ assistantRef }) {
   );
 }
 
-function formatMessage(message) {
+function formatMessage(message: Message) {
   if (message.role === "system") return "";
   const tagsToInclude = {
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
     assistant: new Set([undefined, "intermediate_script", "final_script"]), //exclude open_app
     display: new Set([undefined]),
   };
-  const messageTagsToInclude = tagsToInclude[message.role];
+  const messageTagsToInclude: Set<string | undefined> =
+    tagsToInclude[message.role];
   return message.tags
     .filter((tag) => messageTagsToInclude.has(tag.tag))
     .map(formatTag)
     .join("");
 }
 
-function formatTag({ tag, content }) {
+function formatTag({ tag, content }: { tag?: string; content: string }) {
   if (tag === "intermediate_script" || tag === "final_script") {
     return `~~~magicscript\n${content.trim()}\n~~~`;
   } else if (tag === "user_request") {
@@ -248,9 +274,10 @@ function formatTag({ tag, content }) {
 }
 
 function remarkHtmlToText() {
-  return (tree) => {
+  return (tree: MdastRoot) => {
     visit(tree, (node) => {
       if (node.type === "html") {
+        //@ts-ignore - typescript doesn't like changing the type of a node
         node.type = "text";
       }
     });
@@ -260,24 +287,29 @@ function remarkHtmlToText() {
 const preStyle =
   "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
 
-function createRehypeCode(loading) {
+function createRehypeCode(loading: boolean) {
   return () => {
-    return (tree) => {
+    return (tree: HastRoot) => {
       visit(tree, "element", (node) => {
         if (
           node.tagName === "pre" &&
           node.children.length === 1 &&
+          node.children[0]?.type === "element" &&
           node.children[0].tagName === "code"
         ) {
           const code = node.children[0];
-          if (code.properties.className?.includes("language-magicscript")) {
+          if (
+            Array.isArray(code.properties.className) &&
+            code.properties.className.includes("language-magicscript")
+          ) {
             code.properties.className = ["language-javascript"]; //fix class name for highlighting
             const pre = { ...node }; //clone node since we mutate it below
             pre.properties.className = [preStyle];
             //now make code block collapsible
-            const summary = {
+            const summary: HastElement = {
               type: "element",
               tagName: "summary",
+              properties: {},
               children: [
                 {
                   type: "element",
@@ -311,11 +343,12 @@ function createRehypeCode(loading) {
 const welcomeButtonStyle = "underline text-blue-600 welcome-button";
 
 function rehypeWelcomeButton() {
-  return (tree) => {
+  return (tree: HastRoot) => {
     visit(tree, "element", (node) => {
       if (
         node.tagName === "a" &&
-        node.properties.href?.startsWith("?action=")
+        typeof node.properties.href === "string" &&
+        node.properties.href.startsWith("?action=")
       ) {
         node.tagName = "button";
         node.properties.className = [welcomeButtonStyle];
@@ -328,7 +361,7 @@ function rehypeWelcomeButton() {
 }
 
 const remarkPlugins = [remarkHtmlToText];
-const rehypeSanitizeOptions = {
+const rehypeSanitizeOptions: Schema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
@@ -339,9 +372,9 @@ const rehypeSanitizeOptions = {
     pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
   },
 };
-const welcomeRehypeSanitizeOptions = {
+const welcomeRehypeSanitizeOptions: Schema = {
   ...rehypeSanitizeOptions,
-  tagNames: [...rehypeSanitizeOptions.tagNames, "button"],
+  tagNames: [...(rehypeSanitizeOptions.tagNames || []), "button"],
   attributes: {
     ...rehypeSanitizeOptions.attributes,
     button: ["data-action", ["className", welcomeButtonStyle]],

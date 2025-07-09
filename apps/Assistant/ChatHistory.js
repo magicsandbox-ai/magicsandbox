@@ -1,5 +1,5 @@
 import React, { useState, memo } from "react";
-import { ModelPicker } from "./ModelPicker.js";
+import { ModelPicker } from "./ModelPicker.tsx";
 import { Menu, Search, Trash2, Plus } from "lucide-react";
 
 const ChatHistory = memo(function ChatHistory({

@@ -17,12 +17,13 @@ import {
   formatLogs,
   prompt,
   createSummaryArgs,
-  newUserInstructions,
 } from "./prompt.ts";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
-import { models } from "./ModelPicker.js";
+import { models } from "./ModelPicker.tsx";
 import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { ToastError } from "@components/Toasts.js";
+import { mockLlm } from "./driver.ts";
+import { AbortIdController } from "./AssistantState.ts";
 
 const includeMetadata = ["id", "description", "status"];
 const defaultInputBytesPerToken = 4;
@@ -45,9 +46,9 @@ class Assistant {
     setConversationSummaries,
     setChatLoading,
     setCollapsed,
-    setApp,
     setAppData,
     initData,
+    assistantState,
   }) {
     this.user = user;
     this.sandboxRef = sandboxRef;
@@ -63,8 +64,8 @@ class Assistant {
     this.setConversationSummaries = setConversationSummaries;
     this.setChatLoading = setChatLoading;
     this.setCollapsed = setCollapsed;
-    this._setApp = setApp;
     this.setAppData = setAppData;
+    this.assistantState = assistantState;
     this.app = null;
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
@@ -99,9 +100,11 @@ class Assistant {
     this.downloadRisk = new DownloadRisk({ assistant: this });
     this.rateLimitRisk = new RateLimitRisk({ assistant: this });
   }
+  get app() {
+    return this.assistantState.app;
+  }
   setApp(app) {
-    this._setApp(app);
-    this.app = app;
+    this.assistantState.setApp(app);
   }
   handleStopConversation() {
     this.abortIdController.abort(
@@ -475,6 +478,7 @@ class Assistant {
     initContext,
     continueSystemPrompt,
     resetInput = () => {},
+    mockContent,
   }) {
     let nextContinueSystemPrompt;
     try {
@@ -566,16 +570,6 @@ class Assistant {
           initContext,
           continueSystemPrompt,
         }));
-      const favoritedApps = Object.values(this.appDataRef.current).filter(
-        (app) => app.favorited,
-      );
-      if (
-        favoritedApps.length === 0 ||
-        (favoritedApps.length === 1 &&
-          favoritedApps[0].app === "magicsandbox.Notes")
-      ) {
-        systemPrompt += newUserInstructions;
-      }
       const llmMessages = [
         {
           role: "system",
@@ -657,10 +651,15 @@ class Assistant {
           maxCost += summaryArgs.maxCost;
         }
       }
-      const stream = await requestFunction("magicsandbox.llm@0.1", llmArgs, {
-        maxCost,
-        stream: true,
-      });
+      let stream;
+      if (mockContent) {
+        stream = mockLlm(model, mockContent);
+      } else {
+        stream = await requestFunction("magicsandbox.llm@0.1", llmArgs, {
+          maxCost,
+          stream: true,
+        });
+      }
       const llmMessage = {
         role: "assistant",
         tags: [],
@@ -747,12 +746,14 @@ class Assistant {
       ) {
         scriptPromises.push(handleScript(lastTag.content));
       }
-      this.handleLlmUsage({
-        inputBytes,
-        promptTokens,
-        completionTokens,
-        userApproved: askedUser ? true : null,
-      });
+      if (!mockContent) {
+        this.handleLlmUsage({
+          inputBytes,
+          promptTokens,
+          completionTokens,
+          userApproved: askedUser ? true : null,
+        });
+      }
       if (updateSummary) {
         this.handleUpdateConversation({ summary });
       }
@@ -1161,26 +1162,3 @@ class Assistant {
 }
 
 export { includeMetadata, Assistant };
-
-class AbortIdController {
-  constructor() {
-    this.signals = { null: { aborted: false } };
-  }
-  signal(id) {
-    if (!this.signals[id]) {
-      this.signals[id] = { aborted: false };
-    }
-    return this.signals[id];
-  }
-  abort(id) {
-    if (id === null) {
-      Object.values(this.signals).forEach((signal) => {
-        signal.aborted = true;
-      });
-    } else {
-      if (this.signals[id]) {
-        this.signals[id].aborted = true;
-      }
-    }
-  }
-}

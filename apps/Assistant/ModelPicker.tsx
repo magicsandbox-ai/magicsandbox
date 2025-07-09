@@ -45,7 +45,13 @@ const models = {
   },
 };
 
-function ModelPicker({ model, setModel }) {
+function ModelPicker({
+  model,
+  setModel,
+}: {
+  model: string;
+  setModel: (model: string) => void;
+}) {
   return (
     <select
       className="w-full rounded-lg border border-stone-300 px-1 py-0.5 text-sm text-stone-500"

@@ -5,7 +5,8 @@ import {
   PanelLeftClose,
   Minimize2,
 } from "lucide-react";
-import { ModelPicker } from "./ModelPicker.js";
+import { ModelPicker } from "./ModelPicker.tsx";
+import type { AssistantRefObject } from "./AssistantState.ts";
 
 export default function ChatToolbar({
   containerClassName,
@@ -16,6 +17,15 @@ export default function ChatToolbar({
   setDocked,
   setCollapsed,
   shouldFocusCollapseButtonRef,
+}: {
+  containerClassName: string;
+  model: string;
+  setModel: (model: string) => void;
+  assistantRef: AssistantRefObject;
+  docked: boolean;
+  setDocked: (docked: boolean) => void;
+  setCollapsed: (collapsed: boolean) => void;
+  shouldFocusCollapseButtonRef: React.RefObject<boolean>;
 }) {
   return (
     <div className={containerClassName}>

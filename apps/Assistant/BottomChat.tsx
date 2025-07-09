@@ -8,9 +8,14 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import ChatInput from "./ChatInput.js";
-import { ChatDisplay, formatMessage } from "./ChatDisplay.js";
-import ChatToolbar from "./ChatToolbar.js";
+import ChatInput from "./ChatInput.tsx";
+import { ChatDisplay, formatMessage } from "./ChatDisplay.tsx";
+import ChatToolbar from "./ChatToolbar.tsx";
+import type {
+  AssistantRefObject,
+  Message,
+  AppState,
+} from "./AssistantState.ts";
 
 function BottomChat({
   collapsed,
@@ -18,7 +23,6 @@ function BottomChat({
   shouldFocusCollapseButtonRef,
   docked,
   setDocked,
-  toastsRef,
   assistantRef,
   messages,
   chatLoading,
@@ -29,16 +33,32 @@ function BottomChat({
   setShowApps,
   showWelcomeTooltip,
   setShowWelcomeTooltip,
+}: {
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  shouldFocusCollapseButtonRef: React.RefObject<boolean>;
+  docked: boolean;
+  setDocked: (docked: boolean) => void;
+  assistantRef: AssistantRefObject;
+  messages: Message[];
+  chatLoading: boolean;
+  app: AppState;
+  model: string;
+  setModel: (model: string) => void;
+  setShowDiscover: (show: boolean) => void;
+  setShowApps: (show: boolean) => void;
+  showWelcomeTooltip: boolean;
+  setShowWelcomeTooltip: (show: boolean) => void;
 }) {
   const [input, setInput] = useState("");
 
-  function handleEscape(e) {
+  function handleEscape(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
       setCollapsed(true);
     }
   }
 
-  async function handleInput(input) {
+  async function handleInput(input: string) {
     //don't let user submit while loading
     if (input === "" || assistantRef.current === null || chatLoading) return;
     setInput("");
@@ -53,14 +73,17 @@ function BottomChat({
       });
     } catch (error) {
       console.error(error);
-      toastsRef.current.addToast("An unexpected error occurred", "error");
+      assistantRef.current.toastsRef.current.addToast(
+        "An unexpected error occurred",
+        "error",
+      );
     }
   }
 
   let placeholder;
   if (collapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "user") {
+      if (messages[i]!.role !== "user") {
         placeholder = formatMessage(messages[i]).trim();
         break;
       }

@@ -7,8 +7,15 @@ function ChatInput({
   handleInput,
   placeholder,
   focus = true,
+}: {
+  className: string;
+  input: string;
+  setInput: (input: string) => void;
+  handleInput: (input: string) => void;
+  placeholder: string;
+  focus?: boolean;
 }) {
-  const ref = useRef(null);
+  const ref = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (focus) {
@@ -17,6 +24,7 @@ function ChatInput({
   }, []);
 
   useEffect(() => {
+    if (!ref.current) return;
     if (input === "") {
       //don't let placeholder make the input grow
       ref.current.style.height = "28px"; //line height 24 + 4 for border //todo configurable
@@ -26,14 +34,14 @@ function ChatInput({
     }
   }, [input]);
 
-  function handleChange(e) {
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(e.target.value);
   }
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault(); //this is needed to prevent creating a newline after setInput('')
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 768 && e.target instanceof HTMLTextAreaElement) {
         //hide virtual keyboard on mobile
         e.target.blur();
       }
