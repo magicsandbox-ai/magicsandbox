@@ -214,14 +214,18 @@ function App({
       tabIndex={0}
       aria-label={app.app}
     >
-      <div className="flex items-center justify-between">
-        <div className="mb-1 font-medium">{app.app}</div>
-        <div className="text-sm text-stone-500">
+      <div className="items-center justify-between md:flex">
+        <div className="mb-1 min-w-0 break-words text-sm font-medium md:text-base">
+          {app.app}
+        </div>
+        <div className="text-xs text-stone-500 md:text-sm">
           {`Used ${formatNumber(discoverApp.usage)} times`}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <div className="line-clamp-2">{app.description}</div>
+        <div className="line-clamp-2 text-sm md:text-base">
+          {app.description}
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();

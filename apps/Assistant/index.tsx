@@ -112,31 +112,6 @@ function App({
 }) {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [risk, setRisk] = useState<RiskState | null>(null);
-  /*
-  conversationsRef maintains all the conversation data. it's an object mapping conversationIds to objects with keys:
-  - conversationId
-  - messages: see below
-  - summary: summary of the first user message
-  - lastUpdated: timestamp of the last message
-
-  messages is an array of objects with keys:
-  - role: "user", "assistant", "display"
-  - tags: an array of objects [{tag?: string, content: string}] representing a message
-    - [{tag: 'logs', content: '...'}, {tag: 'user_request', content: '...'}] represents '<logs>...</logs><user_request>...</user_request>'
-    - [{content: 'hello'}, {tag: 'final_script', content: '...'}] represents 'hello<final_script>...</final_script>'
-  - promptToContinue: if populated, string to use to prompt the user to continue
-  - continueSystemPrompt: "chat" | "init" | "context", the system prompt used to continue
-  - model: the model used to generate the message
-  - welcome: boolean indicating if the message is the welcome message
-
-  currentConversation is an object with keys:
-  - conversationId
-  - messages
-
-  conversationSummaries is an array of objects with keys, sorted by lastUpdated timestamp descending:
-  - conversationId
-  - summary
-  */
   const [currentConversation, setCurrentConversation] = useState({
     conversationId: initConversation.conversationId,
     messages: initConversation.messages,
@@ -165,6 +140,18 @@ function App({
         app: "magicsandbox.Notes",
         description:
           "Take notes, create to-do lists, organize documents, and more",
+        favorited: Date.now(),
+      },
+      "magicsandbox.Sheets": {
+        id: "magicsandbox.Sheets",
+        app: "magicsandbox.Sheets",
+        description: "Create and edit spreadsheets",
+        favorited: Date.now(),
+      },
+      "magicsandbox.Dev": {
+        id: "magicsandbox.Dev",
+        app: "magicsandbox.Dev",
+        description: "Develop, preview, and publish a Magic Sandbox App",
         favorited: Date.now(),
       },
     },
@@ -469,7 +456,7 @@ function App({
       )}
       <div
         id="main-container"
-        className="flex min-w-0 grow flex-col"
+        className="flex min-w-0 grow flex-col overflow-y-auto"
         onClick={() => {
           if (window.innerWidth <= 768 && showChatHistory) {
             setShowChatHistory(false);
@@ -489,11 +476,15 @@ function App({
           />
         )}
         <div className="flex min-h-0 grow">
+          <Sandbox
+            ref={sandboxRef}
+            className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
+          />
           {((messages.length > 0 && app === null) ||
             (docked && !collapsed)) && (
             <div
               className={`flex w-[336px] min-w-0 grow flex-col ${
-                app !== null ? "border-r border-stone-500" : ""
+                app !== null ? "border-l border-stone-500" : ""
               }`}
             >
               {app !== null && (
@@ -521,10 +512,6 @@ function App({
               />
             </div>
           )}
-          <Sandbox
-            ref={sandboxRef}
-            className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
-          />
         </div>
         {(messages.length > 0 || app !== null) && (
           <BottomChat
@@ -548,8 +535,8 @@ function App({
             }}
           />
         )}
+        {modalComponent}
       </div>
-      {modalComponent}
       <Toasts className="top-2" ref={toastsRef} />
     </div>
   );

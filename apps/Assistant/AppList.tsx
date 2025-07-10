@@ -263,14 +263,17 @@ function AppCard({
     >
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
       {favoritable && (
-        <button onClick={() => assistantRef.current.handleFavorite(app)}>
+        <button
+          className="relative"
+          onClick={() => assistantRef.current.handleFavorite(app)}
+        >
           <Star className={app.favorited ? "fill-yellow-200" : ""} />
           <span className="sr-only">Favorite</span>
         </button>
       )}
       {sortable && (
         <button
-          className="cursor-grab touch-none active:cursor-grabbing"
+          className="relative cursor-grab touch-none active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >

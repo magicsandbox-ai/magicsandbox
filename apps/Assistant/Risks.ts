@@ -125,12 +125,12 @@ class FinancialRisk extends Risk {
       };
       return { callback };
     } finally {
-      this.pendingRequests.clear();
+      this.pendingRequests = new Map();
       this.pendingCost = 0;
     }
   }
   handleRequest(_request: string, data: any, id: number) {
-    const maxCost = (data.options.maxCost as number) || minimumMinCost;
+    const maxCost = (data?.options?.maxCost as number) || minimumMinCost;
     this.pendingRequests.set(id, maxCost);
     this.pendingCost += maxCost;
   }
@@ -507,6 +507,7 @@ async function manageBackups(apps: string[], assistant: AssistantRef) {
 
 export {
   type Risk,
+  type RiskResponse,
   type RiskUserApproval,
   FinancialRisk,
   PublishRisk,

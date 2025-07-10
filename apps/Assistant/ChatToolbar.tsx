@@ -2,7 +2,7 @@ import React from "react";
 import {
   Plus,
   PanelBottomClose,
-  PanelLeftClose,
+  PanelRightClose,
   Minimize2,
 } from "lucide-react";
 import { ModelPicker } from "./ModelPicker.tsx";
@@ -44,7 +44,7 @@ export default function ChatToolbar({
             setDocked(!docked);
           }}
         >
-          {docked ? <PanelBottomClose /> : <PanelLeftClose />}
+          {docked ? <PanelBottomClose /> : <PanelRightClose />}
           <span className="sr-only">{docked ? "Undock" : "Dock"}</span>
         </button>
         <button

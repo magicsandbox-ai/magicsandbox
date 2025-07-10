@@ -3,12 +3,18 @@ import { test, expect } from "@magicsandbox.ai/test";
 /*
 npm run test assistant
 
-favorite/drag and drop?
-pause chat
+favorite/unfavorite: Home, Discover, in app
+stop chat
+rename chat
+delete chat
+switch chat from chat history
+confirm chat cost
+risk: maybe test download?
 model picker
-confirm/risks?
-rename/delete
+drag and drop
 feedback
+reload
+welcome tooltip? driver tour
 */
 
 test.use({ appOptions: { autoConfirm: true } });

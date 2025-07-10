@@ -106,7 +106,7 @@ function ChatDisplay({
 }
 
 const messageStyle =
-  "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 ";
+  "prose prose-stone prose-h1:text-3xl prose-a:text-blue-600 mx-3 break-words ";
 const assistantMessageStyle = messageStyle + "max-w-full assistant-message";
 const userMessageStyle =
   messageStyle +
@@ -285,7 +285,7 @@ function remarkHtmlToText() {
 }
 
 const preStyle =
-  "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2";
+  "not-prose text-sm bg-stone-50 border border-stone-500 rounded-md overflow-x-auto px-2 py-2 my-5";
 
 function createRehypeCode(loading: boolean) {
   return () => {
