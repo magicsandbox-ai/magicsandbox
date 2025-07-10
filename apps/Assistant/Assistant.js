@@ -25,7 +25,7 @@ import { ToastError } from "@components/Toasts.js";
 import { mockLlm } from "./driver.ts";
 import { AbortIdController } from "./AssistantState.ts";
 
-const includeMetadata = ["id", "description", "status"];
+const includeMetadata = ["id", "description"];
 const defaultInputBytesPerToken = 4;
 const defaultOutputTokens = 500;
 const defaultLlmCostThreshold = 0.1;
@@ -888,7 +888,6 @@ class Assistant {
         id: result.metadata.id,
         app: appNoVersion,
         description: result.metadata.description,
-        status: result.metadata.status,
         recent: Date.now(),
       };
       this.setApp(appData);
@@ -1081,7 +1080,6 @@ class Assistant {
       id,
       app,
       description: magicObj.description,
-      status: magicObj.status,
       published: Date.now(),
       recent: Date.now(),
     };
@@ -1092,22 +1090,17 @@ class Assistant {
   }
   handleFavorite(app) {
     const favorited = app.favorited ? null : Date.now();
-    const appData = {
-      //if called from Discover, the app may not be in appDataRef, so add the values from the app object
-      id: app.id,
-      app: app.app,
-      description: app.description,
-      status: app.status,
-      ...this.appDataRef.current[app.app],
+    const newApp = {
+      ...app,
       favorited,
       recent: Date.now(),
     };
     if (this.app?.app === app.app) {
-      this.setApp(appData);
+      this.setApp(newApp);
     }
     this.setAppData((currentAppData) => ({
       ...currentAppData,
-      [app.app]: appData,
+      [app.app]: newApp,
     }));
     this.toastsRef.current.addToast(
       `${app.app} ${favorited ? "favorited" : "unfavorited"}`,

@@ -1,7 +1,14 @@
 import React from "react";
-import Confirm from "@components/Confirm.js";
+import Confirm from "@components/Confirm.tsx";
+import type { RiskState } from "./AssistantState.ts";
 
-function RiskConfirm({ risk, setRisk }) {
+function RiskConfirm({
+  risk,
+  setRisk,
+}: {
+  risk: RiskState;
+  setRisk: (risk: RiskState | null) => void;
+}) {
   const { riskResponses, callback } = risk;
   const customContent = (
     <div className="flex flex-col gap-4">
@@ -69,7 +76,7 @@ function RiskConfirm({ risk, setRisk }) {
   );
 }
 
-function Details({ details }) {
+function Details({ details }: { details: string[] }) {
   return (
     <details>
       <summary>Details</summary>

@@ -1,24 +1,51 @@
 import { formatAsDollars } from "./utils.ts";
+import type { Assistant, App } from "./AssistantState.ts";
 
 const minimumMinCost = 0.001;
 
-/**
- * - init (optional)
- * - handleBatch
- * - handleRequest (optional):
- * - handleApprove (optional)
- * - handleMetadata (optional)
- */
-class Risk {
-  constructor({ assistant }) {
+interface RiskProps {
+  assistant: Assistant;
+}
+
+type RiskCallback = (approved: boolean, askedUser: boolean) => void;
+
+//if batch should be approved
+interface RiskApproval {
+  callback?: RiskCallback;
+}
+
+//if batch should be denied
+interface RiskDenial {
+  callback?: RiskCallback;
+  error: string;
+}
+
+//if user approval is needed
+interface RiskUserApproval {
+  callback?: RiskCallback;
+  message: string;
+  details?: string[];
+  downloadDetails?: { text: string; filename: string; content: string };
+}
+
+type RiskResponse = RiskApproval | RiskDenial | RiskUserApproval;
+
+abstract class Risk {
+  assistant: Assistant;
+  handleRequests: Set<string>;
+  constructor({ assistant }: RiskProps) {
     this.assistant = assistant;
     assistant.risks.push(this);
+    this.handleRequests = new Set();
     this.init();
   }
   init() {
     //pass
   }
-  _handleBatch(batch) {
+
+  abstract handleBatch(batch: MessageEvent[]): RiskResponse;
+
+  _handleBatch(batch: MessageEvent[]) {
     for (const event of batch) {
       const { id, msg } = event.data;
       const { request, data } = msg;
@@ -27,24 +54,11 @@ class Risk {
       }
     }
   }
-  /**
-   * Processes a batch and determines if the batch should be approved, denied, or if user approval is needed.
-   * - Returns an object with the following keys if the batch should be approved:
-   *   - callback?: function(approved, askedUser)
-   * - Returns an object with the following keys if the batch should be denied:
-   *   - callback?: function(approved, askedUser)
-   *   - error: string
-   * - Returns an object with the following keys if user approval is needed:
-   *   - callback?: function(approved, askedUser)
-   *   - message: string
-   *   - details?: string[]
-   *   - downloadDetails?: object
-   *     - text: string, used in the download button
-   *     - filename: string, will be passed to requestDownload
-   *     - content: string, will be passed to requestDownload
-   */
-  handleBatch() {
-    throw new Error("Not implemented");
+  handleRequest(_request: string, _data: unknown, _id: number) {
+    //pass
+  }
+  handleApprove() {
+    //pass
   }
   handleMetadata() {
     //pass
@@ -52,7 +66,7 @@ class Risk {
 }
 
 class FinancialRisk extends Risk {
-  constructor(args) {
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["app", "function"]);
   }
@@ -62,7 +76,7 @@ class FinancialRisk extends Risk {
     this.pendingCost = 0;
     this.approvedCost = 0;
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]) {
     try {
       this._handleBatch(batch);
       const pendingRequests = this.pendingRequests;
@@ -104,7 +118,7 @@ class FinancialRisk extends Risk {
       this.pendingCost = 0;
     }
   }
-  handleRequest(request, data, id) {
+  handleRequest(request: string, data: unknown, id: number) {
     const newData = { ...data, options: { ...data.options } }; //avoid mutating data
     if (request === "app") {
       newData.options.maxCost = minimumMinCost;
@@ -284,7 +298,7 @@ class DataLossRisk extends Risk {
         (app) => (this.lastAppBackups[app] || 0) < Date.now() - 1000 * 60 * 10,
       );
       if (appsNeedingBackup.length > 0) {
-        await manageBackups(appsNeedingBackup, this.assistant.toastsRef);
+        await manageBackups(appsNeedingBackup, this.assistant);
         appsNeedingBackup.forEach((app) => {
           this.lastAppBackups[app] = Date.now();
         });
@@ -294,18 +308,19 @@ class DataLossRisk extends Risk {
 }
 
 class DownloadRisk extends Risk {
-  constructor(args) {
+  downloadRequests: string[] = [];
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["download"]);
   }
   init() {
     this.downloadRequests = [];
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]): RiskResponse {
     try {
       this._handleBatch(batch);
       if (this.downloadRequests.length > 0) {
-        const app = this.assistant.app.app;
+        const app = (this.assistant.app as App).app;
         const n = this.downloadRequests.length;
         const plural = n > 1 ? "s" : "";
         return {
@@ -318,13 +333,15 @@ class DownloadRisk extends Risk {
       this.downloadRequests = [];
     }
   }
-  handleRequest(_, data) {
+  handleRequest(_request: string, data: unknown) {
     this.downloadRequests.push(data.filename);
   }
 }
 
 class RateLimitRisk extends Risk {
-  constructor(args) {
+  requests!: number;
+  lastTs: number | undefined;
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set([
       "app",
@@ -339,7 +356,7 @@ class RateLimitRisk extends Risk {
   init() {
     this.requests = 0;
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]): RiskResponse {
     if (this.lastTs) {
       this.requests = Math.max(
         0,
@@ -358,13 +375,13 @@ class RateLimitRisk extends Risk {
   }
 }
 
-function union(set1, set2) {
+function union<T>(set1: Set<T>, set2: Set<T>): Set<T> {
   const out = new Set(set1);
   set2.forEach((item) => out.add(item));
   return out;
 }
 
-function isCrossAuthor(app1, app2) {
+function isCrossAuthor(app1: string, app2: string) {
   return app1.split(".")[0] !== app2.split(".")[0];
 }
 
@@ -377,26 +394,36 @@ function isCrossAuthor(app1, app2) {
  *
  * - apps: string[]
  */
-async function manageBackups(apps, toastsRef) {
-  function errorHandler(error) {
+async function manageBackups(apps: string[], assistant: Assistant) {
+  function errorHandler(error: unknown) {
     console.error(error);
-    toastsRef.current.addToast("Assistant failed to backup data", "error");
+    assistant.toastsRef.current.addToast(
+      "Assistant failed to backup data",
+      "error",
+    );
   }
   try {
     const backups = await requestGetAllKeysData({
       app: "magicsandbox.Assistant",
       backup: true,
     });
-    const appBackups = Object.fromEntries(apps.map((app) => [app, []]));
+    const appBackups: Record<string, number[]> = Object.fromEntries(
+      apps.map((app) => [app, []]),
+    );
     const appsSet = new Set(apps);
+    const backupsToTake: string[] = [];
+    const backupsToDelete: string[] = [];
     backups.forEach((key) => {
-      const [app, ts] = key.split("@");
+      let [app, tsString] = key.split("@");
+      if (!app || !tsString) {
+        backupsToDelete.push(key);
+        return;
+      }
+      const ts = Number(tsString);
       if (appsSet.has(app)) {
-        appBackups[app].push(ts);
+        appBackups[app]!.push(ts);
       }
     });
-    const backupsToTake = [];
-    const backupsToDelete = [];
     Object.entries(appBackups).forEach(([app, tsArray]) => {
       tsArray.sort((a, b) => b - a); //descending
       let maxTs = Date.now();
@@ -405,14 +432,14 @@ async function manageBackups(apps, toastsRef) {
       if (tsArray[0] || 0 < minTs) {
         backupsToTake.push(app);
       }
-      function updateMinMaxTs(minTs, maxTs) {
+      function updateMinMaxTs(minTs: number, maxTs: number): [number, number] {
         const prevMinTs = minTs;
         minTs = minTs - (maxTs - minTs) * 2;
         return [minTs, prevMinTs];
       }
       let i = 0;
       while (i < tsArray.length) {
-        const ts = tsArray[i];
+        const ts = tsArray[i]!;
         if (ts < minMinTs) {
           backupsToDelete.push(`${app}@${ts}`);
           i++;
@@ -451,6 +478,8 @@ async function manageBackups(apps, toastsRef) {
 }
 
 export {
+  type Risk,
+  type RiskUserApproval,
   FinancialRisk,
   PublishRisk,
   PrivacyRisk,

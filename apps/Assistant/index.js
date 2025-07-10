@@ -8,7 +8,7 @@ import { createRoot } from "react-dom/client";
 import { Sandbox } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.tsx";
 import AssistantSearch from "./AssistantSearch.tsx";
-import RiskConfirm from "./RiskConfirm.js";
+import RiskConfirm from "./RiskConfirm.tsx";
 import DeleteConfirm from "./DeleteConfirm.tsx";
 import { Toasts } from "@components/Toasts.js";
 import { includeMetadata, Assistant } from "./Assistant.js";
@@ -17,12 +17,12 @@ import BottomChat from "./BottomChat.tsx";
 import { ChatDisplay } from "./ChatDisplay.tsx";
 import ChatHistory from "./ChatHistory.js";
 import { createWelcomeConversation } from "./welcomeMessage.ts";
-import { Discover, discoverMetadata } from "./Discover.js";
+import { Discover, discoverMetadata } from "./Discover.tsx";
 import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
 import { models } from "./ModelPicker.tsx";
-import { startDriver } from "./driver.js";
+import { startDriver } from "./driver.ts";
 import { AssistantState } from "./AssistantState.ts";
 
 async function init({ user } = {}) {
@@ -127,23 +127,17 @@ function App({
     window.innerWidth > 768 && (initData.docked || false),
   );
   const [chatLoading, setChatLoading] = useState(false);
-  //app can be null, false, or an App, so be careful with boolean checks
-  //false is a signal to indicate an app is loading, so don't show a flash of the home page or full screen chat
-  //type App {id, app, description, status, favorited, recent, published}} //todo add versions somehow?
-  //app is author.name - todo need a better name for this and to clean up usage. confusing whether it refers to the string or the object
   const app = useSyncExternalStore(
     assistantState.subscribe("app"),
     assistantState.getSnapshot("app"),
   );
-  // {[app: string]: App}
   const [appData, setAppData] = useState(
     initData.appData || {
       "magicsandbox.Notes": {
-        //id not needed?
+        id: "magicsandbox.Notes", //missing version, which is potentially problematic. but currently id is only used in validateAndDefaultRequest
         app: "magicsandbox.Notes",
         description:
           "Take notes, create to-do lists, organize documents, and more",
-        status: "active",
         favorited: Date.now(),
       },
     },

@@ -1,6 +1,7 @@
 import SyncExternalStore from "@utils/SyncExternalStore.ts";
 import type { RefObject } from "react";
 import type { ToastsRef } from "@components/Toasts.tsx";
+import type { Risk, RiskUserApproval } from "./Risks.ts";
 
 export interface Message {
   role: "user" | "assistant" | "display" | "system";
@@ -11,11 +12,31 @@ export interface Message {
   welcome?: boolean;
 }
 
+export interface Conversation {
+  conversationId: string;
+  messages: Message[];
+  summary: string | null;
+  lastUpdated: number;
+}
+
+export type ConversationsRefObject = RefObject<{
+  [conversationId: string]: Conversation;
+}>;
+
+export interface CurrentConversation {
+  conversationId: string;
+  messages: Message[];
+}
+
+export type ConversationSummaries = {
+  conversationId: string;
+  summary: string | null;
+}[];
+
 export interface App {
   id: string; //author.name@version
   app: string; //author.name - todo this is kind of confusing
-  description: string;
-  status: string;
+  description: string | null;
   favorited?: number;
   recent?: number;
   published?: number;
@@ -31,20 +52,16 @@ export interface Confirm {
   callback: (approved: boolean) => void;
 }
 
-export interface Conversation {
-  conversationId: string;
-  messages: Message[];
-  summary: string;
-  lastUpdated: number;
-}
-
-export type ConversationsRefObject = RefObject<{
-  [conversationId: string]: Conversation;
-}>;
-
-export interface CurrentConversation {
-  conversationId: string;
-  messages: Message[];
+export interface RiskState {
+  // riskResponses: {
+  //   callback?: (approved: boolean, askedUser: boolean) => void;
+  //   message?: string;
+  //   details?: string[];
+  //   downloadDetails?: { filename: string; content: string; text: string };
+  //   error?: string;
+  // }[];
+  riskResponses: RiskUserApproval[];
+  callback: (approved: boolean) => void;
 }
 
 export interface Assistant {
@@ -71,6 +88,19 @@ export interface Assistant {
   handleApp: ({ app, messages }: { app: string; messages?: Message[] }) => void;
   handleSwitchConversation: (conversationId: string) => void;
   handleDeleteConversations: (conversationIds: string[] | null) => void;
+  handleUpdateConversation: ({
+    conversationId,
+    messages,
+    message,
+    summary,
+  }: {
+    conversationId?: string;
+    messages?: Message[];
+    message?: Message;
+    summary?: string;
+  }) => void;
+  risks: Risk[];
+  app: AppState;
 }
 
 export type AssistantRefObject = RefObject<Assistant>;

@@ -1,6 +1,10 @@
 import React, { useState, memo } from "react";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { Menu, Search, Trash2, Plus } from "lucide-react";
+import type {
+  AssistantRefObject,
+  ConversationSummaries,
+} from "./AssistantState.ts";
 
 const ChatHistory = memo(function ChatHistory({
   conversationSummaries,
@@ -12,6 +16,16 @@ const ChatHistory = memo(function ChatHistory({
   setShowDelete,
   show,
   setShow,
+}: {
+  conversationSummaries: ConversationSummaries;
+  currentConversationId: string;
+  model: string;
+  setModel: (model: string) => void;
+  assistantRef: AssistantRefObject;
+  setShowSearch: (show: boolean) => void;
+  setShowDelete: (show: boolean) => void;
+  show: boolean;
+  setShow: (show: boolean) => void;
 }) {
   function handleSearch() {
     setShowSearch(true);
@@ -89,15 +103,23 @@ function ChatButton({
   currentConversationId,
   assistantRef,
   setShow,
+}: {
+  conversationId: string;
+  summary: string | null;
+  currentConversationId: string;
+  assistantRef: AssistantRefObject;
+  setShow: (show: boolean) => void;
 }) {
-  const [renameValue, setRenameValue] = useState(null);
+  const [renameValue, setRenameValue] = useState<string | null>(null);
 
   summary = summary || "New Chat";
 
-  function handleRename(e) {
+  function handleRename(
+    e: React.FormEvent<HTMLFormElement> | React.FocusEvent<HTMLInputElement>,
+  ) {
     e.preventDefault();
-    const newName = renameValue.trim();
-    if (newName.length > 0) {
+    const newName = renameValue?.trim();
+    if (newName && newName.length > 0) {
       assistantRef.current.handleUpdateConversation({
         conversationId,
         summary: newName,

@@ -1,8 +1,29 @@
 import React, { useState } from "react";
-import ModalOverlay from "@components/ModalOverlay.js";
+import ModalOverlay from "@components/ModalOverlay.tsx";
 import { Loader, Star } from "lucide-react";
+import type { AssistantRefObject, AppData } from "./AssistantState.ts";
 
-function Discover({ setShowDiscover, assistantRef, popularApps, appData }) {
+interface DiscoverApp {
+  id: string;
+  description: string | null;
+  type: string | null;
+  usage: number;
+  relevance: number;
+}
+
+const discoverMetadata = ["id", "description", "type", "usage"];
+
+function Discover({
+  setShowDiscover,
+  assistantRef,
+  popularApps,
+  appData,
+}: {
+  setShowDiscover: (show: boolean) => void;
+  assistantRef: AssistantRefObject;
+  popularApps: DiscoverApp[];
+  appData: AppData;
+}) {
   return (
     <ModalOverlay
       modal={
@@ -21,13 +42,16 @@ function Discover({ setShowDiscover, assistantRef, popularApps, appData }) {
   );
 }
 
-const discoverMetadata = ["id", "description", "type", "usage"];
-
 function DiscoverInner({
   assistantRef,
   setShowDiscover,
   popularApps,
   appData,
+}: {
+  assistantRef: AssistantRefObject;
+  setShowDiscover: (show: boolean) => void;
+  popularApps: DiscoverApp[];
+  appData: AppData;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [apps, setApps] = useState(() => {
@@ -38,9 +62,9 @@ function DiscoverInner({
     return null;
   });
   const [showingPopular, setShowingPopular] = useState(true);
-  const [status, setStatus] = useState(null);
+  const [status, setStatus] = useState<"loading" | "error" | null>(null);
 
-  function filterResult(r) {
+  function filterResult(r: DiscoverApp) {
     if (r.type === "assistant") {
       return false;
     }
@@ -51,20 +75,26 @@ function DiscoverInner({
     return true;
   }
 
-  async function handleSearch(e) {
+  async function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (window.innerWidth < 768) {
+    if (window.innerWidth < 768 && e.target instanceof HTMLFormElement) {
       //hide virtual keyboard on mobile
-      e.target.querySelector('input[type="search"]').blur();
+      const input = e.target.querySelector('input[type="search"]');
+      if (input instanceof HTMLInputElement) {
+        input.blur();
+      }
     }
     setStatus("loading");
     try {
-      const { result } = await requestFunction("magicsandbox.discover@0.0", {
-        query: searchQuery,
-        includeMetadata: discoverMetadata,
-        kind: "app",
-        limit: 100,
-      });
+      const { result } = await requestFunction<any, DiscoverApp[]>(
+        "magicsandbox.discover@0.0",
+        {
+          query: searchQuery,
+          includeMetadata: discoverMetadata,
+          kind: "app",
+          limit: 100,
+        },
+      );
       const newApps = result
         .filter((r) => filterResult(r))
         .map((r) => ({
@@ -133,7 +163,7 @@ function DiscoverInner({
                 {apps.map((app) => (
                   <App
                     key={app.id}
-                    app={app}
+                    discoverApp={app}
                     assistantRef={assistantRef}
                     setShowDiscover={setShowDiscover}
                     appData={appData}
@@ -148,9 +178,26 @@ function DiscoverInner({
   );
 }
 
-function App({ app, assistantRef, setShowDiscover, appData }) {
-  app.app = app.id.split("@")[0];
-  app.favorited = appData[app.app]?.favorited;
+function App({
+  discoverApp,
+  assistantRef,
+  setShowDiscover,
+  appData,
+}: {
+  discoverApp: DiscoverApp;
+  assistantRef: AssistantRefObject;
+  setShowDiscover: (show: boolean) => void;
+  appData: AppData;
+}) {
+  const authorName = discoverApp.id.split("@")[0]!;
+  const app = {
+    id: discoverApp.id,
+    app: authorName,
+    description: discoverApp.description,
+    favorited: appData[authorName]?.favorited,
+    recent: appData[authorName]?.recent,
+    published: appData[authorName]?.published,
+  };
 
   function handleClick() {
     assistantRef.current.handleApp({ app: app.app });
@@ -174,7 +221,7 @@ function App({ app, assistantRef, setShowDiscover, appData }) {
       <div className="flex items-center justify-between">
         <div className="mb-1 font-medium">{app.app}</div>
         <div className="text-sm text-stone-500">
-          {`Used ${formatNumber(app.usage)} times`}
+          {`Used ${formatNumber(discoverApp.usage)} times`}
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -195,7 +242,7 @@ function App({ app, assistantRef, setShowDiscover, appData }) {
 
 export { Discover, discoverMetadata };
 
-function formatNumber(num) {
+function formatNumber(num: number) {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + "M";
   }
