@@ -4,7 +4,7 @@ import { IronCalc, Model, init as _initWasm } from "@ironcalc/workbook";
 import { Loader, CirclePlus, Upload, Download } from "lucide-react";
 //import wasm from "@ironcalc/wasm/wasm_bg.wasm";
 import { SheetsState } from "./SheetsState.ts";
-import { Toasts } from "@components/Toasts.js";
+import { Toasts } from "@components/Toasts.tsx";
 import Confirm from "./Confirm.tsx";
 
 /*

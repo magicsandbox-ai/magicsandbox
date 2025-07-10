@@ -46,6 +46,14 @@ export type AppState = App | false | null; //false is a signal to indicate an ap
 
 export type AppData = { [app: string]: App };
 
+export interface DiscoverApp {
+  id: string;
+  description: string | null;
+  type: string | null;
+  usage: number;
+  relevance: number;
+}
+
 export interface Confirm {
   header: string;
   message: string;
@@ -53,18 +61,19 @@ export interface Confirm {
 }
 
 export interface RiskState {
-  // riskResponses: {
-  //   callback?: (approved: boolean, askedUser: boolean) => void;
-  //   message?: string;
-  //   details?: string[];
-  //   downloadDetails?: { filename: string; content: string; text: string };
-  //   error?: string;
-  // }[];
   riskResponses: RiskUserApproval[];
   callback: (approved: boolean) => void;
 }
 
-export interface Assistant {
+export interface User {
+  name: string | undefined;
+  balance: number;
+  balanceRemainingDays: number | undefined; //number of days until balance resets, undefined for unauthenticated users
+  paid: boolean;
+  lastPublished: Date | undefined; //timestamp the user last published an App or Function
+}
+
+export interface AssistantRef {
   handleInput: ({
     input,
     messages,
@@ -99,11 +108,15 @@ export interface Assistant {
     message?: Message;
     summary?: string;
   }) => void;
+  handleRequest: (event: MessageEvent) => void;
+  reload: () => void;
   risks: Risk[];
   app: AppState;
+  budget: number;
+  user: User;
 }
 
-export type AssistantRefObject = RefObject<Assistant>;
+export type AssistantRefObject = RefObject<AssistantRef>;
 
 class AssistantState extends SyncExternalStore<{
   app: AppState;

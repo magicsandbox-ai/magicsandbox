@@ -62,7 +62,7 @@ const Markdown = memo(function Markdown({
     }
   }
 
-  const [Content, setContent] = useState(process());
+  const [Content, setContent] = useState(() => process());
 
   useEffect(() => {
     setContent(process());

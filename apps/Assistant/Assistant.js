@@ -5,7 +5,7 @@ import {
   DataLossRisk,
   DownloadRisk,
   RateLimitRisk,
-} from "./Risks.js";
+} from "./Risks.ts";
 import {
   validateAndDefaultRequest,
   createDeferredPromise,
@@ -21,7 +21,7 @@ import {
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.tsx";
 import { createWelcomeConversation } from "./welcomeMessage.ts";
-import { ToastError } from "@components/Toasts.js";
+import { ToastError } from "@utils/Toast.ts";
 import { mockLlm } from "./driver.ts";
 import { AbortIdController } from "./AssistantState.ts";
 
@@ -66,7 +66,7 @@ class Assistant {
     this.setCollapsed = setCollapsed;
     this.setAppData = setAppData;
     this.assistantState = assistantState;
-    this.app = null;
+    this.setApp(null);
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
     this.appUsage = {

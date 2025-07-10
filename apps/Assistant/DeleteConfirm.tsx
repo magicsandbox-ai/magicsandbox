@@ -9,7 +9,7 @@ function DeleteConfirm({
 }: {
   assistantRef: AssistantRefObject;
   setShowDelete: (show: boolean) => void;
-  currentConversation: Conversation;
+  currentConversation: Pick<Conversation, "conversationId" | "messages">;
 }) {
   let header;
   if (currentConversation.messages.length > 0) {

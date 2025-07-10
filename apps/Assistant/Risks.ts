@@ -1,10 +1,10 @@
 import { formatAsDollars } from "./utils.ts";
-import type { Assistant, App } from "./AssistantState.ts";
+import type { AssistantRef } from "./AssistantState.ts";
 
 const minimumMinCost = 0.001;
 
 interface RiskProps {
-  assistant: Assistant;
+  assistant: AssistantRef;
 }
 
 type RiskCallback = (approved: boolean, askedUser: boolean) => void;
@@ -30,14 +30,18 @@ interface RiskUserApproval {
 
 type RiskResponse = RiskApproval | RiskDenial | RiskUserApproval;
 
+interface Metadata {
+  //passed in includeMetadata in validateAndDefaultRequest, so guaranteed to be included
+  finalCost: number;
+}
+
 abstract class Risk {
-  assistant: Assistant;
+  assistant: AssistantRef;
   handleRequests: Set<string>;
   constructor({ assistant }: RiskProps) {
     this.assistant = assistant;
     assistant.risks.push(this);
     this.handleRequests = new Set();
-    this.init();
   }
   init() {
     //pass
@@ -57,22 +61,29 @@ abstract class Risk {
   handleRequest(_request: string, _data: unknown, _id: number) {
     //pass
   }
-  handleApprove() {
+  handleMetadata(_metadata: Metadata, _id: number) {
     //pass
   }
-  handleMetadata() {
-    //pass
+  getApp() {
+    if (this.assistant.app) {
+      return this.assistant.app.app;
+    }
+    throw new Error("handling risk without an app");
   }
 }
 
 class FinancialRisk extends Risk {
+  pendingRequests: Map<number, number> = new Map();
+  approvedRequests: Map<number, number> = new Map();
+  pendingCost: number = 0;
+  approvedCost: number = 0;
   constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["app", "function"]);
   }
   init() {
-    this.pendingRequests = {};
-    this.approvedRequests = {};
+    this.pendingRequests = new Map();
+    this.approvedRequests = new Map();
     this.pendingCost = 0;
     this.approvedCost = 0;
   }
@@ -84,7 +95,7 @@ class FinancialRisk extends Risk {
         this.pendingCost > 0 &&
         this.pendingCost + this.approvedCost > this.assistant.budget
       ) {
-        const app = this.assistant.app.app;
+        const app = this.getApp();
         const pendingSpend = formatAsDollars(this.pendingCost);
         const approvedSpend = formatAsDollars(this.approvedCost);
         const totalSpend = formatAsDollars(
@@ -96,7 +107,7 @@ class FinancialRisk extends Risk {
         } else {
           newBudget = this.assistant.budget * 3;
         }
-        const callback = (approved, askedUser) => {
+        const callback = (approved: boolean, askedUser: boolean) => {
           this.handleApprove(approved, askedUser, pendingRequests, newBudget);
         };
         return {
@@ -109,38 +120,40 @@ class FinancialRisk extends Risk {
           ],
         };
       }
-      const callback = (approved, askedUser) => {
+      const callback = (approved: boolean, askedUser: boolean) => {
         this.handleApprove(approved, askedUser, pendingRequests);
       };
       return { callback };
     } finally {
-      this.pendingRequests = {};
+      this.pendingRequests.clear();
       this.pendingCost = 0;
     }
   }
-  handleRequest(request: string, data: unknown, id: number) {
-    const newData = { ...data, options: { ...data.options } }; //avoid mutating data
-    if (request === "app") {
-      newData.options.maxCost = minimumMinCost;
-    }
-    this.pendingRequests[id] = newData;
-    this.pendingCost += newData.options.maxCost;
+  handleRequest(_request: string, data: any, id: number) {
+    const maxCost = (data.options.maxCost as number) || minimumMinCost;
+    this.pendingRequests.set(id, maxCost);
+    this.pendingCost += maxCost;
   }
-  handleApprove(approved, askedUser, pendingRequests, newBudget) {
+  handleApprove(
+    approved: boolean,
+    askedUser: boolean,
+    pendingRequests: Map<number, number>,
+    newBudget?: number,
+  ) {
     if (approved) {
-      if (askedUser) {
+      if (askedUser && newBudget !== undefined) {
         this.assistant.budget = newBudget;
       }
-      Object.entries(pendingRequests).forEach(([id, data]) => {
-        this.approvedRequests[id] = data;
-        this.approvedCost += data.options.maxCost;
+      pendingRequests.forEach((maxCost, id) => {
+        this.approvedRequests.set(id, maxCost);
+        this.approvedCost += maxCost;
       });
     }
   }
-  handleMetadata(metadata, id) {
-    if (this.approvedRequests[id]) {
-      this.approvedCost +=
-        metadata.finalCost - this.approvedRequests[id].options.maxCost;
+  handleMetadata(metadata: Metadata, id: number) {
+    const approvedRequest = this.approvedRequests.get(id);
+    if (approvedRequest) {
+      this.approvedCost += metadata.finalCost - approvedRequest;
     } else {
       console.error(`Unknown FinancialRisk request id: ${id}`);
     }
@@ -148,14 +161,15 @@ class FinancialRisk extends Risk {
 }
 
 class PublishRisk extends Risk {
-  constructor(args) {
+  publishRequests: any[] = [];
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["publish"]);
   }
   init() {
     this.publishRequests = [];
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]): RiskResponse {
     try {
       this._handleBatch(batch);
       if (this.publishRequests.length > 1) {
@@ -163,7 +177,7 @@ class PublishRisk extends Risk {
           error: "May only publish one App or Function at a time",
         };
       } else if (this.publishRequests.length === 1) {
-        const app = this.assistant.app.app;
+        const app = this.getApp();
         const now = new Date().toLocaleString().replace(/[^a-zA-Z0-9]/g, "_");
         const obj = this.publishRequests[0];
         const name =
@@ -184,13 +198,15 @@ class PublishRisk extends Risk {
       this.publishRequests = [];
     }
   }
-  handleRequest(_, data) {
+  handleRequest(_request: string, data: any) {
     this.publishRequests.push(data.magicObj);
   }
 }
 
 class PrivacyRisk extends Risk {
-  constructor(args) {
+  pendingReads: Set<string> = new Set();
+  userApprovedReads: Set<string> = new Set();
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["getData", "getAllData", "getAllKeysData"]);
   }
@@ -198,15 +214,15 @@ class PrivacyRisk extends Risk {
     this.pendingReads = new Set();
     this.userApprovedReads = new Set();
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]): RiskResponse {
     try {
       this._handleBatch(batch);
-      const app = this.assistant.app.app;
+      const app = this.getApp();
       const untrustedReads = Array.from(this.pendingReads).filter(
         (read) => isCrossAuthor(read, app) && !this.userApprovedReads.has(read),
       );
       if (untrustedReads.length > 0) {
-        const callback = (approved, askedUser) => {
+        const callback = (approved: boolean, askedUser: boolean) => {
           this.handleApprove(approved, askedUser, untrustedReads);
         };
         const n = untrustedReads.length;
@@ -222,10 +238,14 @@ class PrivacyRisk extends Risk {
       this.pendingReads = new Set();
     }
   }
-  handleRequest(_, data) {
-    this.pendingReads.add(data.options.app.split("@")[0]);
+  handleRequest(_request: string, data: any) {
+    this.pendingReads.add(data.options.app.split("@")[0].toLowerCase());
   }
-  handleApprove(approved, askedUser, untrustedReads) {
+  handleApprove(
+    approved: boolean,
+    askedUser: boolean,
+    untrustedReads: string[],
+  ) {
     if (approved && askedUser) {
       this.userApprovedReads = union(
         this.userApprovedReads,
@@ -236,7 +256,10 @@ class PrivacyRisk extends Risk {
 }
 
 class DataLossRisk extends Risk {
-  constructor(args) {
+  lastAppBackups: Record<string, number> = {};
+  pendingWrites: Set<string> = new Set();
+  userApprovedWrites: Set<string> = new Set();
+  constructor(args: RiskProps) {
     super(args);
     this.handleRequests = new Set(["putData", "deleteData"]);
     this.lastAppBackups = {};
@@ -245,7 +268,7 @@ class DataLossRisk extends Risk {
     this.pendingWrites = new Set();
     this.userApprovedWrites = new Set();
   }
-  handleBatch(batch) {
+  handleBatch(batch: MessageEvent[]): RiskResponse {
     try {
       this._handleBatch(batch);
       if (this.pendingWrites.has("magicsandbox.assistant")) {
@@ -253,13 +276,13 @@ class DataLossRisk extends Risk {
           error: "Cannot write to magicsandbox.Assistant",
         };
       }
-      const app = this.assistant.app.app;
+      const app = this.getApp();
       const pendingWrites = Array.from(this.pendingWrites);
       const untrustedWrites = pendingWrites.filter(
         (write) =>
           isCrossAuthor(write, app) && !this.userApprovedWrites.has(write),
       );
-      const callback = async (approved, askedUser) => {
+      const callback = async (approved: boolean, askedUser: boolean) => {
         await this.handleApprove(
           approved,
           askedUser,
@@ -281,10 +304,15 @@ class DataLossRisk extends Risk {
       this.pendingWrites = new Set();
     }
   }
-  handleRequest(_, data) {
+  handleRequest(_request: string, data: any) {
     this.pendingWrites.add(data.options.app.split("@")[0].toLowerCase());
   }
-  async handleApprove(approved, askedUser, pendingWrites, untrustedWrites) {
+  async handleApprove(
+    approved: boolean,
+    askedUser: boolean,
+    pendingWrites: string[],
+    untrustedWrites: string[],
+  ) {
     if (approved) {
       if (askedUser) {
         this.userApprovedWrites = union(
@@ -320,7 +348,7 @@ class DownloadRisk extends Risk {
     try {
       this._handleBatch(batch);
       if (this.downloadRequests.length > 0) {
-        const app = (this.assistant.app as App).app;
+        const app = this.getApp();
         const n = this.downloadRequests.length;
         const plural = n > 1 ? "s" : "";
         return {
@@ -333,13 +361,13 @@ class DownloadRisk extends Risk {
       this.downloadRequests = [];
     }
   }
-  handleRequest(_request: string, data: unknown) {
+  handleRequest(_request: string, data: any) {
     this.downloadRequests.push(data.filename);
   }
 }
 
 class RateLimitRisk extends Risk {
-  requests!: number;
+  requests: number = 0;
   lastTs: number | undefined;
   constructor(args: RiskProps) {
     super(args);
@@ -394,7 +422,7 @@ function isCrossAuthor(app1: string, app2: string) {
  *
  * - apps: string[]
  */
-async function manageBackups(apps: string[], assistant: Assistant) {
+async function manageBackups(apps: string[], assistant: AssistantRef) {
   function errorHandler(error: unknown) {
     console.error(error);
     assistant.toastsRef.current.addToast(

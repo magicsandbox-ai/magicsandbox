@@ -5,17 +5,17 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { Sandbox } from "@magicsandbox.ai/react-sandbox";
+import { Sandbox, type SandboxRef } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.tsx";
 import AssistantSearch from "./AssistantSearch.tsx";
 import RiskConfirm from "./RiskConfirm.tsx";
 import DeleteConfirm from "./DeleteConfirm.tsx";
-import { Toasts } from "@components/Toasts.js";
+import { Toasts, type ToastsRef, ToastError } from "@components/Toasts.tsx";
 import { includeMetadata, Assistant } from "./Assistant.js";
 import Home from "./Home.tsx";
 import BottomChat from "./BottomChat.tsx";
 import { ChatDisplay } from "./ChatDisplay.tsx";
-import ChatHistory from "./ChatHistory.js";
+import ChatHistory from "./ChatHistory.tsx";
 import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { Discover, discoverMetadata } from "./Discover.tsx";
 import { ErrorBoundary } from "react-error-boundary";
@@ -23,23 +23,43 @@ import AppModal from "./AppModal.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
 import { models } from "./ModelPicker.tsx";
 import { startDriver } from "./driver.ts";
-import { AssistantState } from "./AssistantState.ts";
+import {
+  AssistantState,
+  type Conversation,
+  type AppData,
+  type DiscoverApp,
+  type AssistantRef,
+  type User,
+  type Confirm,
+  type RiskState,
+} from "./AssistantState.ts";
 
-async function init({ user } = {}) {
+interface DatabaseSchema {
+  docked?: boolean;
+  appData?: AppData;
+  selectedModel?: string;
+  popularAppData?: {
+    ts: number;
+    apps: DiscoverApp[];
+  };
+  lastMetadataRefresh?: Date;
+}
+
+async function init({ user }: { user?: User } = {}) {
   const [urlParams, initData] = await Promise.all([
     requestUrlParams(),
-    requestGetAllData({
+    requestGetAllData<DatabaseSchema>({
       app: "magicsandbox.Assistant",
     }),
   ]);
-  let initConversation = {
+  let initConversation: Conversation = {
     conversationId: String(Date.now()), //numeric keys are coerced to string, so make id a string to avoid bugs
     messages: [],
     summary: null,
     lastUpdated: Date.now(),
   };
-  //if (!("0" in initData)) {
-  if (true) {
+  if (!("0" in initData)) {
+    //if (true) {
     initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
@@ -55,7 +75,7 @@ async function init({ user } = {}) {
   const assistantState = new AssistantState({
     app: urlParams._app ? false : null,
   });
-  createRoot(document.getElementById("root")).render(
+  createRoot(document.getElementById("root")!).render(
     <ErrorBoundary
       fallback={
         <div className="flex h-screen items-center justify-center font-bold">
@@ -82,9 +102,16 @@ function App({
   initConversation,
   initConversations,
   assistantState,
+}: {
+  user?: User;
+  urlParams: { [key: string]: string };
+  initData: DatabaseSchema;
+  initConversation: Conversation;
+  initConversations: Record<string, Conversation>;
+  assistantState: AssistantState;
 }) {
-  const [confirm, setConfirm] = useState(null);
-  const [risk, setRisk] = useState(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [risk, setRisk] = useState<RiskState | null>(null);
   /*
   conversationsRef maintains all the conversation data. it's an object mapping conversationIds to objects with keys:
   - conversationId
@@ -143,80 +170,88 @@ function App({
     },
   );
   const [model, setModel] = useState(
-    models[initData.selectedModel] ? initData.selectedModel : "auto",
+    initData.selectedModel && models[initData.selectedModel]
+      ? initData.selectedModel
+      : "auto",
   );
   const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showApps, setShowApps] = useState(false);
-  const [popularAppData, setPopularAppData] = useState(initData.popularAppData); // {ts, apps}
+  const [popularAppData, setPopularAppData] = useState<{
+    ts: number;
+    apps: DiscoverApp[];
+  }>(initData.popularAppData || { ts: 0, apps: [] }); // {ts, apps}
   const [showChatHistory, setShowChatHistory] = useState(
     window.innerWidth > 768,
   );
   const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
     initConversation.conversationId === "0" &&
-      urlParams._app &&
+      Boolean(urlParams._app) &&
       !navigator.webdriver,
   );
 
   const firstRenderRef = useRef(true);
-  const sandboxRef = useRef(null);
-  const toastsRef = useRef(null);
-  const assistantRef = useRef(null);
+  const sandboxRef = useRef<SandboxRef>(null);
+  const toastsRef = useRef<ToastsRef>(null);
   const appDataRef = useRef(appData);
   const conversationsRef = useRef(initConversations);
   const currentConversationRef = useRef(currentConversation);
   const conversationSummariesRef = useRef(conversationSummaries);
   const modelRef = useRef(model);
   const shouldFocusCollapseButtonRef = useRef(false);
+  const assistantRef = useRef<AssistantRef>(null as unknown as AssistantRef);
+  if (assistantRef.current === null) {
+    //@ts-ignore
+    assistantRef.current = new Assistant({
+      user,
+      sandboxRef,
+      toastsRef,
+      appDataRef,
+      conversationsRef,
+      currentConversationRef,
+      conversationSummariesRef,
+      modelRef,
+      setConfirm,
+      setRisk,
+      setCurrentConversation,
+      setConversationSummaries,
+      setChatLoading,
+      setCollapsed,
+      setAppData,
+      initData,
+      assistantState,
+    });
+  }
 
   useEffect(() => {
     if (firstRenderRef.current) {
       try {
-        assistantRef.current = new Assistant({
-          user,
-          sandboxRef,
-          toastsRef,
-          appDataRef,
-          conversationsRef,
-          currentConversationRef,
-          conversationSummariesRef,
-          modelRef,
-          setConfirm,
-          setRisk,
-          setCurrentConversation,
-          setConversationSummaries,
-          setChatLoading,
-          setCollapsed,
-          setAppData,
-          initData,
-          assistantState,
-        });
         if (urlParams._app) {
           assistantRef.current.handleApp({ app: urlParams._app });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
-        if (error.name === "ToastError") {
-          toastsRef.current.addToast(error.message, error.type);
+        if (error instanceof ToastError) {
+          toastsRef.current?.addToast(error.message, error.type);
         } else {
-          toastsRef.current.addToast("Error: please try again", "error");
+          toastsRef.current?.addToast("Error: please try again", "error");
         }
       }
     }
   }, []);
 
   useEffect(() => {
-    function handleRequest(event) {
+    function handleRequest(event: MessageEvent) {
       if (!(event.data.id && event.data.msg?.request)) return;
       assistantRef.current.handleRequest(event);
     }
-    sandboxRef.current.addListener(handleRequest);
+    sandboxRef.current!.addListener(handleRequest);
     return () => sandboxRef.current?.removeListener(handleRequest);
   }, []);
 
   useEffect(() => {
-    function handleMessage(event) {
+    function handleMessage(event: MessageEvent) {
       if (event.source !== parent) return;
       if (event.data.message === "reload") {
         assistantRef.current.reload();
@@ -269,17 +304,25 @@ function App({
     async function refreshPublishedApps() {
       try {
         if (
-          user?.lastPublished > (initData.lastMetadataRefresh || 0) &&
+          user &&
+          user.name &&
+          (user.lastPublished?.getTime() ?? 0) >
+            (initData.lastMetadataRefresh?.getTime() ?? 0) &&
           !navigator.webdriver
         ) {
-          const metadata = await requestMetadata(user.name, includeMetadata, {
-            kind: "app",
-            includePrivate: true,
-          });
+          const metadata = await requestMetadata(
+            user.name,
+            //@ts-ignore - todo
+            includeMetadata,
+            {
+              kind: "app",
+              includePrivate: true,
+            },
+          );
           setAppData((appData) => {
             const newAppData = { ...appData };
             metadata.forEach((m) => {
-              const app = m.id.split("@")[0];
+              const app = m.id.split("@")[0]!;
               newAppData[app] = {
                 ...newAppData[app],
                 ...m,
@@ -307,7 +350,7 @@ function App({
     async function refreshPopularApps() {
       try {
         if (
-          Date.now() - (popularAppData?.ts || 0) > 1000 * 60 * 60 * 24 * 7 &&
+          Date.now() - popularAppData.ts > 1000 * 60 * 60 * 24 * 7 &&
           !navigator.webdriver
         ) {
           const { result } = await requestFunction(
@@ -356,8 +399,8 @@ function App({
 
   let modalComponent;
   if (confirm) {
+    //@ts-ignore - used for testing
     if (window._AUTO_CONFIRM) {
-      //used for testing
       confirm.callback?.(true);
     } else {
       modalComponent = (
@@ -365,6 +408,7 @@ function App({
       );
     }
   } else if (risk) {
+    //@ts-ignore - used for testing
     if (window._AUTO_CONFIRM) {
       risk.callback?.(true);
     } else {

@@ -17,7 +17,7 @@ function AssistantSearch({
 }) {
   const nodes = Object.values(conversationsRef.current).map((conversation) => ({
     key: conversation.conversationId,
-    name: conversation.summary,
+    name: conversation.summary || "New Chat",
     content: conversation.messages.map(formatMessage).join("\n"),
   }));
   return (

@@ -84,7 +84,7 @@ function BottomChat({
   if (collapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i]!.role !== "user") {
-        placeholder = formatMessage(messages[i]).trim();
+        placeholder = formatMessage(messages[i]!).trim();
         break;
       }
     }

@@ -152,9 +152,13 @@ function validateAndDefaultRequest(
         includeMetadata: data.options?.includeMetadata || [],
         includeUserInfo: data.options?.includeUserInfo || [],
       };
-      if (data.options.maxCost > maximumMaxCost) {
+      if (
+        typeof data.options.maxCost !== "number" ||
+        data.options.maxCost < minimumMinCost ||
+        data.options.maxCost > maximumMaxCost
+      ) {
         throw new ValidationError(
-          `maxCost must be less than or equal to ${maximumMaxCost}`,
+          `Invalid maxCost: ${data.options.maxCost}. Must be a number between ${minimumMinCost} and ${maximumMaxCost}`,
         );
       }
       if (assistant && app) {

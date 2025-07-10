@@ -1,5 +1,5 @@
 import React from "react";
-import _Confirm from "@components/Confirm.js";
+import _Confirm from "@components/Confirm.tsx";
 
 function Confirm({
   setShowConfirm,

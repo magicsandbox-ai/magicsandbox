@@ -8,7 +8,7 @@
     //but node_modules is not a parent of components
     //so we need to add node_modules to nodePaths
     nodePaths: ["./node_modules"],
-    loader: { ".js": "jsx", ".md": "text" },
+    loader: { ".md": "text" },
   },
   dependencies: {
     "@magicsandbox.ai/docs": "file:../../packages/js/docs",

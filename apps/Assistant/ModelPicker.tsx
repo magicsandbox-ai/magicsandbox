@@ -3,7 +3,14 @@ import React from "react";
 // keep these in sync with llm/main.py - need a better way to do this
 // todo use knowledge_cutoff in prompt
 
-const models = {
+const models: Record<
+  string,
+  {
+    name: string;
+    input_cost_per_token?: number;
+    output_cost_per_token?: number;
+  }
+> = {
   auto: {
     name: "Model: Auto",
   },

@@ -1,15 +1,11 @@
 import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.tsx";
 import { Loader, Star } from "lucide-react";
-import type { AssistantRefObject, AppData } from "./AssistantState.ts";
-
-interface DiscoverApp {
-  id: string;
-  description: string | null;
-  type: string | null;
-  usage: number;
-  relevance: number;
-}
+import type {
+  AssistantRefObject,
+  AppData,
+  DiscoverApp,
+} from "./AssistantState.ts";
 
 const discoverMetadata = ["id", "description", "type", "usage"];
 

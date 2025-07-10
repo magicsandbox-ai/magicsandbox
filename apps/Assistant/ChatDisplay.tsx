@@ -10,7 +10,7 @@ import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
 import { defaultSchema } from "rehype-sanitize";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
-import type { Message, AssistantRefObject } from "./types";
+import type { Message, AssistantRefObject } from "./AssistantState.ts";
 import type { Root as MdastRoot } from "mdast";
 import type { Root as HastRoot, Element as HastElement } from "hast";
 import type { Schema } from "hast-util-sanitize";

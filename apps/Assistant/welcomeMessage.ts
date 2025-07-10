@@ -1,4 +1,6 @@
-function createWelcomeConversation() {
+import type { Conversation } from "./AssistantState.ts";
+
+function createWelcomeConversation(): Conversation {
   const content = `## Welcome to Magic Sandbox!
 
 **I'm your AI assistant.** Think of Magic Sandbox as ChatGPT meets an App Store - I can help you work with Magic Sandbox apps created by the community.
