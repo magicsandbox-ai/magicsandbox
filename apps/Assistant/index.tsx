@@ -58,8 +58,8 @@ async function init({ user }: { user?: User } = {}) {
     summary: null,
     lastUpdated: Date.now(),
   };
-  if (!("0" in initData)) {
-    //if (true) {
+  //if (!("0" in initData)) {
+  if (true) {
     initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",
@@ -340,7 +340,7 @@ function App({
           Date.now() - popularAppData.ts > 1000 * 60 * 60 * 24 * 7 &&
           !navigator.webdriver
         ) {
-          const { result } = await requestFunction(
+          const { result } = await requestFunction<DiscoverApp[]>(
             "magicsandbox.discover@0.0",
             {
               includeMetadata: discoverMetadata,
@@ -507,7 +507,6 @@ function App({
                 innerClassName="w-full max-w-screen-lg"
                 messages={messages}
                 assistantRef={assistantRef}
-                setShowDiscover={setShowDiscover}
                 chatLoading={chatLoading}
               />
             </div>

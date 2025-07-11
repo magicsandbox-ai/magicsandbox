@@ -82,7 +82,7 @@ function DiscoverInner({
     }
     setStatus("loading");
     try {
-      const { result } = await requestFunction<any, DiscoverApp[]>(
+      const { result } = await requestFunction<DiscoverApp[]>(
         "magicsandbox.discover@0.0",
         {
           query: searchQuery,

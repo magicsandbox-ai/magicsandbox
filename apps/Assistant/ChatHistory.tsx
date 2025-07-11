@@ -1,6 +1,7 @@
 import React, { useState, memo } from "react";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { Menu, Search, Trash2, Plus } from "lucide-react";
+import Tooltip from "./Tooltip.tsx";
 import type {
   AssistantRefObject,
   ConversationSummaries,
@@ -39,10 +40,12 @@ const ChatHistory = memo(function ChatHistory({
     return (
       <nav className="absolute z-30 flex h-full w-64 flex-none flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
-          <button onClick={() => setShow(!show)}>
-            <Menu />
-            <span className="sr-only">Close menu</span>
-          </button>
+          <Tooltip text="Close menu" position="right">
+            <button onClick={() => setShow(!show)}>
+              <Menu />
+              <span className="sr-only">Close menu</span>
+            </button>
+          </Tooltip>
           <button onClick={() => handleSearch()}>
             <Search />
             <span className="sr-only">Search</span>
@@ -63,7 +66,7 @@ const ChatHistory = memo(function ChatHistory({
             <span className="sr-only">New chat</span>
           </button>
         </div>
-        <div className="mx-3">
+        <div id="model-picker-container" className="mx-3">
           <ModelPicker model={model} setModel={setModel} />
         </div>
         <div className="grow space-y-3 overflow-y-auto px-3">

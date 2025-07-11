@@ -20,14 +20,12 @@ function ChatDisplay({
   innerClassName = "",
   messages,
   assistantRef,
-  setShowDiscover,
   chatLoading,
 }: {
   outerClassName?: string;
   innerClassName?: string;
   messages: Message[];
   assistantRef: AssistantRefObject;
-  setShowDiscover: (show: boolean) => void;
   chatLoading: boolean;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -81,7 +79,6 @@ function ChatDisplay({
             key={i}
             message={message}
             handleScroll={handleScroll}
-            setShowDiscover={setShowDiscover}
             assistantRef={assistantRef}
             lastUserMessage={lastUserMessageIndex === i}
             loading={chatLoading && i === messages.length - 1}
@@ -117,14 +114,12 @@ const assistantMessageContainerStyle = "group";
 const Message = memo(function Message({
   message,
   handleScroll,
-  setShowDiscover,
   assistantRef,
   lastUserMessage,
   loading = true,
 }: {
   message: Message;
   handleScroll: (lastUserMessage: boolean) => void;
-  setShowDiscover: (show: boolean) => void;
   assistantRef: AssistantRefObject;
   lastUserMessage: boolean;
   loading?: boolean;
@@ -145,15 +140,6 @@ const Message = memo(function Message({
         e.preventDefault();
         requestOpenUrl(link.href);
         return;
-      }
-      if (!message.welcome) return;
-      const button = target.closest("button");
-      const action = button?.dataset?.action;
-      if (!action) return;
-      if (action === "discover") {
-        setShowDiscover(true);
-      } else {
-        throw new Error(`Unknown action: ${action}`);
       }
     } catch (error) {
       console.error(error);
@@ -177,14 +163,8 @@ const Message = memo(function Message({
       <Markdown
         className={assistantMessageStyle}
         remarkPlugins={remarkPlugins}
-        rehypePlugins={
-          message.welcome
-            ? [createRehypeCode(loading), rehypeHighlight, rehypeWelcomeButton]
-            : [createRehypeCode(loading), rehypeHighlight]
-        }
-        rehypeSanitizeOptions={
-          message.welcome ? welcomeRehypeSanitizeOptions : rehypeSanitizeOptions
-        }
+        rehypePlugins={[createRehypeCode(loading), rehypeHighlight]}
+        rehypeSanitizeOptions={rehypeSanitizeOptions}
       >
         {formattedMessage}
       </Markdown>
@@ -252,7 +232,12 @@ function formatMessage(message: Message) {
   if (message.role === "system") return "";
   const tagsToInclude = {
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
-    assistant: new Set([undefined, "intermediate_script", "final_script"]), //exclude open_app
+    assistant: new Set([
+      undefined,
+      "open_app",
+      "intermediate_script",
+      "final_script",
+    ]),
     display: new Set([undefined]),
   };
   const messageTagsToInclude: Set<string | undefined> =
@@ -264,7 +249,9 @@ function formatMessage(message: Message) {
 }
 
 function formatTag({ tag, content }: { tag?: string; content: string }) {
-  if (tag === "intermediate_script" || tag === "final_script") {
+  if (tag === "open_app") {
+    return `~~~magicopenapp\n${content.trim()}\n~~~`;
+  } else if (tag === "intermediate_script" || tag === "final_script") {
     return `~~~magicscript\n${content.trim()}\n~~~`;
   } else if (tag === "user_request") {
     //added line breaks when wrapping in <user_request>
@@ -298,7 +285,38 @@ function createRehypeCode(loading: boolean) {
           node.children[0].tagName === "code"
         ) {
           const code = node.children[0];
+          let app;
+          if (code.children.length === 1 && code.children[0]!.type === "text") {
+            app = code.children[0]!.value.trim();
+          } else {
+            console.error("Invalid magicopenapp code block", code);
+          }
           if (
+            Array.isArray(code.properties.className) &&
+            code.properties.className.includes("language-magicopenapp")
+          ) {
+            node.tagName = "p";
+            node.properties = { className: "assistant-pill" };
+            node.children = [
+              {
+                type: "element",
+                tagName: "span",
+                properties: {
+                  className: loading
+                    ? ["loading", "loading-spinner"]
+                    : ["loading", "loading-done"],
+                },
+                children: [
+                  {
+                    type: "text",
+                    value: loading
+                      ? `Opening app${app ? ` ${app}` : ""}`
+                      : `Opened app${app ? ` ${app}` : ""}`,
+                  },
+                ],
+              },
+            ];
+          } else if (
             Array.isArray(code.properties.className) &&
             code.properties.className.includes("language-magicscript")
           ) {
@@ -315,7 +333,9 @@ function createRehypeCode(loading: boolean) {
                   type: "element",
                   tagName: "span",
                   properties: {
-                    className: loading ? "loading-spinner" : "",
+                    className: loading
+                      ? ["loading", "loading-spinner"]
+                      : ["loading", "loading-done"],
                   },
                   children: [
                     {
@@ -327,7 +347,7 @@ function createRehypeCode(loading: boolean) {
               ],
             };
             node.tagName = "details";
-            node.properties = {};
+            node.properties = { className: "assistant-pill" };
             node.children = [summary, pre];
           } else {
             //not collapsible, just style pre
@@ -340,26 +360,6 @@ function createRehypeCode(loading: boolean) {
   };
 }
 
-const welcomeButtonStyle = "underline text-blue-600 welcome-button";
-
-function rehypeWelcomeButton() {
-  return (tree: HastRoot) => {
-    visit(tree, "element", (node) => {
-      if (
-        node.tagName === "a" &&
-        typeof node.properties.href === "string" &&
-        node.properties.href.startsWith("?action=")
-      ) {
-        node.tagName = "button";
-        node.properties.className = [welcomeButtonStyle];
-        node.properties["data-action"] = node.properties.href.slice(
-          "?action=".length,
-        );
-      }
-    });
-  };
-}
-
 const remarkPlugins = [remarkHtmlToText];
 const rehypeSanitizeOptions: Schema = {
   ...defaultSchema,
@@ -367,17 +367,17 @@ const rehypeSanitizeOptions: Schema = {
     ...defaultSchema.attributes,
     span: [
       ...(defaultSchema.attributes?.span || []),
-      ["className", /^hljs-./, "loading-spinner"],
+      ["className", /^hljs-./, "loading", "loading-spinner", "loading-done"],
     ],
     pre: [...(defaultSchema.attributes?.pre || []), ["className", preStyle]],
-  },
-};
-const welcomeRehypeSanitizeOptions: Schema = {
-  ...rehypeSanitizeOptions,
-  tagNames: [...(rehypeSanitizeOptions.tagNames || []), "button"],
-  attributes: {
-    ...rehypeSanitizeOptions.attributes,
-    button: ["data-action", ["className", welcomeButtonStyle]],
+    details: [
+      ...(defaultSchema.attributes?.details || []),
+      ["className", "assistant-pill"],
+    ],
+    p: [
+      ...(defaultSchema.attributes?.p || []),
+      ["className", "assistant-pill"],
+    ],
   },
 };
 

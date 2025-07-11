@@ -56,8 +56,8 @@ declare global {
 
   // streaming
   function requestFunction<
-    TArgs = any,
     TResult = any,
+    TArgs = any,
     TMetadataKeys extends
       keyof MetadataWithFinalCost = keyof MetadataWithFinalCost,
   >(
@@ -73,8 +73,8 @@ declare global {
 
   // non streaming
   function requestFunction<
-    TArgs = any,
     TResult = any,
+    TArgs = any,
     TMetadataKeys extends
       keyof MetadataWithFinalCost = keyof MetadataWithFinalCost,
   >(

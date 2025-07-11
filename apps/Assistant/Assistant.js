@@ -487,6 +487,9 @@ class Assistant {
       const abortSignal = this.abortIdController.signal(conversationId);
       abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
       this.setChatLoading(true);
+      if (mockContent) {
+        messages = this.currentConversationRef.current.messages; //todo clean this up
+      }
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (input) {
@@ -850,13 +853,6 @@ class Assistant {
       conversationId = this.currentConversationRef.current.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      const newMessages = [...(messages || [])];
-      const loadingMessage = {
-        role: "display",
-        tags: [{ content: `**Loading ${app}...**` }],
-      };
-      newMessages.push(loadingMessage);
-      this.handleUpdateConversation({ message: loadingMessage });
       if (!messages) {
         // loading from a url or from home page
         // setDisplayMessage will cause ChatDisplay to briefly appear while the app loads
@@ -875,12 +871,6 @@ class Assistant {
         );
       }
       if (abortSignal.aborted) return;
-      const loadedMessage = {
-        role: "display",
-        tags: [{ content: `**${result.metadata.id} loaded**` }],
-      };
-      newMessages.push(loadedMessage);
-      this.handleUpdateConversation({ message: loadedMessage });
       const appNoVersion = result.metadata.id.split("@")[0];
       requestUrlParams({ _app: appNoVersion }).catch(console.error);
       const appData = {
@@ -913,7 +903,7 @@ class Assistant {
         //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
         this.setCollapsed(false);
         await this.handleInput({
-          messages: newMessages,
+          messages,
           initContext,
         });
       }

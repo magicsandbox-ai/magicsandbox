@@ -133,7 +133,7 @@ interface MyResult {
   myResult: string;
 }
 
-const { result } = await requestFunction<MyArgs, MyResult>(
+const { result } = await requestFunction<MyResult, MyArgs>(
   "author.myFunction",
   {
     myArg: "myArg",

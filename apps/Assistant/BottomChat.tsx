@@ -127,7 +127,6 @@ function BottomChat({
                   outerClassName="max-h-[60vh]"
                   messages={messages}
                   assistantRef={assistantRef}
-                  setShowDiscover={setShowDiscover}
                   chatLoading={chatLoading}
                 />
                 <hr className="mx-2 border-stone-300" />

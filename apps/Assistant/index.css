@@ -12,11 +12,22 @@
   @apply -m-0.5 box-content rounded-lg p-0.5 hover:bg-stone-300;
 }
 
-.welcome-button strong {
-  color: inherit;
+.assistant-pill {
+  @apply my-5 w-fit rounded-full border border-stone-500 bg-stone-50 px-3 py-1 font-medium;
 }
-
-.loading-spinner {
+details.assistant-pill summary {
+  @apply cursor-pointer;
+}
+details.assistant-pill[open] {
+  @apply w-full rounded-md border-none bg-transparent p-0;
+}
+details.assistant-pill[open] summary {
+  @apply mb-0 rounded-t-md border border-b-0 border-stone-500 bg-stone-50 px-3 py-1;
+}
+details.assistant-pill[open] pre {
+  @apply mt-0 rounded-t-none border-t-0;
+}
+.loading {
   @apply inline-flex items-center gap-2;
 }
 .loading-spinner::after {
@@ -29,6 +40,10 @@
   to {
     transform: rotate(360deg);
   }
+}
+.loading-done::after {
+  content: "✓";
+  @apply font-bold;
 }
 
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */
@@ -93,7 +108,11 @@ code.hljs {
   font-weight: 700;
 }
 
-/* https://github.com/kamranahmedse/driver.js/blob/master/src/driver.css */
+/* 
+https://github.com/kamranahmedse/driver.js/blob/master/src/driver.css 
+the default driver.js styles were edited below. edits are indicated with an "edited" comment
+if updating driver.js and changing the styles, be careful not to delete the edited styles
+*/
 .driver-active .driver-overlay {
   pointer-events: none;
 }
@@ -193,6 +212,7 @@ code.hljs {
   line-height: 1.5;
   font-weight: 400;
   zoom: 1;
+  white-space: pre-wrap; /* edited */
 }
 
 .driver-popover-footer {

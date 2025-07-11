@@ -50,7 +50,7 @@ interface TestResult {
 
 (async () => {
   // no options, specify generic types
-  const { result } = await requestFunction<TestArgs, TestResult>(
+  const { result } = await requestFunction<TestResult, TestArgs>(
     "magicsandbox.test",
     {
       testArg: "test",
@@ -83,7 +83,7 @@ interface TestResult {
 
 (async () => {
   // metadata, specify generic args and result types
-  const { result, metadata } = await requestFunction<TestArgs, TestResult>(
+  const { result, metadata } = await requestFunction<TestResult, TestArgs>(
     "magicsandbox.test",
     {
       testArg: "test",
@@ -103,8 +103,8 @@ interface TestResult {
 (async () => {
   // metadata, specify all generic types
   const { result, metadata } = await requestFunction<
-    TestArgs,
     TestResult,
+    TestArgs,
     "id" | "finalCost"
   >(
     "magicsandbox.test",
@@ -151,8 +151,8 @@ interface TestResult {
 (async () => {
   // stream, specify generic types
   const stream = await requestFunction<
-    TestArgs,
     TestResult,
+    TestArgs,
     "id" | "finalCost"
   >(
     "magicsandbox.test",

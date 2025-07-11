@@ -88,7 +88,7 @@ export interface AssistantRef {
     continueSystemPrompt?: "chat" | "init" | "context";
     resetInput?: () => void;
     mockContent?: string;
-  }) => void;
+  }) => Promise<void>;
   toastsRef: RefObject<ToastsRef>;
   handleFeedback: (feedback: boolean) => void;
   handleNewConversation: () => void;
