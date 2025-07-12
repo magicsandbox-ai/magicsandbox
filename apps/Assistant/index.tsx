@@ -58,8 +58,8 @@ async function init({ user }: { user?: User } = {}) {
     summary: null,
     lastUpdated: Date.now(),
   };
-  //if (!("0" in initData)) {
-  if (true) {
+  if (!("0" in initData)) {
+    //if (true) {
     initConversation = createWelcomeConversation();
     requestPutData(initConversation.conversationId, initConversation, {
       app: "magicsandbox.Assistant",

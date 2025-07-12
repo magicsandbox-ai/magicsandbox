@@ -435,7 +435,7 @@ class Assistant {
       if (!balance && balance !== 0) {
         console.error("missing balance");
       }
-      return Math.min(Math.max(balance || 0.0075, 0.001), 0.0075);
+      return Math.min(Math.max(balance || 0.01, 0.001), 0.01);
     }
     /*
     solve for llmBudget in this equation, where llmFinalCostPct is the finalCost as a percentage of llmBudget
@@ -596,7 +596,7 @@ class Assistant {
       } else if (this.user?.balance > 0.05) {
         maxCompletionTokens = 5000;
       } else {
-        maxCompletionTokens = 1000;
+        maxCompletionTokens = 2000;
       }
       let model, maxCost;
       let approved = true;

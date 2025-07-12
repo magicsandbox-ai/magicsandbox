@@ -161,7 +161,12 @@ const Message = memo(function Message({
   return (
     <div className={assistantMessageContainerStyle} onClick={handleClick}>
       <Markdown
-        className={assistantMessageStyle}
+        className={
+          assistantMessageStyle +
+          (message.welcome
+            ? " mt-4 lg:mt-0" //welcome message is only case where assistant message is first. add some extra margin on mobile to not interfere with menu button
+            : "")
+        }
         remarkPlugins={remarkPlugins}
         rehypePlugins={[createRehypeCode(loading), rehypeHighlight]}
         rehypeSanitizeOptions={rehypeSanitizeOptions}

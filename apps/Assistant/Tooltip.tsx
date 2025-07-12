@@ -4,10 +4,12 @@ function Tooltip({
   children,
   text,
   position = "top",
+  className = "",
 }: {
   children: React.ReactNode;
   text: string;
   position?: "top" | "bottom" | "left" | "right";
+  className?: string;
 }) {
   let positionClass;
   if (position === "top") {
@@ -20,7 +22,7 @@ function Tooltip({
     positionClass = "tooltip-right";
   }
   return (
-    <div className={`tooltip ${positionClass}`} data-tip={text}>
+    <div className={`tooltip ${positionClass} ${className}`} data-tip={text}>
       {children}
     </div>
   );
