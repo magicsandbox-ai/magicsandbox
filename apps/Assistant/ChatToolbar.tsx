@@ -5,8 +5,8 @@ import {
   PanelRightClose,
   Minimize2,
 } from "lucide-react";
-import { ModelPicker } from "./ModelPicker.tsx";
 import Tooltip from "./Tooltip.tsx";
+import { ModelPicker } from "./ModelPicker.tsx";
 import type { AssistantRefObject } from "./AssistantState.ts";
 
 export default function ChatToolbar({
@@ -42,7 +42,7 @@ export default function ChatToolbar({
         </Tooltip>
         <Tooltip
           text={docked ? "Dock to bottom" : "Dock to right"}
-          position={docked ? "bottom" : "top"}
+          position={docked ? "left" : "top"}
           //we guarantee the app has at least 1024px, and we need at least 336px for the docked chat to look reasonable
           className="hidden min-[1360px]:block"
         >

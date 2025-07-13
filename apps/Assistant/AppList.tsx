@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { Star, MoveVertical } from "lucide-react";
+import Tooltip from "./Tooltip.tsx";
 import type { App, AssistantRefObject, AppData } from "./AssistantState.ts";
 
 type AppListState = "favorited" | "published" | "recent";
@@ -263,23 +264,29 @@ function AppCard({
     >
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
       {favoritable && (
-        <button
-          className="relative"
-          onClick={() => assistantRef.current.handleFavorite(app)}
-        >
-          <Star className={app.favorited ? "fill-yellow-200" : ""} />
-          <span className="sr-only">Favorite</span>
-        </button>
+        <Tooltip text={app.favorited ? "Unfavorite app" : "Favorite app"}>
+          <button
+            className="relative"
+            onClick={() => assistantRef.current.handleFavorite(app)}
+          >
+            <Star className={app.favorited ? "fill-yellow-200" : ""} />
+            <span className="sr-only">
+              {app.favorited ? "Unfavorite app" : "Favorite app"}
+            </span>
+          </button>
+        </Tooltip>
       )}
       {sortable && (
-        <button
-          className="relative cursor-grab touch-none active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
-        >
-          <MoveVertical />
-          <span className="sr-only">Drag to reorder</span>
-        </button>
+        <Tooltip text="Drag to move">
+          <button
+            className="relative cursor-grab touch-none active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <MoveVertical />
+            <span className="sr-only">Drag to move</span>
+          </button>
+        </Tooltip>
       )}
     </div>
   );

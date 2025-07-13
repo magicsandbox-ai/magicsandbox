@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.tsx";
 import { Loader, Star } from "lucide-react";
+import Tooltip from "./Tooltip.tsx";
 import type {
   AssistantRefObject,
   AppData,
@@ -226,15 +227,22 @@ function App({
         <div className="line-clamp-2 text-sm md:text-base">
           {app.description}
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            assistantRef.current.handleFavorite(app);
-          }}
+        <Tooltip
+          text={app.favorited ? "Unfavorite app" : "Favorite app"}
+          position="left"
         >
-          <Star className={app.favorited ? "fill-yellow-200" : ""} />
-          <span className="sr-only">Favorite</span>
-        </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              assistantRef.current.handleFavorite(app);
+            }}
+          >
+            <Star className={app.favorited ? "fill-yellow-200" : ""} />
+            <span className="sr-only">
+              {app.favorited ? "Unfavorite app" : "Favorite app"}
+            </span>
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

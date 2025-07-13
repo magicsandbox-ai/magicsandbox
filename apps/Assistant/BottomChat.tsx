@@ -8,6 +8,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import Tooltip from "./Tooltip.tsx";
 import ChatInput from "./ChatInput.tsx";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
@@ -147,23 +148,25 @@ function BottomChat({
               />
               {collapsed && app !== null && (
                 <div className="relative flex items-center">
-                  <button
-                    ref={(el) => {
-                      if (el && shouldFocusCollapseButtonRef.current) {
-                        el.focus();
-                        shouldFocusCollapseButtonRef.current = false;
-                      }
-                    }}
-                    className="mx-2"
-                    onClick={() => {
-                      setCollapsed(false);
-                      shouldFocusCollapseButtonRef.current = true;
-                      setShowWelcomeTooltip(false);
-                    }}
-                  >
-                    <Maximize2 />
-                    <span className="sr-only">Expand</span>
-                  </button>
+                  <Tooltip text="Expand chat">
+                    <button
+                      ref={(el) => {
+                        if (el && shouldFocusCollapseButtonRef.current) {
+                          el.focus();
+                          shouldFocusCollapseButtonRef.current = false;
+                        }
+                      }}
+                      className="mx-2"
+                      onClick={() => {
+                        setCollapsed(false);
+                        shouldFocusCollapseButtonRef.current = true;
+                        setShowWelcomeTooltip(false);
+                      }}
+                    >
+                      <Maximize2 />
+                      <span className="sr-only">Expand chat</span>
+                    </button>
+                  </Tooltip>
                   {showWelcomeTooltip && (
                     <div className="group absolute bottom-full right-0 mb-3 whitespace-pre rounded-lg bg-stone-700 px-3 py-2 text-center text-sm font-medium text-white shadow">
                       <button
@@ -187,49 +190,63 @@ function BottomChat({
           </div>
         </div>
         <div className="mr-2 flex flex-1 items-center justify-start gap-2">
-          <button onClick={() => handleInput(input)}>
-            {chatLoading ? (
-              <>
-                <OctagonPause
-                  onClick={() => {
-                    assistantRef.current.handleStopConversation();
-                  }}
-                />
-                <span className="sr-only">Stop</span>
-              </>
-            ) : (
-              <>
-                <CircleArrowUp />
-                <span className="sr-only">Submit</span>
-              </>
-            )}
-          </button>
+          <Tooltip text={chatLoading ? "Stop chat" : "Submit chat"}>
+            <button onClick={() => handleInput(input)}>
+              {chatLoading ? (
+                <>
+                  <OctagonPause
+                    onClick={() => {
+                      assistantRef.current.handleStopConversation();
+                    }}
+                  />
+                  <span className="sr-only">Stop</span>
+                </>
+              ) : (
+                <>
+                  <CircleArrowUp />
+                  <span className="sr-only">Submit</span>
+                </>
+              )}
+            </button>
+          </Tooltip>
           {app ? (
             <>
-              <button
-                onClick={() => assistantRef.current.handleFavorite(app)}
-                className={actionButtonStyle}
+              <Tooltip
+                text={app.favorited ? "Unfavorite app" : "Favorite app"}
+                position="left"
+                className="xl:tooltip-top"
               >
-                <Star className={app.favorited ? "fill-yellow-200" : ""} />
-                <span className="sr-only">Favorite</span>
-              </button>
+                <button
+                  onClick={() => assistantRef.current.handleFavorite(app)}
+                  className={actionButtonStyle}
+                >
+                  <Star className={app.favorited ? "fill-yellow-200" : ""} />
+                  <span className="sr-only">
+                    {app.favorited ? "Unfavorite app" : "Favorite app"}
+                  </span>
+                </button>
+              </Tooltip>
             </>
           ) : (
             <>
-              <button
-                onClick={() => setShowApps(true)}
-                className={actionButtonStyle}
-              >
-                <LayoutGrid />
-                <span className="sr-only">Your apps</span>
-              </button>
-              <button
-                onClick={() => setShowDiscover(true)}
-                className={actionButtonStyle}
-              >
-                <Sparkles />
-                <span className="sr-only">Discover apps</span>
-              </button>
+              <Tooltip text="Your apps">
+                <button
+                  onClick={() => setShowApps(true)}
+                  className={actionButtonStyle}
+                >
+                  <LayoutGrid />
+                  <span className="sr-only">Your apps</span>
+                </button>
+              </Tooltip>
+              <Tooltip text="Discover apps" position="left">
+                <button
+                  onClick={() => setShowDiscover(true)}
+                  className={actionButtonStyle}
+                >
+                  <Sparkles />
+                  <span className="sr-only">Discover apps</span>
+                </button>
+              </Tooltip>
             </>
           )}
         </div>

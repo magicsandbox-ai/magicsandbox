@@ -46,25 +46,31 @@ const ChatHistory = memo(function ChatHistory({
               <span className="sr-only">Close menu</span>
             </button>
           </Tooltip>
-          <button onClick={() => handleSearch()}>
-            <Search />
-            <span className="sr-only">Search</span>
-          </button>
-          <button onClick={() => handleDelete()}>
-            <Trash2 />
-            <span className="sr-only">Delete</span>
-          </button>
-          <button
-            onClick={() => {
-              assistantRef.current.handleNewConversation();
-              if (window.innerWidth <= 768) {
-                setShow(false); //close on mobile when clicking new chat
-              }
-            }}
-          >
-            <Plus />
-            <span className="sr-only">New chat</span>
-          </button>
+          <Tooltip text="Search chats" position="bottom">
+            <button onClick={() => handleSearch()}>
+              <Search />
+              <span className="sr-only">Search chats</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="Delete chat" position="bottom">
+            <button onClick={() => handleDelete()}>
+              <Trash2 />
+              <span className="sr-only">Delete chat</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="New chat" position="bottom">
+            <button
+              onClick={() => {
+                assistantRef.current.handleNewConversation();
+                if (window.innerWidth <= 768) {
+                  setShow(false); //close on mobile when clicking new chat
+                }
+              }}
+            >
+              <Plus />
+              <span className="sr-only">New chat</span>
+            </button>
+          </Tooltip>
         </div>
         <div id="model-picker-container" className="mx-3">
           <ModelPicker model={model} setModel={setModel} />
@@ -89,13 +95,16 @@ const ChatHistory = memo(function ChatHistory({
     );
   } else {
     return (
-      <button
+      <Tooltip
+        text="Open menu"
+        position="right"
         className="absolute z-10 ml-3 mt-3"
-        onClick={() => setShow(!show)}
       >
-        <Menu />
-        <span className="sr-only">Open menu</span>
-      </button>
+        <button onClick={() => setShow(!show)}>
+          <Menu />
+          <span className="sr-only">Open menu</span>
+        </button>
+      </Tooltip>
     );
   }
 });

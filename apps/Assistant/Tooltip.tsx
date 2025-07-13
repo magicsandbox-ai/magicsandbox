@@ -22,7 +22,11 @@ function Tooltip({
     positionClass = "tooltip-right";
   }
   return (
-    <div className={`tooltip ${positionClass} ${className}`} data-tip={text}>
+    <div
+      //leading-none prevents div from adding extra height
+      className={`tooltip leading-none ${positionClass} ${className}`}
+      data-tip={text}
+    >
       {children}
     </div>
   );

@@ -52,7 +52,7 @@ function Home({
           />
           <button className="mr-1" onClick={() => handleInput(input)}>
             <CircleArrowUp />
-            <span className="sr-only">Submit</span>
+            <span className="sr-only">Submit chat</span>
           </button>
         </div>
         <button
