@@ -97,7 +97,10 @@ function AppList({
         )}
         {displayApps.length > 0 ? (
           <ListComponent {...{ appData, setAppData, state, displayApps }}>
-            <div className="mt-3 flex max-w-full flex-col divide-y divide-stone-300 border border-stone-500 bg-stone-50">
+            <div
+              id="app-list"
+              className="mt-3 flex max-w-full flex-col divide-y divide-stone-300 border border-stone-500 bg-stone-50"
+            >
               {displayApps.map((app) => (
                 <AppCard
                   key={app.app}

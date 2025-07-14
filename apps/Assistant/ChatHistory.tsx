@@ -62,7 +62,7 @@ const ChatHistory = memo(function ChatHistory({
             <button
               onClick={() => {
                 assistantRef.current.handleNewConversation();
-                if (window.innerWidth <= 768) {
+                if (window.innerWidth < 768) {
                   setShow(false); //close on mobile when clicking new chat
                 }
               }}
@@ -140,7 +140,7 @@ function ChatButton({
     setRenameValue(null);
   }
 
-  const baseClassName = "w-full rounded-lg px-1 py-0.5 text-sm";
+  const baseClassName = "chat-button w-full rounded-lg px-1 py-0.5 text-sm";
 
   if (renameValue !== null) {
     return (
@@ -168,7 +168,7 @@ function ChatButton({
       }`}
       onClick={() => {
         assistantRef.current.handleSwitchConversation(conversationId);
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth < 768) {
           setShow(false); //close on mobile when clicking a chat
         }
       }}

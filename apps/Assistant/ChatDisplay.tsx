@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  memo,
-  useCallback,
-  useState,
-  useLayoutEffect,
-} from "react";
+import React, { useRef, memo, useCallback, useState, useEffect } from "react";
 import Markdown from "./Markdown.tsx";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
@@ -21,12 +15,14 @@ function ChatDisplay({
   messages,
   assistantRef,
   chatLoading,
+  allowRestartTutorial,
 }: {
   outerClassName?: string;
   innerClassName?: string;
   messages: Message[];
   assistantRef: AssistantRefObject;
   chatLoading: boolean;
+  allowRestartTutorial: boolean;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const scrollToBottomRef = useRef(false);
@@ -34,9 +30,10 @@ function ChatDisplay({
   const lastUserMessageIndex = messages.findLastIndex(
     (message) => message.role === "user",
   );
+  const welcome = messages[0]?.welcome || false; //todo make this a conversation level flag, not message level?
 
   if (!ref.current) {
-    if (lastUserMessageIndex === -1 && messages[0]?.welcome) {
+    if (lastUserMessageIndex === -1 && welcome) {
       //special case for welcome message - we should open it at the top
       scrollToBottomRef.current = false;
     } else {
@@ -72,8 +69,27 @@ function ChatDisplay({
   }
 
   return (
-    <div ref={ref} className={`overflow-y-auto ${outerClassName}`}>
-      <div className={`mb-4 flex flex-col gap-5 ${innerClassName}`}>
+    <div
+      ref={ref}
+      className={`overflow-y-auto ${outerClassName}`}
+      style={{
+        //force creation of a layer to improve scroll performance
+        transform: "translateZ(0)",
+      }}
+    >
+      <div className={`relative mb-4 flex flex-col gap-5 ${innerClassName}`}>
+        {welcome &&
+          allowRestartTutorial &&
+          !assistantRef.current.driver.isActive() && (
+            <button
+              className="absolute -top-3 right-3 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-bold text-stone-100 hover:bg-stone-700 md:py-1 md:text-base"
+              onClick={() => {
+                assistantRef.current.driver.drive();
+              }}
+            >
+              Restart tutorial
+            </button>
+          )}
         {messages.map((message, i) => (
           <Message
             key={i}
@@ -124,7 +140,7 @@ const Message = memo(function Message({
   lastUserMessage: boolean;
   loading?: boolean;
 }) {
-  useLayoutEffect(() => {
+  useEffect(() => {
     handleScroll(lastUserMessage);
   }, [message, handleScroll, lastUserMessage]);
 
@@ -164,7 +180,7 @@ const Message = memo(function Message({
         className={
           assistantMessageStyle +
           (message.welcome
-            ? " mt-4 lg:mt-0" //welcome message is only case where assistant message is first. add some extra margin on mobile to not interfere with menu button
+            ? " mt-4 xl:mt-0" //welcome message is only case where assistant message is first. add some extra margin on mobile to not interfere with menu button
             : "")
         }
         remarkPlugins={remarkPlugins}

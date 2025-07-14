@@ -1,4 +1,5 @@
 import SyncExternalStore from "@utils/SyncExternalStore.ts";
+import type { Driver } from "./driver.ts";
 import type { RefObject } from "react";
 import type { ToastsRef } from "@components/Toasts.tsx";
 import type { Risk, RiskUserApproval } from "./Risks.ts";
@@ -114,21 +115,34 @@ export interface AssistantRef {
   app: AppState;
   budget: number;
   user: User;
+  setShowChatHistory: (show: boolean) => void;
+  driver: Driver;
 }
 
 export type AssistantRefObject = RefObject<AssistantRef>;
 
 class AssistantState extends SyncExternalStore<{
   app: AppState;
+  showChatHistory: boolean;
 }> {
   app: AppState;
-  constructor({ app }: { app: AppState }) {
-    super({ app });
+  constructor({
+    app,
+    showChatHistory,
+  }: {
+    app: AppState;
+    showChatHistory: boolean;
+    initConversation: Conversation;
+  }) {
+    super({ app, showChatHistory });
     this.app = app;
   }
   setApp(app: AppState) {
     this.app = app;
     this.set("app", app);
+  }
+  setShowChatHistory(show: boolean) {
+    this.set("showChatHistory", show);
   }
 }
 

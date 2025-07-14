@@ -22,7 +22,6 @@ import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
 import { models } from "./ModelPicker.tsx";
-import { startDriver } from "./driver.ts";
 import {
   AssistantState,
   type Conversation,
@@ -74,6 +73,8 @@ async function init({ user }: { user?: User } = {}) {
   };
   const assistantState = new AssistantState({
     app: urlParams._app ? false : null,
+    showChatHistory: window.innerWidth >= 768,
+    initConversation,
   });
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary
@@ -126,7 +127,7 @@ function App({
   );
   const [collapsed, setCollapsed] = useState(true);
   const [docked, setDocked] = useState(
-    window.innerWidth > 768 && (initData.docked || false),
+    window.innerWidth >= 768 && (initData.docked || false),
   );
   const [chatLoading, setChatLoading] = useState(false);
   const app = useSyncExternalStore(
@@ -169,8 +170,9 @@ function App({
     ts: number;
     apps: DiscoverApp[];
   }>(initData.popularAppData || { ts: 0, apps: [] }); // {ts, apps}
-  const [showChatHistory, setShowChatHistory] = useState(
-    window.innerWidth > 768,
+  const showChatHistory = useSyncExternalStore(
+    assistantState.subscribe("showChatHistory"),
+    assistantState.getSnapshot("showChatHistory"),
   );
   const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
     initConversation.conversationId === "0" &&
@@ -368,17 +370,6 @@ function App({
   }, []);
 
   useEffect(() => {
-    //todo handle if opening an app
-    if (
-      firstRenderRef.current &&
-      initConversation.conversationId === "0" &&
-      !navigator.webdriver
-    ) {
-      startDriver(assistantRef);
-    }
-  }, []);
-
-  useEffect(() => {
     firstRenderRef.current = false;
   }, []);
 
@@ -450,7 +441,7 @@ function App({
             setShowSearch,
             setShowDelete,
             show: showChatHistory,
-            setShow: setShowChatHistory,
+            setShow: (show) => assistantRef.current.setShowChatHistory(show),
           }}
         />
       )}
@@ -458,8 +449,8 @@ function App({
         id="main-container"
         className="flex min-w-0 grow flex-col overflow-y-auto"
         onClick={() => {
-          if (window.innerWidth <= 768 && showChatHistory) {
-            setShowChatHistory(false);
+          if (window.innerWidth < 768 && showChatHistory) {
+            assistantRef.current.setShowChatHistory(false);
           }
         }}
       >
@@ -508,6 +499,7 @@ function App({
                 messages={messages}
                 assistantRef={assistantRef}
                 chatLoading={chatLoading}
+                allowRestartTutorial={true}
               />
             </div>
           )}

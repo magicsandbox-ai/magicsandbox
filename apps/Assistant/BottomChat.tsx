@@ -129,6 +129,7 @@ function BottomChat({
                   messages={messages}
                   assistantRef={assistantRef}
                   chatLoading={chatLoading}
+                  allowRestartTutorial={false}
                 />
                 <hr className="mx-2 border-stone-300" />
               </>
@@ -144,7 +145,7 @@ function BottomChat({
                 setInput={setInput}
                 handleInput={handleInput}
                 placeholder={placeholder}
-                focus={window.innerWidth > 768} //don't focus on mobile
+                focus={window.innerWidth >= 1280} //don't focus on mobile/tablet
               />
               {collapsed && app !== null && (
                 <div className="relative flex items-center">

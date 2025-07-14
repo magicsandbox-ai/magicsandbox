@@ -24,6 +24,7 @@ import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { ToastError } from "@utils/Toast.ts";
 import { mockLlm } from "./driver.ts";
 import { AbortIdController } from "./AssistantState.ts";
+import { createDriver } from "./driver.ts";
 
 const includeMetadata = ["id", "description"];
 const defaultInputBytesPerToken = 4;
@@ -66,6 +67,13 @@ class Assistant {
     this.setCollapsed = setCollapsed;
     this.setAppData = setAppData;
     this.assistantState = assistantState;
+    this.driver = createDriver(this);
+    if (
+      currentConversationRef.current.conversationId === "0" &&
+      !navigator.webdriver
+    ) {
+      this.driver.drive();
+    }
     this.setApp(null);
     this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
@@ -105,6 +113,9 @@ class Assistant {
   }
   setApp(app) {
     this.assistantState.setApp(app);
+  }
+  setShowChatHistory(show) {
+    this.assistantState.setShowChatHistory(show);
   }
   handleStopConversation() {
     this.abortIdController.abort(

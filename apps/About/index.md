@@ -17,7 +17,7 @@ Still need help? Send us an email at [help@magicsandbox.ai](mailto:help@magicsan
 
 When you chat with your assistant, it can choose to open one of your favorited apps. Your assistant will intelligently determine the best way to help you - whether that's through conversation or by opening one of your favorited apps to accomplish specific tasks.
 
-When you first start using Magic Sandbox, the app `magicsandbox.Notes` will already be favorited for you to help you get started. Use the "Discover Apps" button on the home screen to find additional apps that interest you, and use the star icon to favorite them.
+When you first start using Magic Sandbox, a couple of apps will already be favorited for you to help you get started. Use the "Discover Apps" button on the home screen to find additional apps that interest you, and use the star icon to favorite them.
 
 When you chat with your assistant with an app open, the app is responsible for providing relevant information to help your assistant understand and handle your request. Your assistant can also see any text that you have highlighted, so you can, for example, highlight some text and ask your assistant to "explain this".
 

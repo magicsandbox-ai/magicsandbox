@@ -56,6 +56,7 @@ function Home({
           </button>
         </div>
         <button
+          id="discover-button"
           className="inline-flex items-center gap-2 self-center rounded-lg border-2 border-stone-700 bg-stone-200 px-4 py-1 hover:bg-stone-300"
           onClick={() => setShowDiscover(true)}
         >
