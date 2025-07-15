@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Star, MoveVertical } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
+import DivButton from "./DivButton.tsx";
 import type { App, AssistantRefObject, AppData } from "./AssistantState.ts";
 
 type AppListState = "favorited" | "published" | "recent";
@@ -245,25 +246,19 @@ function AppCard({
       }
     : undefined;
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (
-      e.target instanceof HTMLElement &&
-      e.target.tagName !== "BUTTON" &&
-      !e.target.closest("button")
-    ) {
-      assistantRef.current.handleApp({ app: app.app });
-      if (modal) {
-        setShowApps(false);
-      }
+  const handlePress = () => {
+    assistantRef.current.handleApp({ app: app.app });
+    if (modal) {
+      setShowApps(false);
     }
   };
 
   return (
-    <div
+    <DivButton
       ref={setNodeRef}
       style={style}
       className="flex w-full cursor-pointer items-center gap-1 px-2 py-1 hover:bg-stone-200"
-      onClick={handleClick}
+      onPress={handlePress}
     >
       <div className="mx-1 min-w-0 grow text-wrap break-words">{app.app}</div>
       {favoritable && (
@@ -291,7 +286,7 @@ function AppCard({
           </button>
         </Tooltip>
       )}
-    </div>
+    </DivButton>
   );
 }
 

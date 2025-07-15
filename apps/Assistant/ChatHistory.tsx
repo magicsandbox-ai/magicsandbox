@@ -41,7 +41,7 @@ const ChatHistory = memo(function ChatHistory({
       <nav className="absolute z-30 flex h-full w-64 flex-none flex-col gap-3 border-r border-stone-500 bg-stone-100 pt-3 md:static">
         <div className="mx-3 flex justify-between">
           <Tooltip text="Close menu" position="right">
-            <button onClick={() => setShow(!show)}>
+            <button id="menu-button" onClick={() => setShow(!show)}>
               <Menu />
               <span className="sr-only">Close menu</span>
             </button>
@@ -100,7 +100,7 @@ const ChatHistory = memo(function ChatHistory({
         position="right"
         className="absolute z-10 ml-3 mt-3"
       >
-        <button onClick={() => setShow(!show)}>
+        <button id="menu-button" onClick={() => setShow(!show)}>
           <Menu />
           <span className="sr-only">Open menu</span>
         </button>

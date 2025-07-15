@@ -67,11 +67,10 @@ class Assistant {
     this.setCollapsed = setCollapsed;
     this.setAppData = setAppData;
     this.assistantState = assistantState;
-    this.driver = createDriver(this);
-    if (
-      currentConversationRef.current.conversationId === "0" &&
-      !navigator.webdriver
-    ) {
+    this.driver = createDriver(this, (state) =>
+      assistantState.handleDriverStateChange(state),
+    );
+    if (currentConversationRef.current.conversationId === "0") {
       this.driver.drive();
     }
     this.setApp(null);
@@ -161,10 +160,13 @@ class Assistant {
         ],
       });
     }
-    this.setCurrentConversation({
+    const newConversation = {
       conversationId,
       messages: conversation.messages,
-    });
+    };
+    this.setCurrentConversation(newConversation);
+    //this is a hack to allow calling handleSwitchConversation then handleUpdateConversation synchronously from the driver - todo clean this up
+    this.currentConversationRef.current = newConversation;
   }
   handleUpdateConversation({ conversationId, messages, message, summary }) {
     if (conversationId === undefined) {
@@ -498,9 +500,6 @@ class Assistant {
       const abortSignal = this.abortIdController.signal(conversationId);
       abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
       this.setChatLoading(true);
-      if (mockContent) {
-        messages = this.currentConversationRef.current.messages; //todo clean this up
-      }
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (input) {
@@ -1152,6 +1151,7 @@ class Assistant {
     this.budget = null;
     this.requestQueue = [];
     this.risks.forEach((risk) => risk.init());
+    this.assistantState.reload();
   }
 }
 

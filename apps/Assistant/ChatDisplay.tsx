@@ -1,4 +1,11 @@
-import React, { useRef, memo, useCallback, useState, useEffect } from "react";
+import React, {
+  useRef,
+  memo,
+  useCallback,
+  useState,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import Markdown from "./Markdown.tsx";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
@@ -24,6 +31,11 @@ function ChatDisplay({
   chatLoading: boolean;
   allowRestartTutorial: boolean;
 }) {
+  const isDriverActive = useSyncExternalStore(
+    assistantRef.current.assistantState.subscribe("isDriverActive"),
+    assistantRef.current.assistantState.getSnapshot("isDriverActive"),
+  );
+
   const ref = useRef<HTMLDivElement | null>(null);
   const scrollToBottomRef = useRef(false);
 
@@ -78,18 +90,16 @@ function ChatDisplay({
       }}
     >
       <div className={`relative mb-4 flex flex-col gap-5 ${innerClassName}`}>
-        {welcome &&
-          allowRestartTutorial &&
-          !assistantRef.current.driver.isActive() && (
-            <button
-              className="absolute -top-3 right-3 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-bold text-stone-100 hover:bg-stone-700 md:py-1 md:text-base"
-              onClick={() => {
-                assistantRef.current.driver.drive();
-              }}
-            >
-              Restart tutorial
-            </button>
-          )}
+        {welcome && allowRestartTutorial && !isDriverActive && (
+          <button
+            className="absolute -top-3 right-3 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
+            onClick={() => {
+              assistantRef.current.driver.drive();
+            }}
+          >
+            Restart tutorial
+          </button>
+        )}
         {messages.map((message, i) => (
           <Message
             key={i}

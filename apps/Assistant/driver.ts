@@ -1,5 +1,13 @@
-import { driver, type Driver, type DriveStep } from "driver.js";
-import type { AssistantRefObject } from "./AssistantState.ts";
+import {
+  driver,
+  type DriveStep,
+  type State as DriverState,
+  type Driver,
+} from "driver.js";
+import { createWelcomeConversation } from "./welcomeMessage.ts";
+import type { AssistantRef } from "./AssistantState.ts";
+
+const welcomeConversation = createWelcomeConversation();
 
 const popoverOffset = 10;
 const popoverArrowOffset = 20;
@@ -23,20 +31,30 @@ class Step {
   }
 }
 
-function createDriver(assistantRef: AssistantRefObject) {
+function createDriver(
+  assistantRef: AssistantRef,
+  onStateChange?: (state: DriverState) => void,
+) {
   const steps: Step[] = [
     new Step({
       driveStep: {
         element: ".assistant-message",
         disableActiveInteraction: true,
         popover: {
+          title: "Get Started",
           description: "Click Next to respond to your assistant.",
-          showButtons: ["next"],
         },
       },
-      //it's a little confusing that this is the cleanup, but it runs after the user clicks next
-      //IMPORTANT: the next step should not be able to click previous, or else the messages will be duplicated
-      //so this cleanup can only run once
+      setup: async () => {
+        assistantRef.reload();
+        assistantRef.handleSwitchConversation(
+          welcomeConversation.conversationId,
+        );
+        assistantRef.handleUpdateConversation({
+          conversationId: welcomeConversation.conversationId,
+          messages: [...welcomeConversation.messages],
+        });
+      },
       cleanup: async () => {
         driverObj.highlight({
           element: "#chat-input",
@@ -56,12 +74,13 @@ function createDriver(assistantRef: AssistantRefObject) {
           disableActiveInteraction: true,
         });
         await new Promise((resolve) => setTimeout(resolve, 500));
-        await assistantRef.current.handleInput({
+        await assistantRef.handleInput({
           input,
+          messages: welcomeConversation.messages,
           mockContent: "Hello from the assistant!",
         });
         await new Promise((resolve) => setTimeout(resolve, 500));
-        assistantRef.current.reload();
+        assistantRef.reload();
         config.stagePadding = 10;
       },
     }),
@@ -72,7 +91,6 @@ function createDriver(assistantRef: AssistantRefObject) {
         popover: {
           title: "Discover Apps",
           description: `Anyone can create a Magic Sandbox app. Discover apps created by the community here.`,
-          showButtons: ["next"],
         },
       },
       setup: async () => {
@@ -103,14 +121,10 @@ Upgrade to Magic Sandbox Plus to unlock more usage of the smartest models.`,
         },
       },
       setup: async () => {
-        if (window.innerWidth < 768) {
-          assistantRef.current.setShowChatHistory(true);
-        }
+        await handleMenu(true, driverObj, assistantRef);
       },
       cleanup: async () => {
-        if (window.innerWidth < 768) {
-          assistantRef.current.setShowChatHistory(false);
-        }
+        await handleMenu(false, driverObj, assistantRef);
       },
     }),
     new Step({
@@ -147,21 +161,17 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
         },
       },
       setup: async () => {
-        if (window.innerWidth < 768) {
-          assistantRef.current.setShowChatHistory(true);
-        }
+        await handleMenu(true, driverObj, assistantRef);
       },
       cleanup: async () => {
-        if (window.innerWidth < 768) {
-          assistantRef.current.setShowChatHistory(false);
-        }
+        await handleMenu(false, driverObj, assistantRef);
       },
     }),
   ];
   const driverObj = driver({
-    allowClose: false,
+    overlayClickBehavior: "nextStep",
+    showButtons: ["next", "previous", "close"],
     showProgress: true,
-    showButtons: ["next", "previous"],
     popoverOffset,
     onNextClick: async (_element, _step, { state }) => {
       const currentStep = steps[state.activeIndex!];
@@ -169,6 +179,7 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       await currentStep?.cleanup?.();
       await nextStep?.setup?.();
       driverObj.moveNext();
+      onStateChange?.(driverObj.getState());
     },
     onPrevClick: async (_element, _step, { state }) => {
       const currentStep = steps[state.activeIndex!];
@@ -176,9 +187,21 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       await currentStep?.cleanup?.();
       await prevStep?.setup?.();
       driverObj.movePrevious();
+      onStateChange?.(driverObj.getState());
+    },
+    onCloseClick: async () => {
+      driverObj.destroy();
+      onStateChange?.({});
     },
     steps: steps.map((step) => step.driveStep),
   });
+  const originalDrive = driverObj.drive.bind(driverObj);
+  driverObj.drive = async (stepIndex?: number) => {
+    const firstStep = steps[stepIndex ?? 0];
+    await firstStep?.setup?.();
+    originalDrive(stepIndex);
+    onStateChange?.(driverObj.getState());
+  };
   return driverObj;
 }
 
@@ -199,6 +222,21 @@ async function waitForElement(selector: string, wait = 16, maxRetries = 6) {
   }
   await new Promise((resolve) => setTimeout(resolve, wait));
   return waitForElement(selector, wait * 2, maxRetries - 1);
+}
+
+async function handleMenu(
+  show: boolean,
+  driverObj: Driver,
+  assistantRef: AssistantRef,
+) {
+  if (window.innerWidth < 768) {
+    driverObj.highlight({
+      element: "#menu-button",
+      disableActiveInteraction: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    assistantRef.setShowChatHistory(show);
+  }
 }
 
 function addInvisibleElement(
@@ -280,4 +318,4 @@ function getTokens(content: string) {
   return tokens;
 }
 
-export { createDriver, type Driver, mockLlm };
+export { createDriver, mockLlm };

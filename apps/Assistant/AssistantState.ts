@@ -1,5 +1,5 @@
 import SyncExternalStore from "@utils/SyncExternalStore.ts";
-import type { Driver } from "./driver.ts";
+import type { Driver, State as DriverState } from "driver.js";
 import type { RefObject } from "react";
 import type { ToastsRef } from "@components/Toasts.tsx";
 import type { Risk, RiskUserApproval } from "./Risks.ts";
@@ -117,6 +117,7 @@ export interface AssistantRef {
   user: User;
   setShowChatHistory: (show: boolean) => void;
   driver: Driver;
+  assistantState: AssistantState;
 }
 
 export type AssistantRefObject = RefObject<AssistantRef>;
@@ -124,18 +125,28 @@ export type AssistantRefObject = RefObject<AssistantRef>;
 class AssistantState extends SyncExternalStore<{
   app: AppState;
   showChatHistory: boolean;
+  isDriverActive: boolean;
+  showTutorialTooltip: boolean;
 }> {
   app: AppState;
+  seenTutorial: boolean;
   constructor({
     app,
     showChatHistory,
+    seenTutorial,
   }: {
     app: AppState;
     showChatHistory: boolean;
-    initConversation: Conversation;
+    seenTutorial: boolean;
   }) {
-    super({ app, showChatHistory });
+    super({
+      app,
+      showChatHistory,
+      isDriverActive: false,
+      showTutorialTooltip: !!app && !seenTutorial,
+    });
     this.app = app;
+    this.seenTutorial = seenTutorial;
   }
   setApp(app: AppState) {
     this.app = app;
@@ -143,6 +154,25 @@ class AssistantState extends SyncExternalStore<{
   }
   setShowChatHistory(show: boolean) {
     this.set("showChatHistory", show);
+  }
+  setShowTutorialTooltip(show: boolean) {
+    this.set("showTutorialTooltip", show);
+  }
+  handleDriverStateChange(state: DriverState) {
+    const isDriverActive = !!state.isInitialized;
+    this.set("isDriverActive", isDriverActive);
+    if (!isDriverActive) {
+      this.seenTutorial = true;
+      requestPutData("seenTutorial", true, {
+        app: "magicsandbox.Assistant",
+        evictionPolicy: "fifo",
+      }).catch(console.error);
+    }
+  }
+  reload() {
+    if (!this.seenTutorial) {
+      this.setShowTutorialTooltip(true);
+    }
   }
 }
 

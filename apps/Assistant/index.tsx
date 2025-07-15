@@ -5,6 +5,7 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { createRoot } from "react-dom/client";
+import { X } from "lucide-react";
 import { Sandbox, type SandboxRef } from "@magicsandbox.ai/react-sandbox";
 import AssistantConfirm from "./AssistantConfirm.tsx";
 import AssistantSearch from "./AssistantSearch.tsx";
@@ -22,6 +23,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
 import { models } from "./ModelPicker.tsx";
+import DivButton from "./DivButton.tsx";
 import {
   AssistantState,
   type Conversation,
@@ -42,6 +44,17 @@ interface DatabaseSchema {
     apps: DiscoverApp[];
   };
   lastMetadataRefresh?: Date;
+  seenTutorial?: boolean;
+}
+
+declare global {
+  interface Window {
+    _TESTING?: {
+      seenTutorial?: boolean;
+      testTutorial?: boolean;
+      initApp?: string;
+    };
+  }
 }
 
 async function init({ user }: { user?: User } = {}) {
@@ -51,30 +64,40 @@ async function init({ user }: { user?: User } = {}) {
       app: "magicsandbox.Assistant",
     }),
   ]);
+  const initConversations = {
+    ...Object.fromEntries(
+      Object.entries(initData).filter(([, v]) => v.conversationId),
+    ),
+  };
   let initConversation: Conversation = {
     conversationId: String(Date.now()), //numeric keys are coerced to string, so make id a string to avoid bugs
     messages: [],
     summary: null,
     lastUpdated: Date.now(),
   };
+  const seenTutorial =
+    window._TESTING?.seenTutorial || initData.seenTutorial || false;
+  const initApp = window._TESTING?.initApp || urlParams._app;
   if (!("0" in initData)) {
-    //if (true) {
-    initConversation = createWelcomeConversation();
-    requestPutData(initConversation.conversationId, initConversation, {
-      app: "magicsandbox.Assistant",
-      evictionPolicy: "fifo",
-    }).catch(console.error);
+    if (
+      !seenTutorial &&
+      !initApp &&
+      (!navigator.webdriver || window._TESTING?.testTutorial)
+    ) {
+      //start the tutorial by setting initConversation to the welcome conversation
+      initConversation = createWelcomeConversation();
+    } else {
+      //we're not going to start the tutorial, but we still want the welcome conversation to exist
+      const welcomeConversation = createWelcomeConversation();
+      initConversations[welcomeConversation.conversationId] =
+        welcomeConversation;
+    }
   }
-  const initConversations = {
-    [initConversation.conversationId]: initConversation,
-    ...Object.fromEntries(
-      Object.entries(initData).filter(([, v]) => v.conversationId),
-    ),
-  };
+  initConversations[initConversation.conversationId] = initConversation;
   const assistantState = new AssistantState({
-    app: urlParams._app ? false : null,
+    app: initApp ? false : null,
     showChatHistory: window.innerWidth >= 768,
-    initConversation,
+    seenTutorial,
   });
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary
@@ -86,7 +109,7 @@ async function init({ user }: { user?: User } = {}) {
     >
       <App
         user={user}
-        urlParams={urlParams}
+        initApp={initApp}
         initData={initData}
         initConversation={initConversation}
         initConversations={initConversations}
@@ -98,14 +121,14 @@ async function init({ user }: { user?: User } = {}) {
 
 function App({
   user,
-  urlParams,
+  initApp,
   initData,
   initConversation,
   initConversations,
   assistantState,
 }: {
   user?: User;
-  urlParams: { [key: string]: string };
+  initApp: string | undefined;
   initData: DatabaseSchema;
   initConversation: Conversation;
   initConversations: Record<string, Conversation>;
@@ -174,10 +197,9 @@ function App({
     assistantState.subscribe("showChatHistory"),
     assistantState.getSnapshot("showChatHistory"),
   );
-  const [showWelcomeTooltip, setShowWelcomeTooltip] = useState(
-    initConversation.conversationId === "0" &&
-      Boolean(urlParams._app) &&
-      !navigator.webdriver,
+  const showTutorialTooltip = useSyncExternalStore(
+    assistantState.subscribe("showTutorialTooltip"),
+    assistantState.getSnapshot("showTutorialTooltip"),
   );
 
   const firstRenderRef = useRef(true);
@@ -216,8 +238,8 @@ function App({
   useEffect(() => {
     if (firstRenderRef.current) {
       try {
-        if (urlParams._app) {
-          assistantRef.current.handleApp({ app: urlParams._app });
+        if (initApp) {
+          assistantRef.current.handleApp({ app: initApp });
         }
       } catch (error: any) {
         console.error(error);
@@ -521,14 +543,35 @@ function App({
               setModel,
               setShowDiscover,
               setShowApps,
-              showWelcomeTooltip,
-              setShowWelcomeTooltip,
             }}
           />
         )}
         {modalComponent}
       </div>
       <Toasts className="top-2" ref={toastsRef} />
+      {showTutorialTooltip && (
+        <DivButton
+          className="group absolute right-4 top-2 whitespace-pre rounded-lg bg-stone-600 px-2 py-1 text-center text-sm font-medium text-white shadow hover:bg-stone-700"
+          onPress={() => {
+            //todo clean this up
+            assistantRef.current.driver.drive();
+            assistantState.setShowTutorialTooltip(false);
+          }}
+        >
+          <button
+            className="absolute right-1 top-1 hidden rounded bg-stone-200 text-stone-700 hover:bg-stone-300 group-hover:block"
+            onClick={() => {
+              assistantState.setShowTutorialTooltip(false);
+            }}
+          >
+            <X className="lucide-ignore size-4" />
+            <span className="sr-only">Dismiss</span>
+          </button>
+          Welcome to Magic Sandbox!
+          <br />
+          Click to start tutorial
+        </DivButton>
+      )}
     </div>
   );
 }

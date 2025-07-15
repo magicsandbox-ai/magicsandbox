@@ -6,7 +6,6 @@ import {
   OctagonPause,
   LayoutGrid,
   Sparkles,
-  X,
 } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
 import ChatInput from "./ChatInput.tsx";
@@ -32,8 +31,6 @@ function BottomChat({
   setModel,
   setShowDiscover,
   setShowApps,
-  showWelcomeTooltip,
-  setShowWelcomeTooltip,
 }: {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
@@ -48,8 +45,6 @@ function BottomChat({
   setModel: (model: string) => void;
   setShowDiscover: (show: boolean) => void;
   setShowApps: (show: boolean) => void;
-  showWelcomeTooltip: boolean;
-  setShowWelcomeTooltip: (show: boolean) => void;
 }) {
   const [input, setInput] = useState("");
 
@@ -90,6 +85,8 @@ function BottomChat({
       }
     }
     placeholder = placeholder || "Chat with your Assistant";
+  } else if (collapsed && app) {
+    placeholder = `Opened app ${app.app}`;
   } else {
     placeholder = "Chat with your Assistant";
   }
@@ -161,30 +158,12 @@ function BottomChat({
                       onClick={() => {
                         setCollapsed(false);
                         shouldFocusCollapseButtonRef.current = true;
-                        setShowWelcomeTooltip(false);
                       }}
                     >
                       <Maximize2 />
                       <span className="sr-only">Expand chat</span>
                     </button>
                   </Tooltip>
-                  {showWelcomeTooltip && (
-                    <div className="group absolute bottom-full right-0 mb-3 whitespace-pre rounded-lg bg-stone-700 px-3 py-2 text-center text-sm font-medium text-white shadow">
-                      <button
-                        onClick={() => {
-                          setShowWelcomeTooltip(false);
-                        }}
-                        className="absolute right-1 top-1 hidden rounded bg-stone-200 text-stone-700 hover:bg-stone-300 group-hover:block"
-                      >
-                        <X className="lucide-ignore size-4" />
-                        <span className="sr-only">Dismiss</span>
-                      </button>
-                      Welcome to Magic Sandbox!
-                      <br />
-                      Expand to learn more
-                      <div className="absolute right-3 top-full -mt-1 border-8 border-transparent border-t-stone-700" />
-                    </div>
-                  )}
                 </div>
               )}
             </div>
