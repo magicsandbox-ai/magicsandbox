@@ -297,6 +297,10 @@ async function requestHandler({
         app = appObjRef.current.name!;
         getAllData = false;
       }
+      if (data.options?.backup) {
+        app = `${app}~backup`;
+        getAllData = false;
+      }
       if (requestDataCache[app] === undefined) {
         //initialize requestDataRef[app]
         try {
@@ -319,8 +323,9 @@ async function requestHandler({
           });
           return;
         }
-        //todo enforce size limit? use msgpack? support evictionPolicy?
-        requestDataCache[app]![data.key] = structuredClone(data.val);
+        //todo enforce size limit? support evictionPolicy?
+        //msgpack or structuredClone is not necessary here because data was already cloned by postMessage
+        requestDataCache[app]![data.key] = data.val;
         sandboxRef.current.postMessage(sandboxId, { id, response: true });
         return;
       } else if (request === "deleteData") {

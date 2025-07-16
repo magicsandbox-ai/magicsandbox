@@ -5,12 +5,8 @@ import React, {
   useEffect,
 } from "react";
 import { EditorState, Plugin, PluginKey } from "prosemirror-state";
-import {
-  DecorationSet,
-  Decoration,
-  type DecorationAttrs,
-} from "prosemirror-view";
-import { Transform, Step, StepResult } from "prosemirror-transform";
+import { DecorationSet } from "prosemirror-view";
+import { Step, StepResult } from "prosemirror-transform";
 import { Slice, Fragment, Node } from "prosemirror-model";
 import { parse, serialize, schema } from "./prosemirrorMarkdown.ts";
 import { exampleSetup } from "prosemirror-example-setup";
@@ -21,11 +17,11 @@ import {
   reactKeys,
   useEditorEventListener,
 } from "@handlewithcare/react-prosemirror";
-import { diffArrays } from "diff";
 import Approve from "./Approve.tsx";
 import type NotesState from "./NotesState.ts";
 import type { ClonedNode } from "./NotesState.ts";
 import { Menu, createSelectPlugin } from "./NoteMenu.tsx";
+import { handleDiff } from "./diff.ts";
 
 /*
 display keyboard shortcuts somewhere
@@ -91,113 +87,8 @@ function Note({
         newDoc = parse("");
       }
     } else {
-      const diff = diffArrays(prevContent.split("\n"), content.split("\n"), {
-        oneChangePerToken: true,
-      });
-      const diffedContent = diff
-        .map((change) => {
-          if (change.added) {
-            return `%%added%%\n${change.value}`;
-          } else if (change.removed) {
-            return `%%removed%%\n${change.value}`;
-          } else {
-            return change.value;
-          }
-        })
-        .join("\n");
-      try {
-        newDoc = parse(diffedContent);
-      } catch (error) {
-        console.error(error);
-        newDoc = parse("");
-      }
-      let prevNode: "added" | "removed" | undefined;
-      const decorations: {
-        type: "node" | "inline";
-        from: number;
-        to: number;
-        attrs: DecorationAttrs;
-      }[] = [];
-      const deletes: { from: number; to: number }[] = [];
-      newDoc.content.forEach((node, pos) => {
-        if (prevNode) {
-          decorations.push({
-            type: "node",
-            from: pos,
-            to: pos + node.nodeSize,
-            attrs: {
-              class: prevNode,
-            },
-          });
-          prevNode = undefined;
-        } else if (
-          node.textContent === "%%added%%" ||
-          node.textContent === "%%removed%%"
-        ) {
-          deletes.push({
-            from: pos,
-            to: pos + node.nodeSize,
-          });
-          if (node.textContent === "%%added%%") {
-            prevNode = "added";
-          } else {
-            prevNode = "removed";
-          }
-        } else {
-          prevNode = undefined;
-        }
-        //%%added%% and %%removed%% are not treated as separate nodes inside a code block, so we have to fix it
-        if (node.type.name === "code_block") {
-          const matches = node.textContent.matchAll(
-            /(%%(?:added|removed)%%\n?)(.*)/dg,
-          );
-          for (const match of matches) {
-            //we add 1 to pos because the start of the code block counts as one token
-            //delete the first capturing group (%%added%% or %%removed%%)
-            deletes.push({
-              from: pos + 1 + match.indices![1]![0],
-              to: pos + 1 + match.indices![1]![1],
-            });
-            //add a decoration to the second capturing group (the text)
-            if (match[2]) {
-              decorations.push({
-                type: "inline",
-                from: pos + 1 + match.indices![2]![0],
-                to: pos + 1 + match.indices![2]![1],
-                attrs: {
-                  class: match[1]!.startsWith("%%added%%")
-                    ? "added"
-                    : "removed",
-                },
-              });
-            }
-          }
-        }
-      });
-      const transform = new Transform(newDoc);
-      for (const d of deletes) {
-        transform.delete(
-          transform.mapping.map(d.from),
-          transform.mapping.map(d.to),
-        );
-      }
-      newDoc = transform.doc;
-      const decorationSet = DecorationSet.create(
-        newDoc,
-        decorations.map((d) =>
-          d.type === "node"
-            ? Decoration.node(
-                transform.mapping.map(d.from),
-                transform.mapping.map(d.to),
-                d.attrs,
-              )
-            : Decoration.inline(
-                transform.mapping.map(d.from),
-                transform.mapping.map(d.to),
-                d.attrs,
-              ),
-        ),
-      );
+      const { doc, decorationSet } = handleDiff(prevContent, content);
+      newDoc = doc;
       newDiff = {
         prevContent,
         content,

@@ -77,7 +77,7 @@ const ChatHistory = memo(function ChatHistory({
         <div id="model-picker-container" className="mx-3">
           <ModelPicker model={model} setModel={setModel} />
         </div>
-        <div className="grow space-y-3 overflow-y-auto px-3">
+        <div className="grow scroll-py-3 space-y-3 overflow-y-auto px-3">
           {conversationSummaries
             .filter(({ summary }) => summary !== null)
             .map(({ conversationId, summary }) => (
@@ -163,6 +163,11 @@ function ChatButton({
 
   return (
     <button
+      ref={(el) => {
+        if (el && currentConversationId === conversationId) {
+          el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }}
       className={`${baseClassName} truncate hover:bg-stone-300 ${
         currentConversationId === conversationId
           ? "bg-stone-200 outline outline-1 outline-stone-500"
