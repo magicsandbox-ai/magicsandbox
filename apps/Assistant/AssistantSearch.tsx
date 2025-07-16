@@ -2,24 +2,26 @@ import React from "react";
 import Search from "@components/Search.tsx";
 import type {
   AssistantRefObject,
-  ConversationsRefObject,
+  AssistantState,
   Message,
 } from "./AssistantState.ts";
 
 function AssistantSearch({
   setShowSearch,
   assistantRef,
-  conversationsRef,
+  assistantState,
 }: {
   setShowSearch: (show: boolean) => void;
   assistantRef: AssistantRefObject;
-  conversationsRef: ConversationsRefObject;
+  assistantState: AssistantState;
 }) {
-  const nodes = Object.values(conversationsRef.current).map((conversation) => ({
-    key: conversation.conversationId,
-    name: conversation.summary || "New Chat",
-    content: conversation.messages.map(formatMessage).join("\n"),
-  }));
+  const nodes = Object.values(assistantState.conversations).map(
+    (conversation) => ({
+      key: conversation.conversationId,
+      name: conversation.summary || "New Chat",
+      content: conversation.messages.map(formatMessage).join("\n"),
+    }),
+  );
   return (
     <Search
       nodes={nodes}

@@ -45,7 +45,7 @@ function ChatDisplay({
   const welcome = messages[0]?.welcome || false; //todo make this a conversation level flag, not message level?
 
   if (!ref.current) {
-    if (lastUserMessageIndex === -1 && welcome) {
+    if (welcome) {
       //special case for welcome message - we should open it at the top
       scrollToBottomRef.current = false;
     } else {
@@ -89,7 +89,10 @@ function ChatDisplay({
         transform: "translateZ(0)",
       }}
     >
-      <div className={`relative mb-4 flex flex-col gap-5 ${innerClassName}`}>
+      <div
+        id="chat-display"
+        className={`relative mb-4 flex flex-col gap-5 ${innerClassName}`}
+      >
         {welcome && allowRestartTutorial && !isDriverActive && (
           <button
             className="absolute -top-3 right-3 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"

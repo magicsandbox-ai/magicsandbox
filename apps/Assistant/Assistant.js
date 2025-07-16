@@ -20,10 +20,8 @@ import {
 } from "./prompt.ts";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { models } from "./ModelPicker.tsx";
-import { createWelcomeConversation } from "./welcomeMessage.ts";
 import { ToastError } from "@utils/Toast.ts";
 import { mockLlm } from "./driver.ts";
-import { AbortIdController } from "./AssistantState.ts";
 import { createDriver } from "./driver.ts";
 
 const includeMetadata = ["id", "description"];
@@ -37,14 +35,9 @@ class Assistant {
     sandboxRef,
     appDataRef,
     toastsRef,
-    conversationsRef,
-    currentConversationRef,
-    conversationSummariesRef,
     modelRef,
     setConfirm,
     setRisk,
-    setCurrentConversation,
-    setConversationSummaries,
     setChatLoading,
     setCollapsed,
     setAppData,
@@ -55,14 +48,9 @@ class Assistant {
     this.sandboxRef = sandboxRef;
     this.appDataRef = appDataRef;
     this.toastsRef = toastsRef;
-    this.conversationsRef = conversationsRef;
-    this.currentConversationRef = currentConversationRef;
-    this.conversationSummariesRef = conversationSummariesRef;
     this.modelRef = modelRef;
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
-    this.setCurrentConversation = setCurrentConversation;
-    this.setConversationSummaries = setConversationSummaries;
     this.setChatLoading = setChatLoading;
     this.setCollapsed = setCollapsed;
     this.setAppData = setAppData;
@@ -70,11 +58,10 @@ class Assistant {
     this.driver = createDriver(this, (state) =>
       assistantState.handleDriverStateChange(state),
     );
-    if (currentConversationRef.current.conversationId === "0") {
+    if (assistantState.currentConversation.conversationId === "0") {
       this.driver.drive();
     }
     this.setApp(null);
-    this.abortIdController = new AbortIdController();
     this.handleApprovePromises = {};
     this.appUsage = {
       daysBetweenCalls: 0.2,
@@ -116,181 +103,28 @@ class Assistant {
   setShowChatHistory(show) {
     this.assistantState.setShowChatHistory(show);
   }
+  get abortIdController() {
+    return this.assistantState.abortIdController;
+  }
   handleStopConversation() {
-    this.abortIdController.abort(
-      this.currentConversationRef.current.conversationId,
-    );
+    this.assistantState.handleStopConversation();
   }
   handleNewConversation() {
-    this.handleStopConversation();
-    const conversationId = String(Date.now()); //numeric keys are coerced to string, so make id a string to avoid bugs
-    const conversation = {
-      conversationId,
-      messages: [],
-      summary: null,
-      lastUpdated: Date.now(),
-    };
-    this.conversationsRef.current[conversationId] = conversation;
-    this.setCurrentConversation({
-      conversationId,
-      messages: conversation.messages,
-    });
-    this.setConversationSummaries((conversationSummaries) => [
-      { conversationId, summary: conversation.summary },
-      ...conversationSummaries,
-    ]);
-    document.getElementById("chat-input").focus();
+    this.assistantState.handleNewConversation();
   }
   handleSwitchConversation(conversationId) {
-    if (conversationId === this.currentConversationRef.current.conversationId) {
-      return;
-    }
-    this.handleStopConversation();
-    const conversation = this.conversationsRef.current[conversationId];
-    if (
-      conversation.messages[conversation.messages.length - 1]?.role !== "system"
-    ) {
-      conversation.messages.push({
-        role: "system",
-        tags: [
-          {
-            content:
-              "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
-          },
-        ],
-      });
-    }
-    const newConversation = {
-      conversationId,
-      messages: conversation.messages,
-    };
-    this.setCurrentConversation(newConversation);
-    //this is a hack to allow calling handleSwitchConversation then handleUpdateConversation synchronously from the driver - todo clean this up
-    this.currentConversationRef.current = newConversation;
+    this.assistantState.handleSwitchConversation(conversationId);
   }
   handleUpdateConversation({ conversationId, messages, message, summary }) {
-    if (conversationId === undefined) {
-      conversationId = this.currentConversationRef.current.conversationId;
-    }
-    const conversation = this.conversationsRef.current[conversationId];
-    const messagesUpdated = messages !== undefined || message !== undefined;
-    if (messagesUpdated) {
-      conversation.lastUpdated = Date.now();
-      if (messages !== undefined) {
-        conversation.messages = messages;
-      } else {
-        conversation.messages.push(message);
-      }
-      if (
-        conversationId === this.currentConversationRef.current.conversationId
-      ) {
-        this.setCurrentConversation({
-          conversationId,
-          messages: conversation.messages,
-        });
-      }
-    }
-    const summaryUpdated = summary !== undefined;
-    if (summaryUpdated) {
-      conversation.summary = summary;
-    }
-    const latestConversation =
-      this.conversationSummariesRef.current[0] === conversationId;
-    if (messagesUpdated && !(!summaryUpdated && latestConversation)) {
-      //if messages were updated, move the summary to the top
-      //unless summary wasn't updated and it's already at the top - then do nothing
-      this.setConversationSummaries((conversationSummaries) => [
-        { conversationId, summary: conversation.summary },
-        ...conversationSummaries.filter(
-          (conversationSummary) =>
-            conversationSummary.conversationId !== conversationId,
-        ),
-      ]);
-    } else if (summaryUpdated) {
-      //otherwise, if summary is updated, update in place
-      this.setConversationSummaries((conversationSummaries) =>
-        conversationSummaries.map((conversationSummary) =>
-          conversationSummary.conversationId === conversationId
-            ? { conversationId, summary: conversation.summary }
-            : conversationSummary,
-        ),
-      );
-    }
-    this.conversationsRef.current[conversationId] = conversation;
-    //when a user loads an app, it creates a display message "Loading..."
-    //don't bother saving these
-    if (
-      conversation.summary !== null ||
-      conversation.messages.some((message) => message.role !== "display")
-    ) {
-      clearTimeout(this.saveTimeoutIds[conversationId]);
-      this.saveTimeoutIds[conversationId] = setTimeout(() => {
-        const conversationToSave = {
-          ...this.conversationsRef.current[conversationId],
-        };
-        conversationToSave.messages = conversationToSave.messages.map(
-          (message) => ({
-            ...message,
-            tags: message.tags.map((tag) => {
-              if (
-                tag.tag === "app_context" ||
-                tag.tag === "user_highlighted_text"
-              ) {
-                return { tag: tag.tag, content: "" }; //don't bother saving - waste of space
-              }
-              return tag;
-            }),
-          }),
-        );
-        requestPutData(conversationId, conversationToSave, {
-          app: "magicsandbox.Assistant",
-          evictionPolicy: "fifo",
-        }).catch(console.error);
-        delete this.saveTimeoutIds[conversationId];
-      }, 500);
-    }
-  }
-  async _handleDeleteConversation(conversationId) {
-    if (conversationId === "0") {
-      const welcomeConversation = createWelcomeConversation();
-      this.handleUpdateConversation({
-        conversationId,
-        messages: welcomeConversation.messages,
-      });
-      return;
-    }
-    delete this.conversationsRef.current[conversationId];
-    await requestDeleteData(conversationId, {
-      app: "magicsandbox.Assistant",
+    this.assistantState.handleUpdateConversation({
+      conversationId,
+      messages,
+      message,
+      summary,
     });
   }
   async handleDeleteConversations(conversationIds) {
-    try {
-      if (conversationIds === null) {
-        conversationIds = Object.keys(this.conversationsRef.current);
-      }
-      await Promise.all(
-        conversationIds.map((conversationId) => {
-          this._handleDeleteConversation(conversationId);
-        }),
-      );
-    } catch (error) {
-      console.error(error);
-      this.toastsRef.current.addToast(`Error: failed to delete chat`, "error");
-    }
-    conversationIds = new Set(conversationIds);
-    conversationIds.delete("0"); //don't delete welcome conversation
-    this.setConversationSummaries((conversationSummaries) =>
-      conversationSummaries.filter(
-        (conversationSummary) =>
-          !conversationIds.has(conversationSummary.conversationId),
-      ),
-    );
-    if (
-      conversationIds.has(this.currentConversationRef.current.conversationId)
-    ) {
-      this.handleNewConversation();
-    }
+    this.assistantState.handleDeleteConversations(conversationIds);
   }
   setDisplayMessage(message) {
     this.handleUpdateConversation({
@@ -496,10 +330,14 @@ class Assistant {
     let nextContinueSystemPrompt;
     try {
       const sandboxId = this.sandboxRef.current.getSandboxId();
-      const conversationId = this.currentConversationRef.current.conversationId;
+      const conversationId =
+        this.assistantState.currentConversation.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       abortSignal.aborted = false; //may have stopped the previous message, but reset now that we started again
       this.setChatLoading(true);
+      if (mockContent) {
+        messages = this.assistantState.currentConversation.messages; //todo clean this up
+      }
       const prevMessage = messages[messages.length - 1];
       let newMessages;
       if (input) {
@@ -656,7 +494,7 @@ class Assistant {
         },
       ];
       const updateSummary =
-        this.conversationsRef.current[conversationId].summary === null;
+        this.assistantState.conversations[conversationId]?.summary === null;
       if (updateSummary) {
         const summaryArgs = createSummaryArgs(newMessages);
         if (summaryArgs) {
@@ -665,8 +503,8 @@ class Assistant {
         }
       }
       let stream;
-      if (mockContent) {
-        stream = mockLlm(model, mockContent);
+      if (mockContent?.[0]) {
+        stream = mockLlm(model, mockContent[0]);
       } else {
         stream = await requestFunction("magicsandbox.llm@0.1", llmArgs, {
           maxCost,
@@ -759,7 +597,7 @@ class Assistant {
       ) {
         scriptPromises.push(handleScript(lastTag.content));
       }
-      if (!mockContent) {
+      if (!mockContent?.[0]) {
         this.handleLlmUsage({
           inputBytes,
           promptTokens,
@@ -778,6 +616,7 @@ class Assistant {
           await this.handleApp({
             app: app.app,
             messages: [...newMessages, llmMessage],
+            mockContent: mockContent ? mockContent.slice(1) : undefined,
           });
         } else {
           this.handleUpdateConversation({
@@ -829,6 +668,7 @@ class Assistant {
             await this.handleInput({
               messages: [...newMessages, llmMessage, newUserMessage],
               continueSystemPrompt: nextContinueSystemPrompt,
+              mockContent: mockContent ? mockContent.slice(1) : undefined,
             });
             return;
           }
@@ -857,10 +697,10 @@ class Assistant {
       this.setChatLoading(false);
     }
   }
-  async handleApp({ app, messages }) {
+  async handleApp({ app, messages, mockContent }) {
     let conversationId;
     try {
-      conversationId = this.currentConversationRef.current.conversationId;
+      conversationId = this.assistantState.currentConversation.conversationId;
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.current.getSandboxId();
       if (!messages) {
@@ -915,6 +755,7 @@ class Assistant {
         await this.handleInput({
           messages,
           initContext,
+          mockContent,
         });
       }
     } catch (error) {
@@ -1109,7 +950,7 @@ class Assistant {
   }
   handleFeedback(feedback) {
     const encoder = new TextEncoder();
-    let messages = this.currentConversationRef.current.messages;
+    let messages = this.assistantState.currentConversation.messages;
     const messagesLength = encoder.encode(JSON.stringify(messages)).length;
     if (messagesLength > 100000) {
       messages = messages.map((message, i) => ({
@@ -1135,9 +976,10 @@ class Assistant {
       },
     });
   }
+  setSeenTutorial(seen) {
+    this.assistantState.setSeenTutorial(seen);
+  }
   reload() {
-    this.abortIdController.abort(null);
-    this.abortIdController = new AbortIdController();
     this.sandboxRef.current.reload();
     Object.values(this.handleApprovePromises).forEach((promise) =>
       promise.resolve(false),
@@ -1152,6 +994,10 @@ class Assistant {
     this.requestQueue = [];
     this.risks.forEach((risk) => risk.init());
     this.assistantState.reload();
+    const driverStep = this.driver.getActiveStep();
+    if (driverStep?.element === "#driver-home") {
+      this.driver.handleNextClick();
+    }
   }
 }
 

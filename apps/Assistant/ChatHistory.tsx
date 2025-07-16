@@ -1,14 +1,11 @@
-import React, { useState, memo } from "react";
+import React, { useState, memo, useSyncExternalStore } from "react";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { Menu, Search, Trash2, Plus } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
-import type {
-  AssistantRefObject,
-  ConversationSummaries,
-} from "./AssistantState.ts";
+import type { AssistantRefObject, AssistantState } from "./AssistantState.ts";
 
 const ChatHistory = memo(function ChatHistory({
-  conversationSummaries,
+  assistantState,
   currentConversationId,
   model,
   setModel,
@@ -18,7 +15,7 @@ const ChatHistory = memo(function ChatHistory({
   show,
   setShow,
 }: {
-  conversationSummaries: ConversationSummaries;
+  assistantState: AssistantState;
   currentConversationId: string;
   model: string;
   setModel: (model: string) => void;
@@ -28,6 +25,11 @@ const ChatHistory = memo(function ChatHistory({
   show: boolean;
   setShow: (show: boolean) => void;
 }) {
+  const conversationSummaries = useSyncExternalStore(
+    assistantState.subscribe("conversationSummaries"),
+    assistantState.getSnapshot("conversationSummaries"),
+  );
+
   function handleSearch() {
     setShowSearch(true);
   }

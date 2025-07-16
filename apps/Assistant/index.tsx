@@ -95,6 +95,8 @@ async function init({ user }: { user?: User } = {}) {
   }
   initConversations[initConversation.conversationId] = initConversation;
   const assistantState = new AssistantState({
+    initConversation,
+    initConversations,
     app: initApp ? false : null,
     showChatHistory: window.innerWidth >= 768,
     seenTutorial,
@@ -111,8 +113,6 @@ async function init({ user }: { user?: User } = {}) {
         user={user}
         initApp={initApp}
         initData={initData}
-        initConversation={initConversation}
-        initConversations={initConversations}
         assistantState={assistantState}
       />
     </ErrorBoundary>,
@@ -123,30 +123,18 @@ function App({
   user,
   initApp,
   initData,
-  initConversation,
-  initConversations,
   assistantState,
 }: {
   user?: User;
   initApp: string | undefined;
   initData: DatabaseSchema;
-  initConversation: Conversation;
-  initConversations: Record<string, Conversation>;
   assistantState: AssistantState;
 }) {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [risk, setRisk] = useState<RiskState | null>(null);
-  const [currentConversation, setCurrentConversation] = useState({
-    conversationId: initConversation.conversationId,
-    messages: initConversation.messages,
-  });
-  const [conversationSummaries, setConversationSummaries] = useState(
-    Object.entries(initConversations)
-      .sort(([, a], [, b]) => (b.lastUpdated || 0) - (a.lastUpdated || 0))
-      .map(([conversationId, conversation]) => ({
-        conversationId,
-        summary: conversation.summary,
-      })),
+  const currentConversation = useSyncExternalStore(
+    assistantState.subscribe("currentConversation"),
+    assistantState.getSnapshot("currentConversation"),
   );
   const [collapsed, setCollapsed] = useState(true);
   const [docked, setDocked] = useState(
@@ -206,9 +194,6 @@ function App({
   const sandboxRef = useRef<SandboxRef>(null);
   const toastsRef = useRef<ToastsRef>(null);
   const appDataRef = useRef(appData);
-  const conversationsRef = useRef(initConversations);
-  const currentConversationRef = useRef(currentConversation);
-  const conversationSummariesRef = useRef(conversationSummaries);
   const modelRef = useRef(model);
   const shouldFocusCollapseButtonRef = useRef(false);
   const assistantRef = useRef<AssistantRef>(null as unknown as AssistantRef);
@@ -219,14 +204,9 @@ function App({
       sandboxRef,
       toastsRef,
       appDataRef,
-      conversationsRef,
-      currentConversationRef,
-      conversationSummariesRef,
       modelRef,
       setConfirm,
       setRisk,
-      setCurrentConversation,
-      setConversationSummaries,
       setChatLoading,
       setCollapsed,
       setAppData,
@@ -273,14 +253,6 @@ function App({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
-
-  useEffect(() => {
-    currentConversationRef.current = currentConversation;
-  }, [currentConversation]);
-
-  useEffect(() => {
-    conversationSummariesRef.current = conversationSummaries;
-  }, [conversationSummaries]);
 
   useEffect(() => {
     if (!firstRenderRef.current) {
@@ -427,7 +399,7 @@ function App({
       <AssistantSearch
         setShowSearch={setShowSearch}
         assistantRef={assistantRef}
-        conversationsRef={conversationsRef}
+        assistantState={assistantState}
       />
     );
   } else if (showDiscover) {
@@ -455,7 +427,7 @@ function App({
       {app === null && (
         <ChatHistory
           {...{
-            conversationSummaries,
+            assistantState,
             currentConversationId: currentConversation.conversationId,
             model,
             setModel,
@@ -468,7 +440,6 @@ function App({
         />
       )}
       <div
-        id="main-container"
         className="flex min-w-0 grow flex-col overflow-y-auto"
         onClick={() => {
           if (window.innerWidth < 768 && showChatHistory) {
