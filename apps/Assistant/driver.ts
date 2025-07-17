@@ -7,7 +7,7 @@ import {
 import { createWelcomeConversation } from "./welcomeMessage.ts";
 import type { AssistantRef } from "./AssistantState.ts";
 
-// window._TESTING = { testTutorial: true };
+window._TESTING = { testTutorial: true };
 
 const welcomeConversation = createWelcomeConversation();
 
@@ -97,16 +97,12 @@ Makes about 48 cookies. Enjoy!`,
     }),
     new Step({
       driveStep: {
-        element: "#chat-display",
+        element: getLastAssistantMessageElement as () => Element,
         popover: {
           description:
             "You already know how AI chat works - ask questions, get answers. But Magic Sandbox goes beyond conversation. Your assistant can actually open and use Magic Sandbox apps on your behalf. Let's see how!",
           showButtons: ["next"],
         },
-      },
-      setup: () => {
-        const config = driverObj.getConfig();
-        config.stagePadding = 0;
       },
       cleanup: async () => {
         await handleInput({
@@ -154,20 +150,37 @@ Makes about 48 cookies. Enjoy!\`,
     }),
     new Step({
       driveStep: {
-        element: "#chat-display",
-        disableActiveInteraction: true,
+        element: getLastAssistantMessageElement as () => Element,
         popover: {
           description: `Your assistant just opened the Notes app and saved your recipe! Magic Sandbox is more than just AI chat - your assistant can use apps to handle tasks for you.
       
-When you chat with your assistant with an app open, it automatically understands what you're working on - no need to copy/paste. Let's see it in action!`,
+Let's take a look at your new recipe.`,
           showButtons: ["next"],
         },
       },
-      setup: () => {
+    }),
+    new Step({
+      driveStep: {
+        element: "iframe",
+        disableActiveInteraction: true,
+        popover: {
+          description: `This is the Notes app, where you can take notes and organize them into folders. Check out your new recipe!
+     
+When you chat with your assistant with an app open, it automatically understands what you're working on - no need to copy/paste. You can "chat with your notes" - ask questions about them, request summaries, or ask for edits.
+
+Let's see it in action by asking your assistant to modify this recipe!`,
+          showButtons: ["next"],
+        },
+      },
+      setup: async () => {
+        await handleChat(true, driverObj, assistantRef);
         const config = driverObj.getConfig();
         config.stagePadding = 0;
       },
       cleanup: async () => {
+        const config = driverObj.getConfig();
+        config.stagePadding = defaultStagePadding;
+        await handleChat(false, driverObj, assistantRef);
         await handleInput({
           input:
             "Can you turn this into a birthday cake cookie recipe instead?",
@@ -214,11 +227,30 @@ Makes about 36 soft, colorful birthday cake cookies perfect for celebrations! ðŸ
     }),
     new Step({
       driveStep: {
+        element: "iframe",
+        disableActiveInteraction: true,
+        popover: {
+          description: `Here's your updated recipe! The changes your assistant made are highlighted, and you can choose to accept or reject them.`,
+          showButtons: ["next"],
+        },
+      },
+      setup: async () => {
+        await handleChat(true, driverObj, assistantRef);
+        const config = driverObj.getConfig();
+        config.stagePadding = 0;
+      },
+      cleanup: async () => {
+        const config = driverObj.getConfig();
+        config.stagePadding = defaultStagePadding;
+      },
+    }),
+    new Step({
+      driveStep: {
         element: "#driver-home", //careful with changing this - it's hackily used in reload to move to the next step when the user clicks home
         popover: {
           description: `Now you've seen how your assistant can work with Magic Sandbox apps! 
           
-Click the Magic Sandbox logo to close the Notes app and return to your home screen.`,
+Click the Magic Sandbox logo to close the Notes app. Next, we'll quickly show you around your home screen.`,
           align: "center",
           showButtons: [],
         },
@@ -383,46 +415,103 @@ async function handleInput({
   driverObj: Driver;
   assistantRef: AssistantRef;
 }) {
-  driverObj.highlight({
-    element: "#chat-input",
-    disableActiveInteraction: true,
-  });
-  await addTextToTextArea(
-    input,
-    document.getElementById("chat-input") as HTMLTextAreaElement,
+  const stopHighlightingChatInput = highlightMovingElement(
+    driverObj,
+    () => document.getElementById("chat-input"),
+    {
+      disableActiveInteraction: true,
+    },
   );
-  //this isn't really documented so it's probably a bad idea
-  //but it's the only way to change stagePadding during the tour - ideally it would be configurable at the step level
-  const config = driverObj.getConfig();
-  config.stagePadding = 0;
-  driverObj.highlight({
-    element: "#chat-display",
-  });
   await new Promise((resolve) => setTimeout(resolve, 500));
-  await assistantRef.handleInput({
+  for (let i = 0; i < input.length; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assistantRef.assistantState.setChatInput(input.slice(0, i + 1));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const handleInputPromise = assistantRef.handleInput({
     input,
     mockContent,
   });
-  config.stagePadding = defaultStagePadding;
+  assistantRef.assistantState.setChatInput("");
+  stopHighlightingChatInput();
+  const assistantMessages = document.querySelectorAll(".assistant-message");
+  const stopHighlightingNewMessage = highlightMovingElement(
+    driverObj,
+    () =>
+      document.querySelectorAll(".assistant-message")[assistantMessages.length],
+  );
+  await handleInputPromise;
+  stopHighlightingNewMessage();
 }
 
-async function addTextToTextArea(text: string, textArea: HTMLTextAreaElement) {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  for (let i = 0; i < text.length; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    textArea.value += text[i];
+async function waitForElement(
+  selector: string | (() => Element | undefined),
+  wait = 16,
+  maxRetries = 6,
+) {
+  let element: Element | undefined | null;
+  if (typeof selector === "string") {
+    element = document.querySelector(selector);
+  } else {
+    element = selector();
   }
-  await new Promise((resolve) => setTimeout(resolve, 500));
-}
-
-async function waitForElement(selector: string, wait = 16, maxRetries = 6) {
   //could throw an error if maxRetries is reached, but better for the tour to go on
   //driver.js just puts the popover in the middle of the page if it can't find the element
-  if (maxRetries === 0 || document.querySelector(selector)) {
-    return;
+  if (maxRetries === 0 || element) {
+    return element;
   }
   await new Promise((resolve) => setTimeout(resolve, wait));
   return waitForElement(selector, wait * 2, maxRetries - 1);
+}
+
+function highlightMovingElement(
+  driverObj: Driver,
+  findElement: () => Element | null | undefined,
+  driveStep: DriveStep = {},
+) {
+  let element: Element | null | undefined;
+  let animationId: number | undefined;
+  const refreshLoop = () => {
+    if (element?.isConnected) {
+      //just refresh
+      driverObj.refresh();
+    } else {
+      //find element and call highlight again
+      element = findElement();
+      if (element) {
+        driverObj.highlight({
+          ...driveStep,
+          element,
+        });
+      }
+      //if not found, just skip this frame - it might reappear soon
+    }
+    animationId = requestAnimationFrame(refreshLoop);
+  };
+  refreshLoop();
+  return () => {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+    }
+  };
+}
+
+function getLastAssistantMessageElement() {
+  const assistantMessages = document.querySelectorAll(".assistant-message");
+  return assistantMessages[assistantMessages.length - 1];
+}
+
+async function handleChat(
+  show: boolean,
+  driverObj: Driver,
+  assistantRef: AssistantRef,
+) {
+  driverObj.highlight({
+    element: "#chat-collapse-button",
+    disableActiveInteraction: true,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 750));
+  assistantRef.assistantState.setChatCollapsed(show);
 }
 
 async function handleMenu(
@@ -470,7 +559,7 @@ async function* mockLlm(model: string, content: string) {
   await new Promise((resolve) => setTimeout(resolve, 200)); //simulate network latency
   const tokens = getTokens(content);
   for (let i = 0; i < tokens.length; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 10)); //simulate token speed
+    await new Promise((resolve) => setTimeout(resolve, 50)); //simulate token speed
     if (i === 0) {
       yield {
         result: {

@@ -18,7 +18,7 @@
 }
 
 .assistant-pill {
-  @apply my-5 w-fit rounded-full border border-stone-500 bg-stone-50 px-3 py-1 font-medium;
+  @apply mb-1 mt-5 w-fit rounded-full border border-stone-500 bg-stone-50 px-2 py-1 text-xs font-medium md:px-3 md:text-base;
 }
 details.assistant-pill summary {
   @apply cursor-pointer;
@@ -34,12 +34,13 @@ details.assistant-pill[open] pre {
 }
 .loading {
   @apply inline-flex items-center gap-2;
+  overflow-wrap: anywhere;
 }
 .loading-spinner::after {
   content: "";
   border-radius: 50%;
   animation: spinner 0.8s linear infinite;
-  @apply size-4 border-2 border-stone-700 border-t-transparent;
+  @apply size-4 flex-none border-2 border-stone-700 border-t-transparent;
 }
 @keyframes spinner {
   to {
@@ -48,7 +49,7 @@ details.assistant-pill[open] pre {
 }
 .loading-done::after {
   content: "✓";
-  @apply font-bold;
+  @apply flex-none font-bold;
 }
 
 /* https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/vs.css */

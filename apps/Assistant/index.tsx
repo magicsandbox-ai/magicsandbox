@@ -136,7 +136,10 @@ function App({
     assistantState.subscribe("currentConversation"),
     assistantState.getSnapshot("currentConversation"),
   );
-  const [collapsed, setCollapsed] = useState(true);
+  const chatCollapsed = useSyncExternalStore(
+    assistantState.subscribe("chatCollapsed"),
+    assistantState.getSnapshot("chatCollapsed"),
+  );
   const [docked, setDocked] = useState(
     window.innerWidth >= 768 && (initData.docked || false),
   );
@@ -185,6 +188,10 @@ function App({
     assistantState.subscribe("showChatHistory"),
     assistantState.getSnapshot("showChatHistory"),
   );
+  const isDriverActive = useSyncExternalStore(
+    assistantState.subscribe("isDriverActive"),
+    assistantState.getSnapshot("isDriverActive"),
+  );
   const showTutorialTooltip = useSyncExternalStore(
     assistantState.subscribe("showTutorialTooltip"),
     assistantState.getSnapshot("showTutorialTooltip"),
@@ -208,7 +215,6 @@ function App({
       setConfirm,
       setRisk,
       setChatLoading,
-      setCollapsed,
       setAppData,
       initData,
       assistantState,
@@ -452,6 +458,7 @@ function App({
             {...{
               toastsRef,
               assistantRef,
+              assistantState,
               chatLoading,
               appData,
               setAppData,
@@ -465,7 +472,7 @@ function App({
             className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
           />
           {((messages.length > 0 && app === null) ||
-            (docked && !collapsed)) && (
+            (docked && !chatCollapsed)) && (
             <div
               className={`flex w-[336px] min-w-0 grow flex-col ${
                 app !== null ? "border-l border-stone-500" : ""
@@ -478,12 +485,22 @@ function App({
                     model,
                     setModel,
                     assistantRef,
+                    assistantState,
                     docked,
                     setDocked,
-                    setCollapsed,
                     shouldFocusCollapseButtonRef,
                   }}
                 />
+              )}
+              {messages[0]?.welcome && app === null && !isDriverActive && (
+                <button
+                  className="absolute right-4 top-3 z-10 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
+                  onClick={() => {
+                    assistantRef.current.driver.drive();
+                  }}
+                >
+                  Restart tutorial
+                </button>
               )}
               <ChatDisplay
                 key={currentConversation.conversationId}
@@ -492,7 +509,6 @@ function App({
                 messages={messages}
                 assistantRef={assistantRef}
                 chatLoading={chatLoading}
-                allowRestartTutorial={true}
               />
             </div>
           )}
@@ -500,13 +516,13 @@ function App({
         {(messages.length > 0 || app !== null) && (
           <BottomChat
             {...{
-              collapsed,
-              setCollapsed,
+              chatCollapsed,
               shouldFocusCollapseButtonRef,
               docked,
               setDocked,
               toastsRef,
               assistantRef,
+              assistantState,
               messages,
               chatLoading,
               app,
@@ -522,7 +538,7 @@ function App({
       <Toasts className="top-2" ref={toastsRef} />
       {showTutorialTooltip && (
         <DivButton
-          className="group absolute right-4 top-2 whitespace-pre rounded-lg bg-stone-600 px-2 py-1 text-center text-sm font-medium text-white shadow hover:bg-stone-700"
+          className="group absolute right-4 top-3 whitespace-pre rounded-lg bg-stone-600 px-2 py-1 text-center text-sm font-medium text-white shadow hover:bg-stone-700"
           onPress={() => {
             //todo clean this up
             assistantRef.current.driver.drive();

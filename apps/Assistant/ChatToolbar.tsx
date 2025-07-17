@@ -7,25 +7,25 @@ import {
 } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
-import type { AssistantRefObject } from "./AssistantState.ts";
+import type { AssistantRefObject, AssistantState } from "./AssistantState.ts";
 
 export default function ChatToolbar({
   containerClassName,
   model,
   setModel,
   assistantRef,
+  assistantState,
   docked,
   setDocked,
-  setCollapsed,
   shouldFocusCollapseButtonRef,
 }: {
   containerClassName: string;
   model: string;
   setModel: (model: string) => void;
   assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   docked: boolean;
   setDocked: (docked: boolean) => void;
-  setCollapsed: (collapsed: boolean) => void;
   shouldFocusCollapseButtonRef: React.RefObject<boolean>;
 }) {
   return (
@@ -59,6 +59,7 @@ export default function ChatToolbar({
         </Tooltip>
         <Tooltip text="Collapse chat" position={docked ? "left" : "top"}>
           <button
+            id="chat-collapse-button"
             ref={(el) => {
               if (el && shouldFocusCollapseButtonRef.current) {
                 el.focus();
@@ -66,7 +67,7 @@ export default function ChatToolbar({
               }
             }}
             onClick={() => {
-              setCollapsed(true);
+              assistantState.setChatCollapsed(true);
               shouldFocusCollapseButtonRef.current = true;
             }}
           >

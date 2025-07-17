@@ -39,7 +39,6 @@ class Assistant {
     setConfirm,
     setRisk,
     setChatLoading,
-    setCollapsed,
     setAppData,
     initData,
     assistantState,
@@ -52,7 +51,6 @@ class Assistant {
     this.setConfirm = setConfirm;
     this.setRisk = setRisk;
     this.setChatLoading = setChatLoading;
-    this.setCollapsed = setCollapsed;
     this.setAppData = setAppData;
     this.assistantState = assistantState;
     this.driver = createDriver(this, (state) =>
@@ -751,7 +749,7 @@ class Assistant {
       //if loaded from a url, there's no input and the init context is irrelevant
       if (messages && initContext) {
         //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
-        this.setCollapsed(false);
+        this.assistantState.setChatCollapsed(false);
         await this.handleInput({
           messages,
           initContext,
@@ -986,7 +984,6 @@ class Assistant {
     );
     this.setConfirm(null);
     this.setRisk(null);
-    this.setCollapsed(true);
     this.handleNewConversation();
     this.setChatLoading(false);
     this.setApp(null);

@@ -135,6 +135,8 @@ class AssistantState extends SyncExternalStore<{
   showChatHistory: boolean;
   isDriverActive: boolean;
   showTutorialTooltip: boolean;
+  chatInput: string;
+  chatCollapsed: boolean;
 }> {
   conversations: { [conversationId: string]: Conversation };
   currentConversation: Conversation;
@@ -170,6 +172,8 @@ class AssistantState extends SyncExternalStore<{
       showChatHistory,
       isDriverActive: false,
       showTutorialTooltip: !!app && !seenTutorial,
+      chatInput: "",
+      chatCollapsed: true,
     });
     this.currentConversation = initConversation;
     this.conversations = initConversations;
@@ -199,6 +203,12 @@ class AssistantState extends SyncExternalStore<{
   }
   handleDriverStateChange(state: DriverState) {
     this.set("isDriverActive", !!state.isInitialized);
+  }
+  setChatInput(input: string) {
+    this.set("chatInput", input);
+  }
+  setChatCollapsed(collapsed: boolean) {
+    this.set("chatCollapsed", collapsed);
   }
   setConversations(conversations: { [conversationId: string]: Conversation }) {
     this.conversations = conversations;
@@ -403,6 +413,8 @@ class AssistantState extends SyncExternalStore<{
     if (!this.seenTutorial) {
       this.setShowTutorialTooltip(true);
     }
+    this.setChatInput("");
+    this.setChatCollapsed(true);
   }
 }
 

@@ -1,11 +1,4 @@
-import React, {
-  useRef,
-  memo,
-  useCallback,
-  useState,
-  useEffect,
-  useSyncExternalStore,
-} from "react";
+import React, { useRef, memo, useCallback, useState, useEffect } from "react";
 import Markdown from "./Markdown.tsx";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
@@ -22,36 +15,19 @@ function ChatDisplay({
   messages,
   assistantRef,
   chatLoading,
-  allowRestartTutorial,
 }: {
   outerClassName?: string;
   innerClassName?: string;
   messages: Message[];
   assistantRef: AssistantRefObject;
   chatLoading: boolean;
-  allowRestartTutorial: boolean;
 }) {
-  const isDriverActive = useSyncExternalStore(
-    assistantRef.current.assistantState.subscribe("isDriverActive"),
-    assistantRef.current.assistantState.getSnapshot("isDriverActive"),
-  );
-
   const ref = useRef<HTMLDivElement | null>(null);
   const scrollToBottomRef = useRef(false);
 
-  const lastUserMessageIndex = messages.findLastIndex(
-    (message) => message.role === "user",
-  );
-  const welcome = messages[0]?.welcome || false; //todo make this a conversation level flag, not message level?
-
   if (!ref.current) {
-    if (welcome) {
-      //special case for welcome message - we should open it at the top
-      scrollToBottomRef.current = false;
-    } else {
-      //otherwise, messages are not open, we want to scroll to bottom when they are opened
-      scrollToBottomRef.current = true;
-    }
+    //messages are not open, we want to scroll to bottom when they are opened
+    scrollToBottomRef.current = true;
   } else if (
     ref.current.scrollHeight - ref.current.clientHeight <=
     ref.current.scrollTop + 1
@@ -80,10 +56,16 @@ function ChatDisplay({
     };
   }
 
+  const displayMessages = filterAndCollapseMessages(messages);
+
+  const lastUserMessageIndex = displayMessages.findLastIndex(
+    (message) => message.role === "user",
+  );
+
   return (
     <div
       ref={ref}
-      className={`overflow-y-auto ${outerClassName}`}
+      className={`relative overflow-y-auto ${outerClassName}`}
       style={{
         //force creation of a layer to improve scroll performance
         transform: "translateZ(0)",
@@ -91,26 +73,16 @@ function ChatDisplay({
     >
       <div
         id="chat-display"
-        className={`relative mb-4 flex flex-col gap-5 ${innerClassName}`}
+        className={`mb-4 flex flex-col gap-5 ${innerClassName}`}
       >
-        {welcome && allowRestartTutorial && !isDriverActive && (
-          <button
-            className="absolute -top-3 right-3 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
-            onClick={() => {
-              assistantRef.current.driver.drive();
-            }}
-          >
-            Restart tutorial
-          </button>
-        )}
-        {messages.map((message, i) => (
+        {displayMessages.map((message, i) => (
           <Message
             key={i}
             message={message}
             handleScroll={handleScroll}
             assistantRef={assistantRef}
             lastUserMessage={lastUserMessageIndex === i}
-            loading={chatLoading && i === messages.length - 1}
+            loading={chatLoading && i === displayMessages.length - 1}
           />
         ))}
         {promptToContinue && (
@@ -262,9 +234,9 @@ function FeedbackButtons({
   );
 }
 
-function formatMessage(message: Message) {
-  if (message.role === "system") return "";
-  const tagsToInclude = {
+function filterAndCollapseMessages(messages: Message[]): Message[] {
+  const tagsToInclude: Record<Message["role"], Set<string | undefined>> = {
+    system: new Set([]),
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
     assistant: new Set([
       undefined,
@@ -274,12 +246,34 @@ function formatMessage(message: Message) {
     ]),
     display: new Set([undefined]),
   };
-  const messageTagsToInclude: Set<string | undefined> =
-    tagsToInclude[message.role];
-  return message.tags
-    .filter((tag) => messageTagsToInclude.has(tag.tag))
-    .map(formatTag)
-    .join("");
+  const filteredMessages = messages
+    .map((message) => ({
+      ...message,
+      tags: message.tags.filter((tag) =>
+        tagsToInclude[message.role].has(tag.tag),
+      ),
+    }))
+    .filter((message) => message.tags.length > 0);
+  const collapsedMessages = [];
+  for (const message of filteredMessages) {
+    const lastCollapsedMessage =
+      collapsedMessages[collapsedMessages.length - 1];
+    if (
+      message.role === "assistant" &&
+      lastCollapsedMessage?.role === "assistant"
+    ) {
+      //collapse consecutive assistant messages
+      //note that the messages could have different models which we don't handle at all - just use the first
+      lastCollapsedMessage.tags.push({ content: "\n\n" }, ...message.tags);
+    } else {
+      collapsedMessages.push(message);
+    }
+  }
+  return collapsedMessages;
+}
+
+function formatMessage(message: Message) {
+  return message.tags.map(formatTag).join("");
 }
 
 function formatTag({ tag, content }: { tag?: string; content: string }) {

@@ -1,31 +1,40 @@
-import React, { useState } from "react";
+import React, { useSyncExternalStore } from "react";
 import ChatInput from "./ChatInput.tsx";
 import AppList from "./AppList.tsx";
 import { CircleArrowUp, Sparkles } from "lucide-react";
-import type { AssistantRefObject, AppData } from "./AssistantState.ts";
+import type {
+  AssistantRefObject,
+  AppData,
+  AssistantState,
+} from "./AssistantState.ts";
 
 function Home({
   assistantRef,
+  assistantState,
   chatLoading,
   appData,
   setAppData,
   setShowDiscover,
 }: {
   assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   chatLoading: boolean;
   appData: AppData;
   setAppData: (appData: AppData) => void;
   setShowDiscover: (show: boolean) => void;
 }) {
-  const [input, setInput] = useState("");
+  const input = useSyncExternalStore(
+    assistantState.subscribe("chatInput"),
+    assistantState.getSnapshot("chatInput"),
+  );
 
   async function handleInput(input: string) {
     if (input === "" || assistantRef.current === null || chatLoading) return;
     try {
-      setInput("");
+      assistantState.setChatInput("");
       await assistantRef.current.handleInput({
         input,
-        resetInput: () => setInput(input),
+        resetInput: () => assistantState.setChatInput(input),
       });
     } catch (error) {
       console.error(error);
@@ -46,7 +55,7 @@ function Home({
           <ChatInput
             className="mx-2 max-h-[148px] grow resize-none outline-none"
             input={input}
-            setInput={setInput}
+            setInput={(input) => assistantState.setChatInput(input)}
             handleInput={handleInput}
             placeholder="Chat with your Assistant"
           />

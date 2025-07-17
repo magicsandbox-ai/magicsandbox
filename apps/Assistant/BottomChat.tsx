@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useSyncExternalStore } from "react";
 import {
   Star,
   CircleArrowUp,
@@ -13,17 +13,18 @@ import { ChatDisplay, formatMessage } from "./ChatDisplay.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
 import type {
   AssistantRefObject,
+  AssistantState,
   Message,
   AppState,
 } from "./AssistantState.ts";
 
 function BottomChat({
-  collapsed,
-  setCollapsed,
+  chatCollapsed,
   shouldFocusCollapseButtonRef,
   docked,
   setDocked,
   assistantRef,
+  assistantState,
   messages,
   chatLoading,
   app,
@@ -32,12 +33,12 @@ function BottomChat({
   setShowDiscover,
   setShowApps,
 }: {
-  collapsed: boolean;
-  setCollapsed: (collapsed: boolean) => void;
+  chatCollapsed: boolean;
   shouldFocusCollapseButtonRef: React.RefObject<boolean>;
   docked: boolean;
   setDocked: (docked: boolean) => void;
   assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   messages: Message[];
   chatLoading: boolean;
   app: AppState;
@@ -46,26 +47,29 @@ function BottomChat({
   setShowDiscover: (show: boolean) => void;
   setShowApps: (show: boolean) => void;
 }) {
-  const [input, setInput] = useState("");
+  const input = useSyncExternalStore(
+    assistantState.subscribe("chatInput"),
+    assistantState.getSnapshot("chatInput"),
+  );
 
   function handleEscape(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
-      setCollapsed(true);
+      assistantState.setChatCollapsed(true);
     }
   }
 
   async function handleInput(input: string) {
     //don't let user submit while loading
     if (input === "" || assistantRef.current === null || chatLoading) return;
-    setInput("");
+    assistantState.setChatInput("");
     try {
       if (app !== null) {
-        setCollapsed(false);
+        assistantState.setChatCollapsed(false);
       }
       await assistantRef.current.handleInput({
         input,
         messages,
-        resetInput: () => setInput(input),
+        resetInput: () => assistantState.setChatInput(input),
       });
     } catch (error) {
       console.error(error);
@@ -77,7 +81,7 @@ function BottomChat({
   }
 
   let placeholder;
-  if (collapsed && app !== null && messages.length > 0) {
+  if (chatCollapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i]!.role !== "user") {
         placeholder = formatMessage(messages[i]!).trim();
@@ -85,13 +89,13 @@ function BottomChat({
       }
     }
     placeholder = placeholder || "Chat with your Assistant";
-  } else if (collapsed && app) {
-    placeholder = `Opened app ${app.app}`;
+  } else if (chatCollapsed && app) {
+    placeholder = window.innerWidth < 768 ? app.app : `Opened app ${app.app}`;
   } else {
     placeholder = "Chat with your Assistant";
   }
 
-  const actionButtonStyle = collapsed ? "" : "hidden md:block";
+  const actionButtonStyle = chatCollapsed ? "" : "hidden md:block";
 
   return (
     <>
@@ -100,14 +104,14 @@ function BottomChat({
         <div className="relative flex min-h-12 w-full max-w-screen-lg flex-initial items-center py-1.5">
           <div
             className={`flex w-full flex-col justify-center gap-2 rounded-xl border-stone-500 bg-white py-1 outline-1 ${
-              collapsed || docked
+              chatCollapsed || docked
                 ? "border focus-within:outline focus-within:outline-stone-500"
                 : "absolute bottom-1.5 z-10 border-2 py-2"
             }`}
             onKeyDown={handleEscape}
             tabIndex={-1}
           >
-            {!collapsed && !docked && (
+            {!chatCollapsed && !docked && (
               <>
                 <ChatToolbar
                   containerClassName="mx-3 flex items-center justify-between gap-2"
@@ -115,9 +119,9 @@ function BottomChat({
                     model,
                     setModel,
                     assistantRef,
+                    assistantState,
                     docked,
                     setDocked,
-                    setCollapsed,
                     shouldFocusCollapseButtonRef,
                   }}
                 />
@@ -126,7 +130,6 @@ function BottomChat({
                   messages={messages}
                   assistantRef={assistantRef}
                   chatLoading={chatLoading}
-                  allowRestartTutorial={false}
                 />
                 <hr className="mx-2 border-stone-300" />
               </>
@@ -134,20 +137,21 @@ function BottomChat({
             <div className="flex items-center">
               <ChatInput
                 className={`max-h-[148px] grow resize-none px-1 outline-none ${
-                  collapsed || docked
+                  chatCollapsed || docked
                     ? "mx-1"
                     : "mx-2 focus:outline-2 focus:outline-stone-500"
                 }`}
                 input={input}
-                setInput={setInput}
+                setInput={(input) => assistantState.setChatInput(input)}
                 handleInput={handleInput}
                 placeholder={placeholder}
                 focus={window.innerWidth >= 1280} //don't focus on mobile/tablet
               />
-              {collapsed && app !== null && (
+              {chatCollapsed && app !== null && (
                 <div className="relative flex items-center">
                   <Tooltip text="Expand chat">
                     <button
+                      id="chat-collapse-button"
                       ref={(el) => {
                         if (el && shouldFocusCollapseButtonRef.current) {
                           el.focus();
@@ -156,7 +160,7 @@ function BottomChat({
                       }}
                       className="mx-2"
                       onClick={() => {
-                        setCollapsed(false);
+                        assistantState.setChatCollapsed(false);
                         shouldFocusCollapseButtonRef.current = true;
                       }}
                     >
@@ -170,7 +174,11 @@ function BottomChat({
           </div>
         </div>
         <div className="mr-2 flex flex-1 items-center justify-start gap-2">
-          <Tooltip text={chatLoading ? "Stop chat" : "Submit chat"}>
+          <Tooltip
+            text={chatLoading ? "Stop chat" : "Submit chat"}
+            position="left"
+            className="md:tooltip-top"
+          >
             <button onClick={() => handleInput(input)}>
               {chatLoading ? (
                 <>

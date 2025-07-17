@@ -29,8 +29,10 @@ function ChatInput({
       //don't let placeholder make the input grow
       ref.current.style.height = "28px"; //line height 24 + 4 for border
     } else {
+      ref.current.style.overflow = "hidden"; // prevent scrollbar during scrollHeight measurement
       ref.current.style.height = "auto"; //allow to shrink if needed
       ref.current.style.height = `${ref.current.scrollHeight + 4}px`; //add 4 because scrollHeight does not include border
+      ref.current.style.overflow = ""; // restore default overflow
     }
   }, [input]);
 
