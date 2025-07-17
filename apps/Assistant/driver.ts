@@ -390,6 +390,25 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       onStateChange?.({});
     },
     steps: steps.map((step) => step.driveStep),
+    animateFunction: (elapsed, initialValue, amountOfChange, duration) => {
+      //animate using a constant speed
+      //calculating pxPerMs in this way guarantees that the animation will always finish
+      const pxPerMs =
+        Math.max(window.innerWidth, window.innerHeight) / duration;
+      const direction = Math.sign(amountOfChange);
+      if (direction === 1) {
+        return Math.min(
+          initialValue + pxPerMs * elapsed,
+          initialValue + amountOfChange,
+        );
+      } else if (direction === -1) {
+        return Math.max(
+          initialValue - pxPerMs * elapsed,
+          initialValue + amountOfChange,
+        );
+      }
+      return initialValue;
+    },
   });
   //this is a little hacky but we want to call this in reload - todo make more type safe?
   (driverObj as any).handleNextClick = handleNextClick;
@@ -469,22 +488,14 @@ function highlightMovingElement(
   findElement: () => Element | null | undefined,
   driveStep: DriveStep = {},
 ) {
-  let element: Element | null | undefined;
   let animationId: number | undefined;
   const refreshLoop = () => {
-    if (element?.isConnected) {
-      //just refresh
-      driverObj.refresh();
-    } else {
-      //find element and call highlight again
-      element = findElement();
-      if (element) {
-        driverObj.highlight({
-          ...driveStep,
-          element,
-        });
-      }
-      //if not found, just skip this frame - it might reappear soon
+    const element = findElement();
+    if (element) {
+      driverObj.highlight({
+        ...driveStep,
+        element,
+      });
     }
     animationId = requestAnimationFrame(refreshLoop);
   };
