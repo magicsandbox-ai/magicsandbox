@@ -56,12 +56,32 @@ test("Notes", async ({ app }) => {
       0,
       "API Note",
       `API Content
+
+alpha
+bravo
+charlie
+
+# delta
+## echo
+### foxtrot
+
+> golf
+> hotel
+> india
+
 \`\`\`
-1
-2
-3
-4
+juliet
+kilo
+lima
 \`\`\`
+
+- mike
+- november
+- oscar
+
+1. papa
+2. quebec
+3. romeo
 `,
       ["API Folder"],
     );
@@ -85,10 +105,7 @@ test("Notes", async ({ app }) => {
       noteId,
       `API Append
 \`\`\`
-5
-6
-7
-8
+I'm a new code block!
 \`\`\``,
     );
   }, noteId);
@@ -101,11 +118,36 @@ test("Notes", async ({ app }) => {
     app.api.replaceNote(
       noteId,
       `API Replace
+alpha
+beta
+charlie
+
+# delta
+## elephant
+### foxtrot
+
+> golf
+> hydrogen
+> india
+
 \`\`\`
-1
-20
-3
-\`\`\``,
+juliet
+kevin
+lima
+\`\`\`
+
+\`\`\`
+I'm a new code block!
+\`\`\`
+
+- mike
+- nancy
+  - I'm a new sub bullet!
+- oscar
+
+1. papa
+2. quail
+3. romeo`,
     );
   }, noteId);
   await expect(app.getByText("API Replace")).toBeVisible();
@@ -167,14 +209,14 @@ test("Notes", async ({ app }) => {
 
   //reject changes
   await apiNote.click();
-  await expect(app.getByText("API Replace")).toBeVisible(); //prevContent
+  await expect(app.getByText("API Content")).toBeVisible(); //prevContent
   await expect(app.getByText("API Edit")).toBeVisible(); //content
   const rejectButton = app.getByRole("button", {
     name: "Reject changes to this note",
   });
   await rejectButton.click(); //this rejects the delete, edit, rename, and move
   await expect(app.getByText("API Edit")).not.toBeVisible(); //content should be gone
-  await expect(app.getByText("API Replace")).toBeVisible(); //prevContent should still be visible
+  await expect(app.getByText("API Content")).toBeVisible(); //prevContent should still be visible
   await expect(apiNote).not.toBeVisible(); //rejected rename so has name "API Note" now
   apiNote = app.getByRole("button", { name: "API Note" });
   await expect(apiNote).toBeVisible();

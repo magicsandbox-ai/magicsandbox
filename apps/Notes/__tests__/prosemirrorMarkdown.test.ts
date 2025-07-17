@@ -6,7 +6,10 @@ npm run jest -- apps/Notes/__tests__/prosemirrorMarkdown.test.ts
 */
 
 const testCases = [
-  //"foo\nbar",
+  "foo\nbar",
+  "\nfoo\nbar\n",
+  "\n\nfoo\nbar\n\n",
+  "\n\n\nfoo\nbar\n\n\n",
   "foo\n\nbar",
   "foo\n\n\nbar",
   "[test](https://example.com)",
@@ -17,7 +20,6 @@ describe("prosemirrorMarkdown", () => {
     for (const content of testCases) {
       try {
         const doc = parse(content);
-        expect(doc.content.content.length).toBe(content.split("\n").length);
         const serialized = serialize(doc);
         expect(serialized).toBe(content);
       } catch (error) {

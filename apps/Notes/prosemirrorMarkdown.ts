@@ -41,12 +41,18 @@ function parse(content: string) {
         }
         prevIndexIncrement = 2; //handled "\n>"
       } else {
-        if (content[index + 1] === "\n") {
+        separator = "";
+        if (index === 0) {
+          //special case for the first line
+          separator += "\u200B";
+        }
+        if (content[index + 1] === "\n" || index === content.length - 1) {
           //consecutive newlines, use a zero width space to preserve empty paragraph
-          separator = "\n\n\u200B";
+          //special case for the last line
+          separator += "\n\n\u200B";
         } else {
           //single newline, but we need two newlines in markdown to separate paragraphs
-          separator = "\n\n";
+          separator += "\n\n";
         }
         prevIndexIncrement = 1; //handled "\n"
       }

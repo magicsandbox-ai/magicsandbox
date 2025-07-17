@@ -864,17 +864,15 @@ ${contextString}
   }
   apiAppendToNote(id: number, content: string) {
     const note = this._getNote(id);
-    this._handleEdit(
-      note.nodeData.uuid,
-      note.nodeData.content,
-      (note.nodeData.content?.trimEnd?.() || note.nodeData.content) +
-        "\n" +
-        (content?.trimStart?.() || content),
-    );
+    const sep =
+      note.nodeData.content.endsWith("\n") || content.startsWith("\n")
+        ? ""
+        : "\n";
+    this._handleEdit(note, note.nodeData.content + sep + content);
   }
   apiReplaceNote(id: number, content: string) {
     const note = this._getNote(id);
-    this._handleEdit(note.nodeData.uuid, note.nodeData.content, content);
+    this._handleEdit(note, content);
   }
   apiEditNote(id: number, find: string, replace: string) {
     const note = this._getNote(id);
@@ -886,11 +884,7 @@ ${contextString}
       );
       return;
     }
-    this._handleEdit(
-      note.nodeData.uuid,
-      note.nodeData.content,
-      note.nodeData.content.replaceAll(find, replace),
-    );
+    this._handleEdit(note, newContent);
   }
   apiRenameNode(id: number, name: string) {
     const node = this._getNode(id);
@@ -991,13 +985,13 @@ ${note.nodeData.content}
     }
     return note;
   }
-  _handleEdit(uuid: string, prevContent: string, content: string) {
+  _handleEdit(note: TreeNote, newContent: string) {
     this.updateNode({
-      uuid,
-      prevContent,
-      content,
+      uuid: note.nodeData.uuid,
+      prevContent: note.nodeData.prevContent ?? note.nodeData.content,
+      content: newContent,
     });
-    this.setCurrentNodeUuid(uuid);
+    this.setCurrentNodeUuid(note.nodeData.uuid);
   }
   _getNode(id: number) {
     const node = this.tree[id];
