@@ -7,22 +7,16 @@ import {
 } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
-import type { AssistantRefObject, AssistantState } from "./AssistantState.ts";
+import type { AssistantState } from "./AssistantState.ts";
 
 export default function ChatToolbar({
   containerClassName,
-  model,
-  setModel,
-  assistantRef,
   assistantState,
   docked,
   setDocked,
   shouldFocusCollapseButtonRef,
 }: {
   containerClassName: string;
-  model: string;
-  setModel: (model: string) => void;
-  assistantRef: AssistantRefObject;
   assistantState: AssistantState;
   docked: boolean;
   setDocked: (docked: boolean) => void;
@@ -31,11 +25,11 @@ export default function ChatToolbar({
   return (
     <div className={containerClassName}>
       <div className="flex grow items-center">
-        <ModelPicker model={model} setModel={setModel} />
+        <ModelPicker assistantState={assistantState} />
       </div>
       <div className="flex items-center gap-2">
         <Tooltip text="New chat" position={docked ? "bottom" : "top"}>
-          <button onClick={() => assistantRef.current.handleNewConversation()}>
+          <button onClick={() => assistantState.handleNewConversation()}>
             <Plus />
             <span className="sr-only">New chat</span>
           </button>

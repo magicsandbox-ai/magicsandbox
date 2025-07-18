@@ -2,14 +2,11 @@ import React, { useState, memo, useSyncExternalStore } from "react";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { Menu, Search, Trash2, Plus } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
-import type { AssistantRefObject, AssistantState } from "./AssistantState.ts";
+import type { AssistantState } from "./AssistantState.ts";
 
 const ChatHistory = memo(function ChatHistory({
   assistantState,
   currentConversationId,
-  model,
-  setModel,
-  assistantRef,
   setShowSearch,
   setShowDelete,
   show,
@@ -17,9 +14,6 @@ const ChatHistory = memo(function ChatHistory({
 }: {
   assistantState: AssistantState;
   currentConversationId: string;
-  model: string;
-  setModel: (model: string) => void;
-  assistantRef: AssistantRefObject;
   setShowSearch: (show: boolean) => void;
   setShowDelete: (show: boolean) => void;
   show: boolean;
@@ -63,7 +57,7 @@ const ChatHistory = memo(function ChatHistory({
           <Tooltip text="New chat" position="bottom">
             <button
               onClick={() => {
-                assistantRef.current.handleNewConversation();
+                assistantState.handleNewConversation();
                 if (window.innerWidth < 768) {
                   setShow(false); //close on mobile when clicking new chat
                 }
@@ -75,7 +69,7 @@ const ChatHistory = memo(function ChatHistory({
           </Tooltip>
         </div>
         <div id="model-picker-container" className="mx-3">
-          <ModelPicker model={model} setModel={setModel} />
+          <ModelPicker assistantState={assistantState} />
         </div>
         <div className="grow scroll-py-3 space-y-3 overflow-y-auto px-3">
           {conversationSummaries
@@ -87,7 +81,7 @@ const ChatHistory = memo(function ChatHistory({
                   conversationId,
                   summary,
                   currentConversationId,
-                  assistantRef,
+                  assistantState,
                   setShow,
                 }}
               />
@@ -115,13 +109,13 @@ function ChatButton({
   conversationId,
   summary,
   currentConversationId,
-  assistantRef,
+  assistantState,
   setShow,
 }: {
   conversationId: string;
   summary: string | null;
   currentConversationId: string;
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   setShow: (show: boolean) => void;
 }) {
   const [renameValue, setRenameValue] = useState<string | null>(null);
@@ -134,7 +128,7 @@ function ChatButton({
     e.preventDefault();
     const newName = renameValue?.trim();
     if (newName && newName.length > 0) {
-      assistantRef.current.handleUpdateConversation({
+      assistantState.handleUpdateConversation({
         conversationId,
         summary: newName,
       });
@@ -174,7 +168,7 @@ function ChatButton({
           : ""
       }`}
       onClick={() => {
-        assistantRef.current.handleSwitchConversation(conversationId);
+        assistantState.handleSwitchConversation(conversationId);
         if (window.innerWidth < 768) {
           setShow(false); //close on mobile when clicking a chat
         }

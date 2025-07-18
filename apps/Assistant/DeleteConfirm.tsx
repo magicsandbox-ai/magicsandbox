@@ -1,13 +1,13 @@
 import React from "react";
 import Confirm from "@components/Confirm.tsx";
-import type { AssistantRefObject, Conversation } from "./AssistantState.ts";
+import type { AssistantState, Conversation } from "./AssistantState.ts";
 
 function DeleteConfirm({
-  assistantRef,
+  assistantState,
   setShowDelete,
   currentConversation,
 }: {
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   setShowDelete: (show: boolean) => void;
   currentConversation: Conversation;
 }) {
@@ -29,7 +29,7 @@ function DeleteConfirm({
       text: "Delete Current Chat",
       className: "bg-red-500 hover:bg-red-600 text-white w-48",
       onClick: () => {
-        assistantRef.current.handleDeleteConversations([
+        assistantState.handleDeleteConversations([
           currentConversation.conversationId,
         ]);
         setShowDelete(false);
@@ -40,7 +40,7 @@ function DeleteConfirm({
     text: "Delete All Chats",
     className: "bg-red-800 hover:bg-red-900 text-white w-48",
     onClick: () => {
-      assistantRef.current.handleDeleteConversations(null);
+      assistantState.handleDeleteConversations(null);
       setShowDelete(false);
     },
   });

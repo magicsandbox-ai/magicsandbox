@@ -65,8 +65,8 @@ abstract class Risk {
     //pass
   }
   getApp() {
-    if (this.assistant.app) {
-      return this.assistant.app.app;
+    if (this.assistant.assistantState.app) {
+      return this.assistant.assistantState.app.app;
     }
     throw new Error("handling risk without an app");
   }
@@ -93,7 +93,8 @@ class FinancialRisk extends Risk {
       const pendingRequests = this.pendingRequests;
       if (
         this.pendingCost > 0 &&
-        this.pendingCost + this.approvedCost > this.assistant.budget
+        this.pendingCost + this.approvedCost >
+          this.assistant.assistantState.budget
       ) {
         const app = this.getApp();
         const pendingSpend = formatAsDollars(this.pendingCost);
@@ -102,10 +103,10 @@ class FinancialRisk extends Risk {
           this.pendingCost + this.approvedCost,
         );
         let newBudget;
-        if (this.assistant.budget === 0) {
+        if (this.assistant.assistantState.budget === 0) {
           newBudget = (this.pendingCost + this.approvedCost) * 3;
         } else {
-          newBudget = this.assistant.budget * 3;
+          newBudget = this.assistant.assistantState.budget * 3;
         }
         const callback = (approved: boolean, askedUser: boolean) => {
           this.handleApprove(approved, askedUser, pendingRequests, newBudget);
@@ -142,7 +143,7 @@ class FinancialRisk extends Risk {
   ) {
     if (approved) {
       if (askedUser && newBudget !== undefined) {
-        this.assistant.budget = newBudget;
+        this.assistant.assistantState.budget = newBudget;
       }
       pendingRequests.forEach((maxCost, id) => {
         this.approvedRequests.set(id, maxCost);
@@ -425,7 +426,7 @@ function isCrossAuthor(app1: string, app2: string) {
 async function manageBackups(apps: string[], assistant: AssistantRef) {
   function errorHandler(error: unknown) {
     console.error(error);
-    assistant.toastsRef.current.addToast(
+    assistant.assistantState.addToast(
       "Assistant failed to backup data",
       "error",
     );

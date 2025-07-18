@@ -60,7 +60,7 @@ Object(s) with keys:
 
 When `stream` is `true` (recommended), returns a stream of objects. `model` is present on only the first object. `finish_reason` and `usage` are present on only the final object. If generating multiple responses, each object will have an additional `index` key indicating the zero based index of the response.
 
-When `stream` is false, returns a single object with keys `model`, `content`, and `finish_reason`. If generating multiple responses, returns an array of objects with these keys.
+When `stream` is false, returns a single object with keys `model`, `content`, `finish_reason`, and `usage`. If generating multiple responses, returns an array of objects with these keys.
 
 ## Usage
 
@@ -137,4 +137,55 @@ for await (const chunk of stream) {
   } = chunk;
   //...
 }
+```
+
+### TypeScript
+
+```typescript
+//streaming
+const stream = await requestFunction<{
+  model?: string;
+  content: string;
+  finish_reason?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+}>("magicsandbox.llm", args, { stream: true });
+
+//streaming multiple responses
+const stream = await requestFunction<{
+  model?: string;
+  content: string;
+  finish_reason?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+  index: number;
+}>("magicsandbox.llm", [args1, args2], { stream: true });
+
+//non-streaming
+const response = await requestFunction<{
+  model: string;
+  content: string;
+  finish_reason: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+}>("magicsandbox.llm", args);
+
+//non-streaming multiple responses
+const response = await requestFunction<
+  {
+    model: string;
+    content: string;
+    finish_reason: string;
+    usage: {
+      prompt_tokens: number;
+      completion_tokens: number;
+    };
+  }[]
+>("magicsandbox.llm", [args1, args2]);
 ```

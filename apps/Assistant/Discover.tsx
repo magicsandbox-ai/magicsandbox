@@ -2,22 +2,18 @@ import React, { useState } from "react";
 import ModalOverlay from "@components/ModalOverlay.tsx";
 import { Loader, Star } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
-import type {
-  AssistantRefObject,
-  AppData,
-  DiscoverApp,
-} from "./AssistantState.ts";
+import type { AssistantState, AppData, DiscoverApp } from "./AssistantState.ts";
 
 const discoverMetadata = ["id", "description", "type", "usage"];
 
 function Discover({
   setShowDiscover,
-  assistantRef,
+  assistantState,
   popularApps,
   appData,
 }: {
   setShowDiscover: (show: boolean) => void;
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   popularApps: DiscoverApp[];
   appData: AppData;
 }) {
@@ -25,7 +21,7 @@ function Discover({
     <ModalOverlay
       modal={
         <DiscoverInner
-          assistantRef={assistantRef}
+          assistantState={assistantState}
           setShowDiscover={setShowDiscover}
           popularApps={popularApps}
           appData={appData}
@@ -40,12 +36,12 @@ function Discover({
 }
 
 function DiscoverInner({
-  assistantRef,
+  assistantState,
   setShowDiscover,
   popularApps,
   appData,
 }: {
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   setShowDiscover: (show: boolean) => void;
   popularApps: DiscoverApp[];
   appData: AppData;
@@ -161,7 +157,7 @@ function DiscoverInner({
                   <App
                     key={app.id}
                     discoverApp={app}
-                    assistantRef={assistantRef}
+                    assistantState={assistantState}
                     setShowDiscover={setShowDiscover}
                     appData={appData}
                   />
@@ -177,12 +173,12 @@ function DiscoverInner({
 
 function App({
   discoverApp,
-  assistantRef,
+  assistantState,
   setShowDiscover,
   appData,
 }: {
   discoverApp: DiscoverApp;
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   setShowDiscover: (show: boolean) => void;
   appData: AppData;
 }) {
@@ -197,7 +193,7 @@ function App({
   };
 
   function handleClick() {
-    assistantRef.current.handleApp({ app: app.app });
+    assistantState.handleApp({ app: app.app });
     setShowDiscover(false);
   }
 
@@ -234,7 +230,7 @@ function App({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              assistantRef.current.handleFavorite(app);
+              assistantState.handleFavorite(app);
             }}
           >
             <Star className={app.favorited ? "fill-yellow-200" : ""} />

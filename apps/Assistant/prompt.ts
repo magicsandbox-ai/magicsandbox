@@ -1,7 +1,7 @@
 //@ts-ignore
 import docs from "@magicsandbox.ai/docs/docs.md";
 import { getHeadings } from "@magicsandbox.ai/docs";
-import type { Message, App } from "./AssistantState.ts";
+import type { Message, App, AppState } from "./AssistantState.ts";
 
 const sandboxDocs = getHeadings(docs, ["Sandbox"]);
 
@@ -60,10 +60,13 @@ function prompt({
   initContext,
   continueSystemPrompt,
 }: {
-  app: App;
-  initContext: string;
-  continueSystemPrompt: "chat" | "init" | "context";
-}) {
+  app: AppState;
+  initContext?: string;
+  continueSystemPrompt?: Message["continueSystemPrompt"];
+}): {
+  systemPrompt: string;
+  continueSystemPrompt: Message["continueSystemPrompt"];
+} {
   if (continueSystemPrompt === "chat") {
     return { systemPrompt: chatSystemPrompt, continueSystemPrompt: "chat" };
   } else if (continueSystemPrompt === "init") {

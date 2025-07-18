@@ -48,10 +48,10 @@ function createDriver(
       },
       setup: async () => {
         assistantRef.reload();
-        assistantRef.handleSwitchConversation(
+        assistantRef.assistantState.handleSwitchConversation(
           welcomeConversation.conversationId,
         );
-        assistantRef.handleUpdateConversation({
+        assistantRef.assistantState.handleUpdateConversation({
           conversationId: welcomeConversation.conversationId,
           messages: [...welcomeConversation.messages],
         });
@@ -404,7 +404,7 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
   (driverObj as any).handleNextClick = handleNextClick;
   const originalDrive = driverObj.drive.bind(driverObj);
   driverObj.drive = async (stepIndex?: number) => {
-    assistantRef.setSeenTutorial(true);
+    assistantRef.assistantState.setSeenTutorial(true);
     const firstStep = steps[stepIndex ?? 0];
     await firstStep?.setup?.();
     originalDrive(stepIndex);
@@ -466,7 +466,7 @@ async function handleInput({
     assistantRef.assistantState.setChatInput(input.slice(0, i + 1));
   }
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  const handleInputPromise = assistantRef.handleInput({
+  const handleInputPromise = assistantRef.assistantState.handleInput({
     input,
     mockContent,
   });
@@ -578,7 +578,7 @@ async function handleMenu(
       disableActiveInteraction: true,
     });
     await new Promise((resolve) => setTimeout(resolve, 750));
-    assistantRef.setShowChatHistory(show);
+    assistantRef.assistantState.setShowChatHistory(show);
   }
 }
 
@@ -617,14 +617,14 @@ async function* mockLlm(model: string, content: string) {
       yield {
         result: {
           model,
-          content: tokens[i],
+          content: tokens[i]!,
           index: 0,
         },
       };
     } else if (i === tokens.length - 1) {
       yield {
         result: {
-          content: tokens[i],
+          content: tokens[i]!,
           finish_reason: "stop",
           // tokens are not used - better to not include them
           // usage: {
@@ -637,7 +637,7 @@ async function* mockLlm(model: string, content: string) {
     } else {
       yield {
         result: {
-          content: tokens[i],
+          content: tokens[i]!,
           index: 0,
         },
       };

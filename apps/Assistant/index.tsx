@@ -12,7 +12,7 @@ import AssistantSearch from "./AssistantSearch.tsx";
 import RiskConfirm from "./RiskConfirm.tsx";
 import DeleteConfirm from "./DeleteConfirm.tsx";
 import { Toasts, type ToastsRef, ToastError } from "@components/Toasts.tsx";
-import { includeMetadata, Assistant } from "./Assistant.js";
+import { Assistant } from "./Assistant.js";
 import Home from "./Home.tsx";
 import BottomChat from "./BottomChat.tsx";
 import { ChatDisplay } from "./ChatDisplay.tsx";
@@ -22,30 +22,18 @@ import { Discover, discoverMetadata } from "./Discover.tsx";
 import { ErrorBoundary } from "react-error-boundary";
 import AppModal from "./AppModal.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
-import { models } from "./ModelPicker.tsx";
 import DivButton from "./DivButton.tsx";
 import {
+  includeMetadata,
   AssistantState,
+  type DatabaseSchema,
   type Conversation,
-  type AppData,
   type DiscoverApp,
   type AssistantRef,
   type User,
   type Confirm,
   type RiskState,
 } from "./AssistantState.ts";
-
-interface DatabaseSchema {
-  docked?: boolean;
-  appData?: AppData;
-  selectedModel?: string;
-  popularAppData?: {
-    ts: number;
-    apps: DiscoverApp[];
-  };
-  lastMetadataRefresh?: Date;
-  seenTutorial?: boolean;
-}
 
 declare global {
   interface Window {
@@ -90,6 +78,7 @@ async function init({ user }: { user?: User } = {}) {
   }
   initConversations[initConversation.conversationId] = initConversation;
   const assistantState = new AssistantState({
+    initData,
     initConversation,
     initConversations,
     app: initApp ? false : null,
@@ -138,38 +127,17 @@ function App({
   const [docked, setDocked] = useState(
     window.innerWidth >= 768 && (initData.docked || false),
   );
-  const [chatLoading, setChatLoading] = useState(false);
+  const chatLoading = useSyncExternalStore(
+    assistantState.subscribe("chatLoading"),
+    assistantState.getSnapshot("chatLoading"),
+  );
   const app = useSyncExternalStore(
     assistantState.subscribe("app"),
     assistantState.getSnapshot("app"),
   );
-  const [appData, setAppData] = useState(
-    initData.appData || {
-      "magicsandbox.Notes": {
-        id: "magicsandbox.Notes", //missing version, which is potentially problematic. but currently id is only used in validateAndDefaultRequest
-        app: "magicsandbox.Notes",
-        description:
-          "Take notes, create to-do lists, organize documents, and more",
-        favorited: Date.now(),
-      },
-      "magicsandbox.Sheets": {
-        id: "magicsandbox.Sheets",
-        app: "magicsandbox.Sheets",
-        description: "Create and edit spreadsheets",
-        favorited: Date.now(),
-      },
-      "magicsandbox.Dev": {
-        id: "magicsandbox.Dev",
-        app: "magicsandbox.Dev",
-        description: "Develop, preview, and publish a Magic Sandbox App",
-        favorited: Date.now(),
-      },
-    },
-  );
-  const [model, setModel] = useState(
-    initData.selectedModel && models[initData.selectedModel]
-      ? initData.selectedModel
-      : "auto",
+  const appData = useSyncExternalStore(
+    assistantState.subscribe("appData"),
+    assistantState.getSnapshot("appData"),
   );
   const [showDelete, setShowDelete] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -195,8 +163,6 @@ function App({
   const firstRenderRef = useRef(true);
   const sandboxRef = useRef<SandboxRef>(null);
   const toastsRef = useRef<ToastsRef>(null);
-  const appDataRef = useRef(appData);
-  const modelRef = useRef(model);
   const shouldFocusCollapseButtonRef = useRef(false);
   const assistantRef = useRef<AssistantRef>(null as unknown as AssistantRef);
   if (assistantRef.current === null) {
@@ -205,29 +171,34 @@ function App({
       user,
       sandboxRef,
       toastsRef,
-      appDataRef,
-      modelRef,
       setConfirm,
       setRisk,
-      setChatLoading,
-      setAppData,
       initData,
       assistantState,
     });
   }
 
   useEffect(() => {
+    if (toastsRef.current) {
+      assistantState.addToast = toastsRef.current.addToast;
+    }
+    if (sandboxRef.current) {
+      assistantState.sandboxRef = sandboxRef.current;
+    }
+  }, []);
+
+  useEffect(() => {
     if (firstRenderRef.current) {
       try {
         if (initApp) {
-          assistantRef.current.handleApp({ app: initApp });
+          assistantState.handleApp({ app: initApp });
         }
       } catch (error: any) {
         console.error(error);
         if (error instanceof ToastError) {
-          toastsRef.current?.addToast(error.message, error.type);
+          assistantState.addToast(error.message, error.type);
         } else {
-          toastsRef.current?.addToast("Error: please try again", "error");
+          assistantState.addToast("Error: please try again", "error");
         }
       }
     }
@@ -265,26 +236,6 @@ function App({
   }, [docked]);
 
   useEffect(() => {
-    appDataRef.current = appData;
-    if (!firstRenderRef.current) {
-      requestPutData("appData", appData, {
-        app: "magicsandbox.Assistant",
-        evictionPolicy: "fifo",
-      }).catch(console.error);
-    }
-  }, [appData]);
-
-  useEffect(() => {
-    modelRef.current = model;
-    if (!firstRenderRef.current) {
-      requestPutData("selectedModel", model, {
-        app: "magicsandbox.Assistant",
-        evictionPolicy: "fifo",
-      }).catch(console.error);
-    }
-  }, [model]);
-
-  useEffect(() => {
     async function refreshPublishedApps() {
       try {
         if (
@@ -294,28 +245,21 @@ function App({
             (initData.lastMetadataRefresh?.getTime() ?? 0) &&
           !navigator.webdriver
         ) {
-          const metadata = await requestMetadata(
-            user.name,
-            //@ts-ignore - todo
-            includeMetadata,
-            {
-              kind: "app",
-              includePrivate: true,
-            },
-          );
-          setAppData((appData) => {
-            const newAppData = { ...appData };
-            metadata.forEach((m) => {
-              const app = m.id.split("@")[0]!;
-              newAppData[app] = {
-                ...newAppData[app],
-                ...m,
-                app,
-                published: newAppData[app]?.published || Date.now(),
-              };
-            });
-            return newAppData;
+          const metadata = await requestMetadata(user.name, includeMetadata, {
+            kind: "app",
+            includePrivate: true,
           });
+          const newAppData = { ...appData };
+          metadata.forEach((m) => {
+            const app = m.id.split("@")[0]!;
+            newAppData[app] = {
+              ...newAppData[app],
+              ...m,
+              app,
+              published: newAppData[app]?.published || Date.now(),
+            };
+          });
+          assistantState.setAppData(newAppData);
           await requestPutData("lastMetadataRefresh", user.lastPublished, {
             app: "magicsandbox.Assistant",
             evictionPolicy: "fifo",
@@ -365,12 +309,6 @@ function App({
   }, []);
 
   useEffect(() => {
-    if (toastsRef.current) {
-      assistantState.addToast = toastsRef.current.addToast;
-    }
-  }, []);
-
-  useEffect(() => {
     firstRenderRef.current = false;
   }, []);
 
@@ -396,7 +334,7 @@ function App({
   } else if (showDelete) {
     modalComponent = (
       <DeleteConfirm
-        assistantRef={assistantRef}
+        assistantState={assistantState}
         setShowDelete={setShowDelete}
         currentConversation={currentConversation}
       />
@@ -405,7 +343,6 @@ function App({
     modalComponent = (
       <AssistantSearch
         setShowSearch={setShowSearch}
-        assistantRef={assistantRef}
         assistantState={assistantState}
       />
     );
@@ -413,7 +350,7 @@ function App({
     modalComponent = (
       <Discover
         setShowDiscover={setShowDiscover}
-        assistantRef={assistantRef}
+        assistantState={assistantState}
         popularApps={popularAppData?.apps}
         appData={appData}
       />
@@ -423,8 +360,7 @@ function App({
       <AppModal
         setShowApps={setShowApps}
         appData={appData}
-        setAppData={setAppData}
-        assistantRef={assistantRef}
+        assistantState={assistantState}
       />
     );
   }
@@ -436,13 +372,10 @@ function App({
           {...{
             assistantState,
             currentConversationId: currentConversation.conversationId,
-            model,
-            setModel,
-            assistantRef,
             setShowSearch,
             setShowDelete,
             show: showChatHistory,
-            setShow: (show) => assistantRef.current.setShowChatHistory(show),
+            setShow: (show) => assistantState.setShowChatHistory(show),
           }}
         />
       )}
@@ -450,19 +383,16 @@ function App({
         className="flex min-w-0 grow flex-col overflow-y-auto"
         onClick={() => {
           if (window.innerWidth < 768 && showChatHistory) {
-            assistantRef.current.setShowChatHistory(false);
+            assistantState.setShowChatHistory(false);
           }
         }}
       >
         {messages.length === 0 && app === null && (
           <Home
             {...{
-              toastsRef,
-              assistantRef,
               assistantState,
               chatLoading,
               appData,
-              setAppData,
               setShowDiscover,
             }}
           />
@@ -483,9 +413,6 @@ function App({
                 <ChatToolbar
                   containerClassName="mx-3 mt-3 flex items-center justify-between gap-2"
                   {...{
-                    model,
-                    setModel,
-                    assistantRef,
                     assistantState,
                     docked,
                     setDocked,
@@ -508,7 +435,7 @@ function App({
                 outerClassName="py-6 flex grow flex-col items-center"
                 innerClassName="w-full max-w-screen-lg"
                 messages={messages}
-                assistantRef={assistantRef}
+                assistantState={assistantState}
                 chatLoading={chatLoading}
               />
             </div>
@@ -521,14 +448,10 @@ function App({
               shouldFocusCollapseButtonRef,
               docked,
               setDocked,
-              toastsRef,
-              assistantRef,
               assistantState,
               messages,
               chatLoading,
               app,
-              model,
-              setModel,
               setShowDiscover,
               setShowApps,
             }}

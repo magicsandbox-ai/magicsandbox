@@ -11,25 +11,17 @@ import Tooltip from "./Tooltip.tsx";
 import ChatInput from "./ChatInput.tsx";
 import { ChatDisplay, formatMessage } from "./ChatDisplay.tsx";
 import ChatToolbar from "./ChatToolbar.tsx";
-import type {
-  AssistantRefObject,
-  AssistantState,
-  Message,
-  AppState,
-} from "./AssistantState.ts";
+import type { AssistantState, Message, AppState } from "./AssistantState.ts";
 
 function BottomChat({
   chatCollapsed,
   shouldFocusCollapseButtonRef,
   docked,
   setDocked,
-  assistantRef,
   assistantState,
   messages,
   chatLoading,
   app,
-  model,
-  setModel,
   setShowDiscover,
   setShowApps,
 }: {
@@ -37,13 +29,10 @@ function BottomChat({
   shouldFocusCollapseButtonRef: React.RefObject<boolean>;
   docked: boolean;
   setDocked: (docked: boolean) => void;
-  assistantRef: AssistantRefObject;
   assistantState: AssistantState;
   messages: Message[];
   chatLoading: boolean;
   app: AppState;
-  model: string;
-  setModel: (model: string) => void;
   setShowDiscover: (show: boolean) => void;
   setShowApps: (show: boolean) => void;
 }) {
@@ -60,23 +49,19 @@ function BottomChat({
 
   async function handleInput(input: string) {
     //don't let user submit while loading
-    if (input === "" || assistantRef.current === null || chatLoading) return;
+    if (input === "" || chatLoading) return;
     assistantState.setChatInput("");
     try {
       if (app !== null) {
         assistantState.setChatCollapsed(false);
       }
-      await assistantRef.current.handleInput({
+      await assistantState.handleInput({
         input,
-        messages,
         resetInput: () => assistantState.setChatInput(input),
       });
     } catch (error) {
       console.error(error);
-      assistantRef.current.toastsRef.current.addToast(
-        "An unexpected error occurred",
-        "error",
-      );
+      assistantState.addToast("An unexpected error occurred", "error");
     }
   }
 
@@ -116,9 +101,6 @@ function BottomChat({
                 <ChatToolbar
                   containerClassName="mx-3 flex items-center justify-between gap-2"
                   {...{
-                    model,
-                    setModel,
-                    assistantRef,
                     assistantState,
                     docked,
                     setDocked,
@@ -128,7 +110,7 @@ function BottomChat({
                 <ChatDisplay
                   outerClassName="max-h-[60vh]"
                   messages={messages}
-                  assistantRef={assistantRef}
+                  assistantState={assistantState}
                   chatLoading={chatLoading}
                 />
                 <hr className="mx-2 border-stone-300" />
@@ -184,7 +166,7 @@ function BottomChat({
                 <>
                   <OctagonPause
                     onClick={() => {
-                      assistantRef.current.handleStopConversation();
+                      assistantState.handleStopConversation();
                     }}
                   />
                   <span className="sr-only">Stop</span>
@@ -205,7 +187,7 @@ function BottomChat({
                 className="xl:tooltip-top"
               >
                 <button
-                  onClick={() => assistantRef.current.handleFavorite(app)}
+                  onClick={() => assistantState.handleFavorite(app)}
                   className={actionButtonStyle}
                 >
                   <Star className={app.favorited ? "fill-yellow-200" : ""} />

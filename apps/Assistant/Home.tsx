@@ -2,25 +2,17 @@ import React, { useSyncExternalStore } from "react";
 import ChatInput from "./ChatInput.tsx";
 import AppList from "./AppList.tsx";
 import { CircleArrowUp, Sparkles } from "lucide-react";
-import type {
-  AssistantRefObject,
-  AppData,
-  AssistantState,
-} from "./AssistantState.ts";
+import type { AppData, AssistantState } from "./AssistantState.ts";
 
 function Home({
-  assistantRef,
   assistantState,
   chatLoading,
   appData,
-  setAppData,
   setShowDiscover,
 }: {
-  assistantRef: AssistantRefObject;
   assistantState: AssistantState;
   chatLoading: boolean;
   appData: AppData;
-  setAppData: (appData: AppData) => void;
   setShowDiscover: (show: boolean) => void;
 }) {
   const input = useSyncExternalStore(
@@ -29,19 +21,16 @@ function Home({
   );
 
   async function handleInput(input: string) {
-    if (input === "" || assistantRef.current === null || chatLoading) return;
+    if (input === "" || chatLoading) return;
     try {
       assistantState.setChatInput("");
-      await assistantRef.current.handleInput({
+      await assistantState.handleInput({
         input,
         resetInput: () => assistantState.setChatInput(input),
       });
     } catch (error) {
       console.error(error);
-      assistantRef.current.toastsRef.current.addToast(
-        "An unexpected error occurred",
-        "error",
-      );
+      assistantState.addToast("An unexpected error occurred", "error");
     }
   }
 
@@ -73,11 +62,7 @@ function Home({
           <span className="font-medium">Discover Apps</span>
         </button>
       </div>
-      <AppList
-        appData={appData}
-        setAppData={setAppData}
-        assistantRef={assistantRef}
-      />
+      <AppList appData={appData} assistantState={assistantState} />
     </div>
   );
 }

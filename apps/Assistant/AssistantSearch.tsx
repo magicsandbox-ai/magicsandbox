@@ -1,18 +1,12 @@
 import React from "react";
 import Search from "@components/Search.tsx";
-import type {
-  AssistantRefObject,
-  AssistantState,
-  Message,
-} from "./AssistantState.ts";
+import type { AssistantState, Message } from "./AssistantState.ts";
 
 function AssistantSearch({
   setShowSearch,
-  assistantRef,
   assistantState,
 }: {
   setShowSearch: (show: boolean) => void;
-  assistantRef: AssistantRefObject;
   assistantState: AssistantState;
 }) {
   const nodes = Object.values(assistantState.conversations).map(
@@ -27,7 +21,7 @@ function AssistantSearch({
       nodes={nodes}
       onClose={() => setShowSearch(false)}
       onClickResult={(node) => {
-        assistantRef.current.handleSwitchConversation(node.key);
+        assistantState.handleSwitchConversation(node.key);
         setShowSearch(false);
       }}
       placeholder="Search chats..."
@@ -38,7 +32,7 @@ function AssistantSearch({
 export default AssistantSearch;
 
 function formatMessage(message: Message) {
-  if (message.role === "system" || message.role === "display") return "";
+  if (message.role === "system") return "";
   const tagsToInclude = {
     user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
     assistant: new Set([undefined]), //exclude open_app, intermediate_script, final_script

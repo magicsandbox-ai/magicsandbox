@@ -22,20 +22,18 @@ import { CSS } from "@dnd-kit/utilities";
 import { Star, MoveVertical } from "lucide-react";
 import Tooltip from "./Tooltip.tsx";
 import DivButton from "./DivButton.tsx";
-import type { App, AssistantRefObject, AppData } from "./AssistantState.ts";
+import type { App, AppData, AssistantState } from "./AssistantState.ts";
 
 type AppListState = "favorited" | "published" | "recent";
 
 function AppList({
   appData,
-  setAppData,
-  assistantRef,
+  assistantState,
   modal = false,
   setShowApps = () => {},
 }: {
   appData: AppData;
-  setAppData: (appData: AppData) => void;
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   modal?: boolean;
   setShowApps?: (show: boolean) => void;
 }) {
@@ -97,7 +95,7 @@ function AppList({
           </p>
         )}
         {displayApps.length > 0 ? (
-          <ListComponent {...{ appData, setAppData, state, displayApps }}>
+          <ListComponent {...{ appData, assistantState, state, displayApps }}>
             <div
               id="app-list"
               className="mt-3 flex max-w-full flex-col divide-y divide-stone-300 border border-stone-500 bg-stone-50"
@@ -108,7 +106,7 @@ function AppList({
                   app={app}
                   sortable={sortable}
                   favoritable={favoritable}
-                  assistantRef={assistantRef}
+                  assistantState={assistantState}
                   modal={modal}
                   setShowApps={setShowApps}
                 />
@@ -125,13 +123,13 @@ function AppList({
 
 function SortableList({
   appData,
-  setAppData,
+  assistantState,
   state,
   displayApps,
   children,
 }: {
   appData: AppData;
-  setAppData: (appData: AppData) => void;
+  assistantState: AssistantState;
   state: AppListState;
   displayApps: App[];
   children: React.ReactNode;
@@ -171,7 +169,7 @@ function SortableList({
       }
       //activeApp gets overApp's state
       newAppData[active.id] = { ...activeApp, [state]: overState };
-      setAppData(newAppData);
+      assistantState.setAppData(newAppData);
     }
   }
 
@@ -225,14 +223,14 @@ function AppCard({
   app,
   sortable,
   favoritable,
-  assistantRef,
+  assistantState,
   modal,
   setShowApps,
 }: {
   app: App;
   sortable: boolean;
   favoritable: boolean;
-  assistantRef: AssistantRefObject;
+  assistantState: AssistantState;
   modal: boolean;
   setShowApps: (show: boolean) => void;
 }) {
@@ -247,7 +245,7 @@ function AppCard({
     : undefined;
 
   const handlePress = () => {
-    assistantRef.current.handleApp({ app: app.app });
+    assistantState.handleApp({ app: app.app });
     if (modal) {
       setShowApps(false);
     }
@@ -265,7 +263,7 @@ function AppCard({
         <Tooltip text={app.favorited ? "Unfavorite app" : "Favorite app"}>
           <button
             className="relative"
-            onClick={() => assistantRef.current.handleFavorite(app)}
+            onClick={() => assistantState.handleFavorite(app)}
           >
             <Star className={app.favorited ? "fill-yellow-200" : ""} />
             <span className="sr-only">
