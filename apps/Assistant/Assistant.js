@@ -435,10 +435,10 @@ class Assistant {
         JSON.stringify(llmMessages),
       ).length;
       let maxCompletionTokens;
-      let showMaxLengthToast = true;
+      let showMaxLengthCta = true;
       if (this.user?.balance > 0.5) {
         maxCompletionTokens = 10000;
-        showMaxLengthToast = false;
+        showMaxLengthCta = false;
       } else if (this.user?.balance > 0.05) {
         maxCompletionTokens = 5000;
       } else {
@@ -513,6 +513,10 @@ class Assistant {
         role: "assistant",
         tags: [],
       };
+      const newUserMessage = {
+        role: "user",
+        tags: [],
+      };
       let summary = "";
       let promptTokens, completionTokens;
       const chunkProcessor = (chunk) => {
@@ -530,19 +534,32 @@ class Assistant {
               completion_tokens: completionTokens,
             } = usage);
           }
-          if (showMaxLengthToast && finish_reason === "length") {
-            let cta;
+          if (finish_reason === "length") {
+            let cta, assistantCta;
             if (!this.user?.name) {
               cta = "Sign up for a free account";
+              assistantCta = "sign up for a free account";
             } else if (!this.user?.paid) {
               cta = "Upgrade to Magic Sandbox Plus";
-            } else {
+              assistantCta = "upgrade to Magic Sandbox Plus";
+            } else if (showMaxLengthCta) {
               cta = "Add balance to your account";
+              assistantCta = "add balance to their account";
             }
             this.toastsRef.current.addToast(
-              `Assistant response reached max length. ${cta} to get longer responses.`,
+              cta
+                ? `Assistant response reached max length. ${cta} to get longer responses.`
+                : "Assistant response reached max length. Please try again.",
               "error",
             );
+            newUserMessage.tags.push({
+              tag: "logs",
+              content: `Response reached max length. Please be more concise in your next response.${
+                assistantCta
+                  ? ` If the user seems confused or frustrated about the max length error, you can tell them that they can ${assistantCta} to get longer responses.`
+                  : ""
+              }`,
+            });
           }
           return content;
         }

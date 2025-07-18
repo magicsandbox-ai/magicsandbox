@@ -51,7 +51,6 @@ declare global {
   interface Window {
     _TESTING?: {
       seenTutorial?: boolean;
-      testTutorial?: boolean;
       initApp?: string;
     };
   }
@@ -79,11 +78,7 @@ async function init({ user }: { user?: User } = {}) {
     window._TESTING?.seenTutorial || initData.seenTutorial || false;
   const initApp = window._TESTING?.initApp || urlParams._app;
   if (!("0" in initData)) {
-    if (
-      !seenTutorial &&
-      !initApp &&
-      (!navigator.webdriver || window._TESTING?.testTutorial)
-    ) {
+    if (!seenTutorial && !initApp && !navigator.webdriver) {
       //start the tutorial by setting initConversation to the welcome conversation
       initConversation = createWelcomeConversation();
     } else {
@@ -366,6 +361,12 @@ function App({
     }
     if (firstRenderRef.current) {
       refreshPopularApps();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (toastsRef.current) {
+      assistantState.addToast = toastsRef.current.addToast;
     }
   }, []);
 

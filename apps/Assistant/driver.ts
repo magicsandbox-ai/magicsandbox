@@ -7,8 +7,6 @@ import {
 import { createWelcomeConversation } from "./welcomeMessage.ts";
 import type { AssistantRef } from "./AssistantState.ts";
 
-window._TESTING = { testTutorial: true };
-
 const welcomeConversation = createWelcomeConversation();
 
 const popoverOffset = 10;
@@ -162,7 +160,6 @@ Let's take a look at your new recipe.`,
     new Step({
       driveStep: {
         element: "iframe",
-        disableActiveInteraction: true,
         popover: {
           description: `This is the Notes app, where you can take notes and organize them into folders. Check out your new recipe!
      
@@ -189,10 +186,7 @@ Let's see it in action by asking your assistant to modify this recipe!`,
             `Great idea! I'll transform this recipe into fun birthday cake cookies with colorful sprinkles and cake mix!
             
 <final_script>
-const nodes = app.api.getAllNodes();
-app.api.renameNode(nodes.length - 1, "Birthday Cake Cookies");
-app.api.replaceNote(nodes.length - 1,
-  \`### Ingredients:
+const newRecipe = \`### Ingredients:
 - 1 box vanilla cake mix (about 15.25 oz)
 - 1 cup all-purpose flour
 - ½ tsp baking soda
@@ -216,8 +210,23 @@ app.api.replaceNote(nodes.length - 1,
 8. Bake 8-10 minutes or until edges are set (don't overbake - they should stay soft!)
 9. Cool on baking sheet for 2 minutes, then transfer to wire rack
 
-Makes about 36 soft, colorful birthday cake cookies perfect for celebrations! 🎉\`
-)
+Makes about 36 soft, colorful birthday cake cookies perfect for celebrations! 🎉\`;
+const nodes = app.api.getAllNodes();
+const noteIndex = nodes.findLastIndex(
+  (node) =>
+    node.content &&
+    (node.name.toLowerCase().includes("cookies") ||
+      node.name.toLowerCase().includes("chocolate") ||
+      node.content?.toLowerCase().includes("cookies") ||
+      node.content?.toLowerCase().includes("chocolate") ||
+      node.content?.toLowerCase().includes("sugar")),
+);
+if (noteIndex !== -1) {
+  app.api.renameNode(noteIndex, "Birthday Cake Cookies");
+  app.api.replaceNote(noteIndex, newRecipe);
+} else {
+  app.api.addNote(0, "Birthday Cake Cookies", newRecipe, ["Recipes"]);
+}
 </final_script>`,
           ],
           driverObj,
@@ -228,7 +237,6 @@ Makes about 36 soft, colorful birthday cake cookies perfect for celebrations! �
     new Step({
       driveStep: {
         element: "iframe",
-        disableActiveInteraction: true,
         popover: {
           description: `Here's your updated recipe! The changes your assistant made are highlighted, and you can choose to accept or reject them.`,
           showButtons: ["next"],
@@ -256,8 +264,9 @@ Click the Magic Sandbox logo to close the Notes app. Next, we'll quickly show yo
         },
       },
       setup: () => {
-        //skip this step when testing
-        if (window._TESTING?.testTutorial) {
+        //skip this step when running in DevLocal, because clicking home would close DevLocal
+        //we can detect this by checking if the parent window is the top level window
+        if (window.parent !== window.top) {
           assistantRef.reload();
           driverObj.moveNext();
           return;
@@ -282,7 +291,7 @@ Click the Magic Sandbox logo to close the Notes app. Next, we'll quickly show yo
         popover: {
           title: "Discover Apps",
           description: `Anyone can create a Magic Sandbox app. Discover apps created by the community here.`,
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
       setup: async () => {
@@ -390,25 +399,6 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       onStateChange?.({});
     },
     steps: steps.map((step) => step.driveStep),
-    animateFunction: (elapsed, initialValue, amountOfChange, duration) => {
-      //animate using a constant speed
-      //calculating pxPerMs in this way guarantees that the animation will always finish
-      const pxPerMs =
-        Math.max(window.innerWidth, window.innerHeight) / duration;
-      const direction = Math.sign(amountOfChange);
-      if (direction === 1) {
-        return Math.min(
-          initialValue + pxPerMs * elapsed,
-          initialValue + amountOfChange,
-        );
-      } else if (direction === -1) {
-        return Math.max(
-          initialValue - pxPerMs * elapsed,
-          initialValue + amountOfChange,
-        );
-      }
-      return initialValue;
-    },
   });
   //this is a little hacky but we want to call this in reload - todo make more type safe?
   (driverObj as any).handleNextClick = handleNextClick;
@@ -434,6 +424,35 @@ async function handleInput({
   driverObj: Driver;
   assistantRef: AssistantRef;
 }) {
+  const config = driverObj.getConfig();
+  const originalAnimateFunction = config.animateFunction;
+  config.animateFunction = (
+    elapsed,
+    initialValue,
+    amountOfChange,
+    duration,
+  ) => {
+    if (initialValue + amountOfChange < 0.1) {
+      //the component was unmounted - don't move
+      return initialValue;
+    }
+    //animate using a constant speed
+    //calculating pxPerMs in this way guarantees that the animation will always finish
+    const pxPerMs = Math.max(window.innerWidth, window.innerHeight) / duration;
+    const direction = Math.sign(amountOfChange);
+    if (direction === 1) {
+      return Math.min(
+        initialValue + pxPerMs * elapsed,
+        initialValue + amountOfChange,
+      );
+    } else if (direction === -1) {
+      return Math.max(
+        initialValue - pxPerMs * elapsed,
+        initialValue + amountOfChange,
+      );
+    }
+    return initialValue;
+  };
   const stopHighlightingChatInput = highlightMovingElement(
     driverObj,
     () => document.getElementById("chat-input"),
@@ -458,9 +477,56 @@ async function handleInput({
     driverObj,
     () =>
       document.querySelectorAll(".assistant-message")[assistantMessages.length],
+    {},
+    true,
   );
   await handleInputPromise;
   stopHighlightingNewMessage();
+  config.animateFunction = originalAnimateFunction;
+}
+
+function highlightMovingElement(
+  driverObj: Driver,
+  findElement: () => Element | null | undefined,
+  driveStep: DriveStep = {},
+  disableScroll = false,
+) {
+  let animationId: number | undefined;
+  let currentElement: Element | undefined;
+  let originalScrollIntoView:
+    | typeof Element.prototype.scrollIntoView
+    | undefined;
+  const refreshLoop = () => {
+    const element = findElement();
+    if (element) {
+      //driver.js calls scrollIntoView, which interferes with messages where the app handles scrolling
+      if (disableScroll && element !== currentElement) {
+        //restore scrollIntoView on previous element
+        if (currentElement && originalScrollIntoView) {
+          currentElement.scrollIntoView = originalScrollIntoView;
+        }
+        currentElement = element;
+        originalScrollIntoView = element.scrollIntoView;
+        //disable scrollIntoView on new element
+        element.scrollIntoView = () => {};
+      }
+      driverObj.highlight({
+        ...driveStep,
+        element,
+      });
+    }
+    animationId = requestAnimationFrame(refreshLoop);
+  };
+  refreshLoop();
+  return () => {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      //restore scrollIntoView
+      if (currentElement && originalScrollIntoView) {
+        currentElement.scrollIntoView = originalScrollIntoView;
+      }
+    }
+  };
 }
 
 async function waitForElement(
@@ -481,30 +547,6 @@ async function waitForElement(
   }
   await new Promise((resolve) => setTimeout(resolve, wait));
   return waitForElement(selector, wait * 2, maxRetries - 1);
-}
-
-function highlightMovingElement(
-  driverObj: Driver,
-  findElement: () => Element | null | undefined,
-  driveStep: DriveStep = {},
-) {
-  let animationId: number | undefined;
-  const refreshLoop = () => {
-    const element = findElement();
-    if (element) {
-      driverObj.highlight({
-        ...driveStep,
-        element,
-      });
-    }
-    animationId = requestAnimationFrame(refreshLoop);
-  };
-  refreshLoop();
-  return () => {
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-    }
-  };
 }
 
 function getLastAssistantMessageElement() {
