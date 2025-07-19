@@ -5,7 +5,7 @@ import {
   type Driver,
 } from "driver.js";
 import { createWelcomeConversation } from "./welcomeMessage.ts";
-import type { AssistantRef } from "./AssistantState.ts";
+import type { AssistantState } from "./AssistantState.ts";
 
 const welcomeConversation = createWelcomeConversation();
 
@@ -33,7 +33,7 @@ class Step {
 }
 
 function createDriver(
-  assistantRef: AssistantRef,
+  assistantState: AssistantState,
   onStateChange?: (state: DriverState) => void,
 ) {
   const steps: Step[] = [
@@ -47,11 +47,11 @@ function createDriver(
         },
       },
       setup: async () => {
-        assistantRef.reload();
-        assistantRef.assistantState.handleSwitchConversation(
+        assistantState.reload();
+        assistantState.handleSwitchConversation(
           welcomeConversation.conversationId,
         );
-        assistantRef.assistantState.handleUpdateConversation({
+        assistantState.handleUpdateConversation({
           conversationId: welcomeConversation.conversationId,
           messages: [...welcomeConversation.messages],
         });
@@ -89,7 +89,7 @@ function createDriver(
 Makes about 48 cookies. Enjoy!`,
           ],
           driverObj,
-          assistantRef,
+          assistantState,
         });
       },
     }),
@@ -142,7 +142,7 @@ Makes about 48 cookies. Enjoy!\`,
 </final_script>`,
           ],
           driverObj,
-          assistantRef,
+          assistantState,
         });
       },
     }),
@@ -170,14 +170,14 @@ Let's see it in action by asking your assistant to modify this recipe!`,
         },
       },
       setup: async () => {
-        await handleChat(true, driverObj, assistantRef);
+        await handleChat(true, driverObj, assistantState);
         const config = driverObj.getConfig();
         config.stagePadding = 0;
       },
       cleanup: async () => {
         const config = driverObj.getConfig();
         config.stagePadding = defaultStagePadding;
-        await handleChat(false, driverObj, assistantRef);
+        await handleChat(false, driverObj, assistantState);
         await handleInput({
           input:
             "Can you turn this into a birthday cake cookie recipe instead?",
@@ -230,7 +230,7 @@ if (noteIndex !== -1) {
 </final_script>`,
           ],
           driverObj,
-          assistantRef,
+          assistantState,
         });
       },
     }),
@@ -243,7 +243,7 @@ if (noteIndex !== -1) {
         },
       },
       setup: async () => {
-        await handleChat(true, driverObj, assistantRef);
+        await handleChat(true, driverObj, assistantState);
         const config = driverObj.getConfig();
         config.stagePadding = 0;
       },
@@ -267,7 +267,7 @@ Click the Magic Sandbox logo to close the Notes app. Next, we'll quickly show yo
         //skip this step when running in DevLocal, because clicking home would close DevLocal
         //we can detect this by checking if the parent window is the top level window
         if (window.parent !== window.top) {
-          assistantRef.reload();
+          assistantState.reload();
           driverObj.moveNext();
           return;
         }
@@ -322,10 +322,10 @@ Upgrade to Magic Sandbox Plus to unlock more usage of the smartest models.`,
         },
       },
       setup: async () => {
-        await handleMenu(true, driverObj, assistantRef);
+        await handleMenu(true, driverObj, assistantState);
       },
       cleanup: async () => {
-        await handleMenu(false, driverObj, assistantRef);
+        await handleMenu(false, driverObj, assistantState);
       },
     }),
     new Step({
@@ -362,10 +362,10 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
         },
       },
       setup: async () => {
-        await handleMenu(true, driverObj, assistantRef);
+        await handleMenu(true, driverObj, assistantState);
       },
       cleanup: async () => {
-        await handleMenu(false, driverObj, assistantRef);
+        await handleMenu(false, driverObj, assistantState);
       },
     }),
   ];
@@ -404,7 +404,7 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
   (driverObj as any).handleNextClick = handleNextClick;
   const originalDrive = driverObj.drive.bind(driverObj);
   driverObj.drive = async (stepIndex?: number) => {
-    assistantRef.assistantState.setSeenTutorial(true);
+    assistantState.setSeenTutorial(true);
     const firstStep = steps[stepIndex ?? 0];
     await firstStep?.setup?.();
     originalDrive(stepIndex);
@@ -417,12 +417,12 @@ async function handleInput({
   input,
   mockContent,
   driverObj,
-  assistantRef,
+  assistantState,
 }: {
   input: string;
   mockContent: string[];
   driverObj: Driver;
-  assistantRef: AssistantRef;
+  assistantState: AssistantState;
 }) {
   const config = driverObj.getConfig();
   const originalAnimateFunction = config.animateFunction;
@@ -463,14 +463,14 @@ async function handleInput({
   await new Promise((resolve) => setTimeout(resolve, 500));
   for (let i = 0; i < input.length; i++) {
     await new Promise((resolve) => setTimeout(resolve, 30));
-    assistantRef.assistantState.setChatInput(input.slice(0, i + 1));
+    assistantState.setChatInput(input.slice(0, i + 1));
   }
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  const handleInputPromise = assistantRef.assistantState.handleInput({
+  const handleInputPromise = assistantState.handleInput({
     input,
     mockContent,
   });
-  assistantRef.assistantState.setChatInput("");
+  assistantState.setChatInput("");
   stopHighlightingChatInput();
   const assistantMessages = document.querySelectorAll(".assistant-message");
   const stopHighlightingNewMessage = highlightMovingElement(
@@ -557,20 +557,20 @@ function getLastAssistantMessageElement() {
 async function handleChat(
   show: boolean,
   driverObj: Driver,
-  assistantRef: AssistantRef,
+  assistantState: AssistantState,
 ) {
   driverObj.highlight({
     element: "#chat-collapse-button",
     disableActiveInteraction: true,
   });
   await new Promise((resolve) => setTimeout(resolve, 750));
-  assistantRef.assistantState.setChatCollapsed(show);
+  assistantState.setChatCollapsed(show);
 }
 
 async function handleMenu(
   show: boolean,
   driverObj: Driver,
-  assistantRef: AssistantRef,
+  assistantState: AssistantState,
 ) {
   if (window.innerWidth < 768) {
     driverObj.highlight({
@@ -578,7 +578,7 @@ async function handleMenu(
       disableActiveInteraction: true,
     });
     await new Promise((resolve) => setTimeout(resolve, 750));
-    assistantRef.assistantState.setShowChatHistory(show);
+    assistantState.setShowChatHistory(show);
   }
 }
 

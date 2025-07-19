@@ -12,7 +12,6 @@ import AssistantSearch from "./AssistantSearch.tsx";
 import RiskConfirm from "./RiskConfirm.tsx";
 import DeleteConfirm from "./DeleteConfirm.tsx";
 import { Toasts, type ToastsRef, ToastError } from "@components/Toasts.tsx";
-import { Assistant } from "./Assistant.js";
 import Home from "./Home.tsx";
 import BottomChat from "./BottomChat.tsx";
 import { ChatDisplay } from "./ChatDisplay.tsx";
@@ -29,10 +28,7 @@ import {
   type DatabaseSchema,
   type Conversation,
   type DiscoverApp,
-  type AssistantRef,
   type User,
-  type Confirm,
-  type RiskState,
 } from "./AssistantState.ts";
 
 declare global {
@@ -84,6 +80,7 @@ async function init({ user }: { user?: User } = {}) {
     app: initApp ? false : null,
     showChatHistory: window.innerWidth >= 768,
     seenTutorial,
+    user,
   });
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary
@@ -114,8 +111,14 @@ function App({
   initData: DatabaseSchema;
   assistantState: AssistantState;
 }) {
-  const [confirm, setConfirm] = useState<Confirm | null>(null);
-  const [risk, setRisk] = useState<RiskState | null>(null);
+  const confirm = useSyncExternalStore(
+    assistantState.subscribe("confirm"),
+    assistantState.getSnapshot("confirm"),
+  );
+  const risk = useSyncExternalStore(
+    assistantState.subscribe("risk"),
+    assistantState.getSnapshot("risk"),
+  );
   const currentConversation = useSyncExternalStore(
     assistantState.subscribe("currentConversation"),
     assistantState.getSnapshot("currentConversation"),
@@ -164,19 +167,6 @@ function App({
   const sandboxRef = useRef<SandboxRef>(null);
   const toastsRef = useRef<ToastsRef>(null);
   const shouldFocusCollapseButtonRef = useRef(false);
-  const assistantRef = useRef<AssistantRef>(null as unknown as AssistantRef);
-  if (assistantRef.current === null) {
-    //@ts-ignore
-    assistantRef.current = new Assistant({
-      user,
-      sandboxRef,
-      toastsRef,
-      setConfirm,
-      setRisk,
-      initData,
-      assistantState,
-    });
-  }
 
   useEffect(() => {
     if (toastsRef.current) {
@@ -207,7 +197,7 @@ function App({
   useEffect(() => {
     function handleRequest(event: MessageEvent) {
       if (!(event.data.id && event.data.msg?.request)) return;
-      assistantRef.current.handleRequest(event);
+      assistantState.handleRequest(event);
     }
     sandboxRef.current!.addListener(handleRequest);
     return () => sandboxRef.current?.removeListener(handleRequest);
@@ -217,9 +207,9 @@ function App({
     function handleMessage(event: MessageEvent) {
       if (event.source !== parent) return;
       if (event.data.message === "reload") {
-        assistantRef.current.reload();
+        assistantState.reload();
       } else if (event.data.message === "user") {
-        assistantRef.current.user = event.data.user;
+        assistantState.user = event.data.user;
       }
     }
     window.addEventListener("message", handleMessage);
@@ -321,7 +311,7 @@ function App({
       confirm.callback?.(true);
     } else {
       modalComponent = (
-        <AssistantConfirm confirm={confirm} setConfirm={setConfirm} />
+        <AssistantConfirm confirm={confirm} assistantState={assistantState} />
       );
     }
   } else if (risk) {
@@ -329,7 +319,9 @@ function App({
     if (window._AUTO_CONFIRM) {
       risk.callback?.(true);
     } else {
-      modalComponent = <RiskConfirm risk={risk} setRisk={setRisk} />;
+      modalComponent = (
+        <RiskConfirm risk={risk} assistantState={assistantState} />
+      );
     }
   } else if (showDelete) {
     modalComponent = (
@@ -424,7 +416,7 @@ function App({
                 <button
                   className="absolute right-4 top-3 z-10 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
                   onClick={() => {
-                    assistantRef.current.driver.drive();
+                    assistantState.driver.drive();
                   }}
                 >
                   Restart tutorial
@@ -464,8 +456,7 @@ function App({
         <DivButton
           className="group absolute right-4 top-3 whitespace-pre rounded-lg bg-stone-600 px-2 py-1 text-center text-sm font-medium text-white shadow hover:bg-stone-700"
           onPress={() => {
-            //todo clean this up
-            assistantRef.current.driver.drive();
+            assistantState.driver.drive();
             assistantState.setShowTutorialTooltip(false);
           }}
         >

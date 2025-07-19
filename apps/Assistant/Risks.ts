@@ -1,10 +1,10 @@
 import { formatAsDollars } from "./utils.ts";
-import type { AssistantRef } from "./AssistantState.ts";
+import type { AssistantState } from "./AssistantState.ts";
 
 const minimumMinCost = 0.001;
 
 interface RiskProps {
-  assistant: AssistantRef;
+  assistantState: AssistantState;
 }
 
 type RiskCallback = (approved: boolean, askedUser: boolean) => void;
@@ -36,11 +36,11 @@ interface Metadata {
 }
 
 abstract class Risk {
-  assistant: AssistantRef;
+  assistantState: AssistantState;
   handleRequests: Set<string>;
-  constructor({ assistant }: RiskProps) {
-    this.assistant = assistant;
-    assistant.risks.push(this);
+  constructor({ assistantState }: RiskProps) {
+    this.assistantState = assistantState;
+    assistantState.risks.push(this);
     this.handleRequests = new Set();
   }
   init() {
@@ -65,8 +65,8 @@ abstract class Risk {
     //pass
   }
   getApp() {
-    if (this.assistant.assistantState.app) {
-      return this.assistant.assistantState.app.app;
+    if (this.assistantState.app) {
+      return this.assistantState.app.app;
     }
     throw new Error("handling risk without an app");
   }
@@ -93,8 +93,7 @@ class FinancialRisk extends Risk {
       const pendingRequests = this.pendingRequests;
       if (
         this.pendingCost > 0 &&
-        this.pendingCost + this.approvedCost >
-          this.assistant.assistantState.budget
+        this.pendingCost + this.approvedCost > this.assistantState.budget
       ) {
         const app = this.getApp();
         const pendingSpend = formatAsDollars(this.pendingCost);
@@ -103,10 +102,10 @@ class FinancialRisk extends Risk {
           this.pendingCost + this.approvedCost,
         );
         let newBudget;
-        if (this.assistant.assistantState.budget === 0) {
+        if (this.assistantState.budget === 0) {
           newBudget = (this.pendingCost + this.approvedCost) * 3;
         } else {
-          newBudget = this.assistant.assistantState.budget * 3;
+          newBudget = this.assistantState.budget * 3;
         }
         const callback = (approved: boolean, askedUser: boolean) => {
           this.handleApprove(approved, askedUser, pendingRequests, newBudget);
@@ -143,7 +142,7 @@ class FinancialRisk extends Risk {
   ) {
     if (approved) {
       if (askedUser && newBudget !== undefined) {
-        this.assistant.assistantState.budget = newBudget;
+        this.assistantState.budget = newBudget;
       }
       pendingRequests.forEach((maxCost, id) => {
         this.approvedRequests.set(id, maxCost);
@@ -327,7 +326,7 @@ class DataLossRisk extends Risk {
         (app) => (this.lastAppBackups[app] || 0) < Date.now() - 1000 * 60 * 10,
       );
       if (appsNeedingBackup.length > 0) {
-        await manageBackups(appsNeedingBackup, this.assistant);
+        await manageBackups(appsNeedingBackup, this.assistantState);
         appsNeedingBackup.forEach((app) => {
           this.lastAppBackups[app] = Date.now();
         });
@@ -423,13 +422,10 @@ function isCrossAuthor(app1: string, app2: string) {
  *
  * - apps: string[]
  */
-async function manageBackups(apps: string[], assistant: AssistantRef) {
+async function manageBackups(apps: string[], assistantState: AssistantState) {
   function errorHandler(error: unknown) {
     console.error(error);
-    assistant.assistantState.addToast(
-      "Assistant failed to backup data",
-      "error",
-    );
+    assistantState.addToast("Assistant failed to backup data", "error");
   }
   try {
     const backups = await requestGetAllKeysData({

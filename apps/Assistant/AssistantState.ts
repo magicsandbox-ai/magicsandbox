@@ -8,11 +8,25 @@ import {
   createSummaryArgs,
 } from "./prompt.ts";
 import { models } from "./models.ts";
-import { mockLlm } from "./driver.ts";
 import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { ToastError, type ToastType } from "@utils/Toast.ts";
+import { formatAsDollars } from "./utils.ts";
+import {
+  createDeferredPromise,
+  type DeferredPromise,
+} from "@magicsandbox.ai/react-sandbox/utils";
+import { mockLlm, createDriver } from "./driver.ts";
 import type { Driver, State as DriverState } from "driver.js";
-import type { Risk, RiskUserApproval } from "./Risks.ts";
+import {
+  FinancialRisk,
+  PublishRisk,
+  PrivacyRisk,
+  DataLossRisk,
+  DownloadRisk,
+  RateLimitRisk,
+  type Risk,
+  type RiskUserApproval,
+} from "./Risks.ts";
 import { type SandboxRef } from "@magicsandbox.ai/react-sandbox";
 import type { Metadata } from "@magicsandbox.ai/types";
 
@@ -34,6 +48,8 @@ export interface DatabaseSchema {
   };
   lastMetadataRefresh?: Date;
   seenTutorial?: boolean;
+  appUsage?: AppUsage;
+  llmUsage?: LlmUsage;
 }
 
 export interface Message {
@@ -98,6 +114,7 @@ export interface User {
 }
 
 interface AppUsage {
+  ts?: number;
   daysBetweenCalls: number;
   usagePerCall: number;
   pendingUsage: number;
@@ -105,6 +122,7 @@ interface AppUsage {
 }
 
 interface LlmUsage {
+  ts?: number;
   daysBetweenCalls: number;
   inputBytesPerToken: { [app: string]: number };
   outputTokens: { [app: string]: number };
@@ -122,12 +140,9 @@ interface LlmResult {
   index: number;
 }
 
-export interface AssistantRef {
-  handleRequest: (event: MessageEvent) => void;
-  reload: () => void;
-  risks: Risk[];
-  driver: Driver;
-  assistantState: AssistantState;
+interface SandboxRequestEvent extends MessageEvent {
+  sandboxId: number;
+  error?: boolean;
 }
 
 const defaultAppData: AppData = {
@@ -164,6 +179,8 @@ class AssistantState extends SyncExternalStore<{
   chatCollapsed: boolean;
   chatLoading: boolean;
   model: string;
+  confirm: Confirm | null;
+  risk: RiskState | null;
 }> {
   conversations: { [conversationId: string]: Conversation };
   currentConversation: Conversation;
@@ -176,6 +193,15 @@ class AssistantState extends SyncExternalStore<{
   saveTimeoutIds: { [conversationId: string]: number } = {};
   sandboxRef?: SandboxRef;
   budget: number = 0;
+  appUsage: AppUsage;
+  llmUsage: LlmUsage;
+  user?: User;
+  handleApprovePromises: { [id: string]: DeferredPromise<boolean> } = {};
+  requestQueue: SandboxRequestEvent[] = [];
+  requestProcessing: boolean = false;
+  requestTimeoutId: number | null = null;
+  risks: Risk[] = [];
+  driver: Driver;
   constructor({
     initData,
     initConversation,
@@ -183,6 +209,7 @@ class AssistantState extends SyncExternalStore<{
     app,
     showChatHistory,
     seenTutorial,
+    user,
   }: {
     initData: DatabaseSchema;
     initConversation: Conversation;
@@ -190,6 +217,7 @@ class AssistantState extends SyncExternalStore<{
     app: AppState;
     showChatHistory: boolean;
     seenTutorial: boolean;
+    user?: User;
   }) {
     const conversationSummaries = Object.entries(initConversations)
       .sort(([, a], [, b]) => (b.lastUpdated || 0) - (a.lastUpdated || 0))
@@ -215,6 +243,8 @@ class AssistantState extends SyncExternalStore<{
       chatCollapsed: true,
       chatLoading: false,
       model,
+      confirm: null,
+      risk: null,
     });
     this.currentConversation = initConversation;
     this.conversations = initConversations;
@@ -223,6 +253,38 @@ class AssistantState extends SyncExternalStore<{
     this.appData = appData;
     this.seenTutorial = seenTutorial;
     this.model = model;
+    this.user = user;
+    this.appUsage = {
+      daysBetweenCalls: 0.2,
+      //assume 1/5 balance on apps, 5 times per day
+      usagePerCall: Math.max(
+        user?.balance !== undefined && user?.balanceRemainingDays !== undefined
+          ? user.balance / user.balanceRemainingDays / 5 / 5
+          : 0.001,
+        0.001,
+      ),
+      pendingUsage: 0,
+      ...initData?.appUsage,
+    };
+    this.llmUsage = initData?.llmUsage || {
+      daysBetweenCalls: 0.2,
+      inputBytesPerToken: {},
+      outputTokens: {},
+      costThreshold: {},
+    };
+    //these add themselves to `this.risks`
+    new FinancialRisk({ assistantState: this });
+    new PublishRisk({ assistantState: this });
+    new PrivacyRisk({ assistantState: this });
+    new DataLossRisk({ assistantState: this });
+    new DownloadRisk({ assistantState: this });
+    new RateLimitRisk({ assistantState: this });
+    this.driver = createDriver(this, (state) =>
+      this.handleDriverStateChange(state),
+    );
+    if (initConversation.conversationId === "0") {
+      this.driver.drive();
+    }
   }
   addToast(message: string, type: ToastType) {
     console.log("addToast", message, type);
@@ -268,6 +330,12 @@ class AssistantState extends SyncExternalStore<{
     this.model = model;
     this.set("model", model);
     this.putData("selectedModel", model);
+  }
+  setConfirm(confirm: Confirm | null) {
+    this.set("confirm", confirm);
+  }
+  setRisk(risk: RiskState | null) {
+    this.set("risk", risk);
   }
   setConversations(conversations: { [conversationId: string]: Conversation }) {
     this.conversations = conversations;
@@ -500,12 +568,12 @@ class AssistantState extends SyncExternalStore<{
     //incorrect: appUsagePerDay = avg(usagePerCall / daysBetweenCalls)
     try {
       //need to grab latest in case user is using multiple tabs
-      const { ts, daysBetweenCalls, usagePerCall } =
-        (await requestGetData("appUsage", {
-          app: "magicsandbox.Assistant",
-        })) || {};
+      const appUsage = (await requestGetData("appUsage", {
+        app: "magicsandbox.Assistant",
+      })) as AppUsage | undefined;
       const now = Date.now();
-      if (ts) {
+      if (appUsage?.ts) {
+        const { ts, daysBetweenCalls, usagePerCall } = appUsage;
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         const alpha = 0.05;
         this.appUsage.daysBetweenCalls =
@@ -535,23 +603,28 @@ class AssistantState extends SyncExternalStore<{
     promptTokens,
     completionTokens,
     userApproved,
+  }: {
+    inputBytes?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    userApproved: boolean | null;
   }) {
     //note: need to smooth daysBetweenCalls rather than llmCallsPerDay
     //correct: llmCallsPerDay = 1 / avg(daysBetweenCalls)
     //incorrect: llmCallsPerDay = avg(1 / daysBetweenCalls)
     try {
-      const {
-        ts,
-        daysBetweenCalls,
-        inputBytesPerToken,
-        outputTokens,
-        costThreshold,
-      } =
-        (await requestGetData("llmUsage", {
-          app: "magicsandbox.Assistant",
-        })) || {};
+      const llmUsage = (await requestGetData("llmUsage", {
+        app: "magicsandbox.Assistant",
+      })) as LlmUsage | undefined;
       const now = Date.now();
-      if (ts) {
+      if (llmUsage?.ts) {
+        const {
+          ts,
+          daysBetweenCalls,
+          inputBytesPerToken,
+          outputTokens,
+          costThreshold,
+        } = llmUsage;
         const daysSinceLastUsage = (now - ts) / (1000 * 60 * 60 * 24);
         let alpha = 0.05;
         this.llmUsage.daysBetweenCalls = daysBetweenCalls;
@@ -559,14 +632,16 @@ class AssistantState extends SyncExternalStore<{
         this.llmUsage.outputTokens = outputTokens;
         this.llmUsage.costThreshold = costThreshold;
         if (userApproved === false) {
-          this.llmUsage.costThreshold[this.app.app] =
-            (this.llmUsage.costThreshold[this.app.app] ||
-              defaultLlmCostThreshold) * 0.5;
+          if (this.app) {
+            this.llmUsage.costThreshold[this.app.app] =
+              (this.llmUsage.costThreshold[this.app.app] ||
+                defaultLlmCostThreshold) * 0.5;
+          }
         } else {
           this.llmUsage.daysBetweenCalls =
             alpha * daysSinceLastUsage + (1 - alpha) * daysBetweenCalls;
           if (this.app) {
-            if (promptTokens && completionTokens) {
+            if (inputBytes && promptTokens && completionTokens) {
               const newInputBytesPerToken = inputBytes / promptTokens;
               const oldInputBytesPerToken =
                 this.llmUsage.inputBytesPerToken[this.app.app] ||
@@ -619,9 +694,12 @@ class AssistantState extends SyncExternalStore<{
     const app = this.app ? this.app.app : undefined;
     const expectedInputTokens =
       inputBytes /
-      (this.llmUsage.inputBytesPerToken[app] || defaultInputBytesPerToken);
+      ((app
+        ? this.llmUsage.inputBytesPerToken[app]
+        : defaultInputBytesPerToken) || defaultInputBytesPerToken);
     const expectedOutputTokens = Math.min(
-      this.llmUsage.outputTokens[app] || defaultOutputTokens,
+      (app ? this.llmUsage.outputTokens[app] : defaultOutputTokens) ||
+        defaultOutputTokens,
       maxCompletionTokens,
     );
     let expectedCost;
@@ -639,8 +717,8 @@ class AssistantState extends SyncExternalStore<{
   }
   getLlmBudget(inputBytes: number, maxCompletionTokens: number) {
     const { balance, balanceRemainingDays } = this.user || {};
-    if (!balanceRemainingDays || balance <= 0.05) {
-      if (!balance && balance !== 0) {
+    if (!balanceRemainingDays || balance === undefined || balance <= 0.05) {
+      if (balance === undefined) {
         console.error("missing balance");
       }
       return Math.min(Math.max(balance || 0.01, 0.001), 0.01);
@@ -756,9 +834,9 @@ class AssistantState extends SyncExternalStore<{
           role: "system",
           content: systemPrompt,
         },
-        ...newMessages.map((message, i, filteredMessages) => ({
+        ...this.currentConversation.messages.map((message, i, messages) => ({
           role: message.role,
-          content: formatMessage(message, i === filteredMessages.length - 1),
+          content: formatMessage(message, i === messages.length - 1),
         })),
       ];
       const inputBytes = new TextEncoder().encode(
@@ -766,10 +844,10 @@ class AssistantState extends SyncExternalStore<{
       ).length;
       let maxCompletionTokens;
       let showMaxLengthCta = true;
-      if (this.user?.balance > 0.5) {
+      if (this.user?.balance && this.user.balance > 0.5) {
         maxCompletionTokens = 10000;
         showMaxLengthCta = false;
-      } else if (this.user?.balance > 0.05) {
+      } else if (this.user?.balance && this.user.balance > 0.05) {
         maxCompletionTokens = 5000;
       } else {
         maxCompletionTokens = 2000;
@@ -824,7 +902,9 @@ class AssistantState extends SyncExternalStore<{
       const updateSummary =
         this.conversations[conversationId]?.summary === null;
       if (updateSummary) {
-        const summaryArgs = createSummaryArgs(newMessages);
+        const summaryArgs = createSummaryArgs(
+          this.currentConversation.messages,
+        );
         if (summaryArgs) {
           llmArgs.push(summaryArgs);
           maxCost += summaryArgs.maxCost;
@@ -1130,22 +1210,184 @@ class AssistantState extends SyncExternalStore<{
     }
     this.addToast(`Error: ${message}`, type);
   }
+  handleApprove(id: string) {
+    this.handleApprovePromises[id] = createDeferredPromise();
+    const callback = (response: boolean) => {
+      this.handleApprovePromises[id]?.resolve(response);
+    };
+    return { promise: this.handleApprovePromises[id], callback };
+  }
+  handleRequest(event: MessageEvent) {
+    if (!this.sandboxRef) {
+      throw new Error("Sandbox not initialized");
+    }
+    const sandboxRequestEvent: SandboxRequestEvent = {
+      ...event,
+      sandboxId: this.sandboxRef.getSandboxId(),
+    };
+    this.requestQueue.push(sandboxRequestEvent);
+    if (!this.requestTimeoutId) {
+      this.requestTimeoutId = setTimeout(() => {
+        this.requestTimeoutId = null;
+        this.processRequestBatch();
+      }, 16);
+    }
+  }
+  async processRequestBatch() {
+    if (!this.sandboxRef) {
+      throw new Error("Sandbox not initialized");
+    }
+    if (this.requestProcessing || this.requestQueue.length === 0) return;
+    const abortSignal = this.abortIdController.signal(null);
+    this.requestProcessing = true;
+    let batch = [...this.requestQueue];
+    this.requestQueue = [];
+    try {
+      for (const event of batch) {
+        const { id, msg } = event.data;
+        let { request, data } = msg;
+        let validation;
+        try {
+          validateAndDefaultRequest(request, data, {
+            assistant: true,
+            app: this.app.id,
+            includeMetadata: ["finalCost"],
+          });
+        } catch (error) {
+          validation = error.message;
+        }
+        if (validation) {
+          this.sandboxRef.postMessage(event.sandboxId, {
+            id,
+            error: { message: validation },
+          });
+          event.error = true;
+        }
+      }
+      batch = batch.filter((event) => !event.error);
+      if (batch.length === 0) return;
+      const riskResponses = this.risks.map((risk) => risk.handleBatch(batch));
+      let approved,
+        askedUser = false;
+      const { error } = riskResponses.find((response) => response.error) || {};
+      if (error) {
+        approved = false;
+      } else if (riskResponses.some((response) => response.message)) {
+        const { promise, callback } = this.handleApprove("risk");
+        this.setRisk({
+          riskResponses: riskResponses.filter((r) => r.message),
+          callback,
+        });
+        approved = await promise;
+        if (abortSignal.aborted) return;
+        askedUser = true;
+      } else {
+        approved = true;
+      }
+      await Promise.all(
+        riskResponses.map(
+          ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
+        ),
+      );
+      //careful with async callbacks - may have to pass in abortSignal
+      //for now DataLossRisk is okay since it only updates lastAppBackups after awaiting
+      if (abortSignal.aborted) return;
+      for (const event of batch) {
+        const { id, msg } = event.data;
+        const { request, data } = msg;
+        if (!approved) {
+          this.sandboxRef.postMessage(event.sandboxId, {
+            id,
+            error: { message: error || "User denied the request" },
+          });
+        } else {
+          requestSandbox(request, data)
+            .then((response) => {
+              if (abortSignal.aborted) return;
+              let finalResponse = response;
+              if (request === "urlParams") {
+                finalResponse = Object.fromEntries(
+                  Object.entries(response).filter(
+                    ([key]) => !key.startsWith("_"), //params that start with _ are reserved
+                  ),
+                );
+              } else if (response?.[Symbol.asyncIterator]) {
+                finalResponse = this.sandboxRef?.streamData(response);
+              }
+              this.sandboxRef?.postMessage(event.sandboxId, {
+                id,
+                response: finalResponse,
+              });
+              if (request === "app" || request === "function") {
+                this.handleMetadata(response, id, abortSignal).catch(
+                  console.error,
+                );
+              } else if (request === "publish") {
+                this.handlePublish(data.magicObj);
+              }
+            })
+            .catch((error) => {
+              if (abortSignal.aborted) return;
+              this.sandboxRef?.postMessage(event.sandboxId, {
+                id,
+                error: { message: error.message, data: error.data },
+              });
+            });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      this.addToast("An unexpected error occurred", "error");
+      for (const event of batch) {
+        const { id } = event.data;
+        this.sandboxRef.postMessage(event.sandboxId, {
+          id,
+          error: { message: "Unexpected Assistant error" },
+        });
+      }
+    } finally {
+      this.requestProcessing = false;
+      if (!this.requestTimeoutId) {
+        this.requestTimeoutId = setTimeout(() => {
+          this.requestTimeoutId = null;
+          this.processRequestBatch();
+        }, 16);
+      }
+    }
+  }
+  async handleMetadata(response, id, abortSignal) {
+    let metadata;
+    if (response[Symbol.asyncIterator]) {
+      for await (const chunk of response) {
+        if (abortSignal.aborted) return;
+        if (chunk.metadata) {
+          metadata = chunk.metadata;
+        }
+      }
+    } else {
+      metadata = response.metadata;
+    }
+    this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
+    this.handleAppUsage(metadata.finalCost);
+  }
   handlePublish(magicObj: any) {
     //todo type
-    const id = `${this.user.name}.${magicObj.name}@${magicObj.version}`;
-    const app = id.split("@")[0]!;
-    const appData = {
-      ...this.appData[app],
-      id,
-      app,
-      description: magicObj.description,
-      published: Date.now(),
-      recent: Date.now(),
-    };
-    this.setAppData({
-      ...this.appData,
-      [app]: appData,
-    });
+    if (this.user?.name) {
+      const id = `${this.user.name}.${magicObj.name}@${magicObj.version}`;
+      const app = id.split("@")[0]!;
+      const appData = {
+        ...this.appData[app],
+        id,
+        app,
+        description: magicObj.description,
+        published: Date.now(),
+        recent: Date.now(),
+      };
+      this.setAppData({
+        ...this.appData,
+        [app]: appData,
+      });
+    }
   }
   handleFavorite(app: App) {
     const favorited = app.favorited ? undefined : Date.now();
@@ -1195,15 +1437,29 @@ class AssistantState extends SyncExternalStore<{
     });
   }
   reload() {
+    this.sandboxRef?.reload();
     this.abortIdController.abort(null);
     this.abortIdController = new AbortIdController();
+    Object.values(this.handleApprovePromises).forEach((promise) =>
+      promise.resolve(false),
+    );
+    this.setConfirm(null);
+    this.setRisk(null);
+    this.setChatCollapsed(true);
+    this.handleNewConversation();
+    this.setChatLoading(false);
+    this.setApp(null);
+    this.setChatInput("");
+    this.budget = 0;
+    this.requestQueue = [];
+    this.risks.forEach((risk) => risk.init());
+    const driverStep = this.driver.getActiveStep();
+    if (driverStep?.element === "#driver-home") {
+      this.driver.handleNextClick();
+    }
     if (!this.seenTutorial) {
       this.setShowTutorialTooltip(true);
     }
-    this.setChatInput("");
-    this.setChatCollapsed(true);
-    this.setChatLoading(false);
-    this.budget = 0;
   }
 }
 

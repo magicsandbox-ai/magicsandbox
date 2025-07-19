@@ -1,13 +1,13 @@
 import React from "react";
 import Confirm from "@components/Confirm.tsx";
-import type { RiskState } from "./AssistantState.ts";
+import type { RiskState, AssistantState } from "./AssistantState.ts";
 
 function RiskConfirm({
   risk,
-  setRisk,
+  assistantState,
 }: {
   risk: RiskState;
-  setRisk: (risk: RiskState | null) => void;
+  assistantState: AssistantState;
 }) {
   const { riskResponses, callback } = risk;
   const customContent = (
@@ -46,7 +46,7 @@ function RiskConfirm({
       className: "bg-stone-300 hover:bg-stone-400 text-black w-32",
       onClick: () => {
         callback(true);
-        setRisk(null);
+        assistantState.setRisk(null);
       },
     },
     {
@@ -54,7 +54,7 @@ function RiskConfirm({
       className: "bg-red-500 hover:bg-red-700 text-white w-32",
       onClick: () => {
         callback(false);
-        setRisk(null);
+        assistantState.setRisk(null);
       },
     },
     {
@@ -67,7 +67,7 @@ function RiskConfirm({
     <Confirm
       onClose={() => {
         callback(false);
-        setRisk(null);
+        assistantState.setRisk(null);
       }}
       header={header}
       customContent={customContent}
