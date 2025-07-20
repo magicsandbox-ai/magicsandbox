@@ -13,6 +13,10 @@ const popoverOffset = 10;
 const popoverArrowOffset = 20;
 const defaultStagePadding = 10; //steps can override this, but should set it back in cleanup
 
+export interface CustomDriver extends Driver {
+  handleNextClick: () => Promise<void>;
+}
+
 class Step {
   driveStep: DriveStep;
   setup?: () => Promise<void> | void;
@@ -35,7 +39,7 @@ class Step {
 function createDriver(
   assistantState: AssistantState,
   onStateChange?: (state: DriverState) => void,
-) {
+): CustomDriver {
   const steps: Step[] = [
     new Step({
       driveStep: {
@@ -399,9 +403,8 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       onStateChange?.({});
     },
     steps: steps.map((step) => step.driveStep),
-  });
-  //this is a little hacky but we want to call this in reload - todo make more type safe?
-  (driverObj as any).handleNextClick = handleNextClick;
+  }) as CustomDriver;
+  driverObj.handleNextClick = handleNextClick;
   const originalDrive = driverObj.drive.bind(driverObj);
   driverObj.drive = async (stepIndex?: number) => {
     assistantState.setSeenTutorial(true);
@@ -608,7 +611,7 @@ function addInvisibleElement(
   document.body.appendChild(element);
 }
 
-async function* mockLlm(model: string, content: string) {
+async function* mockLlm(model: string | undefined, content: string) {
   await new Promise((resolve) => setTimeout(resolve, 200)); //simulate network latency
   const tokens = getTokens(content);
   for (let i = 0; i < tokens.length; i++) {

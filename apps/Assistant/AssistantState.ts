@@ -12,11 +12,12 @@ import { tagStreamParser } from "@magicsandbox.ai/streaming";
 import { ToastError, type ToastType } from "@utils/Toast.ts";
 import { formatAsDollars } from "./utils.ts";
 import {
+  validateAndDefaultRequest,
   createDeferredPromise,
   type DeferredPromise,
 } from "@magicsandbox.ai/react-sandbox/utils";
-import { mockLlm, createDriver } from "./driver.ts";
-import type { Driver, State as DriverState } from "driver.js";
+import { mockLlm, createDriver, type CustomDriver } from "./driver.ts";
+import type { State as DriverState } from "driver.js";
 import {
   FinancialRisk,
   PublishRisk,
@@ -103,6 +104,11 @@ export interface Confirm {
 export interface RiskState {
   riskResponses: RiskUserApproval[];
   callback: (approved: boolean) => void;
+}
+
+export interface RiskMetadata {
+  //passed in includeMetadata in validateAndDefaultRequest, so guaranteed to be included
+  finalCost: number;
 }
 
 export interface User {
@@ -201,7 +207,7 @@ class AssistantState extends SyncExternalStore<{
   requestProcessing: boolean = false;
   requestTimeoutId: number | null = null;
   risks: Risk[] = [];
-  driver: Driver;
+  driver: CustomDriver;
   constructor({
     initData,
     initConversation,
@@ -381,20 +387,22 @@ class AssistantState extends SyncExternalStore<{
       return;
     }
     this.handleStopConversation();
+    this.setCurrentConversation({ ...conversation });
     if (
       conversation.messages[conversation.messages.length - 1]?.role !== "system"
     ) {
-      conversation.messages.push({
-        role: "system",
-        tags: [
-          {
-            content:
-              "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
-          },
-        ],
+      this.handleUpdateConversation({
+        message: {
+          role: "system",
+          tags: [
+            {
+              content:
+                "The user closed and then reopened the conversation, resetting all state. Any actions you took in previous messages, like opening an app or executing a script, are no longer valid. Continue to follow all previous system instructions and consider how to handle the next user request given that the state has been reset.",
+            },
+          ],
+        },
       });
     }
-    this.setCurrentConversation({ ...conversation });
   }
   handleUpdateConversation({
     conversationId,
@@ -429,8 +437,13 @@ class AssistantState extends SyncExternalStore<{
     }
     const latestConversation =
       this.conversationSummaries[0]?.conversationId === conversationId;
-    if (messagesUpdated && !(!summaryUpdated && latestConversation)) {
+    if (
+      messagesUpdated &&
+      !(message?.role === "system") &&
+      !(!summaryUpdated && latestConversation)
+    ) {
       //if messages were updated, move the summary to the top
+      //but if we're just adding a system message (like in handleSwitchConversation), don't consider messages updated
       //unless summary wasn't updated and it's already at the top - then do nothing
       this.setConversationSummaries([
         { conversationId, summary: conversation.summary },
@@ -581,18 +594,11 @@ class AssistantState extends SyncExternalStore<{
         this.appUsage.usagePerCall =
           alpha * this.appUsage.pendingUsage + (1 - alpha) * usagePerCall;
       }
-      await requestPutData(
-        "appUsage",
-        {
-          ts: now,
-          daysBetweenCalls: this.appUsage.daysBetweenCalls,
-          usagePerCall: this.appUsage.usagePerCall,
-        },
-        {
-          app: "magicsandbox.Assistant",
-          evictionPolicy: "fifo",
-        },
-      );
+      this.putData("appUsage", {
+        ts: now,
+        daysBetweenCalls: this.appUsage.daysBetweenCalls,
+        usagePerCall: this.appUsage.usagePerCall,
+      });
       this.appUsage.pendingUsage = 0;
     } catch (error) {
       console.error(error);
@@ -668,20 +674,13 @@ class AssistantState extends SyncExternalStore<{
           }
         }
       }
-      await requestPutData(
-        "llmUsage",
-        {
-          ts: now,
-          daysBetweenCalls: this.llmUsage.daysBetweenCalls,
-          inputBytesPerToken: this.llmUsage.inputBytesPerToken,
-          outputTokens: this.llmUsage.outputTokens,
-          costThreshold: this.llmUsage.costThreshold,
-        },
-        {
-          app: "magicsandbox.Assistant",
-          evictionPolicy: "fifo",
-        },
-      );
+      this.putData("llmUsage", {
+        ts: now,
+        daysBetweenCalls: this.llmUsage.daysBetweenCalls,
+        inputBytesPerToken: this.llmUsage.inputBytesPerToken,
+        outputTokens: this.llmUsage.outputTokens,
+        costThreshold: this.llmUsage.costThreshold,
+      });
     } catch (error) {
       console.error(error);
     }
@@ -855,13 +854,16 @@ class AssistantState extends SyncExternalStore<{
       let model, maxCost;
       let approved = true;
       let askedUser = false;
-      if (this.model === "auto") {
+      const inputCostPerToken = models[this.model]?.input_cost_per_token;
+      const outputCostPerToken = models[this.model]?.output_cost_per_token;
+      if (inputCostPerToken === undefined || outputCostPerToken === undefined) {
+        //model is auto
         maxCost = this.getLlmBudget(inputBytes, maxCompletionTokens);
       } else {
         model = this.model;
         maxCost =
-          models[model].input_cost_per_token * inputBytes + //assume one token per byte
-          models[model].output_cost_per_token * maxCompletionTokens;
+          inputCostPerToken * inputBytes + //assume one token per byte
+          outputCostPerToken * maxCompletionTokens;
         if (this.app) {
           const { expectedCost } = this.getLlmExpectedCost(
             inputBytes,
@@ -869,9 +871,10 @@ class AssistantState extends SyncExternalStore<{
             model,
           );
           if (
+            expectedCost &&
             expectedCost >
-            (this.llmUsage.costThreshold[this.app.app] ||
-              defaultLlmCostThreshold)
+              (this.llmUsage.costThreshold[this.app.app] ||
+                defaultLlmCostThreshold)
           ) {
             const { promise, callback } = this.handleApprove(conversationId);
             this.setConfirm({
@@ -929,6 +932,7 @@ class AssistantState extends SyncExternalStore<{
       };
       let summary = "";
       let promptTokens, completionTokens;
+      let maxLengthLog;
       const chunkProcessor = (chunk: { result?: LlmResult }) => {
         const { model, content, usage, finish_reason, index } =
           chunk.result || {};
@@ -962,18 +966,12 @@ class AssistantState extends SyncExternalStore<{
                 : "Assistant response reached max length. Please try again.",
               "error",
             );
-            this.handleUpdateUserMessage({
-              tags: [
-                {
-                  tag: "logs",
-                  content: `Response reached max length. Please be more concise in your next response.${
-                    assistantCta
-                      ? ` If the user seems confused or frustrated about the max length error, you can tell them that they can ${assistantCta} to get longer responses.`
-                      : ""
-                  }`,
-                },
-              ],
-            });
+            //we can't add this log yet because the user message will be overwritten by the handleUpdateConversation call in tagStreamParser
+            maxLengthLog = `Response reached max length. Please be more concise in your next response.${
+              assistantCta
+                ? ` If the user seems confused or frustrated about the max length error, you can tell them that they can ${assistantCta} to get longer responses.`
+                : ""
+            }`;
           }
           return content;
         }
@@ -997,6 +995,7 @@ class AssistantState extends SyncExternalStore<{
           return { logs, error };
         }
       };
+      const newMessages = [...this.currentConversation.messages];
       for await (const { tag, content } of tagStreamParser({
         stream,
         chunkProcessor,
@@ -1029,6 +1028,17 @@ class AssistantState extends SyncExternalStore<{
       ) {
         scriptPromises.push(handleScript(lastTag.content));
       }
+      if (maxLengthLog) {
+        //now we can safely add the log, since we're done calling handleUpdateConversation with the llmMessage
+        this.handleUpdateUserMessage({
+          tags: [
+            {
+              tag: "logs",
+              content: maxLengthLog,
+            },
+          ],
+        });
+      }
       if (!mockContent?.[0]) {
         this.handleLlmUsage({
           inputBytes,
@@ -1047,7 +1057,7 @@ class AssistantState extends SyncExternalStore<{
         if (app?.favorited) {
           await this.handleApp({
             app: app.app,
-            messages: [...newMessages, llmMessage],
+            calledFromChat: true,
             mockContent: mockContent ? mockContent.slice(1) : undefined,
           });
         } else {
@@ -1088,7 +1098,7 @@ class AssistantState extends SyncExternalStore<{
         } else if (
           scriptTags.some((tag) => tag.tag === "intermediate_script")
         ) {
-          const prevAssistantMessage = messages.findLast(
+          const prevAssistantMessage = originalMessages.findLast(
             (message) => message.role === "assistant",
           );
           if (
@@ -1103,7 +1113,6 @@ class AssistantState extends SyncExternalStore<{
             });
           } else {
             await this.handleInput({
-              messages: [...newMessages, llmMessage, nextUserMessage],
               continueSystemPrompt: nextContinueSystemPrompt,
               mockContent: mockContent ? mockContent.slice(1) : undefined,
             });
@@ -1113,31 +1122,28 @@ class AssistantState extends SyncExternalStore<{
       }
     } catch (error) {
       console.error(error);
-      nextUserMessage.tags.push({
-        tag: "logs",
-        content:
-          "Error: unexpected error generating message. Please try again.",
+      this.handleUpdateUserMessage({
+        tags: [
+          {
+            tag: "logs",
+            content:
+              "Error: unexpected error generating message. Please try again.",
+          },
+        ],
+        promptToContinue: "Error generating message. Try again?",
+        continueSystemPrompt: nextContinueSystemPrompt,
       });
-      nextUserMessage.promptToContinue = "Error generating message. Try again?";
-      nextUserMessage.continueSystemPrompt = nextContinueSystemPrompt;
     } finally {
       this.setChatLoading(false);
-      if (
-        nextUserMessage.tags.length > 0 ||
-        nextUserMessage.promptToContinue ||
-        nextUserMessage.continueSystemPrompt
-      ) {
-        this.handleUpdateConversation({
-          message: nextUserMessage,
-        });
-      }
     }
   }
   async handleApp({
     app,
+    calledFromChat,
     mockContent,
   }: {
     app: string;
+    calledFromChat?: boolean;
     mockContent?: string[];
   }) {
     if (!this.sandboxRef) {
@@ -1187,14 +1193,14 @@ class AssistantState extends SyncExternalStore<{
         //ignore
       }
       if (abortSignal.aborted) return;
-      //if loaded from a url, there's no input and the init context is irrelevant
-      if (messages && initContext) {
-        //by default, chat is collapsed after opening an app. but open it since assistant is going to send another message
+      if (calledFromChat) {
         this.setChatCollapsed(false);
-        await this.handleInput({
-          initContext,
-          mockContent,
-        });
+        if (initContext) {
+          await this.handleInput({
+            initContext,
+            mockContent,
+          });
+        }
       }
     } catch (error) {
       this.handleError(error);
@@ -1248,13 +1254,18 @@ class AssistantState extends SyncExternalStore<{
         let { request, data } = msg;
         let validation;
         try {
-          validateAndDefaultRequest(request, data, {
-            assistant: true,
-            app: this.app.id,
-            includeMetadata: ["finalCost"],
-          });
+          if (!this.app) {
+            validation = "Unexpected error: unable to identify app";
+          } else {
+            validateAndDefaultRequest(request, data, {
+              assistant: true,
+              app: this.app.id,
+              includeMetadata: ["finalCost"],
+            });
+          }
         } catch (error) {
-          validation = error.message;
+          validation =
+            error instanceof Error ? error.message : "Unexpected error";
         }
         if (validation) {
           this.sandboxRef.postMessage(event.sandboxId, {
@@ -1269,13 +1280,15 @@ class AssistantState extends SyncExternalStore<{
       const riskResponses = this.risks.map((risk) => risk.handleBatch(batch));
       let approved,
         askedUser = false;
-      const { error } = riskResponses.find((response) => response.error) || {};
-      if (error) {
+      const errorResponse = riskResponses.find(
+        (response) => "error" in response,
+      );
+      if (errorResponse) {
         approved = false;
-      } else if (riskResponses.some((response) => response.message)) {
+      } else if (riskResponses.some((response) => "message" in response)) {
         const { promise, callback } = this.handleApprove("risk");
         this.setRisk({
-          riskResponses: riskResponses.filter((r) => r.message),
+          riskResponses: riskResponses.filter((r) => "message" in r),
           callback,
         });
         approved = await promise;
@@ -1286,7 +1299,8 @@ class AssistantState extends SyncExternalStore<{
       }
       await Promise.all(
         riskResponses.map(
-          ({ callback, message }) => callback?.(approved, message && askedUser), //askedUser is only true for the risks that returned a message
+          (response) =>
+            response.callback?.(approved, "message" in response && askedUser), //askedUser is only true for the risks that returned a message
         ),
       );
       //careful with async callbacks - may have to pass in abortSignal
@@ -1298,7 +1312,9 @@ class AssistantState extends SyncExternalStore<{
         if (!approved) {
           this.sandboxRef.postMessage(event.sandboxId, {
             id,
-            error: { message: error || "User denied the request" },
+            error: {
+              message: errorResponse?.error || "User denied the request",
+            },
           });
         } else {
           requestSandbox(request, data)
@@ -1355,9 +1371,15 @@ class AssistantState extends SyncExternalStore<{
       }
     }
   }
-  async handleMetadata(response, id, abortSignal) {
-    let metadata;
-    if (response[Symbol.asyncIterator]) {
+  async handleMetadata(
+    response:
+      | { metadata: RiskMetadata }
+      | AsyncIterable<{ metadata?: RiskMetadata }>,
+    id: number,
+    abortSignal: { aborted: boolean },
+  ) {
+    let metadata: RiskMetadata | undefined;
+    if (isAsyncIterable(response)) {
       for await (const chunk of response) {
         if (abortSignal.aborted) return;
         if (chunk.metadata) {
@@ -1367,8 +1389,10 @@ class AssistantState extends SyncExternalStore<{
     } else {
       metadata = response.metadata;
     }
-    this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
-    this.handleAppUsage(metadata.finalCost);
+    if (metadata) {
+      this.risks.forEach((risk) => risk.handleMetadata(metadata, id));
+      this.handleAppUsage(metadata.finalCost);
+    }
   }
   handlePublish(magicObj: any) {
     //todo type
@@ -1495,3 +1519,7 @@ class AbortIdController {
 }
 
 export { includeMetadata, AssistantState, AbortIdController };
+
+function isAsyncIterable<T>(value: any): value is AsyncIterable<T> {
+  return value != null && typeof value[Symbol.asyncIterator] === "function";
+}

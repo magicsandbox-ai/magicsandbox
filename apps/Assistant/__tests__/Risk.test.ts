@@ -45,7 +45,7 @@ function makeAssistant(budget: number = 0) {
     DownloadRisk,
     RateLimitRisk,
     //@ts-ignore
-  ].map((risk) => new risk({ assistant: mockAssistant }));
+  ].map((risk) => new risk({ assistantState: mockAssistant }));
   return mockAssistant;
 }
 

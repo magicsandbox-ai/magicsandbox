@@ -1,5 +1,5 @@
 import { formatAsDollars } from "./utils.ts";
-import type { AssistantState } from "./AssistantState.ts";
+import type { AssistantState, RiskMetadata } from "./AssistantState.ts";
 
 const minimumMinCost = 0.001;
 
@@ -30,11 +30,6 @@ interface RiskUserApproval {
 
 type RiskResponse = RiskApproval | RiskDenial | RiskUserApproval;
 
-interface Metadata {
-  //passed in includeMetadata in validateAndDefaultRequest, so guaranteed to be included
-  finalCost: number;
-}
-
 abstract class Risk {
   assistantState: AssistantState;
   handleRequests: Set<string>;
@@ -61,7 +56,7 @@ abstract class Risk {
   handleRequest(_request: string, _data: unknown, _id: number) {
     //pass
   }
-  handleMetadata(_metadata: Metadata, _id: number) {
+  handleMetadata(_metadata: RiskMetadata, _id: number) {
     //pass
   }
   getApp() {
@@ -150,7 +145,7 @@ class FinancialRisk extends Risk {
       });
     }
   }
-  handleMetadata(metadata: Metadata, id: number) {
+  handleMetadata(metadata: RiskMetadata, id: number) {
     const approvedRequest = this.approvedRequests.get(id);
     if (approvedRequest) {
       this.approvedCost += metadata.finalCost - approvedRequest;

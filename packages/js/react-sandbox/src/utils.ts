@@ -41,3 +41,4 @@ function createDeferredPromise<T>(
 }
 
 export { createDeferredPromise, type DeferredPromise };
+export { validateAndDefaultRequest } from "./requestHandler.js";
