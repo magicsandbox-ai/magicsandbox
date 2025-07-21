@@ -40,7 +40,7 @@ function formatMessage(message: Message) {
   const messageTagsToInclude: Set<string | undefined> =
     tagsToInclude[message.role];
   return message.tags
-    .filter((tag) => messageTagsToInclude.has(tag.tag))
+    .filter((tag) => messageTagsToInclude?.has(tag.tag))
     .map((tag) => tag.content)
     .join("");
 }

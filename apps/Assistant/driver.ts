@@ -15,12 +15,13 @@ const defaultStagePadding = 10; //steps can override this, but should set it bac
 
 export interface CustomDriver extends Driver {
   handleNextClick: () => Promise<void>;
+  handleCloseClick: (reloading?: boolean) => Promise<void>;
 }
 
 class Step {
   driveStep: DriveStep;
   setup?: () => Promise<void> | void;
-  cleanup?: () => Promise<void> | void;
+  cleanup?: (closing?: boolean) => Promise<void> | void;
   constructor({
     driveStep,
     setup,
@@ -28,7 +29,7 @@ class Step {
   }: {
     driveStep: DriveStep;
     setup?: () => Promise<void> | void;
-    cleanup?: () => Promise<void> | void;
+    cleanup?: (closing?: boolean) => Promise<void> | void;
   }) {
     this.driveStep = driveStep;
     this.setup = setup;
@@ -47,7 +48,7 @@ function createDriver(
         popover: {
           title: "Get Started",
           description: "Click Next to respond to your assistant.",
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
       setup: async () => {
@@ -60,7 +61,10 @@ function createDriver(
           messages: [...welcomeConversation.messages],
         });
       },
-      cleanup: async () => {
+      cleanup: async (closing) => {
+        if (closing) {
+          return;
+        }
         await handleInput({
           input: "Can you give me a recipe for chocolate chip cookies?",
           mockContent: [
@@ -103,10 +107,13 @@ Makes about 48 cookies. Enjoy!`,
         popover: {
           description:
             "You already know how AI chat works - ask questions, get answers. But Magic Sandbox goes beyond conversation. Your assistant can actually open and use Magic Sandbox apps on your behalf. Let's see how!",
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
-      cleanup: async () => {
+      cleanup: async (closing) => {
+        if (closing) {
+          return;
+        }
         await handleInput({
           input: "Sounds delicious! Can you add it to my notes?",
           mockContent: [
@@ -157,7 +164,7 @@ Makes about 48 cookies. Enjoy!\`,
           description: `Your assistant just opened the Notes app and saved your recipe! Magic Sandbox is more than just AI chat - your assistant can use apps to handle tasks for you.
       
 Let's take a look at your new recipe.`,
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
     }),
@@ -170,7 +177,7 @@ Let's take a look at your new recipe.`,
 When you chat with your assistant with an app open, it automatically understands what you're working on - no need to copy/paste. You can "chat with your notes" - ask questions about them, request summaries, or ask for edits.
 
 Let's see it in action by asking your assistant to modify this recipe!`,
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
       setup: async () => {
@@ -178,9 +185,12 @@ Let's see it in action by asking your assistant to modify this recipe!`,
         const config = driverObj.getConfig();
         config.stagePadding = 0;
       },
-      cleanup: async () => {
+      cleanup: async (closing) => {
         const config = driverObj.getConfig();
         config.stagePadding = defaultStagePadding;
+        if (closing) {
+          return;
+        }
         await handleChat(false, driverObj, assistantState);
         await handleInput({
           input:
@@ -243,7 +253,7 @@ if (noteIndex !== -1) {
         element: "iframe",
         popover: {
           description: `Here's your updated recipe! The changes your assistant made are highlighted, and you can choose to accept or reject them.`,
-          showButtons: ["next"],
+          showButtons: ["next", "close"],
         },
       },
       setup: async () => {
@@ -299,7 +309,7 @@ Click the Magic Sandbox logo to close the Notes app. Next, we'll quickly show yo
         },
       },
       setup: async () => {
-        await waitForElement("#discover-button"); //I think it takes a frame for this to appear when assistantRef.current.reload is called
+        await waitForElement("#discover-button"); //I think it takes a frame for this to appear when reload is called
       },
     }),
     new Step({
@@ -367,6 +377,7 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       },
       setup: async () => {
         await handleMenu(true, driverObj, assistantState);
+        await waitForElement(".chat-button"); //I think it takes a frame for this to appear when reload is called
       },
       cleanup: async () => {
         await handleMenu(false, driverObj, assistantState);
@@ -381,6 +392,22 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
     await nextStep?.setup?.();
     driverObj.moveNext();
     onStateChange?.(driverObj.getState());
+  };
+  const handleCloseClick = async (reloading?: boolean) => {
+    const state: DriverState = driverObj.getState();
+    const currentStep = steps[state.activeIndex!];
+    await currentStep?.cleanup?.(true);
+    if (state.activeIndex === steps.length - 1) {
+      driverObj.destroy();
+      onStateChange?.({});
+    } else {
+      if (!reloading) {
+        assistantState.reload();
+      }
+      await steps[steps.length - 1]?.setup?.();
+      driverObj.moveTo(steps.length - 1);
+      onStateChange?.(driverObj.getState());
+    }
   };
   const driverObj = driver({
     overlayClickBehavior: undefined,
@@ -399,12 +426,12 @@ Write code? Check out the docs to learn how to create your own Magic Sandbox app
       onStateChange?.(driverObj.getState());
     },
     onCloseClick: async () => {
-      driverObj.destroy();
-      onStateChange?.({});
+      handleCloseClick();
     },
     steps: steps.map((step) => step.driveStep),
   }) as CustomDriver;
   driverObj.handleNextClick = handleNextClick;
+  driverObj.handleCloseClick = handleCloseClick;
   const originalDrive = driverObj.drive.bind(driverObj);
   driverObj.drive = async (stepIndex?: number) => {
     assistantState.setSeenTutorial(true);

@@ -244,7 +244,12 @@ class AssistantState extends SyncExternalStore<{
       appData,
       showChatHistory,
       isDriverActive: false,
-      showTutorialTooltip: !!app && !seenTutorial,
+      showTutorialTooltip:
+        app !== null &&
+        !seenTutorial &&
+        //don't show tooltip if webdriver is true
+        //unless we're specifically testing Assistant, in which case window.parent does not equal window.top
+        (!navigator.webdriver || window.parent !== window.top),
       chatInput: "",
       chatCollapsed: true,
       chatLoading: false,
@@ -1154,6 +1159,9 @@ class AssistantState extends SyncExternalStore<{
       const abortSignal = this.abortIdController.signal(conversationId);
       const sandboxId = this.sandboxRef.getSandboxId();
       this.setApp(false); //indicates app is loading
+      if (calledFromChat) {
+        this.setChatCollapsed(false);
+      }
       let result;
       try {
         result = await requestApp(app, {
@@ -1193,14 +1201,11 @@ class AssistantState extends SyncExternalStore<{
         //ignore
       }
       if (abortSignal.aborted) return;
-      if (calledFromChat) {
-        this.setChatCollapsed(false);
-        if (initContext) {
-          await this.handleInput({
-            initContext,
-            mockContent,
-          });
-        }
+      if (calledFromChat && initContext) {
+        await this.handleInput({
+          initContext,
+          mockContent,
+        });
       }
     } catch (error) {
       this.handleError(error);
@@ -1227,10 +1232,8 @@ class AssistantState extends SyncExternalStore<{
     if (!this.sandboxRef) {
       throw new Error("Sandbox not initialized");
     }
-    const sandboxRequestEvent: SandboxRequestEvent = {
-      ...event,
-      sandboxId: this.sandboxRef.getSandboxId(),
-    };
+    const sandboxRequestEvent = event as SandboxRequestEvent;
+    sandboxRequestEvent.sandboxId = this.sandboxRef.getSandboxId();
     this.requestQueue.push(sandboxRequestEvent);
     if (!this.requestTimeoutId) {
       this.requestTimeoutId = setTimeout(() => {
@@ -1480,6 +1483,8 @@ class AssistantState extends SyncExternalStore<{
     const driverStep = this.driver.getActiveStep();
     if (driverStep?.element === "#driver-home") {
       this.driver.handleNextClick();
+    } else if (driverStep) {
+      this.driver.handleCloseClick(true);
     }
     if (!this.seenTutorial) {
       this.setShowTutorialTooltip(true);

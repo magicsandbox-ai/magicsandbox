@@ -40,6 +40,22 @@ declare global {
   }
 }
 
+//https://www.npmjs.com/package/nopp
+[
+  Object,
+  Object.prototype,
+  Function,
+  Function.prototype,
+  Array,
+  Array.prototype,
+  String,
+  String.prototype,
+  Number,
+  Number.prototype,
+  Boolean,
+  Boolean.prototype,
+].forEach(Object.freeze);
+
 async function init({ user }: { user?: User } = {}) {
   const [urlParams, initData] = await Promise.all([
     requestUrlParams(),
@@ -358,122 +374,125 @@ function App({
   }
 
   return (
-    <div className="flex h-screen">
-      {app === null && (
-        <ChatHistory
-          {...{
-            assistantState,
-            currentConversationId: currentConversation.conversationId,
-            setShowSearch,
-            setShowDelete,
-            show: showChatHistory,
-            setShow: (show) => assistantState.setShowChatHistory(show),
-          }}
-        />
-      )}
-      <div
-        className="flex min-w-0 grow flex-col overflow-y-auto"
-        onClick={() => {
-          if (window.innerWidth < 768 && showChatHistory) {
-            assistantState.setShowChatHistory(false);
-          }
-        }}
-      >
-        {messages.length === 0 && app === null && (
-          <Home
-            {...{
-              assistantState,
-              chatLoading,
-              appData,
-              setShowDiscover,
-            }}
-          />
-        )}
-        <div className="flex min-h-0 grow">
-          <Sandbox
-            ref={sandboxRef}
-            className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
-          />
-          {((messages.length > 0 && app === null) ||
-            (docked && !chatCollapsed)) && (
-            <div
-              className={`flex w-[336px] min-w-0 grow flex-col ${
-                app !== null ? "border-l border-stone-500" : ""
-              }`}
-            >
-              {app !== null && (
-                <ChatToolbar
-                  containerClassName="mx-3 mt-3 flex items-center justify-between gap-2"
-                  {...{
-                    assistantState,
-                    docked,
-                    setDocked,
-                    shouldFocusCollapseButtonRef,
-                  }}
-                />
-              )}
-              {messages[0]?.welcome && app === null && !isDriverActive && (
-                <button
-                  className="absolute right-4 top-3 z-10 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
-                  onClick={() => {
-                    assistantState.driver.drive();
-                  }}
-                >
-                  Restart tutorial
-                </button>
-              )}
-              <ChatDisplay
-                key={currentConversation.conversationId}
-                outerClassName="py-6 flex grow flex-col items-center"
-                innerClassName="w-full max-w-screen-lg"
-                messages={messages}
-                assistantState={assistantState}
-                chatLoading={chatLoading}
-              />
-            </div>
-          )}
-        </div>
-        {(messages.length > 0 || app !== null) && (
-          <BottomChat
-            {...{
-              chatCollapsed,
-              shouldFocusCollapseButtonRef,
-              docked,
-              setDocked,
-              assistantState,
-              messages,
-              chatLoading,
-              app,
-              setShowDiscover,
-              setShowApps,
-            }}
-          />
-        )}
-        {modalComponent}
-      </div>
-      <Toasts className="top-2" ref={toastsRef} />
+    <div className="flex h-screen flex-col">
       {showTutorialTooltip && (
         <DivButton
-          className="group absolute right-4 top-3 whitespace-pre rounded-lg bg-stone-600 px-2 py-1 text-center text-sm font-medium text-white shadow hover:bg-stone-700"
+          className="flex items-center justify-between bg-stone-600 px-2 py-1 text-center text-xs font-medium text-white shadow hover:bg-stone-700 md:text-sm"
           onPress={() => {
             assistantState.driver.drive();
             assistantState.setShowTutorialTooltip(false);
           }}
         >
-          <button
-            className="absolute right-1 top-1 hidden rounded bg-stone-200 text-stone-700 hover:bg-stone-300 group-hover:block"
-            onClick={() => {
-              assistantState.setShowTutorialTooltip(false);
-            }}
-          >
-            <X className="lucide-ignore size-4" />
-            <span className="sr-only">Dismiss</span>
-          </button>
-          Welcome to Magic Sandbox!
-          <br />
-          Click to start tutorial
+          <div className="flex-1"></div>
+          <p>Welcome to Magic Sandbox! Click to start tutorial</p>
+          <div className="flex flex-1 items-center justify-end">
+            <button
+              className="rounded bg-stone-100 text-stone-700 hover:bg-stone-200"
+              onClick={() => {
+                assistantState.setShowTutorialTooltip(false);
+              }}
+            >
+              <X className="lucide-ignore size-4" />
+              <span className="sr-only">Dismiss</span>
+            </button>
+          </div>
         </DivButton>
       )}
+      <div className="relative flex min-h-0 grow">
+        {app === null && (
+          <ChatHistory
+            {...{
+              assistantState,
+              currentConversationId: currentConversation.conversationId,
+              setShowSearch,
+              setShowDelete,
+              show: showChatHistory,
+              setShow: (show) => assistantState.setShowChatHistory(show),
+            }}
+          />
+        )}
+        <div
+          className="flex min-w-0 grow flex-col overflow-y-auto"
+          onClick={() => {
+            if (window.innerWidth < 768 && showChatHistory) {
+              assistantState.setShowChatHistory(false);
+            }
+          }}
+        >
+          {messages.length === 0 && app === null && (
+            <Home
+              {...{
+                assistantState,
+                chatLoading,
+                appData,
+                setShowDiscover,
+              }}
+            />
+          )}
+          <div className="flex min-h-0 grow">
+            <Sandbox
+              ref={sandboxRef}
+              className={`w-[1024px] ${app !== null ? "grow" : "hidden"}`}
+            />
+            {((messages.length > 0 && app === null) ||
+              (docked && !chatCollapsed)) && (
+              <div
+                className={`flex w-[336px] min-w-0 grow flex-col ${
+                  app !== null ? "border-l border-stone-500" : ""
+                }`}
+              >
+                {app !== null && (
+                  <ChatToolbar
+                    containerClassName="mx-3 mt-3 flex items-center justify-between gap-2"
+                    {...{
+                      assistantState,
+                      docked,
+                      setDocked,
+                      shouldFocusCollapseButtonRef,
+                    }}
+                  />
+                )}
+                {messages[0]?.welcome && app === null && !isDriverActive && (
+                  <button
+                    className="absolute right-4 top-3 z-10 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
+                    onClick={() => {
+                      assistantState.driver.drive();
+                    }}
+                  >
+                    Restart tutorial
+                  </button>
+                )}
+                <ChatDisplay
+                  key={currentConversation.conversationId}
+                  outerClassName="py-6 flex grow flex-col items-center"
+                  innerClassName="w-full max-w-screen-lg"
+                  messages={messages}
+                  assistantState={assistantState}
+                  chatLoading={chatLoading}
+                />
+              </div>
+            )}
+          </div>
+          {(messages.length > 0 || app !== null) && (
+            <BottomChat
+              {...{
+                chatCollapsed,
+                shouldFocusCollapseButtonRef,
+                docked,
+                setDocked,
+                assistantState,
+                messages,
+                chatLoading,
+                app,
+                setShowDiscover,
+                setShowApps,
+              }}
+            />
+          )}
+          {modalComponent}
+        </div>
+        <Toasts className="top-2" ref={toastsRef} />
+      </div>
     </div>
   );
 }

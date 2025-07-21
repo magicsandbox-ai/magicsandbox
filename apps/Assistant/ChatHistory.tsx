@@ -91,16 +91,14 @@ const ChatHistory = memo(function ChatHistory({
     );
   } else {
     return (
-      <Tooltip
-        text="Open menu"
-        position="right"
-        className="absolute z-10 ml-3 mt-3"
-      >
-        <button id="menu-button" onClick={() => setShow(!show)}>
-          <Menu />
-          <span className="sr-only">Open menu</span>
-        </button>
-      </Tooltip>
+      <div className="absolute z-10 ml-3 mt-3">
+        <Tooltip text="Open menu" position="right">
+          <button id="menu-button" onClick={() => setShow(!show)}>
+            <Menu />
+            <span className="sr-only">Open menu</span>
+          </button>
+        </Tooltip>
+      </div>
     );
   }
 });

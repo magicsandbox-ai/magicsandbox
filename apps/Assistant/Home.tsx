@@ -36,7 +36,7 @@ function Home({
 
   return (
     <div className="h-full w-full max-w-screen-lg self-center">
-      <div className="flex h-1/2 flex-none flex-col justify-end gap-6 pb-6">
+      <div className="flex min-h-[50%] flex-col justify-end gap-6 pb-6">
         <p className="text-center text-2xl font-bold md:text-3xl">
           What can I help you with?
         </p>

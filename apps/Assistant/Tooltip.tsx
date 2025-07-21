@@ -13,18 +13,18 @@ function Tooltip({
 }) {
   let positionClass;
   if (position === "top") {
-    positionClass = "tooltip-top";
+    positionClass = "xl:tooltip-top";
   } else if (position === "bottom") {
-    positionClass = "tooltip-bottom";
+    positionClass = "xl:tooltip-bottom";
   } else if (position === "left") {
-    positionClass = "tooltip-left";
+    positionClass = "xl:tooltip-left";
   } else if (position === "right") {
-    positionClass = "tooltip-right";
+    positionClass = "xl:tooltip-right";
   }
   return (
     <div
       //leading-none prevents div from adding extra height
-      className={`tooltip leading-none ${positionClass} ${className}`}
+      className={`tooltip-color xl:tooltip leading-none ${positionClass} ${className}`}
       data-tip={text}
     >
       {children}

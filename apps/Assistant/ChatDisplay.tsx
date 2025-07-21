@@ -273,7 +273,7 @@ function filterAndCollapseMessages(messages: Message[]): Message[] {
     .map((message) => ({
       ...message,
       tags: message.tags.filter((tag) =>
-        tagsToInclude[message.role].has(tag.tag),
+        tagsToInclude[message.role]?.has(tag.tag),
       ),
     }))
     .filter((message) => message.tags.length > 0);
@@ -293,7 +293,10 @@ function filterAndCollapseMessages(messages: Message[]): Message[] {
     }
   }
   //always end with an assistant message - if it's empty, we'll display a loading or error message
-  if (collapsedMessages[collapsedMessages.length - 1]?.role !== "assistant") {
+  if (
+    collapsedMessages.length > 0 &&
+    collapsedMessages[collapsedMessages.length - 1]?.role !== "assistant"
+  ) {
     const message: Message = {
       role: "assistant",
       tags: [],

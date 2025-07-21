@@ -8,9 +8,9 @@
   }
 }
 
-.tooltip {
-  --tooltip-color: rgb(41 37 36); /* stone-800 */
-  --tooltip-text-color: rgb(245 245 244); /* stone-100 */
+.tooltip-color {
+  --tooltip-color: rgb(41 37 36) !important; /* stone-800 */
+  --tooltip-text-color: rgb(245 245 244) !important; /* stone-100 */
 }
 
 .lucide:not(.lucide-ignore) {

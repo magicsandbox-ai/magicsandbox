@@ -13,6 +13,10 @@ Write code? Check out the [docs](https://magicsandbox.ai/?_app=magicsandbox.Docs
 
 Still need help? Send us an email at [help@magicsandbox.ai](mailto:help@magicsandbox.ai).
 
+# Tutorial
+
+The tutorial is the best way to learn the basics of Magic Sandbox. Open your chat titled "Welcome to Magic Sandbox!" and click the "Restart Tutorial" button to go through the tutorial again.
+
 # Getting Started
 
 When you chat with your assistant, it can choose to open one of your favorited apps. Your assistant will intelligently determine the best way to help you - whether that's through conversation or by opening one of your favorited apps to accomplish specific tasks.

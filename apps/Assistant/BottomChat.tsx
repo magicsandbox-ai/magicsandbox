@@ -158,8 +158,7 @@ function BottomChat({
         <div className="mr-2 flex flex-1 items-center justify-start gap-2">
           <Tooltip
             text={chatLoading ? "Stop chat" : "Submit chat"}
-            position="left"
-            className="md:tooltip-top"
+            position="top"
           >
             <button onClick={() => handleInput(input)}>
               {chatLoading ? (
@@ -183,8 +182,7 @@ function BottomChat({
             <>
               <Tooltip
                 text={app.favorited ? "Unfavorite app" : "Favorite app"}
-                position="left"
-                className="xl:tooltip-top"
+                position="top"
               >
                 <button
                   onClick={() => assistantState.handleFavorite(app)}
