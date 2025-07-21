@@ -30,7 +30,7 @@ function ChatDisplay({
     scrollToBottomRef.current = true;
   } else if (
     ref.current.scrollHeight - ref.current.clientHeight <=
-    ref.current.scrollTop + 1
+    ref.current.scrollTop + 73 //h1 is line height of 36, support 200% zoom, plus add 1 for decimal height
   ) {
     //already at the bottom so scroll to bottom once new message is added
     scrollToBottomRef.current = true;
@@ -75,7 +75,7 @@ function ChatDisplay({
     >
       <div
         id="chat-display"
-        className={`mb-4 flex flex-col gap-5 ${innerClassName}`}
+        className={`mb-5 flex flex-col gap-5 ${innerClassName}`}
       >
         {displayMessages.map((message, i) => (
           <Message
@@ -258,25 +258,21 @@ function FeedbackButtons({
   );
 }
 
+const tagsToInclude: Record<Message["role"], Set<string | undefined>> = {
+  system: new Set([]),
+  user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
+  assistant: new Set([
+    undefined,
+    "open_app",
+    "intermediate_script",
+    "final_script",
+  ]),
+};
+
 function filterAndCollapseMessages(messages: Message[]): Message[] {
-  const tagsToInclude: Record<Message["role"], Set<string | undefined>> = {
-    system: new Set([]),
-    user: new Set(["user_request"]), //exclude suggested_apps, app_context, user_highlighted_text, logs
-    assistant: new Set([
-      undefined,
-      "open_app",
-      "intermediate_script",
-      "final_script",
-    ]),
-  };
-  const filteredMessages = messages
-    .map((message) => ({
-      ...message,
-      tags: message.tags.filter((tag) =>
-        tagsToInclude[message.role]?.has(tag.tag),
-      ),
-    }))
-    .filter((message) => message.tags.length > 0);
+  const filteredMessages = messages.filter((message) =>
+    message.tags.some((tag) => tagsToInclude[message.role]?.has(tag.tag)),
+  );
   const collapsedMessages = [];
   for (const message of filteredMessages) {
     const lastCollapsedMessage =
@@ -287,7 +283,17 @@ function filterAndCollapseMessages(messages: Message[]): Message[] {
     ) {
       //collapse consecutive assistant messages
       //note that the messages could have different models which we don't handle at all - just use the first
-      lastCollapsedMessage.tags.push({ content: "\n\n" }, ...message.tags);
+      //note that creating a new object here breaks memoization (but we need to do it avoid mutating state)
+      //if performance becomes an issue, add a function to memo to compare whether the message has changed
+      const collapsedMessage: Message = {
+        ...lastCollapsedMessage,
+        tags: [
+          ...lastCollapsedMessage.tags,
+          { content: "\n\n" },
+          ...message.tags,
+        ],
+      };
+      collapsedMessages[collapsedMessages.length - 1] = collapsedMessage;
     } else {
       collapsedMessages.push(message);
     }
@@ -307,7 +313,10 @@ function filterAndCollapseMessages(messages: Message[]): Message[] {
 }
 
 function formatMessage(message: Message) {
-  return message.tags.map(formatTag).join("");
+  return message.tags
+    .filter((tag) => tagsToInclude[message.role]?.has(tag.tag))
+    .map(formatTag)
+    .join("");
 }
 
 function formatTag({ tag, content }: { tag?: string; content: string }) {
