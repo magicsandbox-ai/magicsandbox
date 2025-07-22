@@ -1,4 +1,10 @@
-import React, { useRef, memo, useCallback, useState, useEffect } from "react";
+import React, {
+  useRef,
+  memo,
+  useCallback,
+  useState,
+  useLayoutEffect,
+} from "react";
 import Markdown from "./Markdown.tsx";
 import rehypeHighlight from "rehype-highlight";
 import { visit, SKIP } from "unist-util-visit";
@@ -25,12 +31,17 @@ function ChatDisplay({
   const ref = useRef<HTMLDivElement | null>(null);
   const scrollToBottomRef = useRef(false);
 
-  if (!ref.current) {
-    //messages are not open, we want to scroll to bottom when they are opened
-    scrollToBottomRef.current = true;
-  } else if (
+  useLayoutEffect(() => {
+    //scroll to bottom when component mounts
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+  }, []);
+
+  if (
+    ref.current &&
     ref.current.scrollHeight - ref.current.clientHeight <=
-    ref.current.scrollTop + 73 //h1 is line height of 36, support 200% zoom, plus add 1 for decimal height
+      ref.current.scrollTop + 1
   ) {
     //already at the bottom so scroll to bottom once new message is added
     scrollToBottomRef.current = true;
@@ -130,7 +141,7 @@ const Message = memo(function Message({
   lastAssistantMessage: boolean;
   loading?: boolean;
 }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleScroll(lastUserMessage);
   }, [message, handleScroll, lastUserMessage]);
 

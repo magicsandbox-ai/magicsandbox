@@ -8,7 +8,6 @@
 
 import React, {
   useState,
-  useEffect,
   createElement,
   Fragment,
   memo,
@@ -62,11 +61,7 @@ const Markdown = memo(function Markdown({
     }
   }
 
-  const [Content, setContent] = useState(() => process());
-
-  useEffect(() => {
-    setContent(process());
-  }, [remarkPlugins, rehypePlugins, rehypeSanitizeOptions, children]);
+  const Content = process();
 
   return <div className={className}>{Content}</div>;
 });
