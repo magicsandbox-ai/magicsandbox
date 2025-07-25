@@ -97,6 +97,7 @@ async function init({ user }: { user?: User } = {}) {
     showChatHistory: window.innerWidth >= 768,
     seenTutorial,
     user,
+    docked: window.innerWidth >= 768 && (initData.docked || false),
   });
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary
@@ -143,8 +144,9 @@ function App({
     assistantState.subscribe("chatCollapsed"),
     assistantState.getSnapshot("chatCollapsed"),
   );
-  const [docked, setDocked] = useState(
-    window.innerWidth >= 768 && (initData.docked || false),
+  const docked = useSyncExternalStore(
+    assistantState.subscribe("docked"),
+    assistantState.getSnapshot("docked"),
   );
   const chatLoading = useSyncExternalStore(
     assistantState.subscribe("chatLoading"),
@@ -231,15 +233,6 @@ function App({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
-
-  useEffect(() => {
-    if (!firstRenderRef.current) {
-      requestPutData("docked", docked, {
-        app: "magicsandbox.Assistant",
-        evictionPolicy: "fifo",
-      }).catch(console.error);
-    }
-  }, [docked]);
 
   useEffect(() => {
     async function refreshPublishedApps() {
@@ -447,7 +440,6 @@ function App({
                     {...{
                       assistantState,
                       docked,
-                      setDocked,
                       shouldFocusCollapseButtonRef,
                     }}
                   />
@@ -479,7 +471,6 @@ function App({
                 chatCollapsed,
                 shouldFocusCollapseButtonRef,
                 docked,
-                setDocked,
                 assistantState,
                 messages,
                 chatLoading,

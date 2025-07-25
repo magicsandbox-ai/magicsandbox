@@ -73,29 +73,53 @@ function handleDiff(
         pos += line.length + 1; //add 1 because of the newline
       }
       return false; //don't descend
-    } else if (node.text) {
-      if (node.text.endsWith("%%added%%")) {
+    } else if (node.isTextblock) {
+      if (node.textContent.endsWith("%%added%%")) {
         decorations.push({
           from: pos,
           to: pos + node.nodeSize,
           attrs: { class: "added" },
         });
         deletes.push({
-          from: pos + node.nodeSize - "%%added%%".length,
+          //nodeSize is the size of the text + 2 for the start and end markers. subtract 1, because we want to include the start marker
+          from: pos + node.nodeSize - 1 - "%%added%%".length,
           to: pos + node.nodeSize,
         });
-      } else if (node.text.endsWith("%%removed%%")) {
+      } else if (node.textContent.endsWith("%%removed%%")) {
         decorations.push({
           from: pos,
           to: pos + node.nodeSize,
           attrs: { class: "removed" },
         });
         deletes.push({
-          from: pos + node.nodeSize - "%%removed%%".length,
+          from: pos + node.nodeSize - 1 - "%%removed%%".length,
           to: pos + node.nodeSize,
         });
       }
     }
+    // } else if (node.text) {
+    //   if (node.text.endsWith("%%added%%")) {
+    //     decorations.push({
+    //       from: pos,
+    //       to: pos + node.nodeSize,
+    //       attrs: { class: "added" },
+    //     });
+    //     deletes.push({
+    //       from: pos + node.nodeSize - "%%added%%".length,
+    //       to: pos + node.nodeSize,
+    //     });
+    //   } else if (node.text.endsWith("%%removed%%")) {
+    //     decorations.push({
+    //       from: pos,
+    //       to: pos + node.nodeSize,
+    //       attrs: { class: "removed" },
+    //     });
+    //     deletes.push({
+    //       from: pos + node.nodeSize - "%%removed%%".length,
+    //       to: pos + node.nodeSize,
+    //     });
+    //   }
+    // }
   });
   const transform = new Transform(doc);
   for (const d of deletes) {

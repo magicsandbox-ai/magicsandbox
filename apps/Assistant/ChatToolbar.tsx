@@ -13,13 +13,11 @@ export default function ChatToolbar({
   containerClassName,
   assistantState,
   docked,
-  setDocked,
   shouldFocusCollapseButtonRef,
 }: {
   containerClassName: string;
   assistantState: AssistantState;
   docked: boolean;
-  setDocked: (docked: boolean) => void;
   shouldFocusCollapseButtonRef: React.RefObject<boolean>;
 }) {
   return (
@@ -42,7 +40,7 @@ export default function ChatToolbar({
         >
           <button
             onClick={() => {
-              setDocked(!docked);
+              assistantState.setDocked(!docked);
             }}
           >
             {docked ? <PanelBottomClose /> : <PanelRightClose />}

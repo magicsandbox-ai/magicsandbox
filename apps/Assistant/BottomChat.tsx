@@ -17,7 +17,6 @@ function BottomChat({
   chatCollapsed,
   shouldFocusCollapseButtonRef,
   docked,
-  setDocked,
   assistantState,
   messages,
   chatLoading,
@@ -28,7 +27,6 @@ function BottomChat({
   chatCollapsed: boolean;
   shouldFocusCollapseButtonRef: React.RefObject<boolean>;
   docked: boolean;
-  setDocked: (docked: boolean) => void;
   assistantState: AssistantState;
   messages: Message[];
   chatLoading: boolean;
@@ -103,7 +101,6 @@ function BottomChat({
                   {...{
                     assistantState,
                     docked,
-                    setDocked,
                     shouldFocusCollapseButtonRef,
                   }}
                 />

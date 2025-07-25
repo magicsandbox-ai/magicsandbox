@@ -187,6 +187,7 @@ class AssistantState extends SyncExternalStore<{
   model: string;
   confirm: Confirm | null;
   risk: RiskState | null;
+  docked: boolean;
 }> {
   conversations: { [conversationId: string]: Conversation };
   currentConversation: Conversation;
@@ -216,6 +217,7 @@ class AssistantState extends SyncExternalStore<{
     showChatHistory,
     seenTutorial,
     user,
+    docked,
   }: {
     initData: DatabaseSchema;
     initConversation: Conversation;
@@ -224,6 +226,7 @@ class AssistantState extends SyncExternalStore<{
     showChatHistory: boolean;
     seenTutorial: boolean;
     user?: User;
+    docked: boolean;
   }) {
     const conversationSummaries = Object.entries(initConversations)
       .sort(([, a], [, b]) => (b.lastUpdated || 0) - (a.lastUpdated || 0))
@@ -256,6 +259,7 @@ class AssistantState extends SyncExternalStore<{
       model,
       confirm: null,
       risk: null,
+      docked,
     });
     this.currentConversation = initConversation;
     this.conversations = initConversations;
@@ -348,6 +352,10 @@ class AssistantState extends SyncExternalStore<{
   setRisk(risk: RiskState | null) {
     this.set("risk", risk);
   }
+  setDocked(docked: boolean) {
+    this.set("docked", docked);
+    this.putData("docked", docked);
+  }
   setConversations(conversations: { [conversationId: string]: Conversation }) {
     this.conversations = conversations;
     this.set("conversations", conversations);
@@ -429,7 +437,10 @@ class AssistantState extends SyncExternalStore<{
     }
     const messagesUpdated = messages !== undefined || message !== undefined;
     if (messagesUpdated) {
-      conversation.lastUpdated = Date.now();
+      if (message?.role !== "system") {
+        //don't update if we're just adding a system message (like in handleSwitchConversation)
+        conversation.lastUpdated = Date.now();
+      }
       if (messages !== undefined) {
         conversation.messages = messages;
       } else {
@@ -556,7 +567,10 @@ class AssistantState extends SyncExternalStore<{
         },
       });
     } else {
-      const newTags = [...lastMessage.tags];
+      const newTagSet = new Set(message.tags?.map((tag) => tag.tag));
+      const newTags = lastMessage.tags.filter(
+        (tag) => !newTagSet.has(tag.tag) || tag.tag === "logs",
+      );
       if (message.tags) {
         newTags.push(...message.tags);
       }

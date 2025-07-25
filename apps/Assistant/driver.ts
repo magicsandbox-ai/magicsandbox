@@ -60,6 +60,8 @@ function createDriver(
           conversationId: welcomeConversation.conversationId,
           messages: [...welcomeConversation.messages],
         });
+        assistantState.setDocked(false); //tutorial doesn't work well when chat is docked
+        await waitForElement(".assistant-message");
       },
       cleanup: async (closing) => {
         if (closing) {

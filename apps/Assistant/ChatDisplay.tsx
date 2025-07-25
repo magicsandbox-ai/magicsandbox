@@ -359,85 +359,98 @@ const preStyle =
 function createRehypeCode(loading: boolean) {
   return () => {
     return (tree: HastRoot) => {
-      visit(tree, "element", (node) => {
-        if (
-          node.tagName === "pre" &&
-          node.children.length === 1 &&
-          node.children[0]?.type === "element" &&
-          node.children[0].tagName === "code"
-        ) {
-          const code = node.children[0];
-          let app;
-          if (code.children.length === 1 && code.children[0]!.type === "text") {
-            app = code.children[0]!.value.trim();
-          } else {
-            console.error("Invalid magicopenapp code block", code);
-          }
+      //we want to show only one loading spinner (the latest)
+      //so go over the tree in reverse set isLoading to false after the first loading spinner
+      let isLoading = loading;
+      visit(
+        tree,
+        "element",
+        (node) => {
           if (
-            Array.isArray(code.properties.className) &&
-            code.properties.className.includes("language-magicopenapp")
+            node.tagName === "pre" &&
+            node.children.length === 1 &&
+            node.children[0]?.type === "element" &&
+            node.children[0].tagName === "code"
           ) {
-            node.tagName = "p";
-            node.properties = { className: "assistant-pill" };
-            node.children = [
-              {
-                type: "element",
-                tagName: "span",
-                properties: {
-                  className: loading
-                    ? ["loading", "loading-spinner"]
-                    : ["loading", "loading-done"],
-                },
-                children: [
-                  {
-                    type: "text",
-                    value: loading
-                      ? `Opening app${app ? ` ${app}` : ""}`
-                      : `Opened app${app ? ` ${app}` : ""}`,
-                  },
-                ],
-              },
-            ];
-          } else if (
-            Array.isArray(code.properties.className) &&
-            code.properties.className.includes("language-magicscript")
-          ) {
-            code.properties.className = ["language-javascript"]; //fix class name for highlighting
-            const pre = { ...node }; //clone node since we mutate it below
-            pre.properties.className = [preStyle];
-            //now make code block collapsible
-            const summary: HastElement = {
-              type: "element",
-              tagName: "summary",
-              properties: {},
-              children: [
+            const code = node.children[0];
+            let app;
+            if (
+              code.children.length === 1 &&
+              code.children[0]!.type === "text"
+            ) {
+              app = code.children[0]!.value.trim();
+            } else {
+              console.error("Invalid magicopenapp code block", code);
+            }
+            if (
+              Array.isArray(code.properties.className) &&
+              code.properties.className.includes("language-magicopenapp")
+            ) {
+              node.tagName = "p";
+              node.properties = { className: "assistant-pill" };
+              node.children = [
                 {
                   type: "element",
                   tagName: "span",
                   properties: {
-                    className: loading
+                    className: isLoading
                       ? ["loading", "loading-spinner"]
                       : ["loading", "loading-done"],
                   },
                   children: [
                     {
                       type: "text",
-                      value: loading ? "Working on it" : "Script complete",
+                      value: isLoading
+                        ? `Opening app${app ? ` ${app}` : ""}`
+                        : `Opened app${app ? ` ${app}` : ""}`,
                     },
                   ],
                 },
-              ],
-            };
-            node.tagName = "details";
-            node.properties = { className: "assistant-pill" };
-            node.children = [summary, pre];
-          } else {
-            //not collapsible, just style pre
-            node.properties.className = [preStyle];
+              ];
+              isLoading = false;
+            } else if (
+              Array.isArray(code.properties.className) &&
+              code.properties.className.includes("language-magicscript")
+            ) {
+              code.properties.className = ["language-javascript"]; //fix class name for highlighting
+              const pre = { ...node }; //clone node since we mutate it below
+              pre.properties.className = [preStyle];
+              //now make code block collapsible
+              const summary: HastElement = {
+                type: "element",
+                tagName: "summary",
+                properties: {},
+                children: [
+                  {
+                    type: "element",
+                    tagName: "span",
+                    properties: {
+                      className: isLoading
+                        ? ["loading", "loading-spinner"]
+                        : ["loading", "loading-done"],
+                    },
+                    children: [
+                      {
+                        type: "text",
+                        value: isLoading ? "Working on it" : "Script complete",
+                      },
+                    ],
+                  },
+                ],
+              };
+              node.tagName = "details";
+              node.properties = { className: "assistant-pill" };
+              node.children = [summary, pre];
+              isLoading = false;
+            } else {
+              //not collapsible, just style pre
+              node.properties.className = [preStyle];
+            }
+            return SKIP; //don't traverse children
           }
-          return SKIP; //don't traverse children
-        }
-      });
+        },
+        true, //reverse
+      );
     };
   };
 }

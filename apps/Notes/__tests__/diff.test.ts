@@ -59,7 +59,7 @@ I'm a new code block!
 \`\`\`
 
 - mike
-- nancy
+- **I'm bold:** nancy
   - I'm a new sub bullet!
 - oscar
 
@@ -101,7 +101,7 @@ I'm a new code block!
 
 * mike
 * november
-* nancy
+* **I'm bold:** nancy
   * I'm a new sub bullet!
 * oscar
 
@@ -131,6 +131,7 @@ const expectedDecorationClasses = {
   "new code block": "added",
   mike: "",
   november: "removed",
+  "I'm bold": "added",
   nancy: "added",
   "new sub bullet": "added",
   oscar: "",

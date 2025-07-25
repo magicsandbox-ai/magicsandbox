@@ -141,7 +141,7 @@ I'm a new code block!
 \`\`\`
 
 - mike
-- nancy
+- **I'm bold:** nancy
   - I'm a new sub bullet!
 - oscar
 
