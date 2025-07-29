@@ -1,7 +1,7 @@
 {
   author: "magicsandbox",
   name: "About",
-  version: "0.1.4",
+  version: "0.1.5",
   description: "About Magic Sandbox",
   scriptFile: "dist/index.js",
   htmlFile: "dist/index.html",
