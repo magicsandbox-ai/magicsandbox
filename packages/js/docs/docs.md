@@ -174,6 +174,16 @@ When you export `init`, `context`, and `api` from your `script`, both `magicsand
 
 Assistants are aware of the basic details of the Magic Sandbox platform and have access to the [Sandbox](#sandbox) documentation, so you don't need to provide that in your App's context.
 
+## Monetization
+
+Each time a user opens an App, the user pays the App's author $0.001. This low fixed fee helps ensure a smooth and predictable user experience.
+
+To further incentivize App development, Magic Sandbox shares revenue with App authors. Any unused balance from Magic Sandbox Plus users is shared 50/50 between Magic Sandbox and App authors and distributed to authors proportionally based on App usage.
+
+**Example:** If the total unused Plus balance is $100, $50 is shared among App authors. If your Apps accounted for 10% of all App usage, you would earn an additional $5.
+
+This revenue sharing model is experimental and subject to change as we learn more about the platform's economics. Functions are excluded from revenue sharing as they can charge any amount, not just a fixed fee.
+
 # Functions
 
 Functions are server-side functions that can be called by Apps or other Functions. Unlike Apps, which run on the frontend (the user's browser), Functions run on the backend.
