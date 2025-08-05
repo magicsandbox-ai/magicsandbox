@@ -1,6 +1,6 @@
 # Magic Sandbox
 
-Magic Sandbox provides an AI assistant with unique abilities - not only can you chat with your assistant, but your assistant can interact with apps on your behalf, helping you get things done. Check out the [demo video](https://youtu.be/TF7pNE_80M0) to see Magic Sandbox in action.
+Magic Sandbox provides an AI assistant with unique abilities - not only can you chat with your assistant, but your assistant can interact with apps on your behalf, helping you get things done. Check out the [demo video](https://www.loom.com/share/4a1d4aee83a5485197898f537e1cb397?sid=be59cfaf-41cc-4664-96dc-0237082af6fb) to see Magic Sandbox in action.
 
 Each section below provides more details on how Magic Sandbox works:
 
