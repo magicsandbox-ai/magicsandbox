@@ -10,6 +10,9 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 
 - `messages` _(**required**)_
 - `model`: supported models are listed below, with limitations noted. Note that PDF inputs are not supported for any model.
+
+  - `gpt-5-2025-08-07`
+    - `reasoning_effort` defaults to `minimal`
   - `claude-4-sonnet-20250514`
     - Prompt caching is not supported
     - Thinking is disabled by default. `thinking.budget_tokens` must be >= 1024 if set
@@ -18,11 +21,17 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
     - `thinking.budget_tokens` defaults to 128. Thinking cannot be disabled. Set `thinking.budget_tokens` to -1 to turn on dynamic thinking, otherwise `thinking.budget_tokens` must be between 128 and 32768
-  - `gpt-4.1-2025-04-14`
+  - `gpt-5-mini-2025-08-07`
+    - `reasoning_effort` defaults to `minimal`
   - `gemini-2.5-flash`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
     - Thinking is disabled by default. Set `thinking.budget_tokens` to -1 to turn on dynamic thinking, otherwise `thinking.budget_tokens` must be between 0 and 24576
+  - `gpt-5-nano-2025-08-07`
+    - `reasoning_effort` defaults to `minimal`
+  - `claude-3-7-sonnet-20250219`
+    - Prompt caching is not supported
+  - `gpt-4.1-2025-04-14`
   - `gpt-4.1-mini-2025-04-14`
   - `gemini-2.0-flash-001`
     - Prompt caching is not supported
@@ -30,10 +39,7 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
   - `gemini-2.0-flash-lite-001`
     - Prompt caching is not supported
     - Multimodal inputs (images, audio, video) are not supported
-  - `claude-3-7-sonnet-20250219`
-    - Prompt caching is not supported
-  - `gpt-4o-2024-08-06`
-  - `gpt-4o-mini-2024-07-18`
+
 - `max_completion_tokens`
   - Defaults to 1000 if not provided
 - `response_format`
