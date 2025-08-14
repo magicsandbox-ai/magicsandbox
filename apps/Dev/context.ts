@@ -584,7 +584,7 @@ async function context(
 export { context };
 
 function indexOfAll(str: string, search: string) {
-  if (!str) return []; //empty string matches every index
+  if (search.length <= 1) return []; //avoid too many matches (empty string matches every index, single character will match too much)
   const indices = [];
   let index = str.indexOf(search);
   while (index !== -1) {
