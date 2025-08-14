@@ -1,7 +1,7 @@
 {
   author: "magicsandbox",
   name: "Assistant",
-  version: "0.6.0",
+  version: "0.6.1",
   type: "assistant",
   esbuildOptions: {
     //the dependencies for components are in node_modules

@@ -213,9 +213,12 @@ function createBundleDepsPlugin(
 
       build.onLoad({ filter: /.*/, namespace: "MagicApp" }, async (args) => {
         let loader: Esbuild.Loader;
-        if (args.path.endsWith(".tsx")) {
+        const ext = args.path.split(".").pop();
+        if (ext && build.initialOptions.loader?.[`.${ext}`]) {
+          loader = build.initialOptions.loader[`.${ext}`]!;
+        } else if (ext === "tsx") {
           loader = "tsx";
-        } else if (args.path.endsWith(".ts")) {
+        } else if (ext === "ts") {
           loader = "ts";
         } else {
           loader = "jsx";
@@ -233,12 +236,21 @@ function createBundleDepsPlugin(
           file = result.code;
         }
         return {
-          contents: transformImports(file, pkgImports), //pkgImports updated as side effect
+          contents:
+            loader === "tsx" ||
+            loader === "ts" ||
+            loader === "jsx" ||
+            loader === "js"
+              ? transformImports(file, pkgImports) //pkgImports updated as side effect
+              : file,
           loader,
         };
       });
 
       build.onEnd(async (result) => {
+        if (!result.outputFiles?.[0]?.text) {
+          return; //skip bundling deps if there was an error bundling user code (todo maybe should check for errors instead or also?)
+        }
         const appObj = getAppObj(readFile);
         if (
           !isEqual(pkgImports, prevPkgImports) ||
@@ -556,7 +568,9 @@ class PackageMetadata {
   }
   resolvePathWithoutFile(imp: Import) {
     const pjson = imp.args.pluginData?.pjson || {};
-    const importer = pjson ? `${pjson.name}@${pjson.version}` : undefined; //todo better logging
+    const importer = imp.args.pluginData?.pjson
+      ? `${pjson.name}@${pjson.version}`
+      : undefined; //todo better logging
     const { range, peer } = this.getRange(imp.parsedPath, pjson, importer);
     const versions = Object.keys(this.versionPaths);
     if (peer && !this.peer && versions.length > 1) {
@@ -623,7 +637,8 @@ class PackageMetadata {
       range = pjson.dependencies[this.packageId];
     } else if (pjson?.optionalDependencies?.[this.packageId]) {
       range = pjson.optionalDependencies?.[this.packageId];
-    } else if (!pjson && dependencies?.[this.packageId]) {
+    } else if (!importer && dependencies?.[this.packageId]) {
+      //!importer means we only apply dependencies for top level user imports
       range = dependencies[this.packageId];
     } else if (parsedPath.version) {
       range = parsedPath.version;

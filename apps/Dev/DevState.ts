@@ -309,6 +309,7 @@ class DevState extends SyncExternalStore<Props> {
         content: "",
       };
     }
+    this.selectedApp.selectedFileName = fileName;
     this.setSelectedApp();
   }
   deleteFile(fileName: string) {

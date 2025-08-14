@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore, useState } from "react";
 import { X, Plus } from "lucide-react";
-import Confirm from "@components/Confirm.js";
+import Confirm from "@components/Confirm.tsx";
 import type { DevState } from "./DevState.ts";
 
 export default function FilePicker({ devState }: { devState: DevState }) {
@@ -108,8 +108,6 @@ export default function FilePicker({ devState }: { devState: DevState }) {
               className: "bg-red-500 hover:bg-red-700 text-white",
             },
           ]}
-          customContent={undefined}
-          message={undefined}
         />
       )}
     </>

@@ -39,6 +39,7 @@ test("Dev", async ({ app }) => {
   await expect(
     app.getByRole("button", { name: "new.js", exact: true }),
   ).toBeVisible();
+  await expect(app.getByText("import React")).not.toBeVisible(); //we should have selected the new file when adding it
 
   //delete file
   await app.getByRole("button", { name: "Delete new.js" }).click();
