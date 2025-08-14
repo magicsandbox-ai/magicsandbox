@@ -227,7 +227,7 @@ function instructionsPrompt({ context, summarizedContext }: PromptArgs) {
       "- If the user is asking a question about how the code works, just answer it.",
       "- If the user is asking you to make a change, use `app.api.updateFiles`. When using `app.api.updateFiles`:",
       "  - Respect the user's existing libraries and code conventions.",
-      "  - Make sure to use the triple backtick syntax and the top level file tags. Do not escape strings within the triple backticks - if you do, the backslashes will be interpreted as literal characters and likely break your code.",
+      "  - Make sure to use the triple backtick syntax and the top level file tags. **Do not escape strings within the triple backticks** - if you do, the backslashes will be interpreted as literal characters and likely break your code.",
       "  - Use <find> and <replace> tags to make small changes to large files. Otherwise, update the entire file. Ensure you're using the correct `updateString` syntax either way.",
       "- If the user is asking you to create a new App, use `app.api.createApp`. When using `app.api.createApp`:",
       ...createAppInstructions,

@@ -653,6 +653,7 @@ class DevState extends SyncExternalStore<Props> {
   }
   async apiUpdateFiles(updateString: string) {
     let invalidUpdateString = false;
+    let errorMessage: string | undefined;
     const fileUpdates: { [fileName: string]: Partial<File> } = {};
     for (const { tag: fileName, content: fileUpdateString } of tagParser(
       updateString,
@@ -671,13 +672,13 @@ class DevState extends SyncExternalStore<Props> {
         };
       } else {
         if (!this.selectedApp.files[fileName]) {
-          assistant.error(
-            "File not found. Can only use <find> and <replace> tags for existing files:",
-            fileName,
-          );
+          errorMessage = `File not found. Can only use <find> and <replace> tags for existing files: ${fileName}`;
+          assistant.error(errorMessage);
           continue;
         }
-        let prevContent = this.selectedApp.files[fileName].content;
+        let prevContent =
+          fileUpdates[fileName]?.content ||
+          this.selectedApp.files[fileName].content;
         let find: string | undefined;
         let invalidFileUpdateString = false;
         for (const { tag, content } of tagParser(fileUpdateString)) {
@@ -689,7 +690,8 @@ class DevState extends SyncExternalStore<Props> {
           }
           if (tag === "find") {
             if (find) {
-              assistant.error("Consecutive <find> tag:", content);
+              errorMessage = `Consecutive <find> tag: ${content}`;
+              assistant.error(errorMessage);
             }
             find = content;
           } else if (tag === "replace") {
@@ -699,18 +701,21 @@ class DevState extends SyncExternalStore<Props> {
                 content.trim(),
               );
               if (newContent === prevContent) {
-                assistant.error("Could not find text to replace:", find);
+                errorMessage = `Could not find text to replace: ${find}`;
+                assistant.error(errorMessage);
               } else {
                 prevContent = newContent;
               }
               find = undefined;
             } else {
-              assistant.error("<replace> tag without <find> tag:", content);
+              errorMessage = `<replace> tag without <find> tag: ${content}`;
+              assistant.error(errorMessage);
             }
           }
         }
         if (find) {
-          assistant.error("<find> tag without <replace> tag:", find);
+          errorMessage = `<find> tag without <replace> tag: ${find}`;
+          assistant.error(errorMessage);
         }
         if (invalidFileUpdateString) {
           assistant.warn(
@@ -730,13 +735,21 @@ class DevState extends SyncExternalStore<Props> {
     for (const [fileName, { content }] of Object.entries(fileUpdates)) {
       if (content === undefined) continue;
       const file = this.selectedApp.files[fileName];
-      let changeSet = createChangeSet(file?.content || "", content);
-      if (file?.changeSet) {
-        changeSet = changeSet.compose(file.changeSet);
+      const prevContent = file?.content || "";
+      if (prevContent !== content) {
+        let changeSet = createChangeSet(file?.content || "", content);
+        if (file?.changeSet) {
+          changeSet = changeSet.compose(file.changeSet);
+        }
+        fileUpdates[fileName]!.changeSet = changeSet;
+      } else {
+        delete fileUpdates[fileName];
       }
-      fileUpdates[fileName]!.changeSet = changeSet;
     }
     this.updateFiles(fileUpdates);
+    if (errorMessage) {
+      throw new Error(errorMessage);
+    }
     await this.buildApp();
   }
   async apiAdditionalContext({

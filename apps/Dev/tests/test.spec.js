@@ -137,6 +137,8 @@ import { reverse } from "./reverse.ts";
 <replace>
 import { reverseN } from "./reverse.ts";
 </replace>
+</index.tsx>
+<index.tsx>
 <find>
 reverse(message)
 </find>
