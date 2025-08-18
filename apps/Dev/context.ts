@@ -161,10 +161,10 @@ class Context {
     ];
     this.length = 0;
     let i = 0;
-    while (i < items.length && this.length <= this.maxLength) {
+    while (i < items.length && this.length < this.maxLength) {
       const item = items[i];
       if (item) {
-        this.length += item.add();
+        this.length += item.add(this.maxLength - this.length);
       }
       i++;
     }
@@ -230,7 +230,6 @@ class File {
 
   async parse() {
     if (!this.js) {
-      this.context.length += this.content.length;
       return;
     }
     this.selectionRanges = this.findSelectionRanges();
@@ -338,19 +337,32 @@ class File {
 
   slice(start: number, end: number) {
     if (this.transformedContent && this.sourceMapConsumer) {
-      const { line: startLine, column: startColumn } = indexToLineColumn(
-        this.transformedContent,
-        start,
-      );
-      const startOriginalPosition = this.sourceMapConsumer.originalPositionFor({
-        line: startLine,
-        column: startColumn,
-      }) as OriginalPositionResult; //the type definition for originalPositionFor is wrong - it can return null
-      if (
-        startOriginalPosition.line === null ||
-        startOriginalPosition.column === null
-      ) {
-        throw new Error("Failed to get original position from source map");
+      let startOriginalPositionLine: number;
+      let startOriginalPositionColumn: number;
+      if (start === 0) {
+        //special case for first character - hardcode to start of file
+        //fixes this example: https://esbuild.github.io/try/#dAAwLjI1LjkAewogIGxvYWRlcjogJ3RzJywKICBzb3VyY2VtYXA6ICdpbmxpbmUnLAp9AGV4cG9ydCBmdW5jdGlvbiBmKHg6IG51bSkgewogIHJldHVybiB4ICsgMTsKfQ
+        //which is maybe an esbuild bug?
+        startOriginalPositionLine = 1;
+        startOriginalPositionColumn = 0;
+      } else {
+        const { line: startLine, column: startColumn } = indexToLineColumn(
+          this.transformedContent,
+          start,
+        );
+        const startOriginalPosition =
+          this.sourceMapConsumer.originalPositionFor({
+            line: startLine,
+            column: startColumn,
+          }) as OriginalPositionResult; //the type definition for originalPositionFor is wrong - it can return null
+        if (
+          startOriginalPosition.line === null ||
+          startOriginalPosition.column === null
+        ) {
+          throw new Error("Failed to get original position from source map");
+        }
+        startOriginalPositionLine = startOriginalPosition.line;
+        startOriginalPositionColumn = startOriginalPosition.column;
       }
       const { line: endLine, column: endColumn } = indexToLineColumn(
         this.transformedContent,
@@ -393,8 +405,8 @@ class File {
       return this.content.slice(
         lineColumnToIndex(
           this.content,
-          startOriginalPosition.line,
-          startOriginalPosition.column,
+          startOriginalPositionLine,
+          startOriginalPositionColumn,
         ),
         lineColumnToIndex(
           this.content,
@@ -406,39 +418,52 @@ class File {
     return this.content.slice(start, end);
   }
 
-  add() {
+  add(maxLength: number) {
     if (!this.js) {
-      this.summary.push(this.content);
-      return this.content.length;
+      maxLength = Math.min(maxLength, 5000);
+      let content;
+      if (this.content.length > maxLength) {
+        content = this.content.slice(0, maxLength) + "...";
+      } else {
+        content = this.content;
+      }
+      this.summary.push(content);
+      return content.length;
     } else {
       let summaryLength = 0;
-      this.nodes.forEach((node) => {
-        const nodeSummary = node.summarize();
+      let i = 0;
+      while (i < this.nodes.length && summaryLength < maxLength) {
+        const node = this.nodes[i]!;
+        const nodeSummary = node.summarize(maxLength - summaryLength);
         summaryLength += nodeSummary.length;
         this.summary.push(nodeSummary);
-      });
+        i++;
+      }
       return summaryLength;
     }
   }
 
-  addNode(node: Node): number {
+  addNode(node: Node, maxLength: number): number {
     if (this.summary.length > 0) {
-      const oldLength = this.summary[node.index]!.length;
-      this.summary[node.index] = this.slice(
-        node.astNode.start,
-        node.astNode.end,
-      );
+      const oldLength = this.summary[node.index]?.length ?? 0;
+      const start = node.astNode.start;
+      const end = Math.min(node.astNode.end, start + oldLength + maxLength);
+      this.summary[node.index] =
+        this.slice(start, end) + (end < node.astNode.end ? "..." : "");
       return this.summary[node.index]!.length - oldLength;
     } else {
-      const summaryLength = this.add();
-      const additionalNodeLength = this.addNode(node);
+      const summaryLength = this.add(maxLength);
+      const additionalNodeLength = this.addNode(
+        node,
+        maxLength - summaryLength,
+      );
       return summaryLength + additionalNodeLength;
     }
   }
 
   get() {
     if (this.summary.length > 0) {
-      return this.summary.join("\n");
+      return this.summary.filter(Boolean).join("\n");
     }
     return "...";
   }
@@ -500,11 +525,11 @@ class Node {
     this.edges = [];
   }
 
-  add() {
-    return this.file.addNode(this);
+  add(maxLength: number) {
+    return this.file.addNode(this, maxLength);
   }
 
-  summarize() {
+  summarize(maxLength: number) {
     const astNode = this.astNode;
     const type = astNode.type;
     let start = astNode.start;
@@ -536,6 +561,7 @@ ${body.join("\n")}
     } else {
       end = Math.min(end, start + 100);
     }
+    end = Math.min(end, start + maxLength);
     const content = slice(start, end);
     if (end < astNode.end) {
       return content + "...";

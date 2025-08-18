@@ -97,15 +97,15 @@ test("context", async () => {
   expect(isFileInContext(context0, "index.tsx")).toBe(true);
   expect(isFileInContext(context0, "reverse.ts")).toBe(true);
 
-  const context1 = await context(devState, {}, getLength(["magic.json"]) - 1);
-  console.log("maxLength = magic.json - 1 - should only be magic.json");
+  const context1 = await context(devState, {}, getLength(["magic.json"]));
+  console.log("maxLength = magic.json - should only be magic.json");
   console.log(context1);
   expect(isFileInContext(context1, "magic.json")).toBe(true);
   expect(isFileInContext(context1, "index.tsx")).toBe(false);
 
-  const context2 = await context(devState, {}, getLength(["magic.json"]));
+  const context2 = await context(devState, {}, getLength(["magic.json"]) + 1);
   console.log(
-    "maxLength = magic.json - should be magic.json and index.tsx summary",
+    "maxLength = magic.json + 1 - should be magic.json and index.tsx summary",
   );
   console.log(context2);
   expect(isFileInContext(context2, "magic.json")).toBe(true);
@@ -115,10 +115,10 @@ test("context", async () => {
   const context3 = await context(
     devState,
     { files: ["reverse.ts"] },
-    getLength(["magic.json"]),
+    getLength(["magic.json"]) + 1,
   );
   console.log(
-    "maxLength = magic.json, reverse.ts selected - should be magic.json and reverse.ts summary",
+    "maxLength = magic.json + 1, reverse.ts selected - should be magic.json and reverse.ts summary",
   );
   console.log(context3);
   expect(isFileInContext(context3, "magic.json")).toBe(true);
@@ -128,10 +128,10 @@ test("context", async () => {
   const context4 = await context(
     devState,
     { files: ["reverse.ts"] },
-    getLength(["magic.json", "reverse.ts"]),
+    getLength(["magic.json", "reverse.ts"]) + 1,
   );
   console.log(
-    "maxLength = magic.json + reverse.ts, reverse.ts selected - should be magic.json, reverse.ts, and index.tsx summary",
+    "maxLength = magic.json + reverse.ts + 1, reverse.ts selected - should be magic.json, reverse.ts, and index.tsx summary",
   );
   console.log(context4);
   expect(isFileInContext(context4, "magic.json")).toBe(true);
@@ -139,9 +139,7 @@ test("context", async () => {
   expect(isFileInContext(context4, "reverse.ts")).toBe(true);
   //function definitions not included in summary
   expect(context4).not.toContain('logSecret("secret")');
-  //expect(context4).not.toContain("reverse(message)");
-  //right now as implemented, when adding a summary, we always add at least one node - todo could clean this up
-  expect(context4).toContain("reverse(message)");
+  expect(context4).not.toContain("reverse(message)");
 
   const context5 = await context(
     devState,

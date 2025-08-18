@@ -1,7 +1,7 @@
 {
   author: "magicsandbox",
   name: "Dev",
-  version: "0.2.3",
+  version: "0.2.4",
   description: "Develop, preview, and publish a Magic Sandbox App",
   esbuildOptions: {
     alias: {
