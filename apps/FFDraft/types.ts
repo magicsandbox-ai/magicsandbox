@@ -29,6 +29,7 @@ export type Player = {
   team: string;
   pos: Position;
   rank: number;
+  positionRank: number;
   icon?: string;
   draftedAt?: number;
   fantasyTeamIndex?: number;
@@ -56,7 +57,7 @@ export type Roster = {
 export type FlatRoster = {
   player: Player | null;
   rosterSlot: keyof Roster;
-};
+}[];
 
 export type State = {
   getContext?: () => string;

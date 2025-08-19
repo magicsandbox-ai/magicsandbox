@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AvailableTab from "./AvailableTab.js";
 import RecentTab from "./RecentTab.js";
 import MyTeamTab from "./MyTeamTab.js";
+import PlayerCard from "./PlayerCard.tsx";
 import type {
   State,
   LeagueSettings,
@@ -32,6 +33,7 @@ function DraftScreen({
   onExitDraft: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>("available");
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "available", label: "Available" },
@@ -130,7 +132,7 @@ function DraftScreen({
     (player) => player.fantasyTeamIndex === leagueSettings.draftPosition - 1,
   );
   const myRoster = getRoster(leagueSettings, myPlayers);
-  const myFlatRoster: FlatRoster[] = [];
+  const myFlatRoster: FlatRoster = [];
   Object.entries(myRoster).forEach(([position, players]) => {
     players.forEach((player) => {
       myFlatRoster.push({ player, rosterSlot: position as keyof Roster });
@@ -292,6 +294,7 @@ ${topAvailablePlayers
             setCurrentPick={setCurrentPick}
             userIsCurrentTeam={userIsCurrentTeam}
             draftIsComplete={draftIsComplete}
+            onPlayerClick={setSelectedPlayer}
           />
         )}
         {activeTab === "recent" && (
@@ -301,10 +304,23 @@ ${topAvailablePlayers
             setPlayers={setPlayers}
             currentPick={currentPick}
             setCurrentPick={setCurrentPick}
+            onPlayerClick={setSelectedPlayer}
           />
         )}
-        {activeTab === "myTeam" && <MyTeamTab myFlatRoster={myFlatRoster} />}
+        {activeTab === "myTeam" && (
+          <MyTeamTab
+            myFlatRoster={myFlatRoster}
+            onPlayerClick={setSelectedPlayer}
+          />
+        )}
       </div>
+
+      <PlayerCard
+        isOpen={selectedPlayer !== null}
+        onClose={() => setSelectedPlayer(null)}
+        player={selectedPlayer}
+        players={players}
+      />
     </div>
   );
 }

@@ -1,36 +1,46 @@
 import React from "react";
-import type { FlatRoster } from "./types.ts";
+import type { FlatRoster, Player } from "./types.ts";
+import PlayerList from "./PlayerList.tsx";
 
-function MyTeamTab({ myFlatRoster }: { myFlatRoster: FlatRoster[] }) {
+function MyTeamTab({
+  myFlatRoster,
+  onPlayerClick,
+}: {
+  myFlatRoster: FlatRoster;
+  onPlayerClick: (player: Player) => void;
+}) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-1 overflow-auto p-3">
-        {myFlatRoster.map(({ player, rosterSlot }, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded border border-gray-200 bg-gray-50 px-3 py-2"
-          >
-            <div className="w-12 rounded bg-gray-200 py-1 text-center text-xs font-bold text-gray-600">
+      <PlayerList
+        players={myFlatRoster}
+        leftContent={({ rosterSlot }) => (
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
+            <span
+              className={`${rosterSlot === "BENCH" ? "text-[10px]" : "text-sm"} font-bold text-gray-800`}
+            >
               {rosterSlot}
-            </div>
-            {player ? (
-              <div className="flex grow items-center justify-between text-sm leading-none">
-                <div className="font-medium text-gray-900">
-                  <span>
-                    {player.player}
-                    {player.icon && <span>{" " + player.icon}</span>}
-                  </span>
-                </div>
-                <div className="text-gray-600">{player.team}</div>
-              </div>
-            ) : (
-              <div className="text-sm italic leading-none text-gray-400">
-                Empty
-              </div>
-            )}
+            </span>
           </div>
-        ))}
-      </div>
+        )}
+        middleContent={({ player }) =>
+          player ? (
+            <div className="text-sm font-medium text-gray-900">
+              {player.player + (player.icon ? " " + player.icon : "")}
+            </div>
+          ) : (
+            <div className="text-sm italic leading-none text-gray-400">
+              Empty
+            </div>
+          )
+        }
+        rightContent={({ player }) =>
+          player ? (
+            <div className="text-sm text-gray-600">{player.team}</div>
+          ) : null
+        }
+        onPlayerClick={({ player }) => player && onPlayerClick(player)}
+        isClickable={({ player }) => player !== null}
+      />
     </div>
   );
 }

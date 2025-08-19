@@ -1,5 +1,6 @@
 import React from "react";
 import type { LeagueSettings, Player, DraftedPlayer } from "./types.ts";
+import PlayerList from "./PlayerList.tsx";
 
 function RecentTab({
   leagueSettings,
@@ -7,12 +8,14 @@ function RecentTab({
   setPlayers,
   currentPick,
   setCurrentPick,
+  onPlayerClick,
 }: {
   leagueSettings: LeagueSettings;
   recentPlayers: DraftedPlayer[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   currentPick: number;
   setCurrentPick: React.Dispatch<React.SetStateAction<number>>;
+  onPlayerClick: (player: Player) => void;
 }) {
   if (recentPlayers.length === 0) {
     return (
@@ -54,52 +57,43 @@ function RecentTab({
       </div>
 
       {/* Recent picks list */}
-      <div className="flex-1 overflow-auto">
-        <div className="divide-y divide-gray-200">
-          {recentPlayers.map((player) => (
-            <div
-              key={`${player.player}-${player.draftedAt}`}
-              className="px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
-                    <span className="text-sm font-bold text-gray-800">
-                      {player.draftedAt}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {player.player}
-                      </h3>
-                      {player.icon && (
-                        <span className="text-lg">{player.icon}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                      <span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-                        {player.pos}
-                      </span>
-                      <span>{player.team}</span>
-                      <span>Rank {player.rank}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    {player.fantasyTeam}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Round{" "}
-                    {Math.ceil(player.draftedAt / leagueSettings.teams.length)}
-                  </div>
-                </div>
-              </div>
+      <PlayerList
+        players={recentPlayers}
+        leftContent={(player) => (
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100">
+            <span className="text-sm font-bold text-gray-800">
+              {player.draftedAt}
+            </span>
+          </div>
+        )}
+        middleContent={(player) => (
+          <div>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                {player.player + (player.icon ? " " + player.icon : "")}
+              </h3>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+                {player.pos}
+              </span>
+              <span>{player.team}</span>
+              <span>Rank {player.rank}</span>
+            </div>
+          </div>
+        )}
+        rightContent={(player) => (
+          <div className="text-right">
+            <div className="text-sm font-medium text-gray-900">
+              {player.fantasyTeam}
+            </div>
+            <div className="text-xs text-gray-500">
+              Round {Math.ceil(player.draftedAt! / leagueSettings.teams.length)}
+            </div>
+          </div>
+        )}
+        onPlayerClick={onPlayerClick}
+      />
     </div>
   );
 }

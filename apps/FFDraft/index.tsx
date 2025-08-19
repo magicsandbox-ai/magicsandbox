@@ -8,18 +8,18 @@ import {
   type LeagueSettings,
   type Player,
   type State,
+  type Position,
   isValidPosition,
 } from "./types.ts";
 
 /*
 todos:
-- When clicking on a player, it opens a player card in a modal
-- Show depth chart in player card
 - Mock draft mode
 - Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
 - User can download rankings and upload their own CSV
 
 maybe later:
+- react window or similar for AvailableTab
 - User can edit ranks and icons in the UI without uploading their own CSV
 - User can add custom columns in the UI that are displayed in the player card without uploading their own CSV
 - User can enter a custom player name if a player is drafted who isn't in the rankings
@@ -56,6 +56,14 @@ const parsePlayersData = (): Player[] => {
   ) {
     throw new Error("Missing required headers in CSV");
   }
+  const positionRanks: Record<Position, number> = {
+    QB: 1,
+    RB: 1,
+    WR: 1,
+    TE: 1,
+    K: 1,
+    DST: 1,
+  };
   return lines
     .slice(1)
     .map((line, index) => {
@@ -74,8 +82,10 @@ const parsePlayersData = (): Player[] => {
         team,
         pos,
         rank: index + 1, // rank is the row number (1-indexed)
+        positionRank: positionRanks[pos],
         draftedAt: undefined, // pick number when drafted (1-indexed), undefined if not drafted
       };
+      positionRanks[pos] = (positionRanks[pos] || 0) + 1;
       if (iconIndex !== undefined) {
         player.icon = values[iconIndex];
       }
