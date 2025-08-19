@@ -4,19 +4,13 @@ import DraftScreen from "./DraftScreen.tsx";
 import { createRoot } from "react-dom/client";
 //@ts-ignore
 import rankingsCSV from "./rankings.csv";
-import {
-  type LeagueSettings,
-  type Player,
-  type State,
-  type Position,
-  isValidPosition,
-} from "./types.ts";
+import { type LeagueSettings, type State } from "./types.ts";
+import { parsePlayersData } from "./utils.ts";
 
 /*
 todos:
 - Mock draft mode
 - Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
-- User can download rankings and upload their own CSV
 
 maybe later:
 - react window or similar for AvailableTab
@@ -28,71 +22,6 @@ maybe later:
 - User can see other teams and who they've drafted
 - Instead of just undoing the latest pick, user can edit an earlier pick by swapping in a different player in case of a mistake
 */
-
-// Parse CSV data once - this only needs to run once, not on every render
-const parsePlayersData = (): Player[] => {
-  const lines = (rankingsCSV as string).trim().split("\n");
-  const headers = lines[0]!.split(",");
-  let playerIndex: number | undefined;
-  let teamIndex: number | undefined;
-  let posIndex: number | undefined;
-  let iconIndex: number | undefined;
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i]!.trim().toLowerCase();
-    if (header === "player") {
-      playerIndex = i;
-    } else if (header === "team") {
-      teamIndex = i;
-    } else if (header === "pos") {
-      posIndex = i;
-    } else if (header === "icon") {
-      iconIndex = i;
-    }
-  }
-  if (
-    playerIndex === undefined ||
-    teamIndex === undefined ||
-    posIndex === undefined
-  ) {
-    throw new Error("Missing required headers in CSV");
-  }
-  const positionRanks: Record<Position, number> = {
-    QB: 1,
-    RB: 1,
-    WR: 1,
-    TE: 1,
-    K: 1,
-    DST: 1,
-  };
-  return lines
-    .slice(1)
-    .map((line, index) => {
-      const values = line.split(",");
-      const playerName = values[playerIndex];
-      const team = values[teamIndex];
-      const pos = values[posIndex];
-      if (playerName === undefined || team === undefined) {
-        return undefined; //todo better empty row handling - check if entire row is empty
-      }
-      if (!isValidPosition(pos)) {
-        throw new Error(`Invalid position: ${pos} in row ${index + 1}`);
-      }
-      const player: Player = {
-        player: playerName,
-        team,
-        pos,
-        rank: index + 1, // rank is the row number (1-indexed)
-        positionRank: positionRanks[pos],
-        draftedAt: undefined, // pick number when drafted (1-indexed), undefined if not drafted
-      };
-      positionRanks[pos] = (positionRanks[pos] || 0) + 1;
-      if (iconIndex !== undefined) {
-        player.icon = values[iconIndex];
-      }
-      return player;
-    })
-    .filter((player) => player !== undefined); // filter out any empty rows
-};
 
 function getDefaultTeamNames(n: number) {
   return Array.from({ length: n }, (_, i) => `Team ${i + 1}`);
@@ -139,7 +68,7 @@ function App() {
     DST: 1,
     BENCH: 7,
   });
-  const [players, setPlayers] = useState(() => parsePlayersData());
+  const [players, setPlayers] = useState(() => parsePlayersData(rankingsCSV));
   const [currentPick, setCurrentPick] = useState(1);
 
   return (
@@ -149,6 +78,8 @@ function App() {
           <WelcomeScreen
             leagueSettings={leagueSettings}
             setLeagueSettings={setLeagueSettings}
+            players={players}
+            setPlayers={setPlayers}
             getDefaultTeamNames={getDefaultTeamNames}
             onStartDraft={() => setScreen("draft")}
           />
@@ -162,7 +93,14 @@ function App() {
             setCurrentPick={setCurrentPick}
             onExitDraft={() => {
               setScreen("welcome");
-              setPlayers(parsePlayersData());
+              setPlayers((prev) =>
+                prev.map((p) => ({
+                  ...p,
+                  draftedAt: undefined,
+                  fantasyTeamIndex: undefined,
+                  fantasyTeam: undefined,
+                })),
+              );
               setCurrentPick(1);
             }}
           />
