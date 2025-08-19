@@ -31,24 +31,31 @@ export type Player = {
   rank: number;
   icon?: string;
   draftedAt?: number;
+  fantasyTeamIndex?: number;
   fantasyTeam?: string;
   customColumns?: Record<string, string>;
 };
 
 export type DraftedPlayer = Player & {
   draftedAt: number;
+  fantasyTeamIndex: number;
   fantasyTeam: string;
 };
 
 export type Roster = {
-  QB: (Player | undefined)[];
-  RB: (Player | undefined)[];
-  WR: (Player | undefined)[];
-  TE: (Player | undefined)[];
-  FLEX: (Player | undefined)[];
-  K: (Player | undefined)[];
-  DST: (Player | undefined)[];
-  BENCH: (Player | undefined)[];
+  QB: (Player | null)[];
+  RB: (Player | null)[];
+  WR: (Player | null)[];
+  TE: (Player | null)[];
+  FLEX: (Player | null)[];
+  K: (Player | null)[];
+  DST: (Player | null)[];
+  BENCH: (Player | null)[];
+};
+
+export type FlatRoster = {
+  player: Player | null;
+  rosterSlot: keyof Roster;
 };
 
 export type State = {

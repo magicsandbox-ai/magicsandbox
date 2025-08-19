@@ -1,30 +1,28 @@
 import React, { useState, useMemo } from "react";
-import type { Player } from "./types.ts";
+import type { Player, Position } from "./types.ts";
 
 function AvailableTab({
   availablePlayers,
+  availablePositions,
   setPlayers,
   currentPick,
   setCurrentPick,
   userIsCurrentTeam,
+  draftIsComplete,
 }: {
   availablePlayers: Player[];
+  availablePositions: Record<Position, boolean>;
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   currentPick: number;
   setCurrentPick: React.Dispatch<React.SetStateAction<number>>;
   userIsCurrentTeam: boolean;
+  draftIsComplete: boolean;
 }) {
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Get unique positions and teams for filters
-  const positions = useMemo(() => {
-    const uniquePositions = [
-      ...new Set(availablePlayers.map((player) => player.pos)),
-    ];
-    return ["ALL", ...uniquePositions.sort()];
-  }, []);
+  const positions = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
 
   const teams = useMemo(() => {
     const uniqueTeams = [
@@ -138,7 +136,7 @@ function AvailableTab({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                {!draftIsComplete && availablePositions[player.pos] && (
                   <button
                     onClick={() => {
                       setPlayers((prev) =>
@@ -158,7 +156,7 @@ function AvailableTab({
                   >
                     {userIsCurrentTeam ? "Draft!" : "Draft"}
                   </button>
-                </div>
+                )}
               </div>
             </div>
           ))}

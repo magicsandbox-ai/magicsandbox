@@ -5,6 +5,7 @@
   dependencies: {
     react: "^19.0.0",
     "react-dom": "^19.0.0",
+    "@headlessui/react": "^2.2.7",
   },
   esbuildOptions: {
     loader: { ".csv": "text" },

@@ -1,25 +1,13 @@
 import React from "react";
-import type { Roster, Player } from "./types.ts";
+import type { FlatRoster } from "./types.ts";
 
-function MyTeamTab({ myRoster }: { myRoster: Roster }) {
-  const flatRoster: {
-    player: Player | undefined;
-    rosterSlot: string;
-    slotIndex: number;
-  }[] = [];
-
-  Object.entries(myRoster).forEach(([position, players]) => {
-    players.forEach((player, index) => {
-      flatRoster.push({ player, rosterSlot: position, slotIndex: index });
-    });
-  });
-
+function MyTeamTab({ myFlatRoster }: { myFlatRoster: FlatRoster[] }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-1 overflow-auto p-3">
-        {flatRoster.map(({ player, rosterSlot, slotIndex }) => (
+        {myFlatRoster.map(({ player, rosterSlot }, i) => (
           <div
-            key={`${rosterSlot}-${slotIndex}`}
+            key={i}
             className="flex items-center gap-3 rounded border border-gray-200 bg-gray-50 px-3 py-2"
           >
             <div className="w-12 rounded bg-gray-200 py-1 text-center text-xs font-bold text-gray-600">

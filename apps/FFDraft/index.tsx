@@ -12,22 +12,21 @@ import {
 } from "./types.ts";
 
 /*
-- Assistant has context of who user has drafted, highly ranked available players by position, and recent picks
-- Assistant asks user for their draft strategy which it uses to inform recommendations, just uses its knowledge and the rankings data to make recommendations
-- Assistant should warn player it may not know the latest information regarding players (e.g. injuries)
-- Handle draft completion
+todos:
 - When clicking on a player, it opens a player card in a modal
 - Show depth chart in player card
-- User can upload their own CSV
+- Mock draft mode
+- Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
+- User can download rankings and upload their own CSV
+
+maybe later:
 - User can edit ranks and icons in the UI without uploading their own CSV
 - User can add custom columns in the UI that are displayed in the player card without uploading their own CSV
 - User can enter a custom player name if a player is drafted who isn't in the rankings
 - More robust Assistant context: summary of players drafted by team (i.e. to understand if every other player has drafted a QB already, the user should not be in a rush to draft a QB)
-- Mock draft mode
 - User can edit team names on the welcome screen
 - User can see other teams and who they've drafted
 - Instead of just undoing the latest pick, user can edit an earlier pick by swapping in a different player in case of a mistake
-- Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
 */
 
 // Parse CSV data once - this only needs to run once, not on every render
@@ -128,7 +127,7 @@ function App() {
     FLEX: 1,
     K: 1,
     DST: 1,
-    BENCH: 6,
+    BENCH: 7,
   });
   const [players, setPlayers] = useState(() => parsePlayersData());
   const [currentPick, setCurrentPick] = useState(1);
