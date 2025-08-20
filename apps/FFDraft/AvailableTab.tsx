@@ -56,7 +56,7 @@ function AvailableTab({
             placeholder="Search players..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </div>
 
@@ -69,7 +69,7 @@ function AvailableTab({
             <select
               value={positionFilter}
               onChange={(e) => setPositionFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               {positions.map((pos) => (
                 <option key={pos} value={pos}>
@@ -86,7 +86,7 @@ function AvailableTab({
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
             >
               {teams.map((team) => (
                 <option key={team} value={team}>

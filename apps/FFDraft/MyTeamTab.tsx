@@ -33,9 +33,14 @@ function MyTeamTab({
             </div>
           )
         }
-        rightContent={({ player }) =>
+        rightContent={({ rosterSlot, player }) =>
           player ? (
-            <div className="text-sm text-gray-600">{player.team}</div>
+            <div className="text-sm text-gray-600">
+              {player.team +
+                (rosterSlot === "BENCH" || rosterSlot === "FLEX"
+                  ? " " + player.pos
+                  : "")}
+            </div>
           ) : null
         }
         onPlayerClick={({ player }) => player && onPlayerClick(player)}

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
-import type { LeagueSettings, Player, DraftType } from "./types.ts";
+import type { LeagueSettings, Player, DraftType, SavedDraft } from "./types.ts";
 import { parsePlayersData, playersToCSV } from "./utils.ts";
+import SavedDraftsModal from "./SavedDraftsModal.tsx";
 
 function WelcomeScreen({
   leagueSettings,
@@ -9,6 +10,7 @@ function WelcomeScreen({
   players,
   setPlayers,
   onStartDraft,
+  onResumeDraft,
 }: {
   leagueSettings: LeagueSettings;
   setLeagueSettings: React.Dispatch<React.SetStateAction<LeagueSettings>>;
@@ -16,11 +18,13 @@ function WelcomeScreen({
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   onStartDraft: (type: DraftType) => void;
+  onResumeDraft: (draft: SavedDraft) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<
     { text: string; type: "error" | "success" } | undefined
   >(undefined);
+  const [showSavedDrafts, setShowSavedDrafts] = useState(false);
 
   const updateTeams = (value: string) => {
     const newTeams = getDefaultTeamNames(parseInt(value)); //todo combine with existing team names
@@ -80,6 +84,9 @@ function WelcomeScreen({
     { key: "BENCH", max: 12 },
   ];
 
+  const loadButtonClass =
+    "flex-1 rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100";
+
   return (
     <div className="flex min-h-screen flex-col justify-center">
       <div className="mx-3 rounded-xl bg-white p-6 shadow-lg">
@@ -88,15 +95,12 @@ function WelcomeScreen({
         </h1>
         <div className="space-y-4">
           <div className="flex gap-4">
-            <button
-              onClick={handleDownload}
-              className="flex-1 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-            >
+            <button onClick={handleDownload} className={loadButtonClass}>
               Download Rankings
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className={loadButtonClass}
             >
               Upload Rankings
             </button>
@@ -123,7 +127,7 @@ function WelcomeScreen({
               <select
                 value={leagueSettings.teams.length}
                 onChange={(e) => updateTeams(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
               >
                 {[8, 10, 12, 14, 16].map((num) => (
                   <option key={num} value={num}>
@@ -139,7 +143,7 @@ function WelcomeScreen({
               <select
                 value={leagueSettings.draftPosition}
                 onChange={(e) => updateSetting("draftPosition", e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
               >
                 {Array.from(
                   { length: leagueSettings.teams.length },
@@ -159,7 +163,7 @@ function WelcomeScreen({
                 <select
                   value={leagueSettings[key]}
                   onChange={(e) => updateSetting(key, e.target.value)}
-                  className="w-16 rounded border border-gray-300 px-2 py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-16 rounded border border-gray-300 px-2 py-1"
                 >
                   {Array.from({ length: max + 1 }, (_, i) => i).map((num) => (
                     <option key={num} value={num}>
@@ -179,13 +183,27 @@ function WelcomeScreen({
             </button>
             <button
               onClick={() => onStartDraft("mock")}
-              className="w-full rounded-lg border-2 border-blue-600 bg-white px-4 py-3 font-semibold text-blue-600 transition-colors duration-200 hover:bg-blue-50"
+              className="w-full rounded-lg border-2 border-blue-600 bg-blue-50 px-4 py-3 font-semibold text-blue-600 transition-colors duration-200 hover:bg-blue-100"
             >
               Start Mock Draft
+            </button>
+            <button
+              onClick={() => setShowSavedDrafts(true)}
+              className="w-full rounded-lg border-2 border-gray-300 bg-gray-50 px-4 py-3 font-semibold text-gray-600 transition-colors duration-200 hover:bg-gray-100"
+            >
+              Resume Draft
             </button>
           </div>
         </div>
       </div>
+      <SavedDraftsModal
+        isOpen={showSavedDrafts}
+        onClose={() => setShowSavedDrafts(false)}
+        onResumeDraft={(draft) => {
+          setShowSavedDrafts(false);
+          onResumeDraft(draft);
+        }}
+      />
     </div>
   );
 }

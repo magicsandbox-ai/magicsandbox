@@ -1,17 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import WelcomeScreen from "./WelcomeScreen.tsx";
 import DraftScreen from "./DraftScreen.tsx";
 import { createRoot } from "react-dom/client";
 //@ts-ignore
 import rankingsCSV from "./rankings.csv";
-import { type LeagueSettings, type State, type DraftType } from "./types.ts";
+import {
+  type LeagueSettings,
+  type State,
+  type DraftType,
+  type SavedDraft,
+} from "./types.ts";
 import { parsePlayersData } from "./utils.ts";
 
 /*
-todos:
-- Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
-
-maybe later:
+todo later:
 - react window or similar for AvailableTab
 - User can edit ranks and icons in the UI without uploading their own CSV
 - User can add custom columns in the UI that are displayed in the player card without uploading their own CSV
@@ -70,6 +72,55 @@ function App() {
   });
   const [players, setPlayers] = useState(() => parsePlayersData(rankingsCSV));
   const [currentPick, setCurrentPick] = useState(1);
+  const [currentDraftId, setCurrentDraftId] = useState<string>(
+    String(Date.now()),
+  );
+
+  useEffect(() => {
+    async function saveDraft(draft: SavedDraft) {
+      try {
+        await requestPutData(draft.draftId, draft);
+      } catch (error) {
+        console.error("Error saving draft:", error); //todo
+      }
+    }
+    if (currentPick > 1) {
+      saveDraft({
+        draftId: currentDraftId,
+        draftType,
+        leagueSettings,
+        players,
+        currentPick,
+        lastModified: Date.now(),
+      });
+    }
+  }, [currentPick]);
+
+  const handleStartDraft = async (type: DraftType) => {
+    setDraftType(type);
+    setScreen("draft");
+  };
+
+  const handleResumeDraft = (draft: SavedDraft) => {
+    setDraftType(draft.draftType);
+    setLeagueSettings(draft.leagueSettings);
+    setPlayers(draft.players);
+    setCurrentPick(draft.currentPick);
+    setCurrentDraftId(draft.draftId);
+    setScreen("draft");
+  };
+
+  const handleExitDraft = () => {
+    setScreen("welcome");
+    setPlayers((prev) =>
+      prev.map((p) => ({
+        ...p,
+        draftedAt: undefined,
+      })),
+    );
+    setCurrentPick(1);
+    setCurrentDraftId(String(Date.now()));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -81,10 +132,8 @@ function App() {
             players={players}
             setPlayers={setPlayers}
             getDefaultTeamNames={getDefaultTeamNames}
-            onStartDraft={(type) => {
-              setDraftType(type);
-              setScreen("draft");
-            }}
+            onStartDraft={handleStartDraft}
+            onResumeDraft={handleResumeDraft}
           />
         ) : (
           <DraftScreen
@@ -95,17 +144,7 @@ function App() {
             setPlayers={setPlayers}
             currentPick={currentPick}
             setCurrentPick={setCurrentPick}
-            onExitDraft={() => {
-              setScreen("welcome");
-              setPlayers((prev) =>
-                prev.map((p) => ({
-                  ...p,
-                  draftedAt: undefined,
-                })),
-              );
-              setCurrentPick(1);
-              setDraftType("real");
-            }}
+            onExitDraft={handleExitDraft}
           />
         )}
       </div>

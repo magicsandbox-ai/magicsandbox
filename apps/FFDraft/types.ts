@@ -62,3 +62,12 @@ export type DraftType = "real" | "mock";
 export type State = {
   getContext?: () => string;
 };
+
+export type SavedDraft = {
+  draftId: string;
+  draftType: DraftType;
+  leagueSettings: LeagueSettings;
+  players: Player[];
+  currentPick: number;
+  lastModified: number;
+};
