@@ -5,18 +5,14 @@ import PlayerList from "./PlayerList.tsx";
 function AvailableTab({
   availablePlayers,
   availablePositions,
-  setPlayers,
-  currentPick,
-  setCurrentPick,
+  draftPlayer,
   userIsCurrentTeam,
   draftIsComplete,
   onPlayerClick,
 }: {
   availablePlayers: Player[];
   availablePositions: Record<Position, boolean>;
-  setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
-  currentPick: number;
-  setCurrentPick: React.Dispatch<React.SetStateAction<number>>;
+  draftPlayer: (player: Player) => void;
   userIsCurrentTeam: boolean;
   draftIsComplete: boolean;
   onPlayerClick: (player: Player) => void;
@@ -135,14 +131,7 @@ function AvailableTab({
             <button
               onClick={(e) => {
                 e.stopPropagation(); // Prevent modal from opening
-                setPlayers((prev) =>
-                  prev.map((p) =>
-                    p.rank === player.rank
-                      ? { ...p, draftedAt: currentPick }
-                      : p,
-                  ),
-                );
-                setCurrentPick((prev) => prev + 1);
+                draftPlayer(player);
               }}
               className={`rounded px-3 py-1 text-sm font-medium transition-colors duration-150 ${
                 userIsCurrentTeam

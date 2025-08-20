@@ -9,7 +9,7 @@ import { X } from "lucide-react";
 import type { Player, Position } from "./types.ts";
 import PlayerList from "./PlayerList.tsx";
 
-interface PlayerCardProps {
+interface PlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
   player: Player | null;
@@ -43,12 +43,12 @@ const getPositionDepthChart = (
     }));
 };
 
-export default function PlayerCard({
+export default function PlayerModal({
   isOpen,
   onClose,
   player,
   players,
-}: PlayerCardProps) {
+}: PlayerModalProps) {
   if (!player) return null;
 
   // Compute full NFL team offense depth chart

@@ -4,7 +4,7 @@ import DraftScreen from "./DraftScreen.tsx";
 import { createRoot } from "react-dom/client";
 //@ts-ignore
 import rankingsCSV from "./rankings.csv";
-import { type LeagueSettings, type State } from "./types.ts";
+import { type LeagueSettings, type State, type DraftType } from "./types.ts";
 import { parsePlayersData } from "./utils.ts";
 
 /*
@@ -56,6 +56,7 @@ ${context}
 
 function App() {
   const [screen, setScreen] = useState<"welcome" | "draft">("welcome");
+  const [draftType, setDraftType] = useState<DraftType>("real");
   const [leagueSettings, setLeagueSettings] = useState<LeagueSettings>({
     teams: getDefaultTeamNames(12),
     draftPosition: 1, // 1-indexed
@@ -81,11 +82,15 @@ function App() {
             players={players}
             setPlayers={setPlayers}
             getDefaultTeamNames={getDefaultTeamNames}
-            onStartDraft={() => setScreen("draft")}
+            onStartDraft={(type) => {
+              setDraftType(type);
+              setScreen("draft");
+            }}
           />
         ) : (
           <DraftScreen
             state={state}
+            draftType={draftType}
             leagueSettings={leagueSettings}
             players={players}
             setPlayers={setPlayers}
@@ -97,11 +102,10 @@ function App() {
                 prev.map((p) => ({
                   ...p,
                   draftedAt: undefined,
-                  fantasyTeamIndex: undefined,
-                  fantasyTeam: undefined,
                 })),
               );
               setCurrentPick(1);
+              setDraftType("real");
             }}
           />
         )}

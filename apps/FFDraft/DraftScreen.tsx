@@ -2,7 +2,16 @@ import React, { useState } from "react";
 import AvailableTab from "./AvailableTab.js";
 import RecentTab from "./RecentTab.js";
 import MyTeamTab from "./MyTeamTab.js";
-import PlayerCard from "./PlayerCard.tsx";
+import PlayerModal from "./PlayerModal.tsx";
+import MockDraftModal from "./MockDraftModal.tsx";
+import {
+  getRoundFromPick,
+  getTeamFromPick,
+  getDraftedPlayers,
+  getRoster,
+  getAvailablePositions,
+  mockDraft,
+} from "./utils.ts";
 import type {
   State,
   LeagueSettings,
@@ -11,12 +20,14 @@ import type {
   Roster,
   FlatRoster,
   Position,
+  DraftType,
 } from "./types.ts";
 
 type TabId = "available" | "recent" | "myTeam";
 
 function DraftScreen({
   state,
+  draftType,
   leagueSettings,
   players,
   setPlayers,
@@ -25,6 +36,7 @@ function DraftScreen({
   onExitDraft,
 }: {
   state: State;
+  draftType: DraftType;
   leagueSettings: LeagueSettings;
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
@@ -34,6 +46,9 @@ function DraftScreen({
 }) {
   const [activeTab, setActiveTab] = useState<TabId>("available");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [mockDraftedPlayers, setMockDraftedPlayers] = useState<
+    DraftedPlayer[] | null
+  >(null);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "available", label: "Available" },
@@ -41,35 +56,16 @@ function DraftScreen({
     { id: "myTeam", label: "My Team" },
   ];
 
-  function getRoundFromPick(pick: number) {
-    return Math.ceil(pick / leagueSettings.teams.length);
-  }
-
   function getPickInRound(pick: number) {
     return ((pick - 1) % leagueSettings.teams.length) + 1;
   }
 
-  function getTeamFromPick(pick: number) {
-    const round = getRoundFromPick(pick);
-    const pickInRound = ((pick - 1) % leagueSettings.teams.length) + 1;
-    // Snake draft: odd rounds go 1→N, even rounds go N→1
-    let teamIndex;
-    if (round % 2 === 1) {
-      teamIndex = pickInRound - 1; // 0-indexed
-    } else {
-      teamIndex = leagueSettings.teams.length - pickInRound; // 0-indexed
-    }
-    const team = leagueSettings.teams[teamIndex];
-    if (team === undefined) {
-      throw new Error("Unexpected error determining team from pick");
-    }
-    return { teamIndex, team };
-  }
-
-  const currentRound = getRoundFromPick(currentPick);
+  const currentRound = getRoundFromPick(leagueSettings, currentPick);
   const currentPickInRound = getPickInRound(currentPick);
-  const { teamIndex: currentTeamIndex, team: currentTeam } =
-    getTeamFromPick(currentPick);
+  const { teamIndex: currentTeamIndex, team: currentTeam } = getTeamFromPick(
+    leagueSettings,
+    currentPick,
+  );
   const userIsCurrentTeam =
     currentTeamIndex === leagueSettings.draftPosition - 1;
 
@@ -89,40 +85,13 @@ function DraftScreen({
     (player) => player.draftedAt === undefined,
   );
 
-  const draftedPlayers = players
-    .filter((player) => player.draftedAt !== undefined)
-    .map((player) => {
-      const { teamIndex: fantasyTeamIndex, team: fantasyTeam } =
-        getTeamFromPick(player.draftedAt!);
-      return { ...player, fantasyTeamIndex, fantasyTeam };
-    }) as DraftedPlayer[];
+  const draftedPlayers = getDraftedPlayers(leagueSettings, players);
 
   const currentPlayers = draftedPlayers.filter(
     (player) => player.fantasyTeamIndex === currentTeamIndex,
   );
   const currentRoster = getRoster(leagueSettings, currentPlayers);
-  const availableRosterSlots = Object.fromEntries(
-    Object.entries(currentRoster).map(([rosterSlot, players]) => {
-      return [rosterSlot, players[players.length - 1] === null];
-    }),
-  ) as Record<keyof Roster, boolean>;
-  const availablePositions: Record<Position, boolean> = {
-    QB: availableRosterSlots.QB || availableRosterSlots.BENCH,
-    RB:
-      availableRosterSlots.RB ||
-      availableRosterSlots.BENCH ||
-      availableRosterSlots.FLEX,
-    WR:
-      availableRosterSlots.WR ||
-      availableRosterSlots.BENCH ||
-      availableRosterSlots.FLEX,
-    TE:
-      availableRosterSlots.TE ||
-      availableRosterSlots.BENCH ||
-      availableRosterSlots.FLEX,
-    K: availableRosterSlots.K || availableRosterSlots.BENCH,
-    DST: availableRosterSlots.DST || availableRosterSlots.BENCH,
-  };
+  const availablePositions = getAvailablePositions(currentRoster);
 
   const recentPlayers = draftedPlayers.sort(
     (a, b) => b.draftedAt - a.draftedAt,
@@ -289,9 +258,34 @@ ${topAvailablePlayers
           <AvailableTab
             availablePlayers={availablePlayers}
             availablePositions={availablePositions}
-            setPlayers={setPlayers}
-            currentPick={currentPick}
-            setCurrentPick={setCurrentPick}
+            draftPlayer={(player: Player) => {
+              const newPlayers = players.map((p) =>
+                p.rank === player.rank ? { ...p, draftedAt: currentPick } : p,
+              );
+              const newCurrentPick = currentPick + 1;
+              setPlayers(newPlayers);
+              setCurrentPick(newCurrentPick);
+              if (draftType === "mock") {
+                const newMockPlayers = mockDraft(
+                  leagueSettings,
+                  newPlayers,
+                  newCurrentPick,
+                );
+                const mockDraftedPlayers = getDraftedPlayers(
+                  leagueSettings,
+                  //we want only the players drafted after the current pick
+                  //but we still call getDraftedPlayers to add fantasyTeamIndex and fantasyTeam
+                  newMockPlayers.filter(
+                    (p) =>
+                      p.draftedAt !== undefined &&
+                      p.draftedAt >= newCurrentPick,
+                  ),
+                ).sort((a, b) => b.draftedAt - a.draftedAt); //most recent first
+                setPlayers(newMockPlayers);
+                setCurrentPick(newCurrentPick + mockDraftedPlayers.length);
+                setMockDraftedPlayers(mockDraftedPlayers);
+              }
+            }}
             userIsCurrentTeam={userIsCurrentTeam}
             draftIsComplete={draftIsComplete}
             onPlayerClick={setSelectedPlayer}
@@ -315,50 +309,21 @@ ${topAvailablePlayers
         )}
       </div>
 
-      <PlayerCard
+      <PlayerModal
         isOpen={selectedPlayer !== null}
         onClose={() => setSelectedPlayer(null)}
         player={selectedPlayer}
         players={players}
+      />
+
+      <MockDraftModal
+        isOpen={mockDraftedPlayers !== null}
+        onClose={() => setMockDraftedPlayers(null)}
+        leagueSettings={leagueSettings}
+        mockDraftedPlayers={mockDraftedPlayers}
       />
     </div>
   );
 }
 
 export default DraftScreen;
-
-function getRoster(leagueSettings: LeagueSettings, players: Player[]): Roster {
-  const roster: Roster = {
-    QB: [],
-    RB: [],
-    WR: [],
-    TE: [],
-    FLEX: [],
-    K: [],
-    DST: [],
-    BENCH: [],
-  };
-  //assign players
-  players.forEach((player) => {
-    if (roster[player.pos].length < leagueSettings[player.pos]) {
-      roster[player.pos].push(player);
-    } else if (
-      (player.pos === "RB" || player.pos === "WR" || player.pos === "TE") &&
-      roster.FLEX.length < leagueSettings.FLEX
-    ) {
-      roster.FLEX.push(player);
-    } else if (roster.BENCH.length < leagueSettings.BENCH) {
-      roster.BENCH.push(player);
-    } else {
-      throw new Error("Unexpected error: invalid roster");
-    }
-  });
-  //now pad roster with undefined
-  Object.keys(roster).forEach((p) => {
-    const position = p as keyof Roster;
-    while (roster[position].length < leagueSettings[position]) {
-      roster[position].push(null);
-    }
-  });
-  return roster;
-}

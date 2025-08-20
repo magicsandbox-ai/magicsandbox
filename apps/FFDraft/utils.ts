@@ -1,4 +1,11 @@
-import { type Player, type Position, isValidPosition } from "./types.ts";
+import {
+  type LeagueSettings,
+  type Player,
+  type DraftedPlayer,
+  type Position,
+  type Roster,
+  isValidPosition,
+} from "./types.ts";
 
 export function parsePlayersData(csvData: string): Player[] {
   const lines = csvData.trim().split("\n");
@@ -90,5 +97,141 @@ export function playersToCSV(players: Player[]): string {
     const row = [player.player, player.team, player.pos, player.icon || ""];
     rows.push(row.join(","));
   }
-  return rows.join("\n");
+  // Add UTF-8 BOM to ensure Excel recognizes the encoding
+  return "\uFEFF" + rows.join("\n");
+}
+
+export function getRoundFromPick(leagueSettings: LeagueSettings, pick: number) {
+  return Math.ceil(pick / leagueSettings.teams.length);
+}
+
+export function getTeamFromPick(leagueSettings: LeagueSettings, pick: number) {
+  const round = getRoundFromPick(leagueSettings, pick);
+  const pickInRound = ((pick - 1) % leagueSettings.teams.length) + 1;
+  // Snake draft: odd rounds go 1→N, even rounds go N→1
+  let teamIndex;
+  if (round % 2 === 1) {
+    teamIndex = pickInRound - 1; // 0-indexed
+  } else {
+    teamIndex = leagueSettings.teams.length - pickInRound; // 0-indexed
+  }
+  const team = leagueSettings.teams[teamIndex];
+  if (team === undefined) {
+    throw new Error("Unexpected error determining team from pick");
+  }
+  return { teamIndex, team };
+}
+
+export function getDraftedPlayers(
+  leagueSettings: LeagueSettings,
+  players: Player[],
+) {
+  return players
+    .filter((player) => player.draftedAt !== undefined)
+    .map((player) => {
+      const { teamIndex: fantasyTeamIndex, team: fantasyTeam } =
+        getTeamFromPick(leagueSettings, player.draftedAt!);
+      return { ...player, fantasyTeamIndex, fantasyTeam };
+    }) as DraftedPlayer[];
+}
+
+export function getRoster(
+  leagueSettings: LeagueSettings,
+  players: Player[],
+): Roster {
+  const roster: Roster = {
+    QB: [],
+    RB: [],
+    WR: [],
+    TE: [],
+    FLEX: [],
+    K: [],
+    DST: [],
+    BENCH: [],
+  };
+  //assign players
+  players.forEach((player) => {
+    if (roster[player.pos].length < leagueSettings[player.pos]) {
+      roster[player.pos].push(player);
+    } else if (
+      (player.pos === "RB" || player.pos === "WR" || player.pos === "TE") &&
+      roster.FLEX.length < leagueSettings.FLEX
+    ) {
+      roster.FLEX.push(player);
+    } else if (roster.BENCH.length < leagueSettings.BENCH) {
+      roster.BENCH.push(player);
+    } else {
+      throw new Error("Unexpected error: invalid roster");
+    }
+  });
+  //now pad roster with undefined
+  Object.keys(roster).forEach((p) => {
+    const position = p as keyof Roster;
+    while (roster[position].length < leagueSettings[position]) {
+      roster[position].push(null);
+    }
+  });
+  return roster;
+}
+
+export function getAvailablePositions(
+  roster: Roster,
+): Record<Position, boolean> {
+  const availableRosterSlots = Object.fromEntries(
+    Object.entries(roster).map(([rosterSlot, players]) => {
+      return [rosterSlot, players[players.length - 1] === null];
+    }),
+  ) as Record<keyof Roster, boolean>;
+  return {
+    QB: availableRosterSlots.QB || availableRosterSlots.BENCH,
+    RB:
+      availableRosterSlots.RB ||
+      availableRosterSlots.BENCH ||
+      availableRosterSlots.FLEX,
+    WR:
+      availableRosterSlots.WR ||
+      availableRosterSlots.BENCH ||
+      availableRosterSlots.FLEX,
+    TE:
+      availableRosterSlots.TE ||
+      availableRosterSlots.BENCH ||
+      availableRosterSlots.FLEX,
+    K: availableRosterSlots.K || availableRosterSlots.BENCH,
+    DST: availableRosterSlots.DST || availableRosterSlots.BENCH,
+  };
+}
+
+export function mockDraft(
+  leagueSettings: LeagueSettings,
+  players: Player[],
+  currentPick: number,
+) {
+  const newPlayers = players.map((player) => ({ ...player }));
+  let newCurrentPick = currentPick;
+  let { teamIndex } = getTeamFromPick(leagueSettings, currentPick);
+  const userTeamIndex = leagueSettings.draftPosition - 1;
+  while (teamIndex !== userTeamIndex) {
+    const availablePlayers = newPlayers.filter(
+      (player) => player.draftedAt === undefined,
+    );
+    const teamPlayers = newPlayers.filter((player) => {
+      if (player.draftedAt === undefined) return false;
+      const { teamIndex: playerTeamIndex } = getTeamFromPick(
+        leagueSettings,
+        player.draftedAt,
+      );
+      return playerTeamIndex === teamIndex;
+    });
+    const roster = getRoster(leagueSettings, teamPlayers);
+    const availablePositions = getAvailablePositions(roster);
+    const bestAvailablePlayer = availablePlayers.find((player) => {
+      return availablePositions[player.pos];
+    });
+    if (bestAvailablePlayer) {
+      bestAvailablePlayer.draftedAt = newCurrentPick;
+    }
+    newCurrentPick++;
+    ({ teamIndex } = getTeamFromPick(leagueSettings, newCurrentPick));
+  }
+  return newPlayers;
 }
