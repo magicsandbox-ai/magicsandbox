@@ -93,6 +93,11 @@ function RecentTab({
           </div>
         )}
         onPlayerClick={onPlayerClick}
+        className={(player) =>
+          player.fantasyTeamIndex === leagueSettings.draftPosition - 1
+            ? "bg-blue-50"
+            : ""
+        }
       />
     </div>
   );

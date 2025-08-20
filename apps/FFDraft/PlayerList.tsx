@@ -8,7 +8,7 @@ interface PlayerListProps<T = any> {
   onPlayerClick?: (item: T) => void;
   isClickable?: (item: T) => boolean;
   emptyState?: React.ReactNode;
-  className?: string;
+  className?: (item: T) => string;
 }
 
 function PlayerList<T = any>({
@@ -19,16 +19,14 @@ function PlayerList<T = any>({
   onPlayerClick,
   isClickable,
   emptyState,
-  className = "",
+  className,
 }: PlayerListProps<T>) {
   if (players.length === 0 && emptyState) {
-    return (
-      <div className={`flex-1 overflow-auto ${className}`}>{emptyState}</div>
-    );
+    return <div className={`flex-1 overflow-auto`}>{emptyState}</div>;
   }
 
   return (
-    <div className={`flex-1 overflow-auto ${className}`}>
+    <div className={`flex-1 overflow-auto`}>
       <div className="divide-y divide-gray-200">
         {players.map((item, index) => {
           const clickable = isClickable
@@ -40,7 +38,7 @@ function PlayerList<T = any>({
               key={index}
               className={`px-4 py-2 transition-colors duration-150 ${
                 clickable ? "cursor-pointer hover:bg-gray-50" : ""
-              }`}
+              } ${className ? className(item) : ""}`}
               onClick={clickable ? () => onPlayerClick?.(item) : undefined}
             >
               <div className="flex items-center justify-between">

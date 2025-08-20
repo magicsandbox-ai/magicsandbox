@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AvailableTab from "./AvailableTab.js";
 import RecentTab from "./RecentTab.js";
 import MyTeamTab from "./MyTeamTab.js";
@@ -7,6 +7,7 @@ import MockDraftModal from "./MockDraftModal.tsx";
 import {
   getRoundFromPick,
   getTeamFromPick,
+  getNumRounds,
   getDraftedPlayers,
   getRoster,
   getAvailablePositions,
@@ -50,6 +51,29 @@ function DraftScreen({
     DraftedPlayer[] | null
   >(null);
 
+  useEffect(() => {
+    handleMockDraft(players, currentPick);
+  }, []);
+
+  function handleMockDraft(players: Player[], currentPick: number) {
+    if (draftType === "mock") {
+      const newMockPlayers = mockDraft(leagueSettings, players, currentPick);
+      const mockDraftedPlayers = getDraftedPlayers(
+        leagueSettings,
+        //we want only the players drafted after the current pick
+        //but we still call getDraftedPlayers to add fantasyTeamIndex and fantasyTeam
+        newMockPlayers.filter(
+          (p) => p.draftedAt !== undefined && p.draftedAt >= currentPick,
+        ),
+      ).sort((a, b) => b.draftedAt - a.draftedAt); //most recent first
+      if (mockDraftedPlayers.length > 0) {
+        setPlayers(newMockPlayers);
+        setCurrentPick(currentPick + mockDraftedPlayers.length);
+        setMockDraftedPlayers(mockDraftedPlayers);
+      }
+    }
+  }
+
   const tabs: { id: TabId; label: string }[] = [
     { id: "available", label: "Available" },
     { id: "recent", label: "Recent" },
@@ -69,15 +93,7 @@ function DraftScreen({
   const userIsCurrentTeam =
     currentTeamIndex === leagueSettings.draftPosition - 1;
 
-  const numRounds =
-    leagueSettings.QB +
-    leagueSettings.RB +
-    leagueSettings.WR +
-    leagueSettings.TE +
-    leagueSettings.FLEX +
-    leagueSettings.K +
-    leagueSettings.DST +
-    leagueSettings.BENCH;
+  const numRounds = getNumRounds(leagueSettings);
   const numPicks = numRounds * leagueSettings.teams.length;
   const draftIsComplete = currentPick > numPicks;
 
@@ -93,7 +109,7 @@ function DraftScreen({
   const currentRoster = getRoster(leagueSettings, currentPlayers);
   const availablePositions = getAvailablePositions(currentRoster);
 
-  const recentPlayers = draftedPlayers.sort(
+  const recentPlayers = [...draftedPlayers].sort(
     (a, b) => b.draftedAt - a.draftedAt,
   ); // Most recent first
 
@@ -265,26 +281,7 @@ ${topAvailablePlayers
               const newCurrentPick = currentPick + 1;
               setPlayers(newPlayers);
               setCurrentPick(newCurrentPick);
-              if (draftType === "mock") {
-                const newMockPlayers = mockDraft(
-                  leagueSettings,
-                  newPlayers,
-                  newCurrentPick,
-                );
-                const mockDraftedPlayers = getDraftedPlayers(
-                  leagueSettings,
-                  //we want only the players drafted after the current pick
-                  //but we still call getDraftedPlayers to add fantasyTeamIndex and fantasyTeam
-                  newMockPlayers.filter(
-                    (p) =>
-                      p.draftedAt !== undefined &&
-                      p.draftedAt >= newCurrentPick,
-                  ),
-                ).sort((a, b) => b.draftedAt - a.draftedAt); //most recent first
-                setPlayers(newMockPlayers);
-                setCurrentPick(newCurrentPick + mockDraftedPlayers.length);
-                setMockDraftedPlayers(mockDraftedPlayers);
-              }
+              handleMockDraft(newPlayers, newCurrentPick);
             }}
             userIsCurrentTeam={userIsCurrentTeam}
             draftIsComplete={draftIsComplete}

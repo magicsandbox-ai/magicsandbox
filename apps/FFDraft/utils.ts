@@ -122,6 +122,19 @@ export function getTeamFromPick(leagueSettings: LeagueSettings, pick: number) {
   return { teamIndex, team };
 }
 
+export function getNumRounds(leagueSettings: LeagueSettings) {
+  return (
+    leagueSettings.QB +
+    leagueSettings.RB +
+    leagueSettings.WR +
+    leagueSettings.TE +
+    leagueSettings.FLEX +
+    leagueSettings.K +
+    leagueSettings.DST +
+    leagueSettings.BENCH
+  );
+}
+
 export function getDraftedPlayers(
   leagueSettings: LeagueSettings,
   players: Player[],
@@ -211,27 +224,106 @@ export function mockDraft(
   let { teamIndex } = getTeamFromPick(leagueSettings, currentPick);
   const userTeamIndex = leagueSettings.draftPosition - 1;
   while (teamIndex !== userTeamIndex) {
-    const availablePlayers = newPlayers.filter(
-      (player) => player.draftedAt === undefined,
-    );
-    const teamPlayers = newPlayers.filter((player) => {
-      if (player.draftedAt === undefined) return false;
-      const { teamIndex: playerTeamIndex } = getTeamFromPick(
-        leagueSettings,
-        player.draftedAt,
-      );
-      return playerTeamIndex === teamIndex;
-    });
-    const roster = getRoster(leagueSettings, teamPlayers);
-    const availablePositions = getAvailablePositions(roster);
-    const bestAvailablePlayer = availablePlayers.find((player) => {
-      return availablePositions[player.pos];
-    });
-    if (bestAvailablePlayer) {
-      bestAvailablePlayer.draftedAt = newCurrentPick;
+    const selectedPlayer = selectPlayer(leagueSettings, newPlayers, teamIndex);
+    if (selectedPlayer) {
+      selectedPlayer.draftedAt = newCurrentPick;
     }
     newCurrentPick++;
     ({ teamIndex } = getTeamFromPick(leagueSettings, newCurrentPick));
   }
   return newPlayers;
+}
+
+function selectPlayer(
+  leagueSettings: LeagueSettings,
+  newPlayers: Player[],
+  teamIndex: number,
+) {
+  const teamPlayers = newPlayers.filter((player) => {
+    if (player.draftedAt === undefined) return false;
+    const { teamIndex: playerTeamIndex } = getTeamFromPick(
+      leagueSettings,
+      player.draftedAt,
+    );
+    return playerTeamIndex === teamIndex;
+  });
+  const roster = getRoster(leagueSettings, teamPlayers);
+  const availablePositions = getAvailablePositions(roster);
+  const availablePlayers = newPlayers.filter(
+    (player) =>
+      player.draftedAt === undefined && availablePositions[player.pos],
+  );
+  const positionCountVsTargets = getPositionCountVsTargets(
+    leagueSettings,
+    teamPlayers,
+  );
+  //sort available players accounting for position count vs target - a delta of 1 is worth 10 slots in the rankings
+  availablePlayers.sort(
+    (a, b) =>
+      a.rank +
+      10 * positionCountVsTargets[a.pos] -
+      (b.rank + 10 * positionCountVsTargets[b.pos]),
+  );
+  const rand = Math.random(); //add randomness to the selection
+  let cumuProb = 0;
+  //these constants define a geometric series that sums to 1 in 10 elements
+  //probability of selecting the first element is a * r^0 = 0.34
+  //second element is a * r^1 = 0.226
+  //...
+  //tenth element is a * r^10 = 0.009, at which point the cumulative probability exceeds 1
+  const a = 0.34;
+  const r = 2 / 3;
+  for (let i = 0; i < availablePlayers.length; i++) {
+    const prob = a * Math.pow(r, i);
+    cumuProb += prob;
+    if (rand < cumuProb) {
+      return availablePlayers[i];
+    }
+  }
+  return availablePlayers[availablePlayers.length - 1];
+}
+
+function getPositionCountVsTargets(
+  leagueSettings: LeagueSettings,
+  teamPlayers: Player[],
+) {
+  const benchDenom =
+    leagueSettings.QB +
+    leagueSettings.RB +
+    leagueSettings.WR +
+    leagueSettings.TE +
+    leagueSettings.FLEX;
+  //todo this may not actually add up to the correct number of players
+  const positionTargets = {
+    QB:
+      leagueSettings.QB +
+      (leagueSettings.QB / benchDenom) * leagueSettings.BENCH * 0.5, //deprioritize QB
+    RB:
+      leagueSettings.RB +
+      leagueSettings.FLEX / 2 +
+      ((leagueSettings.RB + leagueSettings.FLEX / 2) / benchDenom) *
+        leagueSettings.BENCH *
+        1.2, //prioritize RB
+    WR:
+      leagueSettings.WR +
+      leagueSettings.FLEX / 2 +
+      ((leagueSettings.WR + leagueSettings.FLEX / 2) / benchDenom) *
+        leagueSettings.BENCH *
+        1.2, //prioritize WR
+    TE:
+      leagueSettings.TE +
+      (leagueSettings.TE / benchDenom) * leagueSettings.BENCH * 0.5, //deprioritize TE
+    K: leagueSettings.K, //don't draft extra Ks
+    DST: leagueSettings.DST, //don't draft extra DSTs
+  };
+  const numRounds = getNumRounds(leagueSettings);
+  return Object.fromEntries(
+    Object.entries(positionTargets).map(([position, target]) => {
+      return [
+        position,
+        teamPlayers.filter((player) => player.pos === position).length -
+          target * (teamPlayers.length / numRounds), //adjust target for where we are in the draft
+      ];
+    }),
+  ) as Record<Position, number>;
 }

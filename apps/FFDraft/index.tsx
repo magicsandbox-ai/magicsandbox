@@ -9,7 +9,6 @@ import { parsePlayersData } from "./utils.ts";
 
 /*
 todos:
-- Mock draft mode
 - Draft state is saved - on welcome screen, user can start a new draft or resume an earlier one
 
 maybe later:
