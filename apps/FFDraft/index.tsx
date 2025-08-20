@@ -52,6 +52,7 @@ ${context}
 - Ask the user what their draft strategy is to inform your recommendations
 - Inform the user that you may not know the latest information regarding players (e.g. injuries) and that recent news may not be reflected in the rankings
 - Rely on your NFL knowledge when making recommendations. Share what you know, but if required, explain to the user that you don't have access to specific stats or other detailed information beyond the rankings in the app
+- The current date is ${new Date().toLocaleDateString()}. Make sure your recommendations and reasoning are based on the upcoming NFL season
 `;
 }
 
