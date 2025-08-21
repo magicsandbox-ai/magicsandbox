@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from "react";
+import React from "react";
 import {
   Star,
   CircleArrowUp,
@@ -34,32 +34,9 @@ function BottomChat({
   setShowDiscover: (show: boolean) => void;
   setShowApps: (show: boolean) => void;
 }) {
-  const input = useSyncExternalStore(
-    assistantState.subscribe("chatInput"),
-    assistantState.getSnapshot("chatInput"),
-  );
-
   function handleEscape(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
       assistantState.setChatCollapsed(true);
-    }
-  }
-
-  async function handleInput(input: string) {
-    //don't let user submit while loading
-    if (input === "" || chatLoading) return;
-    assistantState.setChatInput("");
-    try {
-      if (app !== null) {
-        assistantState.setChatCollapsed(false);
-      }
-      await assistantState.handleInput({
-        input,
-        resetInput: () => assistantState.setChatInput(input),
-      });
-    } catch (error) {
-      console.error(error);
-      assistantState.addToast("An unexpected error occurred", "error");
     }
   }
 
@@ -115,14 +92,12 @@ function BottomChat({
             )}
             <div className="flex items-center">
               <ChatInput
+                assistantState={assistantState}
                 className={`max-h-[148px] grow resize-none px-1 outline-none ${
                   chatCollapsed || docked
                     ? "mx-1"
                     : "mx-2 focus:outline-2 focus:outline-stone-500"
                 }`}
-                input={input}
-                setInput={(input) => assistantState.setChatInput(input)}
-                handleInput={handleInput}
                 placeholder={placeholder}
                 focus={window.innerWidth >= 1280} //don't focus on mobile/tablet
               />
@@ -157,14 +132,18 @@ function BottomChat({
             text={chatLoading ? "Stop chat" : "Submit chat"}
             position="top"
           >
-            <button onClick={() => handleInput(input)}>
+            <button
+              onClick={() => {
+                if (chatLoading) {
+                  assistantState.handleStopConversation();
+                } else {
+                  assistantState.handleChatSubmit();
+                }
+              }}
+            >
               {chatLoading ? (
                 <>
-                  <OctagonPause
-                    onClick={() => {
-                      assistantState.handleStopConversation();
-                    }}
-                  />
+                  <OctagonPause />
                   <span className="sr-only">Stop</span>
                 </>
               ) : (

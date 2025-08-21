@@ -89,7 +89,7 @@ function WelcomeScreen({
 
   return (
     <div className="flex min-h-screen flex-col justify-center">
-      <div className="mx-3 rounded-xl bg-white p-6 shadow-lg">
+      <div className="m-3 rounded-xl bg-white p-6 shadow-lg">
         <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
           🏈 Fantasy Draft
         </h1>

@@ -1,6 +1,6 @@
 {
   name: "FFDraft",
-  version: "0.1.0",
+  version: "0.1.2",
   description: "Draft (or mock draft) a fantasy football team with AI assistance",
   dependencies: {
     react: "^19.0.0",

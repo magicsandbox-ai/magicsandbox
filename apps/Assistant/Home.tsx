@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from "react";
+import React from "react";
 import ChatInput from "./ChatInput.tsx";
 import AppList from "./AppList.tsx";
 import { CircleArrowUp, Sparkles } from "lucide-react";
@@ -6,34 +6,13 @@ import type { AppData, AssistantState } from "./AssistantState.ts";
 
 function Home({
   assistantState,
-  chatLoading,
   appData,
   setShowDiscover,
 }: {
   assistantState: AssistantState;
-  chatLoading: boolean;
   appData: AppData;
   setShowDiscover: (show: boolean) => void;
 }) {
-  const input = useSyncExternalStore(
-    assistantState.subscribe("chatInput"),
-    assistantState.getSnapshot("chatInput"),
-  );
-
-  async function handleInput(input: string) {
-    if (input === "" || chatLoading) return;
-    try {
-      assistantState.setChatInput("");
-      await assistantState.handleInput({
-        input,
-        resetInput: () => assistantState.setChatInput(input),
-      });
-    } catch (error) {
-      console.error(error);
-      assistantState.addToast("An unexpected error occurred", "error");
-    }
-  }
-
   return (
     <div className="h-full w-full max-w-screen-lg self-center">
       <div className="flex min-h-[50%] flex-col justify-end gap-6 pb-6">
@@ -42,13 +21,14 @@ function Home({
         </p>
         <div className="mx-1 flex rounded-xl border border-stone-500 py-1 outline-1 focus-within:outline focus-within:outline-stone-500">
           <ChatInput
+            assistantState={assistantState}
             className="mx-2 max-h-[148px] grow resize-none outline-none"
-            input={input}
-            setInput={(input) => assistantState.setChatInput(input)}
-            handleInput={handleInput}
             placeholder="Chat with your Assistant"
           />
-          <button className="mr-1" onClick={() => handleInput(input)}>
+          <button
+            className="mr-1"
+            onClick={() => assistantState.handleChatSubmit()}
+          >
             <CircleArrowUp />
             <span className="sr-only">Submit chat</span>
           </button>

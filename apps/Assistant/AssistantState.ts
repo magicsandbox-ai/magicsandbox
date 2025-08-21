@@ -195,6 +195,8 @@ class AssistantState extends SyncExternalStore<{
   app: AppState;
   appData: AppData;
   seenTutorial: boolean;
+  chatInput: string;
+  chatLoading: boolean;
   model: string;
   abortIdController: AbortIdController = new AbortIdController();
   saveTimeoutIds: { [conversationId: string]: number } = {};
@@ -267,6 +269,8 @@ class AssistantState extends SyncExternalStore<{
     this.app = app;
     this.appData = appData;
     this.seenTutorial = seenTutorial;
+    this.chatInput = "";
+    this.chatLoading = false;
     this.model = model;
     this.user = user;
     this.appUsage = {
@@ -333,6 +337,7 @@ class AssistantState extends SyncExternalStore<{
     this.set("isDriverActive", !!state.isInitialized);
   }
   setChatInput(input: string) {
+    this.chatInput = input;
     this.set("chatInput", input);
   }
   setChatCollapsed(collapsed: boolean) {
@@ -367,6 +372,22 @@ class AssistantState extends SyncExternalStore<{
   setConversationSummaries(conversationSummaries: ConversationSummaries) {
     this.conversationSummaries = conversationSummaries;
     this.set("conversationSummaries", conversationSummaries);
+  }
+  async handleChatSubmit() {
+    if (this.chatInput === "" || this.chatLoading) return;
+    try {
+      this.setChatInput("");
+      if (this.app !== null) {
+        this.setChatCollapsed(false);
+      }
+      await this.handleInput({
+        input: this.chatInput,
+        resetInput: () => this.setChatInput(this.chatInput),
+      });
+    } catch (error) {
+      console.error(error);
+      this.addToast("An unexpected error occurred", "error");
+    }
   }
   handleStopConversation() {
     this.abortIdController.abort(this.currentConversation.conversationId);

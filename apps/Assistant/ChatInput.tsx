@@ -1,21 +1,24 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useSyncExternalStore } from "react";
+import type { AssistantState } from "./AssistantState.ts";
 
 function ChatInput({
+  assistantState,
   className,
-  input,
-  setInput,
-  handleInput,
   placeholder,
   focus = true,
 }: {
+  assistantState: AssistantState;
   className: string;
-  input: string;
-  setInput: (input: string) => void;
-  handleInput: (input: string) => void;
   placeholder: string;
   focus?: boolean;
 }) {
+  const input = useSyncExternalStore(
+    assistantState.subscribe("chatInput"),
+    assistantState.getSnapshot("chatInput"),
+  );
+
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (focus) {
@@ -24,20 +27,32 @@ function ChatInput({
   }, []);
 
   useEffect(() => {
-    if (!ref.current) return;
-    if (input === "") {
-      //don't let placeholder make the input grow
-      ref.current.style.height = "28px"; //line height 24 + 4 for border
-    } else {
-      ref.current.style.overflow = "hidden"; // prevent scrollbar during scrollHeight measurement
-      ref.current.style.height = "auto"; //allow to shrink if needed
-      ref.current.style.height = `${ref.current.scrollHeight + 4}px`; //add 4 because scrollHeight does not include border
-      ref.current.style.overflow = ""; // restore default overflow
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
     }
+    rafRef.current = requestAnimationFrame(() => {
+      if (!ref.current) return;
+      if (input === "") {
+        // Don't let placeholder make the input grow
+        ref.current.style.height = "28px"; // line height 24 + 4 for border
+      } else {
+        ref.current.style.overflow = "hidden"; // prevent scrollbar during scrollHeight measurement
+        ref.current.style.height = "auto"; // allow to shrink if needed
+        ref.current.style.height = `${ref.current.scrollHeight + 4}px`; // add 4 because scrollHeight does not include border
+        ref.current.style.overflow = ""; // restore default overflow
+      }
+
+      rafRef.current = null;
+    });
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, [input]);
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
+    assistantState.setChatInput(e.target.value);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -47,7 +62,7 @@ function ChatInput({
         //hide virtual keyboard on mobile
         e.target.blur();
       }
-      handleInput(input);
+      assistantState.handleChatSubmit();
     }
   }
 
