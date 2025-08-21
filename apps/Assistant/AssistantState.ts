@@ -195,6 +195,8 @@ class AssistantState extends SyncExternalStore<{
   app: AppState;
   appData: AppData;
   seenTutorial: boolean;
+  isDriverActive: boolean;
+  driverReturnToApp?: string;
   chatInput: string;
   chatLoading: boolean;
   model: string;
@@ -210,7 +212,7 @@ class AssistantState extends SyncExternalStore<{
   requestProcessing: boolean = false;
   requestTimeoutId: number | null = null;
   risks: Risk[] = [];
-  driver: CustomDriver;
+  private driver: CustomDriver;
   constructor({
     initData,
     initConversation,
@@ -269,6 +271,7 @@ class AssistantState extends SyncExternalStore<{
     this.app = app;
     this.appData = appData;
     this.seenTutorial = seenTutorial;
+    this.isDriverActive = false;
     this.chatInput = "";
     this.chatLoading = false;
     this.model = model;
@@ -334,7 +337,18 @@ class AssistantState extends SyncExternalStore<{
     this.putData("seenTutorial", seen);
   }
   handleDriverStateChange(state: DriverState) {
-    this.set("isDriverActive", !!state.isInitialized);
+    const oldIsDriverActive = this.isDriverActive;
+    const newIsDriverActive = !!state.isInitialized;
+    this.isDriverActive = newIsDriverActive;
+    this.set("isDriverActive", newIsDriverActive);
+    if (oldIsDriverActive && !newIsDriverActive && this.driverReturnToApp) {
+      this.handleApp({ app: this.driverReturnToApp });
+      this.driverReturnToApp = undefined;
+    }
+  }
+  drive(returnToApp?: string) {
+    this.driverReturnToApp = returnToApp;
+    this.driver.drive();
   }
   setChatInput(input: string) {
     this.chatInput = input;
@@ -344,6 +358,7 @@ class AssistantState extends SyncExternalStore<{
     this.set("chatCollapsed", collapsed);
   }
   setChatLoading(loading: boolean) {
+    this.chatLoading = loading;
     this.set("chatLoading", loading);
   }
   setModel(model: string) {
@@ -376,13 +391,14 @@ class AssistantState extends SyncExternalStore<{
   async handleChatSubmit() {
     if (this.chatInput === "" || this.chatLoading) return;
     try {
+      const input = this.chatInput;
       this.setChatInput("");
       if (this.app !== null) {
         this.setChatCollapsed(false);
       }
       await this.handleInput({
-        input: this.chatInput,
-        resetInput: () => this.setChatInput(this.chatInput),
+        input,
+        resetInput: () => this.setChatInput(input),
       });
     } catch (error) {
       console.error(error);

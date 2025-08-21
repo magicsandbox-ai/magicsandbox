@@ -43,7 +43,7 @@ function BottomChat({
   let placeholder;
   if (chatCollapsed && app !== null && messages.length > 0) {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i]!.role !== "user") {
+      if (messages[i]!.role === "assistant") {
         placeholder = formatMessage(messages[i]!).trim();
         break;
       }

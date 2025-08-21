@@ -75,8 +75,8 @@ async function init({ user }: { user?: User } = {}) {
     lastUpdated: Date.now(),
   };
   const seenTutorial =
-    window._TESTING?.seenTutorial || initData.seenTutorial || false;
-  const initApp = window._TESTING?.initApp || urlParams._app;
+    window._TESTING?.seenTutorial ?? initData.seenTutorial ?? false;
+  const initApp = window._TESTING?.initApp ?? urlParams._app;
   if (!("0" in initData)) {
     if (!seenTutorial && !initApp && !navigator.webdriver) {
       //start the tutorial by setting initConversation to the welcome conversation
@@ -372,7 +372,7 @@ function App({
         <DivButton
           className="flex items-center justify-between bg-stone-600 px-2 py-1 text-center text-xs font-medium text-white shadow hover:bg-stone-700 md:text-sm"
           onPress={() => {
-            assistantState.driver.drive();
+            assistantState.drive(app ? app.app : undefined);
             assistantState.setShowTutorialTooltip(false);
           }}
         >
@@ -448,7 +448,7 @@ function App({
                   <button
                     className="absolute right-4 top-3 z-10 rounded-xl border-2 border-stone-800 bg-stone-600 px-2 py-0.5 text-sm font-medium text-white shadow hover:bg-stone-700 md:py-1 md:text-base"
                     onClick={() => {
-                      assistantState.driver.drive();
+                      assistantState.drive();
                     }}
                   >
                     Restart tutorial
