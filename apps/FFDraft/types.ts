@@ -31,6 +31,7 @@ export type Player = {
   rank: number;
   positionRank: number;
   icon?: string;
+  notes?: string;
   draftedAt?: number;
   customColumns?: Record<string, string>;
 };

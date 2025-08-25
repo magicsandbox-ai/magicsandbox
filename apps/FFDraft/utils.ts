@@ -1,3 +1,4 @@
+import Papa from "papaparse";
 import {
   type LeagueSettings,
   type Player,
@@ -8,36 +9,35 @@ import {
 } from "./types.ts";
 
 export function parsePlayersData(csvData: string): Player[] {
-  const lines = csvData.trim().split("\n");
-  if (lines.length === 0) {
+  if (!csvData || csvData.trim() === "") {
     throw new Error("CSV file is empty");
   }
-  const headers = lines[0]!.split(",");
-  let playerIndex: number | undefined;
-  let teamIndex: number | undefined;
-  let posIndex: number | undefined;
-  let iconIndex: number | undefined;
-  for (let i = 0; i < headers.length; i++) {
-    const header = headers[i]!.trim().toLowerCase();
-    if (header === "player") {
-      playerIndex = i;
-    } else if (header === "team") {
-      teamIndex = i;
-    } else if (header === "pos") {
-      posIndex = i;
-    } else if (header === "icon") {
-      iconIndex = i;
-    }
+  const parseResult = Papa.parse(csvData.trim(), {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim().toLowerCase(),
+  });
+  if (parseResult.errors.length > 0) {
+    throw new Error(
+      `CSV parsing errors: ${parseResult.errors.map((e: any) => e.message).join(", ")}`,
+    );
   }
+  const data = parseResult.data as Record<string, string>[];
+  if (data.length === 0) {
+    throw new Error("No valid player data found in CSV");
+  }
+
+  const firstRow = data[0]!;
   if (
-    playerIndex === undefined ||
-    teamIndex === undefined ||
-    posIndex === undefined
+    !("player" in firstRow) ||
+    !("team" in firstRow) ||
+    !("pos" in firstRow)
   ) {
     throw new Error(
       "Missing required headers in CSV. Required headers are: player, team, and pos.",
     );
   }
+
   const positionRanks: Record<Position, number> = {
     QB: 1,
     RB: 1,
@@ -46,28 +46,26 @@ export function parsePlayersData(csvData: string): Player[] {
     K: 1,
     DST: 1,
   };
+
   const players: Player[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line || line.trim() === "") {
-      continue; // Skip empty lines
-    }
-    const values = line.split(",");
-    const playerName = values[playerIndex]?.trim();
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i]!;
+    const playerName = row.player?.trim();
     if (!playerName) {
-      throw new Error(`Missing player on line ${i + 1}`);
+      throw new Error(`Missing player on row ${i + 2}`);
     }
-    const team = values[teamIndex]?.trim();
+    const team = row.team?.trim();
     if (!team) {
-      throw new Error(`Missing team on line ${i + 1}`);
+      throw new Error(`Missing team on row ${i + 2}`);
     }
-    const pos = values[posIndex]?.trim();
+    const pos = row.pos?.trim();
     if (!pos) {
-      throw new Error(`Missing position on line ${i + 1}`);
+      throw new Error(`Missing position on row ${i + 2}`);
     }
     if (!isValidPosition(pos)) {
       throw new Error(
-        `Invalid position '${pos}' for player '${playerName}' on line ${i + 1}. Valid positions are: QB, RB, WR, TE, K, DST`,
+        `Invalid position '${pos}' for player '${playerName}' on row ${i + 2}. Valid positions are: QB, RB, WR, TE, K, DST`,
       );
     }
     const player: Player = {
@@ -79,26 +77,30 @@ export function parsePlayersData(csvData: string): Player[] {
       draftedAt: undefined,
     };
     positionRanks[pos] = (positionRanks[pos] || 0) + 1;
-    if (iconIndex !== undefined) {
-      player.icon = values[iconIndex]?.trim();
+    if (row.icon?.trim()) {
+      player.icon = row.icon.trim();
+    }
+    if (row.notes?.trim()) {
+      player.notes = row.notes.trim();
     }
     players.push(player);
-  }
-  if (players.length === 0) {
-    throw new Error("No valid player data found in CSV");
   }
   return players;
 }
 
 export function playersToCSV(players: Player[]): string {
-  const headers = ["player", "team", "pos", "icon"];
-  const rows = [headers.join(",")];
-  for (const player of players) {
-    const row = [player.player, player.team, player.pos, player.icon || ""];
-    rows.push(row.join(","));
-  }
+  const data = players.map((player) => ({
+    player: player.player,
+    team: player.team,
+    pos: player.pos,
+    icon: player.icon || "",
+    notes: player.notes || "",
+  }));
+  const csv = Papa.unparse(data, {
+    quotes: true, // handle commas in notes
+  });
   // Add UTF-8 BOM to ensure Excel recognizes the encoding
-  return "\uFEFF" + rows.join("\n");
+  return "\uFEFF" + csv;
 }
 
 export function getRoundFromPick(leagueSettings: LeagueSettings, pick: number) {

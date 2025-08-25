@@ -200,7 +200,7 @@ ${myFlatRoster
 Recent picks:
 
 ${recentPlayers
-  .slice(0, leagueSettings.teams.length)
+  .slice(0, 2 * leagueSettings.teams.length)
   .map((player) => {
     return `- Pick ${player.draftedAt}: ${getPlayerAndIcon(player)} (${player.team} ${player.pos})`;
   })
@@ -210,7 +210,7 @@ Top available players - this list includes the top 20 players as well as at leas
 
 ${topAvailablePlayers
   .map((player) => {
-    return `- Rank ${player.rank}: ${getPlayerAndIcon(player)} (${player.team} ${player.pos})`;
+    return `- Rank ${player.rank}: ${getPlayerAndIcon(player)} (${player.team} ${player.pos})${player.notes ? `. Notes: ${player.notes}` : ""}`;
   })
   .join("\n")}`;
   };

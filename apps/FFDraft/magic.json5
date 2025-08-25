@@ -7,6 +7,8 @@
     "react-dom": "^19.0.0",
     "@headlessui/react": "^2.2.7",
     "lucide-react": "^0.540.0",
+    papaparse: "^5.5.3",
+    "@types/papaparse": "^5.3.16",
   },
   esbuildOptions: {
     loader: { ".csv": "text" },
