@@ -11,3 +11,4 @@ apps/About/dist/*
 **/.devlocal.json
 packages/python/**/dist/*
 packages/js/**/dist/*
+.DS_Store
