@@ -11,11 +11,11 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `messages` _(**required**)_
 - `model`: supported models are listed below, with limitations noted. Note that PDF inputs are not supported for any model.
 
-  - `gpt-5-2025-08-07`
-    - `reasoning_effort` defaults to `minimal`
-  - `claude-4-sonnet-20250514`
+  - `claude-sonnet-4-5-20250929`
     - Prompt caching is not supported
     - Thinking is disabled by default. `thinking.budget_tokens` must be >= 1024 if set
+  - `gpt-5-2025-08-07`
+    - `reasoning_effort` defaults to `minimal`
   - `gemini-2.5-pro`
     - Limited to 200k input tokens
     - Prompt caching is not supported
@@ -29,8 +29,9 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
     - Thinking is disabled by default. Set `thinking.budget_tokens` to -1 to turn on dynamic thinking, otherwise `thinking.budget_tokens` must be between 0 and 24576
   - `gpt-5-nano-2025-08-07`
     - `reasoning_effort` defaults to `minimal`
-  - `claude-3-7-sonnet-20250219`
+  - `claude-4-sonnet-20250514`
     - Prompt caching is not supported
+    - Thinking is disabled by default. `thinking.budget_tokens` must be >= 1024 if set
   - `gpt-4.1-2025-04-14`
   - `gpt-4.1-mini-2025-04-14`
   - `gemini-2.0-flash-001`
@@ -50,7 +51,7 @@ Or you can pass an object with the following keys. Refer to the [OpenAI docs](ht
 - `logit_bias`
 - `reasoning_effort`
 - `thinking`
-  - Available for `claude-4-sonnet-20250514`, `gemini-2.5-pro`, `gemini-2.5-flash`
+  - Available for `claude-sonnet-4-5-20250929`, `claude-4-sonnet-20250514`, `gemini-2.5-pro`, `gemini-2.5-flash`
   - See the [Anthropic docs](https://docs.anthropic.com/en/api/messages#body-thinking) for details
 
 Or, to generate multiple responses, you can pass an array of up to 10 objects with the above keys. In this case, you can also provide an additional `maxCost` key indicating how to split `maxCost` across the responses.
@@ -101,7 +102,7 @@ This may be acceptable or even convenient for some use cases. However, if you wa
 
 ```javascript
 const messages = [{ role: "user", content: "Hello, world!" }];
-const model = "claude-3-5-sonnet-20241022";
+const model = "claude-sonnet-4-5-20250929";
 const inputTokens = new TextEncoder().encode(JSON.stringify(messages)).length; //one token per byte
 const outputTokens = 1000;
 const inputTokenCost = 3 / 1000000;

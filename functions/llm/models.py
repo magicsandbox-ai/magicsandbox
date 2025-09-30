@@ -8,6 +8,14 @@ default_tokenizer = DefaultTokenizer()
 
 # keep these in sync with Assistant/ModelPicker (and the README) - need a better way to do this
 supported_models = {
+    "claude-sonnet-4-5-20250929": {
+        "max_input_tokens": 200000,
+        "input_cost_per_token": 3 / 1000000,
+        "output_cost_per_token": 15 / 1000000,
+        "tokenizer": default_tokenizer,
+        "max_vision_tokens": 1600,
+        "supports_assistant_prefill": True,
+    },
     "gpt-5-2025-08-07": {
         "max_input_tokens": 400000,
         "input_cost_per_token": 1.25 / 1000000,
@@ -15,14 +23,6 @@ supported_models = {
         "tokenizer": gpt_4o_tokenizer,
         "max_vision_tokens": 1445,
         "default_reasoning_effort": "minimal",
-    },
-    "claude-4-sonnet-20250514": {
-        "max_input_tokens": 200000,
-        "input_cost_per_token": 3 / 1000000,
-        "output_cost_per_token": 15 / 1000000,
-        "tokenizer": default_tokenizer,
-        "max_vision_tokens": 1600,
-        "supports_assistant_prefill": True,
     },
     "gemini-2.5-pro": {
         "api_name": "gemini/gemini-2.5-pro",
@@ -69,7 +69,7 @@ supported_models = {
     #########################################################
     # start supported but not default models
     #########################################################
-    "claude-3-7-sonnet-20250219": {
+    "claude-4-sonnet-20250514": {
         "max_input_tokens": 200000,
         "input_cost_per_token": 3 / 1000000,
         "output_cost_per_token": 15 / 1000000,
@@ -113,8 +113,8 @@ supported_models = {
 
 # THE ORDER OF THESE MATTERS. should be ordered from smartest to cheapest. last model is used no matter what with trim_messages
 default_models = [
+    "claude-sonnet-4-5-20250929",
     "gpt-5-2025-08-07",
-    "claude-4-sonnet-20250514",
     "gemini-2.5-pro",
     "gpt-5-mini-2025-08-07",
     "gemini-2.5-flash",
